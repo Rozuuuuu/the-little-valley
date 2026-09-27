@@ -63,6 +63,29 @@ settlers (warm shirts) and interface markers stand out.
   fixed pattern.
 - Water has a 1px foam edge, a 2px shadow under banks, and moving ripple highlights.
 
+## Village buildings (Milestone 2)
+
+- **Mill** (2×2): a tapered stone tower with a wooden cap, lit from the left like
+  everything else. Its four canvas sails are a separate 8-frame sprite that turns
+  slowly when idle and faster while grinding.
+- **Bakery** (3×2): warm brick walls with slate roof, a striped awning over a shop
+  window of loaves, and an oven chimney that glows at night.
+- **Cottage** (3×2): timber-framed plaster, slate roof, blue door, flower boxes.
+- **Village hall**: replaces the camp tents once the settlement reaches Village. A
+  timber hall with a bell cupola and bunting, and the campfire kept out front.
+- **Stone bridge**: construction is drawn in stages (a marked line and stakes, stone
+  piers, arches closing in from both banks, then deck and parapets). The finished
+  deck is painted into the ground as `StoneBridge` terrain with dressed slabs and
+  dark parapet edges.
+
+## Planning overlays
+
+Work areas use a tinted fill, a dashed edge and a name tag with a letter
+(F farm, W woodlot, Q quarry, B building), so colour is never the only cue. Colours:
+wheat `#e9c65a`, leaf `#8ee07a`, stone `#d6dadc`, sky `#8fc9e0`. Areas are drawn above
+fog and night so planning stays readable. A clicked target gets a pulsing double
+bracket (select colour plus warning yellow).
+
 ## Characters
 
 - Frames are 18×22, and the figure is 8px wide by about 16px tall.
@@ -87,4 +110,9 @@ attention.
 - Pixelify Sans is for headings and buttons. Atkinson Hyperlegible is for body text,
   **all numbers** and key labels. Pixel fonts blur 5/S and 8/B at small sizes.
 - Accents: wheat `#e9c65a` for focus and highlights, leaf `#8ee07a` for progress,
-  berry `#e0584a` for problems.
+  berry `#e0584a` for problems. Problems also carry a symbol (⚠ or a red “!”), and
+  checklists use filled boxes with struck-through text, so nothing relies on colour
+  alone.
+- The minimap uses the terrain palette at one pixel per tile. Settlers are cream dots
+  with a dark outline (idle ones are yellow), grouped per 2×2 tiles so busy villages
+  stay readable.

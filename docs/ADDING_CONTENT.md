@@ -16,7 +16,8 @@ and never switch on specific ids, except for a few special cases noted below.
    },
    ```
 
-2. That's it. Fields, the crop pickers, the inspector, sprites (generated from
+2. `yield` can be any resource (wheat yields `wheat` for the mill, turnips yield
+   `food`). That's it. Fields, the crop pickers, the inspector, sprites (generated from
    `art.style` and colours in `render/sprites/crops.ts`), saves and validation pick it
    up automatically. For a new *shape*, add a style to `STYLE` in `crops.ts`
    (one draw function per stage).
@@ -30,18 +31,34 @@ and dry soil grows at 40% speed.
    Relevant fields:
    - `size`, `cost`, `work` (builder ticks), `placement` (`land`, `farmland`, `water`), `blocks`
    - `paint: true` to place by dragging a rectangle of 1×1 tiles
-   - `housing`, `storage`, `recipes`, `light`, `reveal`, `maxBuilders`, `unlock`
+   - `housing` (beds; `temporaryBeds: true` for camp-style bedrolls), `storage`, `recipes`,
+     `maxWorkers` (production staff limit), `light`, `reveal`, `maxBuilders`, `unlock`
+   - `span: { min, max, costPerTile, workPerTile }` for drag-placed crossings like the
+     stone bridge (placement `'span'`). Cost and work scale with length.
+   - `permanent: true` to forbid demolishing once built
    - `convertsTo: 'road' | 'bridge'` turns the tiles into terrain when finished
 2. Draw it: add a `Draw` function in `src/render/sprites/buildings.ts` and register it
    in `makeBuildingSprites()` with its canvas size and footprint offset. Use `lit` for a
-   night variant (window glow). Buildings without a sprite fall back to a
-   scaffold-only look, so the game still runs.
+   night variant (window glow). Homes only use the lit variant when someone is asleep
+   inside. Finished buildings without a sprite show a simple placeholder block, so
+   the game still runs. Animated parts (like the mill's sails) are separate sprites
+   drawn in `Renderer.drawBuilding`.
 3. Behaviour comes from the fields: housing counts toward population, storage takes
    deliveries, recipes make it a workshop, and lights appear at night. Unusual
    behaviour belongs in a system module (e.g. `sim/buildings.ts`), keyed by a
    data field rather than the id where possible.
-4. Chimney smoke is currently tied to `house`/`workshop` in `Renderer.render`. Add an
-   `emits` field to the definition if more buildings need it.
+4. Chimney smoke is currently tied to `house`, `workshop`, `bakery` and `cottage` in
+   `Renderer.render`. Add an `emits` field to the definition if more buildings need it.
+
+## A new production chain
+
+The bread chain shows the pattern: a crop yields a raw resource (`wheat`), one building
+processes it (`mill`: 3 wheat → 2 flour), and another finishes it (`bakery`: 2 flour +
+1 wood → 5 food). Each is just data: resources, a crop `yield`, recipes, and buildings
+with `recipes` and `maxWorkers`. Hauling, worker assignment, status lines, Valley
+today issues and conservation tests all work generically. Count new outputs in
+`runCraft` (a stat) if a milestone needs them, and extend `consumedByCrafting` in
+`tests/helpers.ts` so the conservation tests cover the new recipe.
 
 ## A new recipe
 
@@ -59,8 +76,10 @@ it there too.
 ## A new milestone
 
 Milestones are ordered in `MILESTONE_ORDER` (`data/progression.ts`). Requirements
-are `population`, `built` (building count) or `stat` (a counter in
-`Simulation.stats`). Gate content by setting `unlock: '<milestoneId>'` on crops or
+are `population`, `built` (building count), `stat` (a counter in `Simulation.stats`),
+`beds` (permanent home beds), `staffedAreas` (work areas with someone assigned), or
+`anyOf` (any *n* of a list), which lets players pick their own path, as Village
+does. Gate content by setting `unlock: '<milestoneId>'` on crops or
 buildings. Mark a milestone `future: true` to show it as a goal that is not reachable
 yet.
 
@@ -75,3 +94,18 @@ string, or null.
 `tests/simulation.test.ts` shows how to drive a headless world with `applyCommand`
 and `runUntil`. The `accountedFor` / `consumedBy*` helpers let new production chains
 be checked for resource conservation.
+
+## A new kind of work area
+
+Area kinds live in `AreaKind` (`sim/types.ts`) and `AREA_LABELS` (`sim/commands.ts`).
+Add the kind, then teach `findAreaWork` in `sim/settlers.ts` what it means, returning
+a task or a plain-language reason. Give it a colour and a letter in `AREA_COLORS` and
+`AREA_SYMBOL` (`render/Renderer.ts`), and a status line in `areaInfo`
+(`engine/snapshot.ts`).
+
+## Changing world generation
+
+Never edit an existing generator. Add a new version in `worldgen.ts` (branch on
+`gen`), bump `CURRENT_GEN`, add it to `SUPPORTED_GENS`, and add a fingerprint
+alongside `tests/fixtures/gen-v1-fingerprint.json`. See
+[SAVE_FORMAT.md](SAVE_FORMAT.md).

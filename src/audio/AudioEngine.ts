@@ -175,7 +175,7 @@ export class AudioEngine {
   play(name: SoundName, vol = 1, pan = 0): void {
     if (!this.ctx || vol <= 0.02) return;
     const now = this.ctx.currentTime;
-    const minGap = name === 'hammer' || name === 'chop' || name === 'mine' ? 0.09 : 0.05;
+    const minGap = name === 'hammer' || name === 'chop' || name === 'mine' ? 0.09 : name === 'mill' || name === 'bake' ? 0.6 : 0.05;
     if (now - (this.last.get(name) ?? 0) < minGap) return;
     this.last.set(name, now);
     const v = vol;
@@ -211,6 +211,16 @@ export class AudioEngine {
         break;
       case 'saw':
         for (let i = 0; i < 2; i++) this.burst(0.12, { freq: 1400 + i * 300, q: 3, vol: 0.09 * v, when: now + i * 0.14, sweep: 1.4, pan: p });
+        break;
+      case 'mill':
+        // A soft wooden creak and grind.
+        this.burst(0.22, { freq: 320, q: 2, vol: 0.1 * v, sweep: 0.8, pan: p });
+        this.tone(110, 0.2, { type: 'triangle', vol: 0.05 * v, slide: 0.9, pan: p });
+        break;
+      case 'bake':
+        // Oven door and a warm hum.
+        this.tone(180, 0.18, { vol: 0.08 * v, slide: 1.2, pan: p });
+        this.burst(0.25, { freq: 700, type: 'lowpass', vol: 0.06 * v, pan: p });
         break;
       case 'drop':
         this.tone(160, 0.1, { vol: 0.16 * v, slide: 0.55, pan: p });

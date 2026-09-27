@@ -43,6 +43,10 @@ Handy scripts:
 | Save | F5 or Ctrl+S |
 | Cancel, deselect, then open the menu | Esc |
 | Controls help | F1 |
+| Draw a work area | Areas tab → + Farm area / Woodlot / Quarry / Building area, then drag |
+| Plan a stone bridge | Build → Projects → Stone Bridge, then drag across the water from bank to bank |
+| Valley today (issues and ideas) | **Today** button, top right |
+| Jump to idle settlers, waiting buildings, sites, the bridge, home | Buttons under the minimap; click the minimap to move there |
 
 Every keyboard action can be remapped in **Settings → Keys**. Bindings are stored
 in `localStorage`.
@@ -60,9 +64,28 @@ in `localStorage`.
    shallow water.
 6. Milestones (Camp → Hamlet → Village → Town …) unlock new crops and buildings.
    The **Goals** tab shows what comes next.
+7. After Hamlet, organise instead of micromanaging:
+   - **Work areas** (Areas tab): draw a farm area over your fields, a woodlot or a
+     quarry, then assign settlers. They work there first. Woodlots and quarries
+     need no harvest marks.
+   - **Work order** (settler inspector): reorder Build, Haul, Farm, Gather and
+     Craft, or switch kinds off.
+   - **Bread:** wheat → **mill** (3 wheat → 2 flour) → **bakery** (2 flour + 1 wood →
+     5 food). Right-click a mill or bakery with a settler to make them its worker.
+     A wheat field feeds more than any other crop, but only with the extra buildings
+     and workers.
+   - **Great river:** new valleys have a deep river east of the camp. Walk a settler
+     to the bank to see the far side, then drag a **stone bridge** across it to reach
+     fertile, stony riverlands.
+   - **Village** needs 10 settlers, 8 beds in houses or cottages, and any **2** of:
+     bake 30 food, run 2 staffed work areas, finish a stone bridge, lay 25 path tiles.
+8. **Beds:** houses have 2, cottages 4, and the camp has 5 temporary bedrolls.
+   Newcomers need a free bed and 20 stored food. The Settlers tab shows
+   "Home beds x/y · camp bedrolls x/y" and exactly what is holding growth back.
 
-Settlers show why they are idle: hover the settler list or select them. Buildings
-explain what they are waiting for.
+Settlers say why they are idle: the Settlers tab lists each reason (marked ⚠), and
+the inspector shows it when you select them. Buildings explain what they're waiting
+for, and **Valley today** gathers the most important issues when you return.
 
 ## Documentation
 
@@ -72,3 +95,8 @@ explain what they are waiting for.
 - [Art guide](docs/ART_GUIDE.md): tile size, palette, outline and lighting rules.
 - [Asset manifest](docs/ASSET_MANIFEST.md): every sprite and sound and where it is generated.
 - [Milestones](docs/MILESTONES.md): what's playable, what was tested, known limits, what's next.
+- [Playtest script](docs/PLAYTEST.md): a no-coaching session plan and feedback form (not yet run).
+
+More scripts: `npx tsx scripts/profile-village.ts 100` profiles a 100-settler
+village, and `npx tsx scripts/check-gen-fingerprint.ts` confirms generator 1 output is
+unchanged.

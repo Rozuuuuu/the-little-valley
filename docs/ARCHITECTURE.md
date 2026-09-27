@@ -45,43 +45,144 @@ A day is 2880 ticks (4.8 minutes at 1×). Night runs from 0.87 to 0.21 of the da
 ## World
 
 - Infinite grid of 32×32 chunks (`World`), generated lazily and deterministically from
-  the seed (`worldgen.ts`: value-noise elevation, moisture and river contours, plus a
-  hand-shaped spawn clearing). Fords break every river loop so the start is never sealed in.
+  the seed and the world's **generator version** (`worldgen.ts`). Generator 1 uses
+  value-noise elevation, moisture, river contours with fords, and a hand-shaped
+  spawn clearing. Generator 2 adds the **great river**: a meandering channel east of
+  the spawn with a deep middle and no fords. The only way across is a stone bridge.
+  Beyond it lie the fertile, stony riverlands.
 - Each chunk stores flat `Uint8Array`s: terrain, object, object amount, explored.
   `modified` marks chunks that differ from the generator and must be saved in full.
-- `version`, `terrainVersion` and `fogVersion` tell the renderer what to repaint.
-- Fog of war: settlers and completed buildings reveal discs of tiles. Building needs
-  explored ground.
+- `version`, `terrainVersion` and `fogVersion` tell the renderer and minimap what to repaint.
+- Fog of war: settlers and finished buildings reveal discs of tiles. Settlers standing
+  near open water see much farther (12 tiles), so a scout on a riverbank can survey
+  the far side before a bridge is planned. Building needs explored ground.
 
-> Changing `worldgen.ts` changes every unmodified chunk of existing worlds. If the
-> generator ever changes after release, add a generator version to the save and keep
-> the old generator for old worlds.
+> Old worlds keep their generator forever. See "World generator versions" in
+> [SAVE_FORMAT.md](SAVE_FORMAT.md). Never change an existing generator: add a new one.
 
-## Settlers, jobs and tasks
+## Settlers, jobs, work areas and routines
 
-`settlers.ts` contains the whole settler brain:
+`settlers.ts` contains the settler brain. `assignTask` decides in this order:
 
-1. **Needs first.** A settler holding goods delivers them. A hungry settler walks to
-   food in storage. At night they go home (a house bed, or a spot around the camp).
-2. **Standing orders.** A manual gather order sets a *focus*: after each trip the
-   settler picks the nearest resource of the same kind within 7 tiles.
-3. **Job priorities** (`data/jobs.ts`): each job lists work kinds (build, haul, farm,
-   gather, craft) in order. Specialists fall back to general work.
-4. If nothing fits, the settler records the most relevant **idle reason** (shown
-   in the UI) and may wander a little.
+1. **Needs.** Deliver goods in hand (if storage has room). Eat if hungry and food is
+   stored. Go to bed at bedtime, or nap when exhausted. Bed and wake times are
+   staggered by a few minutes per settler.
+2. **Direct orders.** Right-click orders set a task immediately, and a gather order
+   leaves a temporary *focus*: keep working the same resource nearby. When those run
+   out, the settler returns to their routine.
+3. **Work area.** A settler assigned to an area (`sim.workAreas`: farm, woodlot, quarry
+   or building area) does that area's work first. Woodlots and quarries harvest
+   everything inside, with no marks needed. Areas only count explored tiles and skip
+   unreachable targets.
+4. **Work order.** `priorities.ts`: the settler's own ordered list of work kinds
+   (build, haul, farm, gather, craft), or their job's default. Players reorder it or
+   switch kinds off in the inspector. Choosing a job resets it to that job's default.
+5. **Idle.** The most relevant reason is recorded and shown ("Fields in Home farm are
+   growing", "Storage is full — build a storehouse", "Can't reach the rocks in
+   Quarry 1", "Every kind of work is switched off"). The settler then waits about 1.5
+   seconds before searching again, unless something changes: new orders, placements
+   and finished buildings wake everyone at once.
 
-Work is **reserved** (`sim.reservations`, e.g. `field:12`, `obj:<tile>`, `build:7:0`)
-so two settlers never do the same job. Goods in transit are reserved by quantity
-(`reservedOut` on the source, `incoming` on the destination). Every task releases its
-reservations when it ends or is aborted. Tasks and reservations are **not saved**:
-after a load, settlers simply choose work again. Carried goods are saved, so nothing
-is lost or duplicated. The invariant tests check this.
+Limits that always hold (see `tests/village.test.ts`):
 
-Movement uses bounded A* (`pathfinding.ts`: 8-way, no corner cutting, road discount,
-node budget). Paths are cached per goal and re-planned when the next tile becomes
-blocked. After repeated failures the task aborts with a reason and the target is
-skipped for that settler for a while. Plain move orders accept a *partial* path and
-walk as close as they can.
+- **One task per settler, one worker per exclusive job.** Work is reserved
+  (`sim.reservations`: `field:12`, `obj:<tile>`, `build:7:0`, `craft:9`). Goods in
+  transit are reserved by quantity (`reservedOut` on the source, `incoming` on the
+  destination). Tasks release everything when they end. Changing areas, jobs or work
+  orders calls `replan`, which aborts area and job work cleanly while keeping direct
+  orders and needs. `assertReservationsConsistent` checks that every reservation
+  belongs to a task that holds it.
+- **Carry capacity** is 10. Nobody accepts a delivery to full storage, a harvest with
+  full hands, or a craft with nowhere to put the output.
+- **Worker limits.** Production buildings have `maxWorkers` (1 each today). A work
+  area takes at most 12 settlers. Extra assignments are refused with the count
+  ("The mill already has 1/1 workers").
+- **Hunger and energy** below 15 slow work (shown in the inspector). They never kill
+  anyone.
+
+### Housing
+
+- `BuildingDef.housing` is a bed count: house 2, cottage 4. The camp has 5 *temporary*
+  bedrolls (`temporaryBeds`).
+- **Explicit rule:** newcomers need a free, reachable bed, and camp bedrolls count.
+  Everyone else sleeps in a bedroll only until a house bed frees up. Unfinished
+  buildings give no beds.
+- `assignHomes` never lets a home exceed its beds. It moves bedroll sleepers into free
+  house beds and leaves anyone left over without a bed. They rest by the campfire, and
+  the UI says so. Reachability is checked with a cached path from the camp.
+- `welcomeNewcomer` assigns the bed before anything else, so two arrivals can't take
+  the same bed. Growth also needs 20 stored food and a cooldown.
+  `sim.populationStatus` always says exactly what is holding growth back, including
+  the open simulation limit (`MAX_POPULATION = 300`).
+- Removing a home releases its residents, rehouses them where possible, and reports
+  any shortage in a toast and the chronicle.
+- **Sleep:** residents walk to the door tile and sleep *inside* (`insideId`, lit
+  windows). Camp sleepers each get their own spot. If the way home is blocked, the
+  settler rests where they are for that night and tries again the next night, so
+  there's no endless movement loop.
+
+### Production
+
+Recipes (`data/recipes.ts`) run in any building with `recipes`: workshop (planks,
+tools), mill (wheat → flour) and bakery (flour + wood → food). Haulers keep two
+batches of inputs on hand. The assigned worker crafts and carries the output to
+storage. A building with no assigned workers is open to anyone whose work order
+includes Craft. Status lines explain every stop ("Needs 3 wheat — none in storage",
+"No worker — select a settler and right-click the mill", "Storage is full — nowhere to
+put the output").
+
+### Pathfinding
+
+Bounded A* (`pathfinding.ts`: 8-way, no corner cutting, road discount, an
+allocation-free heap). Paths are cached per goal and re-planned when blocked. Guards
+keep village-wide rushes cheap:
+
+- a **per-tick node budget** (`PATH_BUDGET = 6000`): a settler whose search doesn't fit
+  waits one tick
+- **shared unreachable notes**: once a target proves unreachable, everyone skips it for
+  a while, backing off exponentially until the map changes (anything built, removed or
+  bridged)
+- move orders accept a **partial path** and walk as close as they can
+
+## Stone bridge (span buildings)
+
+`BuildingDef.span` makes a building drag-placed in a straight line over water tiles
+only, with walkable, explored land just beyond both ends (`checkSpan`). Its size is
+stored per building (`w`, `h`). `costOf` and `workOf` scale with length (stone bridge:
+6 stone + 2 planks and 100 work per tile). Builders reach it from the banks. On
+completion its tiles become `T.StoneBridge` terrain (walkable, road speed). The
+building stays as a permanent landmark: it can't be demolished and shows on the
+minimap.
+
+## Village progression
+
+Milestones (`data/progression.ts`) support `anyOf` requirements. Village asks for 10
+settlers and 8 home beds, plus **any 2 of**:
+
+- bake 30 food
+- run 2 staffed work areas
+- complete a stone bridge
+- lay 25 path tiles
+
+Reaching it records a chronicle entry, shows a short celebration card (the world
+pauses behind it), unlocks cottages, benches and the Grand Market, and turns the camp
+into a village hall.
+
+## "Valley today"
+
+`engine/overview.ts` builds the resume panel from state only:
+
+- the previous session's chronicle entries and stat changes (never invented; saves
+  without a session mark say so)
+- up to 3 issues: storage full, settlers without beds, production stopped, sites
+  short of stock, idle settlers
+- 2–3 goals from the actual world: build a mill or bakery, plant wheat, create a farm
+  area, cross the great river (with a suggested crossing), homes for Village, or
+  post-Village aims
+
+Every item carries a target. Clicking it closes the panel, moves the camera there,
+selects the building or settler, and pulses a highlight. The panel appears about a
+second after loading, so idle reasons are real.
 
 ## Rendering
 
@@ -103,9 +204,12 @@ walk as close as they can.
   radial gradients around lights, then a warm additive glow is added. Also rain,
   fireflies, pollen, chimney smoke and campfire sparks.
 
-Measured on this machine (1920×901, Chrome): about 3.5–5 ms per frame at 1× DPR with
-7 settlers, and about 7.6 ms with 60 settlers. A simulation tick costs about
-0.17 ms with 7 settlers and 1.5 ms with 60.
+Performance (Intel i5-4200M laptop from 2013, Chrome 152, 1920×901 canvas at 1× DPR), for a developed village of 101 settlers, ~99 buildings, 4 work areas, and mill, bakery and workshop running:
+
+- **Simulation tick** (`scripts/profile-village.ts`, 2 in-game days, 3 runs): daytime average 0.48–0.72 ms, p95 1.5–2.3 ms, p99 3.3–6.7 ms. Night average 0.12–0.26 ms, p99 1.9–5.0 ms. Rare outliers of 20–43 ms come from garbage collection, first-time chunk generation (now 2–5 ms per chunk) and occasional capped failed searches. At 1× the game runs 10 ticks a second.
+- **Render** (browser, same village): median 6.5–8.8 ms per frame at zoom 2–3, day or night. p95 9–29 ms in noisy runs (garbage collection and chunk painting finishing in the worker). The night lighting pass only processes lights in view, and only homes with sleepers glow.
+
+The React tree still updates at 4 Hz from the snapshot, and the minimap redraws at 5 Hz from the game loop.
 
 ## Saving
 
@@ -116,6 +220,6 @@ when the page closes.
 
 ## UI
 
-React components in `src/ui` read `useSnapshot()` and call controller methods.
+React components in `src/ui` read `useSnapshot()` and call controller methods. New panels: Valley today (`ui/Village.tsx`), the minimap with layer toggles and quick-find buttons (idle settlers, buildings waiting, sites, the bridge, home), the Areas tab, the work-order editor, and the celebration card. The minimap canvas is owned by `render/Minimap.ts` and drawn by the controller, never by React.
 Menus that should stop the world set `game.menuOpen`. The title screen runs a
 separate "attract" simulation behind the menu. It has no autosave, toasts or sounds.

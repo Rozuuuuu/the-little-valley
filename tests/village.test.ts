@@ -651,3 +651,61 @@ describe('Hamlet → Village journey', () => {
     void START_TIME;
   });
 });
+
+describe('exploring to the river and the Valley today summary', () => {
+  it('a scout at the riverbank can see the far bank, so a bridge can be planned without magic', () => {
+    const sim = createNewGame(9090);
+    sim.progression.reached.push('hamlet');
+    const c = riverCrossing(sim);
+    // Reveal only a corridor up to the west bank, as a player walking there would.
+    for (let x = 0; x <= c.x0 - 4; x += 4) sim.world.reveal(x, c.y, 6);
+    const scout = sim.settlers[0];
+    applyCommand(sim, { type: 'move', ids: [scout.id], x: c.x0 - 1, y: c.y });
+    runUntil(sim, () => Math.floor(scout.x) === c.x0 - 1 && Math.floor(scout.y) === c.y, DAY_TICKS);
+    run(sim, 20);
+    expect(sim.world.explored(c.x1 + 1, c.y)).toBe(true);
+    expect(applyCommand(sim, { type: 'placeSpan', building: 'stoneBridge', x0: c.x0, y0: c.y, x1: c.x1, y1: c.y }).ok).toBe(true);
+  });
+
+  it('summarises only recorded events and targets real things', async () => {
+    const { buildOverview } = await import('../src/engine/overview');
+    const sim = createNewGame(4141);
+    // No earlier session: say so rather than invent history.
+    const first = buildOverview(sim, null);
+    expect(first.since).toBeNull();
+    expect(first.sinceNote).toMatch(/no record/i);
+    const prev = sim.session;
+    camp(sim).inventory = { food: 80, wood: 60, stone: 30 };
+    const p = clearSpot(sim, 2, 2);
+    applyCommand(sim, { type: 'place', building: 'house', x: p.x, y: p.y });
+    runUntil(sim, () => builtCount(sim, 'house') === 1 && sim.settlers.length === 6, DAY_TICKS * 2);
+    const o = buildOverview(sim, prev);
+    expect(o.since!.join(' ')).toMatch(/house/);
+    expect(o.since!.join(' ')).toMatch(new RegExp(sim.settlers.at(-1)!.name));
+    expect(o.since!.join(' ')).not.toMatch(/bridge|mill|Village/);
+    expect(o.issues.length).toBeLessThanOrEqual(3);
+    expect(o.goals.length).toBeGreaterThan(0);
+    for (const item of [...o.issues, ...o.goals]) {
+      if (!item.target) continue;
+      if (item.target.buildingId !== undefined) expect(sim.buildings.has(item.target.buildingId)).toBe(true);
+      if (item.target.settlerId !== undefined) expect(sim.settler(item.target.settlerId)).toBeDefined();
+    }
+  });
+
+  it('points out a mill waiting for wheat and a bridge short of stone', async () => {
+    const { buildOverview } = await import('../src/engine/overview');
+    const sim = createNewGame(9090);
+    sim.progression.reached.push('hamlet');
+    const m = clearSpot(sim, 2, 2, { x: 5, y: -4 });
+    const mill = instant(sim, 'mill', m.x, m.y);
+    applyCommand(sim, { type: 'assignWorker', buildingId: mill.id, ids: [sim.settlers[0].id] });
+    const c = riverCrossing(sim);
+    for (let x = 0; x <= c.x1 + 8; x += 4) sim.world.reveal(x, c.y, 7);
+    applyCommand(sim, { type: 'placeSpan', building: 'stoneBridge', x0: c.x0, y0: c.y, x1: c.x1, y1: c.y });
+    run(sim, 20);
+    const o = buildOverview(sim, null);
+    const text = [...o.issues, ...o.goals].map((i) => i.text).join(' | ');
+    expect(text).toMatch(/mill needs 3 wheat/i);
+    expect(text).toMatch(/Deliver \d+ more (stone|planks) to the stone bridge/);
+  });
+});

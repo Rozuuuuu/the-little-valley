@@ -861,10 +861,18 @@ export class Renderer {
     lc.globalCompositeOperation = 'destination-out';
     const flick = 0.92 + Math.sin(st.time * 11) * 0.04 + Math.sin(st.time * 7.3) * 0.04;
     const glows: { x: number; y: number; r: number; warm: number }[] = [];
+    const occupied = new Set<number>();
+    for (const s of sim.settlers) if (s.insideId !== null) occupied.add(s.insideId);
+    const tl = cam.screenToWorld(0, 0);
+    const br = cam.screenToWorld(cam.width, cam.height);
     for (const b of sim.buildings.values()) {
       if (!b.built) continue;
       const def = BUILDINGS[b.type];
       if (!def.light) continue;
+      // Homes glow only when someone sleeps inside; skip lights that can't touch the view.
+      if (isPermanentHome(b) && !occupied.has(b.id)) continue;
+      const reach = def.light * TILE;
+      if ((b.x + b.w) * TILE < tl.x - reach || b.x * TILE > br.x + reach || (b.y + b.h) * TILE < tl.y - reach || b.y * TILE > br.y + reach) continue;
       let lx = (b.x + b.w / 2) * TILE;
       let ly = (b.y + b.h * 0.7) * TILE;
       let r = def.light * TILE;
@@ -874,7 +882,8 @@ export class Renderer {
         r *= flick;
       }
       if (b.type === 'lamp') ly = b.y * TILE - 10;
-      glows.push({ x: lx, y: ly, r, warm: b.type === 'camp' ? 0.22 : 0.12 });
+      // Only open flames get the full-resolution warm bloom; windows just lift the darkness.
+      glows.push({ x: lx, y: ly, r, warm: b.type === 'camp' ? 0.22 : b.type === 'lamp' || b.type === 'market' ? 0.12 : 0 });
     }
     for (const g of glows) {
       const p = cam.worldToScreen(g.x, g.y);
@@ -893,6 +902,7 @@ export class Renderer {
     // Warm additive glow around fires and windows
     ctx.globalCompositeOperation = 'lighter';
     for (const g of glows) {
+      if (g.warm <= 0) continue;
       const p = cam.worldToScreen(g.x, g.y);
       const r = g.r * cam.scale * 0.6;
       const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
