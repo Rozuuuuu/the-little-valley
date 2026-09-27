@@ -42,11 +42,13 @@ export type Task =
   | { kind: 'haul'; src: number; dst: number; res: ResourceId; amount: number; stage: 'toSrc' | 'toDst' }
   | { kind: 'build'; site: number; slot: number; stage: 'walk' | 'work' }
   | { kind: 'farm'; field: number; action: FieldAction; stage: 'walk' | 'work'; timer: number }
+  | { kind: 'orchard'; orchard: number; action: OrchardAction; stage: 'walk' | 'work'; timer: number }
   | { kind: 'craft'; ws: number; stage: 'walk' | 'work' }
   | { kind: 'eat'; src: number }
   | { kind: 'sleep'; home: number | null; stage: 'walk' | 'sleep' };
 
 export type FieldAction = 'till' | 'plant' | 'water' | 'harvest';
+export type OrchardAction = 'tend' | 'pick';
 
 export interface Settler {
   id: number;

@@ -2,7 +2,7 @@ import { DAY_TICKS, tileKey, keyX, keyY } from '../core/constants';
 import { BUILDINGS } from '../data/buildings';
 import { CROPS } from '../data/crops';
 import type { WorkKind } from '../data/jobs';
-import { RECIPES } from '../data/recipes';
+import { RECIPES, type RecipeId } from '../data/recipes';
 import { CHILD_ADULT_TICKS } from '../data/kingdomBalance';
 import { RESOURCES, type ResourceId } from '../data/resources';
 import { O, OBJECTS, T, TERRAIN, type ObjectId } from '../world/tiles';
@@ -10,13 +10,14 @@ import {
   campOf, completeBuilding, costOf, entranceOf, isPermanentHome, materialsComplete, mayWorkAt, scheduleRegrowth, workOf, workshopNeeds,
 } from './buildings';
 import { applyFieldAction, FIELD_WORK, fieldAction } from './farming';
+import { applyOrchardAction, ORCHARD_WORK, orchardAction } from './orchards';
 import { addInv, hasAll, invEntries } from './inventory';
 import { findPath, goalSatisfied, lastPathStats, type Goal } from './pathfinding';
 import { effectivePriorities } from './priorities';
 import { seasonOf } from './seasons';
 import { awayPenalty } from './settlements';
 import type { Simulation } from './Simulation';
-import type { Building, Settler, Task, ToolKind, WorkArea } from './types';
+import type { Building, OrchardAction, Settler, Task, ToolKind, WorkArea } from './types';
 
 export const BASE_SPEED = 0.24;
 export const HUNGER_DECAY = 100 / (DAY_TICKS * 1.2);
@@ -184,6 +185,9 @@ function releaseTask(sim: Simulation, s: Settler): void {
     case 'farm':
       sim.release(`field:${t.field}`, s.id);
       break;
+    case 'orchard':
+      sim.release(`orchard:${t.orchard}`, s.id);
+      break;
     case 'craft':
       sim.release(`craft:${t.ws}`, s.id);
       break;
@@ -224,6 +228,8 @@ export function taskKeys(s: Settler): string[] {
       return [`build:${t.site}:${t.slot}`];
     case 'farm':
       return [`field:${t.field}`];
+    case 'orchard':
+      return [`orchard:${t.orchard}`];
     case 'craft':
       return [`craft:${t.ws}`];
     default:
@@ -385,7 +391,24 @@ function findFarm(sim: Simulation, s: Settler, area?: WorkArea): Task | string |
   let bestScore = Infinity;
   let action: ReturnType<typeof fieldAction> = null;
   let anyFields = false;
+  // Orchards compete on the same score: picking ripe apples counts like a harvest.
+  let bestOrchard: Building | null = null;
+  let orchardJob: OrchardAction | null = null;
   for (const b of sim.buildings.values()) {
+    if (b.orchard && b.built && inArea(area, b.x, b.y, b.w, b.h)) {
+      anyFields = true;
+      const a = orchardAction(sim, b);
+      if (!a || (a === 'pick' && s.carrying)) continue;
+      if (sim.isReserved(`orchard:${b.id}`, s.id) || sim.isUnreachable(s.id, `b${b.id}`, s.x, s.y)) continue;
+      const score = dist(s, b.x + 1, b.y + 1) - (a === 'pick' ? 10 : 3) + (area ? 0 : awayPenalty(sim, s, b.x, b.y));
+      if (score < bestScore) {
+        bestScore = score;
+        bestOrchard = b;
+        orchardJob = a;
+        best = null;
+      }
+      continue;
+    }
     if (!b.field || !inArea(area, b.x, b.y)) continue;
     anyFields = true;
     const a = fieldAction(sim, b.field);
@@ -397,7 +420,12 @@ function findFarm(sim: Simulation, s: Settler, area?: WorkArea): Task | string |
       bestScore = score;
       best = b;
       action = a;
+      bestOrchard = null;
     }
+  }
+  if (bestOrchard && orchardJob) {
+    sim.reserve(`orchard:${bestOrchard.id}`, s.id);
+    return { kind: 'orchard', orchard: bestOrchard.id, action: orchardJob, stage: 'walk', timer: 0 };
   }
   if (!best || !action) {
     if (anyFields && seasonOf(sim).id === 'winter') return 'Winter: the fields rest until spring';
@@ -842,8 +870,32 @@ function runFarm(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'farm' }>
   abortTask(sim, s);
 }
 
-const CRAFT_TOOL: Record<string, ToolKind> = { planks: 'saw', tools: 'hammer', flour: 'hand', bread: 'hand' };
-const CRAFT_SFX: Record<string, 'saw' | 'hammer' | 'mill' | 'bake'> = { planks: 'saw', tools: 'hammer', flour: 'mill', bread: 'bake' };
+function runOrchard(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'orchard' }>): void {
+  const b = sim.buildings.get(t.orchard);
+  if (!b || !b.orchard || orchardAction(sim, b) !== t.action) return abortTask(sim, s);
+  if (t.action === 'pick' && s.carrying) return abortTask(sim, s);
+  if (t.stage === 'walk') {
+    const r = goTo(sim, s, bGoal(b));
+    if (r === 'failed') return fail(sim, s, "Can't reach the orchard", `b${b.id}`);
+    if (r === 'arrived') t.stage = 'work';
+    return;
+  }
+  faceRect(s, b.x, b.y, b.w, b.h);
+  s.anim = 'work';
+  s.tool = t.action === 'pick' ? 'hand' : 'sickle';
+  t.timer += workSpeed(sim, s);
+  if (t.timer < ORCHARD_WORK[t.action]) return;
+  const n = applyOrchardAction(sim, b, t.action, s.capacity);
+  if (n > 0) {
+    s.carrying = { res: 'apples', amount: n };
+    sim.emit({ type: 'sfx', name: 'pick', x: s.x, y: s.y });
+  }
+  sim.emit({ type: 'fx', kind: 'leaves', x: b.x + 1, y: b.y + 1 });
+  abortTask(sim, s);
+}
+
+const CRAFT_TOOL: Record<RecipeId, ToolKind> = { planks: 'saw', tools: 'hammer', flour: 'hand', bread: 'hand', driedApples: 'hand' };
+const CRAFT_SFX: Record<RecipeId, 'saw' | 'hammer' | 'mill' | 'bake'> = { planks: 'saw', tools: 'hammer', flour: 'mill', bread: 'bake', driedApples: 'bake' };
 
 function runCraft(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'craft' }>): void {
   const b = sim.buildings.get(t.ws);
@@ -870,7 +922,8 @@ function runCraft(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'craft' 
   if (out === 'planks') sim.stats.planksCrafted += n;
   if (out === 'tools') sim.stats.toolsCrafted += n;
   if (out === 'flour') sim.stats.flourMilled += n;
-  if (out === 'food') sim.stats.bakedFood += n;
+  if (ws.recipe === 'bread') sim.stats.bakedFood += n;
+  if (ws.recipe === 'driedApples') sim.stats.driedApples += n;
   sim.emit({ type: 'fx', kind: 'sparkle', x: b.x + b.w / 2, y: b.y + b.h / 2 });
   abortTask(sim, s);
 }
@@ -988,6 +1041,8 @@ export function runTask(sim: Simulation, s: Settler): void {
       return runBuild(sim, s, t);
     case 'farm':
       return runFarm(sim, s, t);
+    case 'orchard':
+      return runOrchard(sim, s, t);
     case 'craft':
       return runCraft(sim, s, t);
     case 'eat':
@@ -1043,6 +1098,8 @@ export function describeTask(sim: Simulation, s: Settler): string {
       return `Building the ${bname(t.site)}`;
     case 'farm':
       return { till: 'Tilling a field', plant: 'Planting seeds', water: 'Watering a field', harvest: 'Harvesting' }[t.action];
+    case 'orchard':
+      return t.action === 'pick' ? 'Picking apples' : 'Tending the orchard';
     case 'craft': {
       const b = sim.buildings.get(t.ws);
       const r = b?.workshop?.recipe;

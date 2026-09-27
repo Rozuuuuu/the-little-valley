@@ -16,6 +16,8 @@ import { updateSeason } from './seasons';
 import type { SeasonId } from '../data/seasons';
 import { updatePopulation } from './population';
 import { updateHouseholds } from './households';
+import { updateOrchards } from './orchards';
+import { updateTravelers } from './travelers';
 import { GROWTH_STEP } from '../data/kingdomBalance';
 import { checkMilestones } from './progression';
 import { updateRegrowth, updateWorkshops } from './buildings';
@@ -40,7 +42,7 @@ export const SHARED_UNREACHABLE_RANGE = 12;
 export function emptyStats(): Stats {
   return {
     woodGathered: 0, stoneGathered: 0, foodGathered: 0, harvested: 0, planksCrafted: 0, toolsCrafted: 0, arrivals: 0,
-    wheatHarvested: 0, flourMilled: 0, bakedFood: 0, pathsBuilt: 0, births: 0, applesPicked: 0,
+    wheatHarvested: 0, flourMilled: 0, bakedFood: 0, pathsBuilt: 0, births: 0, applesPicked: 0, driedApples: 0,
   };
 }
 
@@ -399,12 +401,16 @@ export class Simulation implements PathGrid {
     }
     updateSeason(this);
     updateWeather(this);
-    if (this.tick % 5 === 0) updateFields(this, 5);
+    if (this.tick % 5 === 0) {
+      updateFields(this, 5);
+      updateOrchards(this, 5);
+    }
     if (this.tick % 20 === 0) updateRegrowth(this);
     for (const s of this.settlers) updateSettler(this, s);
     if (this.tick % 10 === 0) updateWorkshops(this);
     if (this.tick % GROWTH_STEP === 0) {
       updateHouseholds(this);
+      updateTravelers(this);
       updatePopulation(this);
       this.checkStorage();
       checkMilestones(this);

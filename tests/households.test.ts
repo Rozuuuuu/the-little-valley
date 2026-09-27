@@ -114,7 +114,8 @@ describe('households', () => {
     // Fill the third bed.
     const lodger = sim.addSettler(0, 2, 'laborer');
     lodger.homeId = a.homeId;
-    expect(applyCommand(sim, { type: 'requestChild', householdId: hh }).message).toMatch(/bed/);
+    // Three settlers still sleep in camp bedrolls; the refusal says they take new beds first.
+    expect(applyCommand(sim, { type: 'requestChild', householdId: hh }).message).toMatch(/bed.*3 settlers.*bedrolls/);
     lodger.homeId = campOf(sim)!.id;
 
     const food = campOf(sim)!.inventory.food;

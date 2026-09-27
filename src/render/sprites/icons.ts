@@ -55,6 +55,15 @@ export const RESOURCE_ICON_DRAW: Record<ResourceId, (p: Painter) => void> = {
     }
     p.hline(1, 9, 7, P.wood2);
   },
+  apples: (p) => {
+    p.ellipse(3.5, 6.5, 3, 2.8, '#c8423a');
+    p.ellipse(7, 6, 2.6, 2.6, '#d9573f');
+    p.px(2, 5, '#f08a72');
+    p.px(6, 5, '#f3a07c');
+    p.vline(7, 2, 3, P.wood2);
+    p.px(8, 2, P.leaf3);
+    p.px(9, 2, P.leaf2);
+  },
   flour: (p) => {
     p.rect(1, 3, 8, 7, P.wall2);
     p.hline(1, 8, 9, P.wall0);

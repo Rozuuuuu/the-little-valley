@@ -47,7 +47,7 @@ export interface BuildingDef {
 }
 
 export type BuildingId =
-  | 'camp' | 'house' | 'familyHome' | 'cottage' | 'field' | 'storehouse' | 'workshop' | 'mill' | 'bakery'
+  | 'camp' | 'house' | 'familyHome' | 'cottage' | 'field' | 'orchard' | 'storehouse' | 'workshop' | 'mill' | 'bakery'
   | 'path' | 'bridge' | 'stoneBridge' | 'fence' | 'flowerbed' | 'lamp' | 'bench' | 'market' | 'waystation';
 
 export const BUILDINGS: Record<BuildingId, BuildingDef> = {
@@ -74,6 +74,12 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     description: 'A plot of farmland. Farmers till, plant, water and harvest it. Drag to lay out several.',
     size: { w: 1, h: 1 }, cost: {}, work: 0, placement: 'farmland', blocks: false, paint: true, buildable: true,
   },
+  orchard: {
+    id: 'orchard', name: 'Orchard', category: 'farming',
+    description: 'Four young apple trees. They take two growing days to establish, then bear apples while farmers tend them. They rest in winter.',
+    size: { w: 2, h: 2 }, cost: { wood: 10, stone: 2 }, work: 120, placement: 'farmland', blocks: true, buildable: true,
+    maxBuilders: 2,
+  },
   storehouse: {
     id: 'storehouse', name: 'Storehouse', category: 'storage',
     description: 'Holds 300 goods. Place it near work so haulers walk less.',
@@ -84,7 +90,7 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     id: 'workshop', name: 'Workshop', category: 'production',
     description: 'A crafter turns wood into planks and planks into tools.',
     size: { w: 3, h: 2 }, cost: { wood: 30, stone: 16 }, work: 360, placement: 'land', blocks: true, buildable: true,
-    recipes: ['planks', 'tools'], light: 2, reveal: 6, maxWorkers: 1,
+    recipes: ['planks', 'tools', 'driedApples'], light: 2, reveal: 6, maxWorkers: 1,
   },
   mill: {
     id: 'mill', name: 'Mill', category: 'production',

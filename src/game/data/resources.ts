@@ -12,6 +12,7 @@ export const RESOURCES = {
   tools: { id: 'tools', name: 'Tools', description: 'Crafted at a workshop. A well-equipped settlement works faster.' },
   wheat: { id: 'wheat', name: 'Wheat', description: 'Harvested from wheat fields. A mill grinds it into flour.' },
   flour: { id: 'flour', name: 'Flour', description: 'Ground at a mill. A bakery turns it into bread (food).' },
+  apples: { id: 'apples', name: 'Apples', description: 'Picked in orchards. Travellers settle for a welcome package of apples; a workshop can dry spare ones into food.' },
 } as const satisfies Record<string, ResourceDef>;
 
 export type ResourceId = keyof typeof RESOURCES;

@@ -9,6 +9,7 @@ import {
   assignHomes, bedsOf, checkPlacement, checkSpan, cropUnlocked, materialsComplete, maxWorkers, placeBuilding, removeBuilding, setFieldCrop, shortfall,
 } from './buildings';
 import { cleanPriorities } from './priorities';
+import { acceptRecruit, cancelRecruit } from './travelers';
 import { adoptDeliberateGrowth, cancelChildRequest, formHousehold, isChild, requestChild } from './households';
 import { fieldAction } from './farming';
 import { abortTask, findHaulFor } from './settlers';
@@ -41,7 +42,9 @@ export type Command =
   | { type: 'formHousehold'; ids: number[] }
   | { type: 'requestChild'; householdId: number }
   | { type: 'cancelChildRequest'; householdId: number }
-  | { type: 'adoptDeliberateGrowth' };
+  | { type: 'adoptDeliberateGrowth' }
+  | { type: 'acceptRecruit'; offerId: number; settlementId: number }
+  | { type: 'cancelRecruit'; recruitId: number };
 
 const MAX_AREA = 40 * 40;
 /** Most settlers one work area can take. */
@@ -529,6 +532,10 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
       return cancelChildRequest(sim, cmd.householdId);
     case 'adoptDeliberateGrowth':
       return adoptDeliberateGrowth(sim);
+    case 'acceptRecruit':
+      return acceptRecruit(sim, cmd.offerId, cmd.settlementId);
+    case 'cancelRecruit':
+      return cancelRecruit(sim, cmd.recruitId);
 
     case 'unassignWorker': {
       const b = sim.buildings.get(cmd.buildingId);

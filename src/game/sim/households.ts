@@ -52,13 +52,13 @@ function settlementOfHome(sim: Simulation, b: Building): number | null {
  * Holds a free bed in a permanent home of the given settlement, preferring
  * `prefer` (the family's own home). Returns the claim, or null if none is free.
  */
-export function claimBed(sim: Simulation, owner: BedClaim['owner'], settlementId: number | null, prefer: number | null = null): BedClaim | null {
+export function claimBed(sim: Simulation, owner: BedClaim['owner'], settlementId: number | null, prefer: number | null = null, permanentOnly = true): BedClaim | null {
   const counts = bedUseCounts(sim);
   let home: Building | null = null;
   const own = prefer !== null ? sim.buildings.get(prefer) : undefined;
   if (own && isPermanentHome(own) && (counts.get(own.id) ?? 0) < bedsOf(own)) home = own;
   if (!home) {
-    const bed = findFreeBed(sim, counts, true, settlementId);
+    const bed = findFreeBed(sim, counts, permanentOnly, settlementId);
     const multi = sim.settlements.length > 1;
     if (bed && (!multi || settlementId === null || settlementOfHome(sim, bed) === settlementId)) home = bed;
   }
@@ -101,7 +101,8 @@ export function relocateClaims(sim: Simulation, homeId: number): void {
   const affected = sim.bedClaims.filter((c) => c.homeId === homeId);
   for (const c of affected) {
     sim.bedClaims = sim.bedClaims.filter((x) => x !== c);
-    const next = claimBed(sim, c.owner, ownerSettlement(sim, c));
+    // Children need a real home; a traveller will take a camp bedroll.
+    const next = claimBed(sim, c.owner, ownerSettlement(sim, c), null, c.owner.kind === 'birth');
     setOwnerClaim(sim, c, next?.id ?? null);
   }
 }
@@ -120,7 +121,8 @@ export function validateClaims(sim: Simulation): void {
     const owned = c.owner.kind === 'recruit'
       ? sim.recruits.some((r) => r.claimId === c.id && r.state === 'travelling')
       : sim.households.some((h) => h.pending?.claimId === c.id);
-    if (home && home.built && isPermanentHome(home) && owned && n < bedsOf(home)) {
+    const bedOk = c.owner.kind === 'recruit' ? !!home && bedsOf(home) > 0 : !!home && isPermanentHome(home);
+    if (home && home.built && bedOk && owned && n < bedsOf(home)) {
       kept.push(c);
       used.set(c.homeId, n + 1);
     }
@@ -195,7 +197,15 @@ export function requestChild(sim: Simulation, householdId: unknown): CommandResu
   const food = localAvailable(sim, a.settlementId, 'food');
   if (food < GROWTH_MIN_FOOD) return err(`Not enough food: ${settlementName(sim, a.settlementId)} needs ${GROWTH_MIN_FOOD} food in its stores (${food} now)`);
   const claim = claimBed(sim, { kind: 'birth', id: h.id }, a.settlementId, a.homeId);
-  if (!claim) return err(`No free bed for a child — build a family home or house in ${settlementName(sim, a.settlementId)}`);
+  if (!claim) {
+    // Settlers in bedrolls move into new homes first, so say how many beds are really needed.
+    const campers = sim.settlers.filter((s) => {
+      const h = s.homeId !== null ? sim.buildings.get(s.homeId) : undefined;
+      return !h || !isPermanentHome(h);
+    }).length;
+    const first = campers > 0 ? ` (${campers} settler${campers === 1 ? '' : 's'} still sleep in camp bedrolls and will take new beds first)` : '';
+    return err(`No free bed for a child — build a family home or house in ${settlementName(sim, a.settlementId)}${first}`);
+  }
   h.pending = { requestedTick: sim.tick, stableTicks: 0, claimId: claim.id, blocked: '' };
   const home = sim.buildings.get(claim.homeId)!;
   sim.emit({ type: 'important' });

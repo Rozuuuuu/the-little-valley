@@ -1,7 +1,7 @@
 import type { BuildingId } from './buildings';
 
 export type StatId =
-  | 'woodGathered' | 'stoneGathered' | 'foodGathered' | 'harvested' | 'planksCrafted' | 'toolsCrafted' | 'arrivals' | 'births' | 'applesPicked'
+  | 'woodGathered' | 'stoneGathered' | 'foodGathered' | 'harvested' | 'planksCrafted' | 'toolsCrafted' | 'arrivals' | 'births' | 'applesPicked' | 'driedApples'
   | 'wheatHarvested' | 'flourMilled' | 'bakedFood' | 'pathsBuilt';
 
 export type Requirement =
@@ -36,15 +36,15 @@ export type MilestoneId = 'camp' | 'hamlet' | 'village' | 'town' | 'region' | 'c
 export const MILESTONES: Record<MilestoneId, MilestoneDef> = {
   camp: {
     id: 'camp', name: 'Camp', tier: 0,
-    description: 'Direct your settlers by hand and secure a food supply.',
-    requirements: [], unlocks: ['House, Field, Storehouse, Workshop, Path, Fence, Flower Bed'],
+    description: 'Direct your settlers by hand, secure food, and plant an orchard: its apples welcome travellers.',
+    requirements: [], unlocks: ['House, Family Home, Field, Orchard, Storehouse, Workshop, Path, Fence, Flower Bed'],
   },
   hamlet: {
     id: 'hamlet', name: 'Hamlet', tier: 1,
-    description: 'Organise housing, storage and work areas.',
+    description: 'Six adults and a real home: welcome a traveller with apples, then organise housing, storage and work areas.',
     requirements: [
       { kind: 'population', count: 6 },
-      { kind: 'built', building: 'house', count: 1 },
+      { kind: 'beds', count: 2 },
       { kind: 'stat', stat: 'harvested', count: 10, label: 'Harvest 10 food from fields' },
     ],
     unlocks: ['Mill and Bakery', 'Stone Bridge project', 'Pumpkins', 'Wooden bridges', 'Lantern Posts'],

@@ -1,6 +1,7 @@
 import type { JobId } from '../data/jobs';
 import { assignHomes, completeBuilding, placeBuilding } from './buildings';
 import { CURRENT_GEN } from '../world/worldgen';
+import { FIRST_VISITOR_TICK } from '../data/kingdomBalance';
 import { Simulation, STARTING_SETTLERS } from './Simulation';
 
 export const STARTING_GOODS = { food: 30, wood: 15, stone: 5 };
@@ -11,6 +12,7 @@ export function createNewGame(seed: number, genVersion = CURRENT_GEN): Simulatio
   const sim = new Simulation(seed, undefined, genVersion);
   // New valleys grow through families and welcomed travellers.
   sim.growthMode = 'deliberate';
+  sim.nextVisitor = FIRST_VISITOR_TICK;
   sim.world.reveal(0.5, 0.5, 15);
   const camp = placeBuilding(sim, 'camp', -1, -1);
   completeBuilding(sim, camp, true);

@@ -64,6 +64,7 @@ export function consumedByCrafting(sim: Simulation, res: ResourceId): number {
     tools: sim.stats.toolsCrafted / (RECIPES.tools.outputs.tools ?? 1),
     flour: sim.stats.flourMilled / (RECIPES.flour.outputs.flour ?? 1),
     bread: sim.stats.bakedFood / (RECIPES.bread.outputs.food ?? 1),
+    driedApples: sim.stats.driedApples / (RECIPES.driedApples.outputs.food ?? 1),
   };
   let n = 0;
   for (const [id, count] of Object.entries(batches)) n += count * (RECIPES[id as keyof typeof RECIPES].inputs[res] ?? 0);

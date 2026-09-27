@@ -12,6 +12,7 @@ import { canDo } from './priorities';
 import { seasonOf } from './seasons';
 import { foundSettlement, settlementAt, spacingProblem } from './settlements';
 import { relocateClaims } from './households';
+import { initOrchard } from './orchards';
 import type { Simulation } from './Simulation';
 import type { Building } from './types';
 
@@ -222,6 +223,7 @@ export function completeBuilding(sim: Simulation, b: Building, silent = false): 
   if (def.recipes) {
     b.workshop = { recipe: def.recipes[0], progress: 0, paused: false, status: '' };
   }
+  if (b.type === 'orchard') initOrchard(sim, b);
   if (def.settlementCenter && b.type !== 'camp' && !sim.settlements.some((s) => s.id === b.id) && !silent) foundSettlement(sim, b);
   if (def.reveal) sim.world.reveal(cx, cy, def.reveal);
   if (def.housing) assignHomes(sim);

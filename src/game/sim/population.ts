@@ -5,6 +5,7 @@ import { MAX_POPULATION, type Simulation } from './Simulation';
 import type { Building } from './types';
 import { settlementAt } from './settlements';
 import { committedPopulation } from './households';
+import { recruitNeeds } from './travelers';
 import { RECRUIT_APPLES } from '../data/kingdomBalance';
 
 /** Food that must be in storage before a newcomer will settle. */
@@ -21,7 +22,7 @@ function pickNewcomerJob(sim: Simulation): JobId {
   return 'laborer';
 }
 
-function arrivalSpot(sim: Simulation, bed: Building): { x: number; y: number } | null {
+export function arrivalSpot(sim: Simulation, bed: Building): { x: number; y: number } | null {
   // Arrive near the hall of the settlement where the bed is.
   const st = settlementAt(sim, bed.x + bed.w / 2, bed.y + bed.h / 2);
   const camp = (st ? sim.buildings.get(st.id) : undefined) ?? campOf(sim);
@@ -98,7 +99,12 @@ function deliberateStatus(sim: Simulation): string {
   const parts: string[] = [];
   if (expecting) parts.push(`${expecting} household${expecting > 1 ? 's are' : ' is'} expecting a child`);
   if (travelling) parts.push(`${travelling} traveller${travelling > 1 ? 's are' : ' is'} on the way`);
-  if (sim.offer) parts.push(`${sim.offer.name} is visiting and would settle for ${RECRUIT_APPLES} apples`);
+  if (sim.offer) {
+    const home = sim.settlements[0]?.id;
+    const needs = home !== undefined ? recruitNeeds(sim, home) : [];
+    const tail = needs.length ? ` — still needed: ${needs.join(', ')}` : ' — welcome them in the People panel';
+    parts.push(`A visitor, ${sim.offer.name}, would settle for ${RECRUIT_APPLES} apples${tail}`);
+  }
   if (parts.length) return `${parts.join('; ')}.`;
   return 'New people come from households (People panel) and from visitors you welcome with apples.';
 }
