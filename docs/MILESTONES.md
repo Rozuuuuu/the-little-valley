@@ -1,5 +1,110 @@
 # Milestone reports
 
+## Families and orchards (plan M0 + M1)
+
+First slice of `docs/superpowers/plans/2026-09-28-families-to-kingdoms.md`: the plan
+itself says to build M0 and M1 first and check that slower growth is enjoyable
+before industry and politics.
+
+### What is playable
+
+- **Deliberate growth** in new valleys: nobody arrives on their own any more.
+- **Visitors:** the first comes a quarter-day in; a new one follows half a day after
+  each leaves or settles. A visitor settles for **50 apples** from that settlement's
+  stores plus a free bed (real homes first, a camp bedroll will do) and 20 food in
+  store. The Families tab lists exactly what is still missing. Accepting claims the
+  bed and escrows the apples in one step; *Call off* returns every apple. One
+  traveller settles per two game days.
+- **Orchards** (Camp tier, 2×2, 10 wood, 2 stone): two growing days to establish,
+  then 25 apples a day while a farmer tends them. They rest in winter. The workshop's
+  new *Dry apples* recipe turns 4 apples into 3 food.
+- **Family Home** (Camp tier, 3 beds, 20 wood, 10 stone).
+- **Households and children:** select two adults and start a household. *Ask for a
+  child* holds a bed in a real home at once. The baby arrives after two steady days
+  (bed, 20 local food, parents in one settlement), or the panel says why it's paused.
+  Children play near home, refuse work orders with an explanation, and grow up into
+  laborers after 12 game days. A household rests 4 days between children.
+- **Milestones count adults.** Hamlet now needs 6 adults and 2 beds in real homes
+  (a house *or* a family home), plus the harvest. Reached milestones are never removed.
+- Older worlds keep automatic arrivals and get an explained **Adopt deliberate
+  growth** button.
+- Valley today suggests an orchard, points at a visitor who can be welcomed, flags a
+  paused family and recaps births. The tutorial's house step became "a home and an
+  orchard".
+- **M0 fix:** a shared "can't reach" note used to hold back every settler for up to a
+  day. It now applies only near where the failed search started, so a farmer on the
+  far bank isn't blocked by failures on the near bank. Reproduced first in
+  `tests/regional-journey.test.ts`.
+
+### Demonstration journey (headless, `tests/recruitment.test.ts`)
+
+Five adults → field, storehouse, orchard, family home and house → orchard
+establishes and farmers pick apples → a visitor is welcomed for 50 apples → a sixth
+adult → **Hamlet** → a household asks for a child once a second family home is built →
+the child is born → save and resume mid-childhood → the child grows up and work
+continues.
+
+### Tests and build
+
+- `npx vitest run --maxWorkers=1`: **125 passed** (9 files). New: `households.test.ts`
+  (14), `recruitment.test.ts` (14), `regional-journey.test.ts` (2).
+- `npm run build`: passes. `npx tsx scripts/check-gen-fingerprint.ts`: 18/18
+  generator-1 chunks identical. `git diff --check`: clean.
+- The recruitment tests cover: 49 apples refused with nothing charged; food never
+  substituted; repeated clicks and a reload can't duplicate the person or the
+  charge; cancelling (including with full stores) returns every apple; a demolished
+  bed makes the traveller wait instead of arriving without one; orchard winter rest
+  and apple conservation.
+- The household tests cover: bed claims with a simultaneous newcomer; duplicate,
+  child and already-paired parents; shortage, demolition, separation and the
+  population limit; a save one tick before birth reloading to exactly one child;
+  a damaged save with a claim on a missing home.
+- Five older tests that relied on automatic arrivals now pin `growthMode: 'legacy'`.
+  They still cover the rules old worlds keep.
+
+### Save migration
+
+v4 → v5, appended (older migrations untouched). Every settler becomes an adult with
+no household; worlds keep legacy arrivals until adoption. A genuine v4 fixture
+(`tests/fixtures/v4-save.json`, two settlements) was captured before the change and
+migrates in the tests, alongside the v2 and v3 fixtures. Bed claims and apple escrow
+are saved; see [SAVE_FORMAT.md](SAVE_FORMAT.md).
+
+### Performance (Node simulation timings, not browser frames)
+
+`scripts/profile-village.ts`, 100 settlers, two in-game days, same machine:
+
+- Before (M0): day p95 1.42 ms, p99 10.7 ms, max 21.8 ms.
+- After (M1): day p95 1.47 / 1.62 / 1.64 / 1.63 ms across four runs, with one noisy
+  run at 3.46 ms; p99 about 11.0–11.5 ms; max about 22–25 ms.
+
+That's roughly +10–15% at p95, inside the plan's 20% bound. The machine is
+memory-constrained and runs vary. The profile now assigns homes to the settlers it
+adds directly: legacy arrivals used to do this as a side effect, and without it the
+deliberate-mode run measured 95 homeless settlers, a different workload.
+
+### Not done, and known limitations
+
+- **No browser check and no human playtest.** The dev server was stopped for low
+  memory earlier and was not restarted. The new sprites (family home, orchard looks,
+  apple icon) and the Families tab have not been seen in a browser.
+- The welcome package is escrowed from the settlement's stores. It isn't carried to a
+  meeting point by a hauler; "locally delivered" means the apples must already be in
+  that settlement's stores (stock targets can bring them).
+- Camp sleepers move into every new home first, so a household usually needs one
+  more home than there are adults. The refusal says so, but it may feel slow; watch
+  this in playtests.
+- Timings (2-day births, 12-day childhood, 50 apples, 25 apples per day) are the
+  plan's proposed defaults, not tuned by play.
+- There is no inn yet (planned for M3), so visitor timing is fixed.
+
+### Next
+
+Browser-check this slice (the Families tab at 1366×768, sprites, the tutorial step),
+then run the families section of the playtest script before starting M2 (mountains
+and mining).
+
+
 ## Milestone 2: A Village Worth Returning To
 
 ### Review before building (what the code actually did)

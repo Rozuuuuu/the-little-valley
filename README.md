@@ -57,7 +57,12 @@ in `localStorage`.
    goods to storage and keep working nearby resources of the same kind.
 2. Open **Build → Field** and drag across fertile meadow. Farmers (and laborers)
    till, plant, water and harvest on their own. Rain waters fields too.
-3. Build a **House**. A free bed plus 20 food in storage attracts a newcomer.
+3. Build a **House** or **Family Home** and plant an **Orchard**. New valleys grow
+   deliberately: a visitor comes by early on and settles for **50 apples** and a free
+   bed (welcome them in the **Families** tab). One traveller settles every two game
+   days. Two adults can start a **household** and ask for a child once there is a free
+   bed in a real home and 20 food in store; the baby arrives after two steady game
+   days and grows up after twelve. Children eat and sleep but don't work.
 4. Build a **Workshop** and make a settler a **Crafter** (right-click the workshop
    with them selected). Wood becomes planks, and planks and stone become tools.
 5. Explore by ordering settlers into the fog. Bridges (unlocked at Hamlet) cross
@@ -77,11 +82,14 @@ in `localStorage`.
    - **Great river:** new valleys have a deep river east of the camp. Walk a settler
      to the bank to see the far side, then drag a **stone bridge** across it to reach
      fertile, stony riverlands.
-   - **Village** needs 10 settlers, 8 beds in houses or cottages, and any **2** of:
+   - **Village** needs 10 adults, 8 beds in real homes, and any **2** of:
      bake 30 food, run 2 staffed work areas, finish a stone bridge, lay 25 path tiles.
-8. **Beds:** houses have 2, cottages 4, and the camp has 5 temporary bedrolls.
-   Newcomers need a free bed and 20 stored food. The Settlers tab shows
-   "Home beds x/y · camp bedrolls x/y" and exactly what is holding growth back.
+8. **Beds:** houses have 2, family homes 3, cottages 4, and the camp has 5 temporary
+   bedrolls. A bed promised to an expected child or a traveller on the way is held
+   and shown in the home's inspector. The Families tab shows bed use and exactly
+   what a visitor or household is still waiting for. Valleys saved before this
+   update keep automatic newcomer arrivals until you choose **Adopt deliberate
+   growth** in the Families tab.
 
 Settlers say why they are idle: the Settlers tab lists each reason (marked ⚠), and
 the inspector shows it when you select them. Buildings explain what they're waiting

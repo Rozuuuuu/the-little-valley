@@ -15,6 +15,8 @@ from other games. Fonts are loaded from Google Fonts (SIL Open Font License).
 | Stump, sapling | `props.ts` | regrowth stages |
 | Camp, house, storehouse, workshop, grand market, flower bed, lantern post, bench (day + lit night) | `buildings.ts` | footprint-relative drawings |
 | Mill, bakery, cottage (day + lit night) | `buildings.ts` | Milestone 2 |
+| Family home (day + lit night: porch swing, washing line) | `buildings.ts` `familyHome` | Families |
+| Orchard: saplings, bare, leafy, 3 fruit levels, autumn, winter | `buildings.ts` `makeOrchardSprites` | chosen by `Renderer.orchardLook` |
 | Mill sails ×8 rotation frames | `buildings.ts` `makeMillSails` | animated by the renderer |
 | Village hall (day + night) | `buildings.ts` `makeVillageHall` | replaces the camp at Village |
 | Stone bridge build stages | `Renderer.drawStoneBridgeSite` | drawn procedurally |
@@ -25,7 +27,7 @@ from other games. Fonts are loaded from Google Fonts (SIL Open Font License).
 | Crops: turnip, wheat, pumpkin × 4 stages | `crops.ts` `makeCropSprites` | driven by `CROPS[].art` |
 | Settler sheets: 4 directions × 13 poses per appearance | `characters.ts` `makeSettlerSheet` | 4 skins × 6 hair × 3 styles × 6 shirts × 3 trousers |
 | Tools: axe, pick, hoe, hammer, watering can, sickle, saw | `icons.ts` `makeToolSprites` | |
-| Resource icons: food, wood, stone, planks, tools, wheat, flour | `icons.ts` | shared by HUD and world |
+| Resource icons: food, wood, stone, planks, tools, wheat, flour, apples | `icons.ts` | shared by HUD and world |
 | UI icons: people, house, sun, moon, rain, star, storage, idle, hungry, warning, drop, axe, pick, basket, zzz, heart | `icons.ts` | |
 | Ground (all terrain, shores, paths, bridges, decorations) | `render/terrainPainter.ts` | painted per chunk in a worker |
 | Favicon | inline SVG in `index.html` | |

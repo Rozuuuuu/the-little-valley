@@ -7,12 +7,14 @@ src/
     data/               typed content tables: resources, crops, buildings, recipes, jobs, milestones, names
     world/              tiles & objects, Chunk, World (lazy chunk map), seeded worldgen
     sim/                Simulation (authoritative state + step), settlers (jobs, tasks, movement),
-                        pathfinding, farming, buildings, population, progression, commands, newGame
+                        pathfinding, farming, buildings, population, progression, commands, newGame,
+                        seasons, settlements, households (families, bed claims), orchards, travelers
     save/               format (types), serialize, migrations + validation, storage (IndexedDB/memory), SaveManager
   render/               Canvas 2D renderer, camera, particles, terrain painter (+ web worker), sprite generators
   audio/                WebAudio synthesiser for effects, ambience and generative music
   input/                key bindings (remappable) and the pointer/keyboard → intent layer
-  engine/               GameController (loop, autosave, commands, UI snapshot), settings, tutorial, UI store
+  engine/               GameController (loop, autosave, commands, UI snapshot), growthInfo (Families panel data),
+                        overview (Valley today), settings, tutorial, UI store
   ui/                   React HUD, menus and panels
 tests/                  Vitest: world, pathfinding, simulation rules, resource accounting, saves, journey
 ```
@@ -102,16 +104,42 @@ Limits that always hold (see `tests/village.test.ts`):
 
 ### Housing
 
-- `BuildingDef.housing` is a bed count: house 2, cottage 4. The camp has 5 *temporary*
-  bedrolls (`temporaryBeds`).
+- `BuildingDef.housing` is a bed count: house 2, family home 3, cottage 4. The camp
+  has 5 *temporary* bedrolls (`temporaryBeds`).
 - **Explicit rule:** newcomers need a free, reachable bed, and camp bedrolls count.
   Everyone else sleeps in a bedroll only until a house bed frees up. Unfinished
   buildings give no beds.
+- **Bed claims** (`sim.bedClaims`, saved) hold a bed for someone who doesn't live
+  there yet: an expected child (permanent homes only) or an accepted traveller (any
+  bed, real homes first). `bedUseCounts` = residents + claims, and `findFreeBed`,
+  `assignHomes` and the move-in order all use it, so a claimed bed is never given
+  away. Demolishing a home calls `relocateClaims` (another free bed in the same
+  settlement, or the claim is released and the owner waits with a stated reason).
+  On load, `validateClaims` drops claims on missing, unfinished or over-full homes
+  before ordinary homes are assigned.
 - `assignHomes` never lets a home exceed its beds. It moves bedroll sleepers into free
   house beds and leaves anyone left over without a bed. They rest by the campfire, and
   the UI says so. Reachability is checked with a cached path from the camp.
-- `welcomeNewcomer` assigns the bed before anything else, so two arrivals can't take
-  the same bed. Growth also needs 20 stored food and a cooldown.
+- **Growth mode** (`sim.growthMode`). `'deliberate'` (new valleys): people come only
+  from households and welcomed travellers (`sim/households.ts`, `sim/travelers.ts`).
+  `'legacy'` (worlds saved before v5): `welcomeNewcomer` still draws newcomers
+  automatically until the player runs `adoptDeliberateGrowth`.
+- **Households:** two adults (`formHousehold`); `requestChild` claims a bed at once;
+  `updateHouseholds` (every 50 ticks) advances the pending child only while bed,
+  20 local food and parents-in-one-settlement all hold, and records why it is paused
+  otherwise. Birth after 2 steady days, adulthood after 12, a 4-day family cooldown.
+  Children (`lifeStage: 'child'`) have an empty work order, refuse work commands and
+  play near home. Milestone population counts adults.
+- **Travellers:** one visitor at a time (`sim.offer`), first at a quarter day, next
+  half a day after one leaves or settles. `acceptRecruit` claims a bed and moves 50
+  apples from the settlement's own stores into the recruitment's escrow in one step;
+  arrival hands them over. `cancelRecruit` returns every apple (kept in escrow while
+  stores are full). One traveller settles per two days.
+- **Orchards** (`sim/orchards.ts`): establish over 2 growing-season days, then ripen 25
+  apples a day while tended (a farmer's `orchard` task: tend or pick); nothing grows in
+  winter. The workshop's *Dry apples* recipe turns spare apples into food.
+- In legacy mode `welcomeNewcomer` assigns the bed before anything else, so two
+  arrivals can't take the same bed. Growth also needs 20 stored food and a cooldown.
   `sim.populationStatus` always says exactly what is holding growth back, including
   the open simulation limit (`MAX_POPULATION = 300`).
 - Removing a home releases its residents, rehouses them where possible, and reports
@@ -227,4 +255,4 @@ separate "attract" simulation behind the menu. It has no autosave, toasts or sou
 
 ## Seasons and settlements continuation
 
-Seasons derive from the saved day: four days per season, sixteen per year. `data/seasons.ts` defines climate, and `sim/seasons.ts` supplies calendar and advisory winter food forecasts. Winter pauses planting and growth without destroying crops. Settlement centres, settler membership and storage targets are authoritative simulation state. Local work is preferred; workers can still help elsewhere. Target hauling uses existing incoming/outgoing reservations. `regionalInfo` publishes calendar, centre supplies, membership and cached road connectivity through the existing UI snapshot cadence. Ground cache entries and worker requests carry season identity; old ground remains visible while replacement chunks are painted.
+Families and deliberate growth are described under Housing above. Seasons derive from the saved day: four days per season, sixteen per year. `data/seasons.ts` defines climate, and `sim/seasons.ts` supplies calendar and advisory winter food forecasts. Winter pauses planting and growth without destroying crops. Settlement centres, settler membership and storage targets are authoritative simulation state. Local work is preferred; workers can still help elsewhere. Target hauling uses existing incoming/outgoing reservations. `regionalInfo` publishes calendar, centre supplies, membership and cached road connectivity through the existing UI snapshot cadence. Ground cache entries and worker requests carry season identity; old ground remains visible while replacement chunks are painted.

@@ -1,7 +1,7 @@
 # Save format
 
 Saves are JSON documents described by `src/game/save/format.ts`. The current version
-is **3** (`SAVE_VERSION`).
+is **5** (`SAVE_VERSION`).
 
 ## Version history
 
@@ -10,8 +10,10 @@ is **3** (`SAVE_VERSION`).
 | 1 | prototype | Flat layout; the generic job was called `worker`. |
 | 2 | Milestone 1 | `meta` / `sim` / `world` sections, crafting stats, weather. |
 | 3 | Milestone 2 (Village) | World generator version, work areas, personal work orders, production workers, span building sizes, the chronicle and session marks, new stats. |
+| 4 | Seasons and settlements | `settlements`, settler `settlementId`, storage `wants` (stock targets). |
+| 5 | Families and orchards | `growthMode`, settler `lifeStage` / `ageTicks` / `householdId`, `households`, `bedClaims`, visitor `offer`, `nextVisitor`, `recruits` (with apple escrow), `lastRecruit`, building `orchard`, stats `births` / `applesPicked` / `driedApples`. |
 
-## Version 3 layout
+## Version 3 layout (v4 and v5 add to it, see below)
 
 ```jsonc
 {
@@ -132,6 +134,39 @@ Tests (`tests/save.test.ts`, `tests/village.test.ts`) cover:
 - exact v3 round trips of all new state
 
 
-## Seasons and settlements continuation
+## Version 5 additions
 
-Current format is version 4. The appended v3-to-v4 migration establishes the original camp settlement, assigns existing settlers to it and initializes storage targets. Settlers persist `settlementId`, buildings persist `wants`, and simulation state persists `settlements`. Earlier migrations are retained. Seasons derive from saved game time, with no offline progression: an older world can therefore resume in summer, autumn or winter according to its saved day. Generator versions and original chunk generation remain unchanged. The genuine v3 fixture joins existing migration coverage.
+```jsonc
+"sim": {
+  // …everything from v3/v4, plus:
+  "settlers": [{ /* … */ "lifeStage": "adult|child", "ageTicks", "householdId" }],
+  "buildings": [{ /* … */ "orchard?": { "growth", "fruit", "careUntil" } }],
+  "growthMode": "legacy|deliberate",
+  "households": [{ "id", "adults": [a, b], "children": [], "cooldownUntil",
+                   "pending": { "requestedTick", "stableTicks", "claimId", "blocked" } | null }],
+  "bedClaims":  [{ "id", "homeId", "owner": { "kind": "birth|recruit", "id" } }],
+  "offer": { "id", "name", "appearance", "arrivedTick", "expiresTick" } | null,
+  "nextVisitor", "lastRecruit" /* null if none */,
+  "recruits": [{ "id", "name", "appearance", "settlementId", "claimId", "state": "travelling|refunding",
+                 "escrow": { "apples": 50 }, "arrivesTick", "blocked" }]
+}
+```
+
+- Bed claims and apple escrow are **saved**, unlike tasks and reservations: an expected
+  child or an accepted traveller keeps their bed and apples across a reload, and a
+  reload can't create a second arrival or a second charge. Escrowed apples are in no
+  store while held; every unit is still accounted for.
+- The **v4 → v5** migration makes every settler an adult with no household (no families
+  are invented), sets `growthMode: 'legacy'` (automatic arrivals continue until the
+  player adopts deliberate growth) and adds empty households, claims, visitor and
+  recruitment state. New worlds start `'deliberate'`.
+- On load, households that reference missing adults are dropped, missing children are
+  removed from lists, and `validateClaims` drops invalid claims (the owner then waits
+  for a bed) before `assignHomes` runs.
+- Fixtures: `tests/fixtures/v4-save.json` is a genuine v4 save (two settlements,
+  stock target) captured before the v5 change; the v2 and v3 fixtures also migrate
+  through v5.
+
+## v3 → v4 (seasons and settlements)
+
+The v3-to-v4 migration establishes the original camp settlement, assigns existing settlers to it and initializes storage targets. Settlers persist `settlementId`, buildings persist `wants`, and simulation state persists `settlements`. Earlier migrations are retained. Seasons derive from saved game time, with no offline progression: an older world can therefore resume in summer, autumn or winter according to its saved day. Generator versions and original chunk generation remain unchanged. The genuine v3 fixture joins existing migration coverage.

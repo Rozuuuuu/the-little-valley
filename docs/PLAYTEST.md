@@ -79,6 +79,23 @@ file the rest as candidates. Compare against the telemetry-free signals above: t
 failed clicks, and panels opened.
 
 
+## Families and orchards (deliberate growth)
+
+**Status:** prepared, **not yet run**. Start 5–8 unfamiliar players from a **new**
+valley (not a prepared save). Without coaching, watch whether they:
+
+1. Notice the visitor toast or the Families tab badge, and say what the visitor wants.
+2. Plant an orchard, understand it needs two growing days, and see apples arrive.
+3. Welcome the visitor, and explain why a welcome was refused when it was (apples,
+   food or bed).
+4. Start a household, ask for a child, and explain a pause (usually a missing bed).
+5. Explain in their own words why the child doesn't work yet.
+
+Record failed clicks on the Families tab, confusion between camp bedrolls and home
+beds, and whether waiting for apples or the child felt slow or satisfying. Rate
+pacing of growth 1–5 separately from the rest. For a legacy save, ask them to find
+and explain the "Adopt deliberate growth" choice before pressing it.
+
 ## Seasons and settlements continuation
 
 For 5–8 unfamiliar players, use a separate test save at Village near autumn. Ask them to prepare for winter and establish a second settlement without coaching. Observe whether they discover Towns, understand food targets versus current stock, assign settlers, provide beds and connect roads. Ask them to save and resume, then explain winter crop behavior and their next goal. Record stalled production, failed clicks, inaccessible routes and confusion about home versus settlement membership. Rate clarity, controls, art, pacing and desire to resume this same world from 1–5, with one desired improvement. No human testing has been performed for this continuation.

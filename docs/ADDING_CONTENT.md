@@ -76,7 +76,7 @@ it there too.
 ## A new milestone
 
 Milestones are ordered in `MILESTONE_ORDER` (`data/progression.ts`). Requirements
-are `population`, `built` (building count), `stat` (a counter in `Simulation.stats`),
+are `population` (adults only: children don't count toward a workforce), `built` (building count), `stat` (a counter in `Simulation.stats`),
 `beds` (permanent home beds), `staffedAreas` (work areas with someone assigned), or
 `anyOf` (any *n* of a list), which lets players pick their own path, as Village
 does. Gate content by setting `unlock: '<milestoneId>'` on crops or
@@ -110,6 +110,16 @@ Never edit an existing generator. Add a new version in `worldgen.ts` (branch on
 alongside `tests/fixtures/gen-v1-fingerprint.json`. See
 [SAVE_FORMAT.md](SAVE_FORMAT.md).
 
+
+## Growth, families and orchards
+
+Timings and thresholds for deliberate growth live in `data/kingdomBalance.ts` (days to
+birth and adulthood, family cooldown, apples per traveller, orchard yield). Change
+them there; the simulation, the Families panel and the tests read the constants. A
+new home only needs `housing` (beds): claims and household beds pick it up. Orchards
+are tied to the `orchard` building type (`sim/orchards.ts`); a second fruit tree
+would add a resource, a building and an entry there. Apples appear in the HUD via
+`CRAFTED` in `ui/Hud.tsx`.
 
 ## Seasons and settlements continuation
 

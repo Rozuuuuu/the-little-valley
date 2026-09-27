@@ -1,6 +1,6 @@
 # Little Valley: Families, Industry and Kingdoms — Implementation Plan
 
-> Planning only. No gameplay implementation is authorized by this document.
+> **Status (2026-09-28):** M0 and M1 are implemented on branch `families-to-kingdoms` (see §11 for results, the decisions taken during implementation and the plan changes they caused). M2–M8 remain plans; each still needs its own authorization.
 > For execution: use superpowers:executing-plans, or subagent-driven-development when suitable tools are available. Implement only the milestone the user authorizes.
 
 **Goal:** Extend the existing persistent farming game into a slowly growing kingdom with families, mining, travelers, a player monarch, equipped armies, territorial diplomacy and believable news.
@@ -32,7 +32,7 @@ Multiplayer, offline attacks/progression, dynastic succession, royal death, a co
 
 ## 2. Actual repository baseline
 
-Inspected on 2026-09-28:
+Inspected on 2026-09-28, before M0 (see §11 for the state after M1):
 
 - Save version 4; existing migration, validation, backup and emergency recovery infrastructure.
 - Population currently arrives automatically with 20 stored food, spending 10 food, on a 900-tick cooldown. At 10 Hz this is 90 seconds. New recruitment must replace that behavior in deliberate-growth worlds, not run alongside it.
@@ -70,7 +70,7 @@ These are concrete initial balancing proposals, not previously approved numerica
 | Growth mode | New worlds use deliberate growth. Existing worlds retain legacy arrivals until an explained adoption command. |
 | Orchard | Available at Camp; 2×2 footprint, 10 wood/2 stone; establishes over two growing-season days; yields 25 apples per growing-season day with worker care. Winter pauses establishment/production. |
 | Apple consumption | Recruitment reservations protect apples. An explicit recipe converts surplus apples into ordinary food. |
-| Recruitment | 50 locally delivered apples, one reachable permanent bed, at least 20 unreserved local food; one completed recruit per kingdom per two game days. |
+| Recruitment | 50 apples in the destination settlement's own stores, one free reachable bed (real homes first; a camp bedroll is acceptable — see §11), at least 20 unreserved local food; one completed recruit per kingdom per two game days. |
 | Early visitor | Guaranteed eligible camp recruitment visit; the sixth settler does not require an inn, currency or Hamlet. |
 | Family home | Available at Camp; three permanent beds, 20 wood/10 stone. Existing houses are not silently resized. |
 | Household | Two distinct adults, one household per adult; player requests a child; two stable days before birth with a reserved permanent bed. |
@@ -222,7 +222,7 @@ Shared save/resource/command changes remain sequential. Independent art can be p
 - [ ] Guarantee early recruitment access before Hamlet. An inn improves later visitor schedules; it is not a sixth-person prerequisite.
 - [ ] Show occupied/reserved/free beds, children/adults, home, family progress and blocked reasons.
 - [ ] Update milestone wording and migration adoption preview; preserve achieved milestones.
-- [ ] Run `npx vitest run tests/households.test.ts tests/recruitment.test.ts tests/journey.test.ts --maxWorkers=1`.
+- [ ] Run `npx vitest run tests/households.test.ts tests/recruitment.test.ts tests/journey.test.ts --maxWorkers=1`. (Done: `journey.test.ts` now covers the legacy journey; the deliberate journey lives in `recruitment.test.ts`.)
 
 **Playable journey:** Five adults -> orchard and home -> recruit sixth adult -> Hamlet -> household -> child grows while settlement work continues.
 
@@ -558,6 +558,78 @@ These are selected inspirations, not a universal model of medieval politics:
 - Knight equipment and supporting crafts: [The Metropolitan Museum of Art — Arms and Armor in Medieval Europe](https://www.metmuseum.org/ja/essays/arms-and-armor-in-medieval-europe).
 
 Protected homelands, numeric concern scores, abstract shafts and simplified training are deliberate game design choices, not historical claims.
+
+## 11. Progress, decisions and lessons (updated after M0 + M1)
+
+### Results
+
+| Milestone | State | Evidence |
+| --- | --- | --- |
+| M0 | Done except the browser check | v4 fixture; two-town journey test; unreachable-note bug reproduced and fixed; baseline profile recorded |
+| M1A | Done | Save v5; `households.test.ts` 14 tests |
+| M1B | Done except browser/art check | `recruitment.test.ts` 14 tests incl. deliberate journey; Families tab; sprites |
+| M2–M8 | Not started | — |
+
+Full suite 125/125, build passes, generator-1 fingerprint 18/18. Node profile p95
+about +10–15% (inside the 20% bound). No browser check or human playtest has been
+run; the M0 visual check and the M1 art remain release gates.
+
+### Decisions taken during implementation (and why)
+
+1. **Recruits may take a camp bedroll** (real homes first). Camp sleepers move into
+   every new permanent bed automatically, so a permanent-bed-only rule meant a sixth
+   adult needed three buildings — contradicting constraint 9 (no early progression
+   dependency). Births still require a real home.
+2. **"Locally delivered" = in the destination settlement's stores.** Apples move from
+   those stores into a saved escrow on acceptance, atomically with the bed claim.
+   Stock targets already haul goods between settlements, so no dedicated
+   package-haul task was added. Revisit if playtests want to *see* the delivery.
+3. **One v5 migration for all of M1.** M1 ships as one release; the plan's "one
+   migration per independently shipped schema change" still holds.
+4. **`requestChild` takes a household id**, not two adult ids; `formHousehold` is
+   the explicit pairing step and households need deliberate mode.
+5. **Hamlet requires 2 beds in real homes** instead of "a house", so the family home
+   counts. Achieved milestones are untouched.
+6. **Shared unreachable notes are position-scoped** (12 tiles, Manhattan): the M0
+   reproduction showed a far-bank farmer blocked for a full day.
+7. **Older tests pin `growthMode: 'legacy'`** — they cover rules legacy worlds keep.
+
+### Lessons that change later milestones
+
+- **Claims + escrow is the pattern.** Bed claims (saved, counted as occupied,
+  relocated or released on demolition, validated on load) and apple escrow (goods leave
+  stores into a saved holder; refunds that don't fit stay held) worked first time
+  against reload/duplicate tests. Reuse them for M3 cargo manifests and destination
+  capacity, M5 treaty escrow, and M5D/M6 troop pledges instead of inventing new
+  reservation schemes. Add a shared helper once the second user appears.
+- **Auto-rehousing competes with every reservation.** Anything that frees or adds a
+  bed immediately re-seats camp sleepers. Future features that need a free bed (inns,
+  barracks, guest houses) must claim it in the same step that checks it.
+- **Status lines must list every unmet condition**, not the first one. Players and
+  tests both needed "still needed: apples, food, a free bed" to act.
+- **Test fixtures fight the simulation.** Building a home re-seats sleepers; storage
+  fills if a gather order runs for days. Journey tests should build storage and homes
+  in the order a player would.
+- **Profiles must hold the workload constant.** A mode change silently changed the
+  100-settler scenario (95 homeless). Keep the profile scenario explicit about homes,
+  jobs and areas, and run it several times: single runs on this machine vary by 2×.
+- **CRLF and LF files coexist** in the repo; exact-text tooling must respect each
+  file's line endings.
+
+### Plan adjustments for M2 onward
+
+- **M2:** mines need their own placement rule (orchards took `farmland`); geology
+  deposits should be surveyed by an adult task kind so children are excluded
+  automatically by the empty child work order.
+- **M3:** the inn should shorten `VISITOR_INTERVAL` / lengthen `OFFER_LIFETIME` via
+  data, not code. Replace the position-scoped unreachable note with connectivity
+  components once the regional graph exists — it is the same question.
+- **M3/M5:** give manifests and escrow a conservation helper like `accountedFor` that
+  includes held goods; the recruitment tests had to add escrow by hand.
+- **M4:** Region's population checks should count adults (already true for
+  `population` requirements); council posts must not accept children.
+- **All:** each milestone's player journey test is the acceptance test; write it
+  first with only commands, and let it drive the missing UI status lines.
 
 ## 10. Review and next authorization
 
