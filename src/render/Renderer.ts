@@ -6,6 +6,8 @@ import { BUILDINGS, type BuildingId } from '../game/data/buildings';
 import { CROPS } from '../game/data/crops';
 import { fieldStage, WATER_THRESHOLD } from '../game/sim/farming';
 import { costOf, isPermanentHome, materialsComplete, workOf } from '../game/sim/buildings';
+import { orchardEstablished } from '../game/sim/orchards';
+import type { OrchardLook } from './sprites/buildings';
 import { invEntries } from '../game/sim/inventory';
 import type { AreaKind } from '../game/sim/types';
 import type { Simulation } from '../game/sim/Simulation';
@@ -447,9 +449,22 @@ export class Renderer {
 
   private spriteFor(sim: Simulation, b: Building, night: boolean): Sprite | null {
     if (b.type === 'fence') return this.sprites.fence[this.fenceMask(sim, b.x, b.y)];
+    if (b.type === 'orchard') return this.sprites.orchard[this.orchardLook(b)];
     const set = b.type === 'camp' && sim.progression.reached.includes('village') ? this.sprites.villageHall : this.sprites.buildings[b.type];
     if (!set) return null;
     return night ? set.night : set.day;
+  }
+
+  /** Which orchard picture fits its state and the season. */
+  private orchardLook(b: Building): OrchardLook {
+    const o = b.orchard;
+    if (!b.built || !o || !orchardEstablished(b)) return this.season === 'winter' && b.built ? 'bare' : 'young';
+    if (this.season === 'winter') return 'winter';
+    const f = o.fruit;
+    if (f >= 24) return 'fruit3';
+    if (f >= 12) return 'fruit2';
+    if (f >= 4) return 'fruit1';
+    return this.season === 'autumn' ? 'autumn' : 'leafy';
   }
 
   private drawBuilding(sim: Simulation, b: Building, st: RenderState, night: boolean, occupied: ReadonlySet<number>): void {

@@ -48,9 +48,9 @@ export const TUTORIAL: TutorialStep[] = [
     done: (c) => c.sim.stats.harvested >= 1,
   },
   {
-    title: 'Build a house',
-    text: 'From Build, place a House near camp. Builders haul wood and stone to the site and raise it. A free bed and 20 food attract a newcomer.',
-    done: (c) => builtCount(c.sim, 'house') >= 1,
+    title: 'A home and an orchard',
+    text: 'From Build, place a House or Family Home near camp, and an Orchard on the meadow. Visiting travellers settle for 50 apples and a free bed: welcome them in the Families tab.',
+    done: (c) => builtCount(c.sim, 'house') + builtCount(c.sim, 'familyHome') >= 1 && count(c.sim, 'orchard') >= 1,
   },
   {
     title: 'Set up a workshop',

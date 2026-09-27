@@ -4,6 +4,9 @@ import { MILESTONES } from '../game/data/progression';
 import { RESOURCES } from '../game/data/resources';
 import { builtCount, campOf, costOf, permanentBeds } from '../game/sim/buildings';
 import { invEntries } from '../game/sim/inventory';
+import { adults } from '../game/sim/households';
+import { recruitProblem } from '../game/sim/travelers';
+import { RECRUIT_APPLES } from '../game/data/kingdomBalance';
 import { currentMilestone, nextMilestone, requirementProgress, type RequirementProgress } from '../game/sim/progression';
 import type { Simulation } from '../game/sim/Simulation';
 import type { Building, SessionMark } from '../game/sim/types';
@@ -53,6 +56,7 @@ function sinceLast(sim: Simulation, prev: SessionMark | null): { lines: string[]
   if (built.length) lines.push(`Built: ${[...new Set(built)].map((b) => `${built.filter((x) => x === b).length > 1 ? `${built.filter((x) => x === b).length}× ` : ''}${b}`).join(', ')}.`);
   const arrivals = events.filter((e) => e.kind === 'arrival').map((e) => e.text.replace(/ arrived$/, ''));
   if (arrivals.length) lines.push(`Welcomed ${arrivals.join(', ')}.`);
+  for (const e of events.filter((e) => e.kind === 'birth')) lines.push(`${e.text}.`);
   for (const e of events.filter((e) => e.kind === 'milestone')) lines.push(`${e.text}!`);
   const food = d('harvested') + d('foodGathered') + d('bakedFood');
   const goods: string[] = [];
@@ -97,6 +101,16 @@ function issues(sim: Simulation): OverviewItem[] {
     const m = missing[0];
     const name = BUILDINGS[b.type].name.toLowerCase();
     out.push({ text: `Deliver ${m.left} more ${RESOURCES[m.r].name.toLowerCase()} to the ${name}`, detail: `Only ${sim.storedTotal(m.r)} in storage.`, target: rectOf(b) });
+  }
+  for (const h of sim.households) {
+    if (!h.pending?.blocked) continue;
+    const names = h.adults.map((id) => sim.settler(id)?.name ?? '?').join(' and ');
+    const parent = sim.settler(h.adults[0]);
+    out.push({
+      text: `${names}'s child is paused`,
+      detail: h.pending.blocked,
+      target: parent ? { x: Math.floor(parent.x), y: Math.floor(parent.y), w: 1, h: 1, settlerId: parent.id } : null,
+    });
   }
   const idle = sim.settlers.filter((s) => (!s.task || s.task.kind === 'wander') && s.idleReason && s.idleReason !== 'Stores are well stocked');
   if (idle.length >= 2 || (idle.length === 1 && sim.settlers.length <= 6)) {
@@ -145,10 +159,18 @@ function goals(sim: Simulation): OverviewItem[] {
   const campT = camp ? rectOf(camp) : null;
   const all = [...sim.buildings.values()];
   const byType = (t: string) => all.filter((b) => b.type === t);
+  // Deliberate growth: a visitor who can be welcomed now, then the orchard that pays for them.
+  const home = sim.settlements[0]?.id;
+  if (sim.growthMode === 'deliberate' && sim.offer && home !== undefined && !recruitProblem(sim, home)) {
+    out.push({ text: `Welcome ${sim.offer.name}, who is visiting`, detail: `Families tab: they settle for ${RECRUIT_APPLES} apples and a free bed.`, target: campT });
+  }
+  if (sim.growthMode === 'deliberate' && byType('orchard').length === 0) {
+    out.push({ text: 'Plant an orchard', detail: `Travellers settle for ${RECRUIT_APPLES} apples. An orchard bears them after two growing days.`, target: campT });
+  }
   if (!reached('hamlet')) {
     const next = MILESTONES.hamlet.requirements.map((r) => requirementProgress(sim, r)).filter((r) => !r.done);
     for (const r of next.slice(0, 2)) out.push({ text: r.label, detail: `${r.current}/${r.target}`, target: campT });
-    return out;
+    return out.slice(0, 3);
   }
   const bridge = byType('stoneBridge')[0];
   if (bridge && !bridge.built) {
@@ -181,7 +203,7 @@ function goals(sim: Simulation): OverviewItem[] {
   if (!reached('village') && permanentBeds(sim) < 8) out.push({ text: `Build homes: ${permanentBeds(sim)}/8 beds for Village`, detail: 'Houses have 2 beds.', target: campT });
   if (reached('village')) {
     if (builtCount(sim, 'market') === 0) out.push({ text: 'Plan the Grand Market', detail: 'A long project that anchors a future town.', target: campT });
-    out.push({ text: `Grow toward Town: ${sim.settlers.length}/16 settlers`, detail: 'Cottages hold 4 each.', target: campT });
+    out.push({ text: `Grow toward Town: ${adults(sim).length}/16 adults`, detail: 'Cottages hold 4 each.', target: campT });
   }
   return out.slice(0, 3);
 }

@@ -17,9 +17,12 @@ import { effectivePriorities } from '../game/sim/priorities';
 import { currentMilestone, nextMilestone, requirementProgress, type RequirementProgress } from '../game/sim/progression';
 import { describeTask } from '../game/sim/settlers';
 import type { Simulation } from '../game/sim/Simulation';
-import type { AreaKind, Building, Settler } from '../game/sim/types';
+import type { AreaKind, BedClaim, Building, Settler } from '../game/sim/types';
+import { daysToAdult, householdOf } from '../game/sim/households';
+import { orchardStatus } from '../game/sim/orchards';
 import { OBJECTS, TERRAIN } from '../game/world/tiles';
 import type { Overview } from './overview';
+import type { GrowthInfo } from './growthInfo';
 
 export type Mode =
   | { kind: 'select' }
@@ -47,6 +50,11 @@ export interface SettlerInfo {
   priorities: WorkKind[];
   customOrder: boolean;
   workplace: string;
+  /** 'Adult', or 'Child · grows up in N days'. */
+  age: string;
+  child: boolean;
+  /** The other adult in their household, if any. */
+  partner: string;
 }
 
 export interface BuildingInfo {
@@ -58,8 +66,10 @@ export interface BuildingInfo {
   progress: number;
   materials: { res: ResourceId; have: number; need: number; incoming: number }[];
   status: string;
+  /** Orchard state in plain words. */
+  orchard?: string;
   storage?: { entries: [ResourceId, number][]; used: number; capacity: number };
-  residents?: { people: { id: number; name: string; asleep: boolean }[]; capacity: number; temporary: boolean };
+  residents?: { people: { id: number; name: string; asleep: boolean }[]; capacity: number; temporary: boolean; held: string[] };
   field?: { crop: CropId | null; state: string; stage: number; stages: number; growth: number; moisture: number; ripeIn: string };
   workshop?: { recipe: RecipeId | null; recipes: RecipeId[]; status: string; paused: boolean; buffer: [ResourceId, number][]; progress: number };
   workers?: { people: { id: number; name: string }[]; max: number };
@@ -98,6 +108,7 @@ export function regionalInfo(sim: Simulation) {
 
 export interface UiSnapshot {
   region: ReturnType<typeof regionalInfo>;
+  growth: GrowthInfo;
   running: boolean;
   paused: boolean;
   speed: number;
@@ -139,6 +150,10 @@ export function emptySnapshot(): UiSnapshot {
   for (const r of RESOURCE_IDS) resources[r] = 0;
   return {
     region: { calendar: '', forecast: '', seasonNote: '', towns: [] },
+    growth: {
+      mode: 'deliberate', adoption: '', adults: 0, children: 0, beds: { homeUsed: 0, held: 0, homeTotal: 0, bedrollsUsed: 0, bedrolls: 0 },
+      households: [], unpaired: [], visitor: null, nextVisitorIn: '', recruits: [], settlements: [], applesPrice: 0,
+    },
     running: false, paused: false, speed: 1, day: 1, clock: '', period: '', isNight: false, raining: false,
     resources, storage: { used: 0, capacity: 0 }, population: 0, housing: 0, beds: '', populationStatus: '', wellEquipped: false,
     milestone: { current: 'Camp', tier: 0, next: null }, mode: { kind: 'select' }, selection: [], building: null,
@@ -172,13 +187,32 @@ export function settlerInfo(sim: Simulation, s: Settler): SettlerInfo {
     areaId: area?.id ?? null, areaName: area?.name ?? '',
     priorities: [...effectivePriorities(s)], customOrder: s.priorities !== null,
     workplace: workplace ? BUILDINGS[workplace.type].name : '',
+    age: s.lifeStage === 'child' ? `Child · grows up in ${daysToAdult(s)} day${daysToAdult(s) === 1 ? '' : 's'}` : 'Adult',
+    child: s.lifeStage === 'child',
+    partner: partnerOf(sim, s),
   };
+}
+
+function partnerOf(sim: Simulation, s: Settler): string {
+  const h = householdOf(sim, s);
+  if (!h || s.lifeStage === 'child') return '';
+  const other = h.adults.find((id) => id !== s.id);
+  return other !== undefined ? sim.settler(other)?.name ?? '' : '';
 }
 
 function ticksLabel(ticks: number): string {
   const secs = Math.ceil(ticks / 10);
   if (secs < 60) return `${secs}s`;
   return `${Math.ceil(secs / 60)} min`;
+}
+
+/** Who a held bed is waiting for, in words. */
+function heldFor(sim: Simulation, c: BedClaim): string {
+  const id = c.owner.id;
+  if (c.owner.kind === 'recruit') return `Held for ${sim.recruits.find((r) => r.id === id)?.name ?? 'a traveller'}, on the way`;
+  const h = sim.households.find((x) => x.id === id);
+  const names = h ? h.adults.map((a) => sim.settler(a)?.name ?? '?').join(' and ') : 'a household';
+  return `Held for ${names}'s expected child`;
 }
 
 export function buildingInfo(sim: Simulation, list: Building[]): BuildingInfo | null {
@@ -214,7 +248,12 @@ export function buildingInfo(sim: Simulation, list: Building[]): BuildingInfo | 
       people: sim.settlers.filter((s) => s.homeId === b.id).map((s) => ({ id: s.id, name: s.name, asleep: s.insideId === b.id || (s.task?.kind === 'sleep' && s.task.stage === 'sleep') })),
       capacity: bedsOf(b),
       temporary: !!def.temporaryBeds,
+      held: sim.bedClaims.filter((c) => c.homeId === b.id).map((c) => heldFor(sim, c)),
     };
+  }
+  if (b.type === 'orchard') {
+    info.orchard = orchardStatus(sim, b);
+    if (b.built) info.status = info.orchard;
   }
   if (b.field) {
     const f = b.field;

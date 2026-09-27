@@ -16,9 +16,11 @@ import type { WorkKind } from '../game/data/jobs';
 import { keyLabel } from '../input/bindings';
 import { useGame, useSnapshot } from './context';
 import { ResIcon, UiIcon } from './Icon';
+import { Households } from './Households';
+import { Travelers } from './Travelers';
 
 const MAIN_RES: ResourceId[] = ['food', 'wood', 'stone'];
-const CRAFTED: ResourceId[] = ['wheat', 'flour', 'planks', 'tools'];
+const CRAFTED: ResourceId[] = ['apples', 'wheat', 'flour', 'planks', 'tools'];
 
 export function TopBar({ onMenu }: { onMenu: () => void }) {
   const { game } = useGame();
@@ -390,6 +392,10 @@ function SettlerCard({ s }: { s: SettlerInfo }) {
         )}
       </div>
       {s.bedNote && <div className="muted">{s.bedNote}</div>}
+      <div className="muted">
+        {s.age}
+        {s.partner ? ` · household with ${s.partner}` : ''}
+      </div>
       <WorkOrder s={s} />
       <div className="muted">Right-click a tree, rock, field, site or spot to give a direct order. They go back to this routine afterwards.</div>
     </>
@@ -503,7 +509,7 @@ function BuildingCard({ info }: { info: BuildingInfo }) {
             <span>{info.residents.temporary ? 'Camp bedrolls' : 'Beds'}</span>
             <span className="beds" aria-label={`${info.residents.people.length} of ${info.residents.capacity} beds taken`}>
               {Array.from({ length: info.residents.capacity }, (_, i) => (
-                <i key={i} className={i < info.residents!.people.length ? 'on' : ''} />
+                <i key={i} className={i < info.residents!.people.length ? 'on' : i < info.residents!.people.length + info.residents!.held.length ? 'held' : ''} />
               ))}
               <span className="muted">
                 {' '}
@@ -516,6 +522,11 @@ function BuildingCard({ info }: { info: BuildingInfo }) {
               ? info.residents.people.map((p) => `${p.name}${p.asleep ? ' (asleep)' : ''}`).join(', ')
               : 'Nobody lives here yet.'}
           </div>
+          {info.residents.held.map((h) => (
+            <div key={h} className="muted">
+              1 bed · {h}
+            </div>
+          ))}
           {info.residents.temporary && <div className="muted">Bedrolls are temporary: settlers move into house beds as soon as they free up.</div>}
         </div>
       )}
@@ -712,7 +723,7 @@ function AreasTab() {
 export function SidePanel() {
   const { game } = useGame();
   const s = useSnapshot();
-  const [tab, setTab] = useState<'people' | 'areas' | 'towns' | 'goals' | null>('goals');
+  const [tab, setTab] = useState<'people' | 'areas' | 'towns' | 'families' | 'goals' | null>('goals');
   useEffect(() => {
     game.areasTabOpen = tab === 'areas';
   }, [tab, game]);
@@ -736,7 +747,10 @@ export function SidePanel() {
         <button role="tab" aria-selected={tab === 'areas'} className={tab === 'areas' ? 'on' : ''} onClick={() => setTab('areas')}>
           Areas
         </button>
-        <button role="tab" aria-selected={tab === 'towns'} onClick={() => setTab('towns')}>Towns</button>
+        <button role="tab" aria-selected={tab === 'towns'} className={tab === 'towns' ? 'on' : ''} onClick={() => setTab('towns')}>Towns</button>
+        <button role="tab" aria-selected={tab === 'families'} className={tab === 'families' ? 'on' : ''} onClick={() => setTab('families')}>
+          Families{s.growth.visitor && <span className="badge" title={`${s.growth.visitor.name} is visiting`}>!</span>}
+        </button>
         <button role="tab" aria-selected={tab === 'goals'} className={tab === 'goals' ? 'on' : ''} onClick={() => setTab('goals')}>
           Goals
         </button>
@@ -750,7 +764,7 @@ export function SidePanel() {
             {s.settlers.map((p) => (
               <button key={p.id} className={`settler-row${selected.has(p.id) ? ' sel' : ''}`} onClick={() => game.selectSettlers([p.id], true)}>
                 <span className="nm">{p.name}</span>
-                <span className="jb">{p.areaName || JOBS[p.job].name}</span>
+                <span className="jb">{p.child ? 'Child' : p.areaName || JOBS[p.job].name}</span>
                 <span className={`tk${p.idle ? ' idle' : ''}`}>{p.idle ? `⚠ ${p.idleReason}` : p.task}</span>
               </button>
             ))}
@@ -759,6 +773,12 @@ export function SidePanel() {
           </>
         )}
         {tab === 'areas' && <AreasTab />}
+        {tab === 'families' && (
+          <>
+            <Travelers />
+            <Households />
+          </>
+        )}
         {tab === 'towns' && <>
           <h3>{s.region.calendar}</h3><p>{s.region.seasonNote}</p><p>{s.region.forecast}</p>
           <p className="muted">After Village, build a waystation at least 24 tiles from another centre. Assign selected settlers here, then add homes and local work areas. Connect centres with paths and bridges.</p>

@@ -266,3 +266,62 @@ describe('deliberate growth journey', () => {
     assertReservationsConsistent(loaded);
   });
 });
+
+describe('families panel snapshot', () => {
+  it('publishes the visitor and what they still need, households, pending children, and bed use', async () => {
+    const { growthInfo } = await import('../src/engine/growthInfo');
+    const { settlerInfo } = await import('../src/engine/snapshot');
+    const { sim, offer } = visitorWorld(10);
+    let info = growthInfo(sim);
+    expect(info.mode).toBe('deliberate');
+    expect(info.visitor!.name).toBe(offer.name);
+    expect(info.visitor!.needs.join(' ')).toMatch(/apples/);
+    expect(info.visitor!.leavesIn).toMatch(/day|min|h/);
+    expect(info.adults).toBe(5);
+    const [a, b] = sim.settlers;
+    const hh = applyCommand(sim, { type: 'formHousehold', ids: [a.id, b.id] }).id!;
+    applyCommand(sim, { type: 'requestChild', householdId: hh });
+    run(sim, 100);
+    info = growthInfo(sim);
+    expect(info.households).toHaveLength(1);
+    expect(info.households[0].names).toEqual([a.name, b.name]);
+    expect(info.households[0].pending!.progress).toBeGreaterThan(0);
+    expect(info.households[0].pending!.bed).toMatch(/Family Home/);
+    expect(info.beds.held).toBe(1);
+    expect(info.unpaired.map((p) => p.id)).not.toContain(a.id);
+    const kid = sim.addSettler(0, 2, 'laborer');
+    kid.lifeStage = 'child';
+    expect(settlerInfo(sim, kid).age).toMatch(/Child · grows up in 12 days/);
+    expect(growthInfo(sim).children).toBe(1);
+  });
+
+  it('explains adoption for older worlds', async () => {
+    const { growthInfo } = await import('../src/engine/growthInfo');
+    const sim = createNewGame(9);
+    sim.growthMode = 'legacy';
+    expect(growthInfo(sim).adoption).toMatch(/families|travellers/);
+  });
+});
+
+describe('Valley today with deliberate growth', () => {
+  it('suggests an orchard, points at a waiting visitor, flags a paused family and recaps births', async () => {
+    const { buildOverview } = await import('../src/engine/overview');
+    const { sim, offer } = visitorWorld(0);
+    const mark = { startTick: sim.tick, startStats: { ...sim.stats }, startPopulation: sim.settlers.length };
+    let o = buildOverview(sim, null);
+    expect(o.goals.map((g) => g.text).join(' | ')).toMatch(/orchard/i);
+    campOf(sim)!.inventory.apples = RECRUIT_APPLES;
+    o = buildOverview(sim, null);
+    expect(o.goals.map((g) => g.text).join(' | ')).toContain(offer.name);
+    const [a, b] = sim.settlers;
+    const hh = applyCommand(sim, { type: 'formHousehold', ids: [a.id, b.id] }).id!;
+    applyCommand(sim, { type: 'requestChild', householdId: hh });
+    campOf(sim)!.inventory.food = 0;
+    run(sim, 60);
+    o = buildOverview(sim, null);
+    expect(o.issues.map((i) => i.text).join(' | ')).toMatch(/child.*paused|paused/i);
+    sim.record('birth', 'Pip was born to A and B');
+    o = buildOverview(sim, mark);
+    expect((o.since ?? []).join(' ')).toMatch(/Pip was born/);
+  });
+});

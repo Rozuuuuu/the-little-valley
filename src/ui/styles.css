@@ -271,3 +271,10 @@ select, input[type='text'] {
 }
 .side-tabs button { white-space: nowrap; font-size: 13px; padding: 6px 4px; }
 .badge { display: inline-block; margin-left: 4px; min-width: 16px; padding: 0 4px; background: var(--berry); color: #fff; border-radius: 8px; font-family: var(--body); font-weight: 700; font-size: 11px; line-height: 16px; }
+
+/* Families tab */
+.beds i.held { background: var(--wheat); opacity: 0.7; }
+.family-card { border-top: 1px solid var(--moss-3); padding: 6px 0 8px; display: flex; flex-direction: column; gap: 4px; }
+.family-card h3 { font-size: 15px; }
+.family-card .needs { margin: 0; padding-left: 16px; font-size: 13px; color: var(--straw-dim); }
+.family-card select { font: inherit; background: var(--ink); color: var(--straw); border: 1px solid var(--moss-3); }

@@ -3,7 +3,7 @@ import type { CropId } from '../../game/data/crops';
 import type { ResourceId } from '../../game/data/resources';
 import type { Appearance, ToolKind } from '../../game/sim/types';
 import { makeCanvas, type Sprite } from '../pixel';
-import { makeBuildingSprites, makeFenceSprites, makeMillSails, makeVillageHall, type BuildingSprites } from './buildings';
+import { makeBuildingSprites, makeFenceSprites, makeMillSails, makeOrchardSprites, makeVillageHall, type BuildingSprites, type OrchardLook } from './buildings';
 import { appearanceKey, makeSettlerSheet, type SettlerSheet } from './characters';
 import { makeCropSprites, makeSoil, type SoilState } from './crops';
 import { makeResourceIcons, makeToolSprites, makeUiIcons, type UiIconId } from './icons';
@@ -38,6 +38,7 @@ export class SpriteBank {
   readonly buildings: Partial<Record<BuildingId, BuildingSprites>> = makeBuildingSprites();
   readonly fence: Sprite[] = makeFenceSprites();
   readonly millSails: Sprite[] = makeMillSails();
+  readonly orchard: Record<OrchardLook, Sprite> = makeOrchardSprites();
   readonly villageHall: BuildingSprites = makeVillageHall();
   readonly crops: Record<CropId, Sprite[]> = makeCropSprites();
   readonly soil: Record<SoilState, Sprite> = { wild: makeSoil('wild'), tilled: makeSoil('tilled'), wet: makeSoil('wet') };
@@ -79,6 +80,7 @@ export class SpriteBank {
     let src: HTMLCanvasElement | null = this.buildings[id]?.day.canvas ?? null;
     if (id === 'fence') src = this.fence[2 | 8].canvas;
     if (id === 'field') src = this.cropPreview();
+    if (id === 'orchard') src = this.orchard.fruit2.canvas;
     if (id === 'path' || id === 'bridge') src = this.groundPreview(id);
     if (id === 'stoneBridge') src = this.stoneBridgePreview();
     if (src) {

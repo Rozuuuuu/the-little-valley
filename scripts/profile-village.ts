@@ -5,7 +5,7 @@
  */
 import { DAY_TICKS } from '../src/game/core/constants';
 import { BUILDINGS } from '../src/game/data/buildings';
-import { costOf, completeBuilding, placeBuilding } from '../src/game/sim/buildings';
+import { assignHomes, costOf, completeBuilding, placeBuilding } from '../src/game/sim/buildings';
 import { applyCommand } from '../src/game/sim/commands';
 import { createNewGame } from '../src/game/sim/newGame';
 import type { Simulation } from '../src/game/sim/Simulation';
@@ -53,6 +53,8 @@ while (sim.settlers.length < N) {
   const i = sim.settlers.length;
   sim.addSettler(-4 + (i % 9), 12 + Math.floor((i % 27) / 9), jobs[i % 5]);
 }
+// Settlers added directly need homes handed out (arrivals and births do this themselves).
+assignHomes(sim);
 const ids = sim.settlers.map((s) => s.id);
 const areas = [
   applyCommand(sim, { type: 'createArea', kind: 'wood', x0: -35, y0: -35, x1: -10, y1: -18 }).id!,

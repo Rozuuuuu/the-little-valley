@@ -416,6 +416,42 @@ const cottage: Draw = (p, lit) => {
   }
 };
 
+/** A family home: plastered walls, a red roof, a porch swing and a row of washing. */
+const familyHome: Draw = (p, lit) => {
+  p.rect(1, 12, 46, 20, P.wall1);
+  p.rect(1, 12, 3, 17, P.wall2);
+  for (const x of [1, 24, 46]) p.vline(x, 12, 28, P.wood1);
+  p.rect(1, 28, 46, 4, P.stone1);
+  p.hline(1, 46, 28, P.stone2);
+  for (let x = 3; x < 47; x += 6) p.px(x, 30, P.stone0);
+  // Chimney, then the roof over it
+  p.rect(8, -13, 5, 11, P.stone2);
+  p.hline(8, 12, -13, P.stone0);
+  p.vline(12, -13, -3, P.stone1);
+  shingles(p, -1, 48, -8, 13, ROOF, 3);
+  p.hline(0, 47, 14, P.wall0);
+  // Door under a little porch roof
+  p.rect(29, 18, 7, 14, P.wood0);
+  p.rect(30, 19, 5, 13, P.wood2);
+  p.vline(32, 19, 31, P.wood1);
+  p.px(34, 25, P.fire2);
+  p.rect(27, 15, 11, 2, P.roof2);
+  p.hline(27, 37, 17, P.roof0);
+  p.hline(28, 36, 31, P.stone2);
+  // Windows with flower boxes
+  for (const x of [6, 15]) {
+    windowAt(p, x, 17, 6, 6, lit);
+    p.rect(x - 1, 23, 8, 2, P.wood1);
+    for (let i = 0; i < 8; i += 2) p.px(x - 1 + i, 22, i % 4 ? P.flowerY : P.flowerR);
+  }
+  // Porch swing and a line of washing to the right
+  p.vline(40, 18, 23, P.wood0);
+  p.vline(44, 18, 23, P.wood0);
+  p.rect(39, 23, 7, 2, P.wood2);
+  p.hline(39, 45, 25, P.wood0);
+  p.hline(40, 46, 16, P.wood0);
+};
+
 /** The camp after reaching Village: a timber hall with a bell cupola and bunting. */
 const villageHall: Draw = (p, lit) => {
   p.rect(3, 4, 42, 18, P.wall2);
@@ -497,6 +533,7 @@ export function makeBuildingSprites(): Partial<Record<BuildingId, BuildingSprite
     mill: make(40, 58, 4, 22, mill),
     bakery: make(54, 52, 3, 20, bakery),
     cottage: make(54, 50, 3, 17, cottage),
+    familyHome: make(54, 50, 3, 17, familyHome),
     camp: make(52, 46, 2, 12, camp),
     house: make(36, 50, 2, 17, house),
     storehouse: make(54, 46, 3, 13, storehouse),
@@ -506,6 +543,61 @@ export function makeBuildingSprites(): Partial<Record<BuildingId, BuildingSprite
     lamp: make(18, 34, 1, 17, lamp),
     bench: make(34, 18, 1, 3, bench),
   };
+}
+
+export type OrchardLook = 'young' | 'bare' | 'leafy' | 'fruit1' | 'fruit2' | 'fruit3' | 'winter' | 'autumn';
+
+/**
+ * An orchard of four small apple trees on a 2×2 plot, in each of its looks:
+ * saplings while establishing, leafy, with a few to many apples, autumn-gold
+ * and snowy bare branches in winter.
+ */
+export function makeOrchardSprites(): Record<OrchardLook, Sprite> {
+  const spots = [[8, 13], [24, 11], [8, 28], [24, 27]];
+  const build = (look: OrchardLook): Sprite => {
+    const p = new Painter(38, 46, 3, 14);
+    // Mown grass circles at each tree's foot
+    for (const [x, y] of spots) p.ellipse(x, y + 1, 5, 2, P.grass1);
+    for (const [x, y] of spots) {
+      if (look === 'young') {
+        p.vline(x, y - 9, y, P.wood2);
+        p.vline(x + 2, y - 7, y, P.wood0);
+        p.ellipse(x, y - 9, 3, 2, P.leaf3);
+        p.px(x - 1, y - 10, P.leaf4);
+        continue;
+      }
+      p.rect(x - 1, y - 6, 2, 7, P.wood1);
+      p.vline(x, y - 6, y, P.wood0);
+      if (look === 'winter' || look === 'bare') {
+        for (let i = 0; i < 5; i++) {
+          p.px(x - 1 - i, y - 7 - i, P.wood1);
+          p.px(x + 1 + i, y - 7 - i, P.wood1);
+        }
+        p.vline(x, y - 13, y - 7, P.wood1);
+        if (look === 'winter') {
+          for (const [dx, dy] of [[-4, -12], [4, -12], [0, -14], [-2, -10], [3, -10]]) p.px(x + dx, y + dy, '#f4f8fb');
+        }
+        continue;
+      }
+      const autumn = look === 'autumn';
+      p.ellipse(x, y - 10, 7, 6, autumn ? '#b0552a' : P.leaf1);
+      p.ellipse(x - 1, y - 11, 6, 5, autumn ? '#d07a32' : P.leaf2);
+      p.ellipse(x - 2, y - 12, 3, 3, autumn ? '#e3a340' : P.leaf3);
+      p.px(x - 3, y - 14, autumn ? '#f2c65a' : P.leaf4);
+      const n = look === 'fruit1' ? 2 : look === 'fruit2' ? 4 : look === 'fruit3' ? 6 : 0;
+      const apples = [[-4, -9], [3, -12], [1, -7], [-2, -13], [5, -8], [-5, -12]];
+      for (let i = 0; i < n; i++) {
+        const [dx, dy] = apples[i];
+        p.px(x + dx, y + dy, '#d23c34');
+        p.px(x + dx + 1, y + dy, '#b02a28');
+        p.px(x + dx, y + dy - 1, '#f07a62');
+      }
+    }
+    p.outline();
+    return p.sprite(3, 14);
+  };
+  const looks: OrchardLook[] = ['young', 'bare', 'leafy', 'fruit1', 'fruit2', 'fruit3', 'winter', 'autumn'];
+  return Object.fromEntries(looks.map((l) => [l, build(l)])) as Record<OrchardLook, Sprite>;
 }
 
 /** Fence pieces by neighbour mask (1 = north, 2 = east, 4 = south, 8 = west). */
