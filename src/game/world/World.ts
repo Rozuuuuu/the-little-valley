@@ -68,6 +68,13 @@ export class World {
     c.terrain[this.idx(x, y)] = t;
     c.modified = true;
     c.version++;
+    // Ground images blend across one tile, so neighbours near the edge repaint too.
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const n = this.peekChunk((x + dx) >> CHUNK_SHIFT, (y + dy) >> CHUNK_SHIFT);
+        if (n) n.terrainVersion++;
+      }
+    }
   }
 
   setObj(x: number, y: number, o: ObjectId, amount = OBJECTS[o].amount): void {

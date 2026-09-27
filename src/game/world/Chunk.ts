@@ -16,6 +16,8 @@ export class Chunk {
   modified = false;
   exploredCount = 0;
   version = 0;
+  /** Bumps only when terrain changes (ground image must be repainted). */
+  terrainVersion = 0;
   fogVersion = 0;
 
   constructor(

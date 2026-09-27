@@ -109,3 +109,26 @@ export class IndexedDbStore implements SaveStore {
     });
   }
 }
+
+const EMERGENCY_PREFIX = 'little-valley:emergency:';
+
+/** localStorage-backed emergency copies, used only on page unload. */
+export const localEmergencyStore = {
+  get(slot: string): string | null {
+    try {
+      return localStorage.getItem(EMERGENCY_PREFIX + slot);
+    } catch {
+      return null;
+    }
+  },
+  set(slot: string, text: string): void {
+    localStorage.setItem(EMERGENCY_PREFIX + slot, text);
+  },
+  clear(slot: string): void {
+    try {
+      localStorage.removeItem(EMERGENCY_PREFIX + slot);
+    } catch {
+      // ignore
+    }
+  },
+};

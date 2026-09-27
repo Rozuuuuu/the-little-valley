@@ -294,7 +294,7 @@ function findFarm(sim: Simulation, s: Settler): Task | string | null {
     if (!b.field) continue;
     anyFields = true;
     const a = fieldAction(sim, b.field);
-    if (!a) continue;
+    if (!a || (a === 'harvest' && s.carrying)) continue;
     if (sim.isReserved(`field:${b.id}`, s.id) || sim.isUnreachable(s.id, `b${b.id}`)) continue;
     const bonus = a === 'harvest' ? 10 : a === 'plant' ? 5 : a === 'till' ? 2 : 0;
     const score = dist(s, b.x + 0.5, b.y + 0.5) - bonus;
@@ -374,6 +374,7 @@ function findGather(sim: Simulation, s: Settler): Task | string | null {
     .filter((e) => e.ratio < 1.5)
     .sort((a, b) => a.ratio - b.ratio);
   if (order.length === 0) return 'Stores are well stocked';
+  if (!sim.nearestStorageWithSpace(s.x, s.y)) return 'Storage is full — build a storehouse';
   const home = sim.storages()[0];
   const cx = home ? home.x + 1 : s.x;
   const cy = home ? home.y + 1 : s.y;
@@ -446,9 +447,14 @@ export function assignTask(sim: Simulation, s: Settler): void {
     s.idleReason = '';
   };
 
+  // With full hands a settler can still till, plant, water and build, but not fetch or harvest.
+  let handsFull = false;
   if (s.carrying) {
-    set({ kind: 'deliver', target: null });
-    return;
+    if (sim.nearestStorageWithSpace(s.x, s.y)) {
+      set({ kind: 'deliver', target: null });
+      return;
+    }
+    handsFull = true;
   }
   if (s.hunger < EAT_THRESHOLD) {
     const src = sim.nearestStorageWith('food', s.x, s.y);
@@ -473,6 +479,7 @@ export function assignTask(sim: Simulation, s: Settler): void {
   }
   let reason: string | null = null;
   for (const kind of JOBS[s.job].priorities) {
+    if (handsFull && kind !== 'farm' && kind !== 'build') continue;
     const r = FINDERS[kind](sim, s);
     if (r && typeof r === 'object') {
       set(r);
@@ -480,6 +487,7 @@ export function assignTask(sim: Simulation, s: Settler): void {
     }
     if (typeof r === 'string') reason ??= r;
   }
+  if (handsFull) reason = 'Storage is full — build a storehouse';
   if (s.hunger < EAT_THRESHOLD) reason = 'Hungry, but there is no food in storage';
   s.idleReason = reason ?? 'Nothing to do';
   if (!s.task && sim.rng.chance(0.08)) {
@@ -693,7 +701,9 @@ function runSleep(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'sleep' 
       t.stage = 'sleep';
       return;
     }
-    const r = goTo(sim, s, bGoal(home));
+    // Houses take everyone inside; around the camp each settler gets their own spot by the tents.
+    const spot = home.type === 'house' ? null : campSpot(sim, home, s);
+    const r = goTo(sim, s, spot ? { x: spot.x, y: spot.y, w: 1, h: 1, adjacent: false } : bGoal(home));
     if (r === 'failed') {
       t.stage = 'sleep';
       return;
@@ -707,6 +717,17 @@ function runSleep(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'sleep' 
   s.anim = 'sleep';
   s.tool = null;
   s.energy = Math.min(100, s.energy + 100 / (DAY_TICKS * 0.25));
+}
+
+function campSpot(sim: Simulation, b: Building, s: Settler): { x: number; y: number } | null {
+  const ring: { x: number; y: number }[] = [];
+  for (let y = b.y - 2; y <= b.y + b.h + 1; y++) {
+    for (let x = b.x - 2; x <= b.x + b.w + 1; x++) {
+      const inside = x >= b.x - 1 && x <= b.x + b.w && y >= b.y - 1 && y <= b.y + b.h;
+      if (!inside && sim.walkable(x, y)) ring.push({ x, y });
+    }
+  }
+  return ring.length ? ring[(s.id * 7) % ring.length] : null;
 }
 
 function runMove(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'move' } | { kind: 'wander' }>): void {

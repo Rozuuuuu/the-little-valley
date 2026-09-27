@@ -148,3 +148,41 @@ describe('save manager', () => {
     await expect(mgr.load('nope')).rejects.toThrow(/empty/);
   });
 });
+
+describe('emergency saves', () => {
+  function memEmergency() {
+    const m = new Map<string, string>();
+    return { m, get: (s: string) => m.get(s) ?? null, set: (s: string, t: string) => void m.set(s, t), clear: (s: string) => void m.delete(s) };
+  }
+
+  it('loads a newer emergency copy written on page close, and clears it on the next save', async () => {
+    const em = memEmergency();
+    const mgr = new SaveManager(new MemoryStore(), em);
+    const sim = playedSim();
+    await mgr.save('slot', sim, extras);
+    run(sim, 200);
+    const tick = sim.tick;
+    await new Promise((r) => setTimeout(r, 5));
+    expect(mgr.saveEmergency('slot', sim, extras)).toBe(true);
+    const res = await mgr.load('slot');
+    expect(res.sim.tick).toBe(tick);
+    await mgr.save('slot', res.sim, extras);
+    expect(em.m.size).toBe(0);
+  });
+
+  it('ignores an emergency copy older than the regular save', async () => {
+    const em = memEmergency();
+    const mgr = new SaveManager(new MemoryStore(), em);
+    const sim = playedSim();
+    mgr.saveEmergency('slot', sim, extras);
+    const oldTick = sim.tick;
+    await new Promise((r) => setTimeout(r, 5));
+    run(sim, 100);
+    // Regular save lands after, but simulate the emergency copy lingering.
+    const text = em.m.get('slot')!;
+    await mgr.save('slot', sim, extras);
+    em.m.set('slot', text);
+    const res = await mgr.load('slot');
+    expect(res.sim.tick).toBe(oldTick + 100);
+  });
+});

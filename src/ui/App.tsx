@@ -1,0 +1,261 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AudioEngine } from '../audio/AudioEngine';
+import { seedFromString } from '../game/core/rng';
+import { SaveManager } from '../game/save/SaveManager';
+import { IndexedDbStore, localEmergencyStore, MemoryStore } from '../game/save/storage';
+import { createNewGame } from '../game/sim/newGame';
+import { GameController } from '../engine/GameController';
+import { loadSettings } from '../engine/settings';
+import { useStore } from '../engine/store';
+import { InputController } from '../input/InputController';
+import { Camera } from '../render/Camera';
+import { Renderer } from '../render/Renderer';
+import { SpriteBank } from '../render/sprites';
+import { GameContext, useGame, type GameContextValue } from './context';
+import { BuildDock, HoverInfo, Inspector, PausedBanner, SidePanel, Toasts, TopBar, Tutorial } from './Hud';
+import { HelpModal, LoadModal, NewWorldModal, PauseMenu, SettingsModal } from './Modals';
+
+const ATTRACT_SEED = 20260927;
+
+type Overlay = null | 'pause' | 'settings' | 'help' | 'new' | 'load';
+
+function makeStore() {
+  try {
+    if (typeof indexedDB !== 'undefined') return new IndexedDbStore();
+  } catch {
+    // fall through
+  }
+  return new MemoryStore();
+}
+
+export function App() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [ctx, setCtx] = useState<GameContextValue | null>(null);
+  const [screen, setScreen] = useState<'title' | 'game'>('title');
+  const [overlay, setOverlay] = useState<Overlay>(null);
+  const [buildOpen, setBuildOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [lastSlot, setLastSlot] = useState<string | null>(null);
+  const screenRef = useRef(screen);
+  screenRef.current = screen;
+
+  // One-time engine setup.
+  useEffect(() => {
+    const canvas = canvasRef.current!;
+    const sprites = new SpriteBank();
+    const camera = new Camera();
+    const renderer = new Renderer(canvas, sprites, camera);
+    const audio = new AudioEngine();
+    const settings = loadSettings();
+    audio.setVolumes(settings);
+    const game = new GameController(renderer, camera, audio, new SaveManager(makeStore(), localEmergencyStore), settings);
+    game.onFatal = (e) => setError(`Something went wrong: ${e instanceof Error ? e.message : String(e)}. Your last save is safe; reload the page to continue.`);
+    const input = new InputController(canvas, game);
+    if (import.meta.env.DEV) (window as unknown as { __game: GameController }).__game = game;
+
+    const resize = () => {
+      const dpr = window.devicePixelRatio || 1;
+      renderer.resize(Math.round(canvas.clientWidth * dpr), Math.round(canvas.clientHeight * dpr));
+    };
+    resize();
+    const ro = new ResizeObserver(resize);
+    ro.observe(canvas);
+
+    game.attract = true;
+    game.start(createNewGame(ATTRACT_SEED), { slot: '', name: '', createdAt: 0 }, { tutorial: false });
+    game.speed = 2;
+
+    const onVisibility = () => {
+      if (document.hidden) {
+        if (screenRef.current === 'game') {
+          game.emergencySave();
+          void game.save(false);
+        }
+        audio.suspend();
+      } else audio.resume();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    const onUnload = () => {
+      if (screenRef.current === 'game') game.emergencySave();
+    };
+    window.addEventListener('pagehide', onUnload);
+    setCtx({ game, sprites });
+    void game.saves.list().then((l) => setLastSlot(l[0]?.slot ?? null), () => {});
+
+    return () => {
+      ro.disconnect();
+      input.dispose();
+      game.stop();
+      audio.dispose();
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', onUnload);
+    };
+  }, []);
+
+  const game = ctx?.game;
+
+  // Menus pause the world while they are open.
+  useEffect(() => {
+    if (!game) return;
+    game.menuOpen = screen === 'game' && (overlay === 'pause' || overlay === 'settings' || overlay === 'help');
+  }, [game, overlay, screen]);
+
+  const closeOverlay = useCallback(() => setOverlay(null), []);
+
+  const startNew = async (name: string, seedText: string, tutorial: boolean) => {
+    if (!game) return;
+    game.audio.unlock();
+    const seed = seedFromString(seedText);
+    const slot = `valley-${Date.now().toString(36)}`;
+    game.attract = false;
+    game.start(createNewGame(seed), { slot, name, createdAt: Date.now() }, { tutorial });
+    setOverlay(null);
+    setScreen('game');
+    setLastSlot(slot);
+    await game.save(false);
+  };
+
+  const load = async (slot: string) => {
+    if (!game) return;
+    game.audio.unlock();
+    try {
+      const res = await game.saves.load(slot);
+      game.attract = false;
+      game.start(res.sim, { slot, name: res.save.meta.name, createdAt: res.save.meta.createdAt }, {
+        tutorial: false,
+        tutorialState: res.save.tutorial,
+        view: res.save.view,
+      });
+      setOverlay(null);
+      setScreen('game');
+      setLastSlot(slot);
+      if (res.usedBackup) game.toast(`The latest save was damaged (${res.problem}). Loaded the backup from just before it.`, 'warn');
+      else game.toast(`Welcome back to ${res.save.meta.name}.`, 'good');
+    } catch (e) {
+      game.toast(`Couldn't load that valley: ${e instanceof Error ? e.message : String(e)}`, 'bad');
+    }
+  };
+
+  const quitToTitle = async () => {
+    if (!game) return;
+    await game.save(false);
+    setOverlay(null);
+    setBuildOpen(false);
+    setScreen('title');
+    game.attract = true;
+    game.start(createNewGame(ATTRACT_SEED), { slot: '', name: '', createdAt: 0 }, { tutorial: false });
+    game.speed = 2;
+    void game.saves.list().then((l) => setLastSlot(l[0]?.slot ?? null));
+  };
+
+  return (
+    <>
+      <canvas ref={canvasRef} className="game-canvas" tabIndex={0} aria-label="The valley" />
+      {ctx && (
+        <GameContext.Provider value={ctx}>
+          <InputBridge
+            screen={screen}
+            overlay={overlay}
+            setOverlay={setOverlay}
+            buildOpen={buildOpen}
+            setBuildOpen={setBuildOpen}
+          />
+          {screen === 'title' && !overlay && <Title hasSave={!!lastSlot} onContinue={() => lastSlot && load(lastSlot)} onNew={() => setOverlay('new')} onLoad={() => setOverlay('load')} onSettings={() => setOverlay('settings')} />}
+          {screen === 'game' && (
+            <>
+              <TopBar onMenu={() => setOverlay('pause')} />
+              <Toasts />
+              <PausedBanner />
+              <Tutorial />
+              <SidePanel />
+              <Inspector />
+              <BuildDock open={buildOpen} setOpen={setBuildOpen} />
+              <HoverInfo />
+            </>
+          )}
+          {overlay === 'pause' && <PauseMenu onClose={closeOverlay} onSettings={() => setOverlay('settings')} onHelp={() => setOverlay('help')} onQuit={quitToTitle} />}
+          {overlay === 'settings' && <SettingsModal onClose={() => setOverlay(screen === 'game' ? 'pause' : null)} />}
+          {overlay === 'help' && <HelpModal onClose={() => setOverlay(screen === 'game' ? 'pause' : null)} />}
+          {overlay === 'new' && <NewWorldModal onClose={closeOverlay} onCreate={startNew} />}
+          {overlay === 'load' && <LoadModal onClose={closeOverlay} onLoad={load} />}
+          {screen === 'title' && <Toasts />}
+        </GameContext.Provider>
+      )}
+      {error && (
+        <div className="scrim">
+          <div className="panel modal">
+            <h2>The valley hit a snag</h2>
+            <div className="error-box">{error}</div>
+            <div className="buttons">
+              <button className="btn primary" onClick={() => location.reload()}>
+                Reload
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+/** Wires keys that open React UI (build menu, help, Esc menu) into the input layer. */
+function InputBridge({ screen, overlay, setOverlay, buildOpen, setBuildOpen }: { screen: string; overlay: Overlay; setOverlay: (o: Overlay) => void; buildOpen: boolean; setBuildOpen: (b: boolean) => void }) {
+  const ctx = useGame();
+  const snap = useStore(ctx.game.ui);
+  useEffect(() => {
+    const game = ctx.game;
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) return;
+      if (screen !== 'game' || overlay) return;
+      const b = game.settings.bindings;
+      if (b.build.includes(e.code)) {
+        e.preventDefault();
+        setBuildOpen(!buildOpen);
+        game.audio.play(buildOpen ? 'uiClose' : 'uiOpen');
+      } else if (b.help.includes(e.code)) {
+        e.preventDefault();
+        setOverlay('help');
+      } else if (b.cancel.includes(e.code)) {
+        if (game.mode.kind !== 'select' || game.selected.size || game.selectedBuildings.size) return;
+        if (buildOpen) setBuildOpen(false);
+        else setOverlay('pause');
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [ctx, screen, overlay, buildOpen, setBuildOpen, setOverlay]);
+  const canvas = document.querySelector('.game-canvas');
+  if (canvas) canvas.className = `game-canvas mode-${snap.mode.kind}`;
+  return null;
+}
+
+
+function Title({ hasSave, onContinue, onNew, onLoad, onSettings }: { hasSave: boolean; onContinue: () => void; onNew: () => void; onLoad: () => void; onSettings: () => void }) {
+  return (
+    <div className="title-screen">
+      <h1 className="logo">
+        Little
+        <span className="second">Valley</span>
+      </h1>
+      <p className="tagline">Clear a meadow, plant the first rows, and grow a camp into a village one season at a time.</p>
+      <div className="menu">
+        {hasSave && (
+          <button className="btn primary" onClick={onContinue} autoFocus>
+            Continue
+          </button>
+        )}
+        <button className={`btn${hasSave ? '' : ' primary'}`} onClick={onNew} autoFocus={!hasSave}>
+          New valley
+        </button>
+        <button className="btn" onClick={onLoad}>
+          Load a valley
+        </button>
+        <button className="btn" onClick={onSettings}>
+          Settings
+        </button>
+      </div>
+      <div className="credit">All art and sound are generated in code. Saved in this browser.</div>
+    </div>
+  );
+}

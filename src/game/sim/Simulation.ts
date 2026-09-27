@@ -294,9 +294,19 @@ export class Simulation implements PathGrid {
     if (this.tick % 10 === 0) updateWorkshops(this);
     if (this.tick % 50 === 0) {
       updatePopulation(this);
+      this.checkStorage();
       checkMilestones(this);
       this.pruneUnreachable();
     }
+  }
+
+  private storageWarned = false;
+  /** Warns once when storage fills up, and again only after it has had room. */
+  private checkStorage(): void {
+    const { used, capacity } = this.totalCapacity();
+    const full = capacity > 0 && used >= capacity;
+    if (full && !this.storageWarned) this.toast('Storage is full. Build a storehouse so settlers can drop off their goods.', 'warn');
+    this.storageWarned = full || (this.storageWarned && used > capacity * 0.9);
   }
 
   private pruneUnreachable(): void {

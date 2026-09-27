@@ -42,7 +42,7 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     id: 'camp', name: 'Camp', category: 'housing',
     description: 'Tents, a campfire and a modest stockpile. Where every valley story begins.',
     size: { w: 3, h: 2 }, cost: {}, work: 0, placement: 'land', blocks: true, buildable: false,
-    housing: 5, storage: 150, light: 6, reveal: 14,
+    housing: 5, storage: 250, light: 6, reveal: 14,
   },
   house: {
     id: 'house', name: 'House', category: 'housing',

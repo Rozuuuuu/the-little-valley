@@ -23,8 +23,33 @@ function parse(text: string): { sim: Simulation; save: SaveFile } {
   return { save, sim: deserializeSim(save) };
 }
 
+/**
+ * A small synchronous store (localStorage in the browser). Closing a tab can
+ * cut an asynchronous IndexedDB write short, so on page hide the game also
+ * writes an emergency copy here; loading picks whichever copy is newer.
+ */
+export interface EmergencyStore {
+  get(slot: string): string | null;
+  set(slot: string, text: string): void;
+  clear(slot: string): void;
+}
+
 export class SaveManager {
-  constructor(readonly store: SaveStore) {}
+  constructor(
+    readonly store: SaveStore,
+    readonly emergency: EmergencyStore | null = null,
+  ) {}
+
+  /** Synchronous last-chance save for page unload. Returns false if it could not be written. */
+  saveEmergency(slot: string, sim: Simulation, extras: SerializeExtras): boolean {
+    if (!this.emergency) return false;
+    try {
+      this.emergency.set(slot, JSON.stringify(serializeSim(sim, extras)));
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
   list(): Promise<SlotMeta[]> {
     return this.store.list();
@@ -40,11 +65,22 @@ export class SaveManager {
       slot, name: file.meta.name, seed: file.meta.seed, savedAt: file.meta.savedAt,
       day: file.meta.day, population: file.meta.population, milestone: file.meta.milestone,
     });
+    this.emergency?.clear(slot);
     return file;
   }
 
   async load(slot: string): Promise<LoadResult> {
     const data = await this.store.read(slot);
+    const em = this.emergency?.get(slot);
+    if (em) {
+      try {
+        const e = parse(em);
+        const currentSavedAt = data.current ? (JSON.parse(data.current) as SaveFile).meta.savedAt : 0;
+        if (e.save.meta.savedAt > currentSavedAt) return { ...e, usedBackup: false };
+      } catch {
+        // A damaged emergency copy is ignored; the regular save still loads.
+      }
+    }
     if (!data.current && !data.backup) throw new SaveError('That save slot is empty');
     let problem: string | undefined;
     if (data.current) {
@@ -65,6 +101,7 @@ export class SaveManager {
   }
 
   remove(slot: string): Promise<void> {
+    this.emergency?.clear(slot);
     return this.store.remove(slot);
   }
 }
