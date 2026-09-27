@@ -78,6 +78,31 @@ export const MIGRATIONS: Record<number, (save: AnyRecord) => AnyRecord> = {
       world: { ...world, genVersion: 1 },
     };
   },
+
+  /**
+   * v3 was Milestone 2. v4 adds settlements: the camp becomes the first
+   * settlement (named after the valley), every settler belongs to it, and
+   * stores start without stock targets. Seasons need no saved state: they
+   * follow the calendar day.
+   */
+  3: (v3) => {
+    const sim = v3.sim as AnyRecord;
+    const buildings = (sim.buildings as AnyRecord[] | undefined) ?? [];
+    const camp = buildings.find((b) => b.type === 'camp');
+    const campId = camp ? (camp.id as number) : null;
+    const meta = v3.meta as AnyRecord | undefined;
+    return {
+      ...v3,
+      version: 4,
+      sim: {
+        ...sim,
+        settlers: ((sim.settlers as AnyRecord[] | undefined) ?? []).map((s) => ({ ...s, settlementId: campId })),
+        buildings: buildings.map((b) => ({ ...b, wants: {} })),
+        settlements: campId !== null ? [{ id: campId, name: typeof meta?.name === 'string' && meta.name ? meta.name : 'Home' }] : [],
+        stats: { ...emptyStats(), ...(sim.stats as AnyRecord | undefined) },
+      },
+    };
+  },
 };
 
 export function migrate(raw: unknown): SaveFile {
@@ -134,6 +159,7 @@ export function validateSave(save: AnyRecord): void {
     }
     check(s.areaId === null || isInt(s.areaId), `settler ${s.id} work area`);
     check(s.priorities === null || (Array.isArray(s.priorities) && (s.priorities as unknown[]).every((k) => WORK_KINDS.includes(k as never))), `settler ${s.id} work order`);
+    check(s.settlementId === null || isInt(s.settlementId), `settler ${s.id} settlement`);
   }
   check(Array.isArray(sim.buildings), 'building list');
   for (const b of sim.buildings as AnyRecord[]) {
@@ -144,6 +170,7 @@ export function validateSave(save: AnyRecord): void {
     checkInventory(b.delivered, `building ${b.id} delivered`);
     checkInventory(b.inventory, `building ${b.id}`);
     check(Array.isArray(b.workers) && (b.workers as unknown[]).every(isInt), `building ${b.id} workers`);
+    checkInventory(b.wants, `building ${b.id} stock targets`);
     if (BUILDINGS[b.type as keyof typeof BUILDINGS].span) check(isInt(b.w) && isInt(b.h) && (b.w as number) >= 1 && (b.h as number) >= 1, `building ${b.id} size`);
     if (b.field) {
       const f = b.field as AnyRecord;
@@ -161,6 +188,7 @@ export function validateSave(save: AnyRecord): void {
     check([a.x0, a.y0, a.x1, a.y1].every(isInt), 'work area bounds');
   }
   check(Array.isArray(sim.chronicle), 'chronicle');
+  check(Array.isArray(sim.settlements) && (sim.settlements as AnyRecord[]).every((s) => isInt(s.id) && typeof s.name === 'string'), 'settlements');
   check(sim.session === null || (typeof sim.session === 'object' && isInt((sim.session as AnyRecord).startTick)), 'session');
   const world = save.world as AnyRecord;
   check(world && Array.isArray(world.chunks), 'world');

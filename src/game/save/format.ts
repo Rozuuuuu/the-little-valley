@@ -4,13 +4,13 @@ import type { JobId, WorkKind } from '../data/jobs';
 import type { MilestoneId } from '../data/progression';
 import type { RecipeId } from '../data/recipes';
 import type { Inventory, ResourceId } from '../data/resources';
-import type { Appearance, ChronicleEntry, Facing, SessionMark, Stats, WorkArea } from '../sim/types';
+import type { Appearance, ChronicleEntry, Facing, SessionMark, Settlement, Stats, WorkArea } from '../sim/types';
 
 /**
  * Save file format. Bump SAVE_VERSION whenever this shape changes and add a
  * migration in migrations.ts so older worlds keep loading.
  */
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 export interface SaveMeta {
   name: string;
@@ -48,6 +48,7 @@ export interface SavedSettler {
   focus: { res: ResourceId; x: number; y: number; until: number } | null;
   areaId: number | null;
   priorities: WorkKind[] | null;
+  settlementId: number | null;
 }
 
 export interface SavedBuilding {
@@ -66,6 +67,8 @@ export interface SavedBuilding {
   w?: number;
   h?: number;
   workers: number[];
+  /** Storage stock targets. */
+  wants: Inventory;
 }
 
 export interface SaveView {
@@ -113,7 +116,14 @@ export interface SaveFileV3 {
   tutorial?: { step: number; done: boolean };
 }
 
-export type SaveFile = SaveFileV3;
+export interface SaveFileV4 extends Omit<SaveFileV3, 'version' | 'sim'> {
+  version: 4;
+  sim: SaveFileV3['sim'] & {
+    settlements: Settlement[];
+  };
+}
+
+export type SaveFile = SaveFileV4;
 
 export class SaveError extends Error {
   constructor(message: string) {

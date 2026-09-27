@@ -1,5 +1,6 @@
 import { DAY_TICKS } from '../core/constants';
-import { CROPS } from '../data/crops';
+import { CROPS, type CropId } from '../data/crops';
+import { seasonOf } from './seasons';
 import { TERRAIN } from '../world/tiles';
 import type { Simulation } from './Simulation';
 import type { Building, FieldAction, FieldState } from './types';
@@ -19,9 +20,10 @@ export function fieldAction(sim: Simulation, f: FieldState): FieldAction | null 
     case 'wild':
       return 'till';
     case 'tilled':
-      return f.crop ? 'plant' : null;
+      // Nothing is sown in winter; tilled fields wait for spring.
+      return f.crop && seasonOf(sim).def.planting ? 'plant' : null;
     case 'growing':
-      return !sim.weather.raining && f.moisture < WATER_THRESHOLD ? 'water' : null;
+      return !sim.weather.raining && seasonOf(sim).def.growth > 0 && f.moisture < WATER_THRESHOLD ? 'water' : null;
     case 'ripe':
       return 'harvest';
   }
@@ -40,15 +42,23 @@ export function fieldFertility(sim: Simulation, b: Building): number {
   return TERRAIN[sim.world.terrain(b.x, b.y)].fertility;
 }
 
+/** Growth multiplier for a crop right now: the season times the crop's own preference. */
+export function seasonalGrowth(sim: Simulation, crop: CropId): number {
+  const s = seasonOf(sim);
+  return s.def.growth * (CROPS[crop].seasons?.[s.id] ?? 1);
+}
+
 export function updateFields(sim: Simulation, dt: number): void {
-  const raining = sim.weather.raining;
+  const season = seasonOf(sim).def;
+  // Snow in winter does not water anything (nothing grows); rain does.
+  const raining = sim.weather.raining && season.growth > 0;
   for (const b of sim.buildings.values()) {
     const f = b.field;
     if (!f) continue;
     if (raining) f.moisture = 1;
-    else f.moisture = Math.max(0, f.moisture - DRYING_RATE * dt);
+    else f.moisture = Math.max(0, f.moisture - DRYING_RATE * season.drying * dt);
     if (f.state !== 'growing' || !f.crop) continue;
-    const rate = (f.moisture > DRY_LEVEL ? 1 : DRY_GROWTH) * fieldFertility(sim, b);
+    const rate = (f.moisture > DRY_LEVEL ? 1 : DRY_GROWTH) * fieldFertility(sim, b) * seasonalGrowth(sim, f.crop);
     f.growth += dt * rate;
     if (f.growth >= CROPS[f.crop].growTicks) {
       f.state = 'ripe';
@@ -93,10 +103,10 @@ export function updateWeather(sim: Simulation): void {
   if (w.raining) {
     w.raining = false;
     w.nextChange = sim.tick + Math.round(DAY_TICKS * sim.rng.range(0.7, 1.6));
-  } else if (sim.rng.chance(0.6)) {
+  } else if (sim.rng.chance(seasonOf(sim).def.rainChance)) {
     w.raining = true;
     w.nextChange = sim.tick + Math.round(sim.rng.range(300, 700));
-    sim.toast('A gentle rain begins. The fields drink it up.', 'info');
+    sim.toast(seasonOf(sim).id === 'winter' ? 'Snow begins to fall softly over the valley.' : 'A gentle rain begins. The fields drink it up.', 'info');
   } else {
     w.nextChange = sim.tick + Math.round(DAY_TICKS * sim.rng.range(0.4, 0.9));
   }

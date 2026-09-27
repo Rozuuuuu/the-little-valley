@@ -1,6 +1,7 @@
 import { BUILDINGS } from '../data/buildings';
 import { MILESTONES, MILESTONE_ORDER, type MilestoneId, type Requirement } from '../data/progression';
 import { builtCount, permanentBeds } from './buildings';
+import { anyRoadLink, residentsOfSettlement } from './settlements';
 import type { Simulation } from './Simulation';
 
 export interface RequirementProgress {
@@ -46,6 +47,14 @@ export function requirementProgress(sim: Simulation, req: Requirement): Requirem
       const options = req.options.map((o) => requirementProgress(sim, o));
       current = options.filter((o) => o.done).length;
       return { label: req.label, current: Math.min(current, req.count), target: req.count, done: current >= req.count, options };
+    }
+    case 'settlements':
+      current = sim.settlements.filter((st) => residentsOfSettlement(sim, st.id).length >= req.minResidents).length;
+      label = `Have ${req.count} settlements with ${req.minResidents}+ settlers each`;
+      break;
+    case 'roadLink': {
+      const linked = anyRoadLink(sim);
+      return { label: 'Join two settlements with a road', current: linked ? 1 : 0, target: 1, done: linked };
     }
   }
   return { label, current: Math.min(current, req.count), target: req.count, done: current >= req.count };

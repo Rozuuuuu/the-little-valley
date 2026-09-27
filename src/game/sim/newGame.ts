@@ -13,6 +13,7 @@ export function createNewGame(seed: number, genVersion = CURRENT_GEN): Simulatio
   const camp = placeBuilding(sim, 'camp', -1, -1);
   completeBuilding(sim, camp, true);
   camp.inventory = { ...STARTING_GOODS };
+  sim.settlements = [{ id: camp.id, name: 'Home' }];
   const spots = [[-1, 2], [0, 2], [1, 2], [-2, 1], [2, 1]];
   for (let i = 0; i < STARTING_SETTLERS; i++) {
     const [x, y] = spots[i];

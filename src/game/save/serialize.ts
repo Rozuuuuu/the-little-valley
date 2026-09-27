@@ -65,12 +65,12 @@ export function serializeSim(sim: Simulation, extras: SerializeExtras): SaveFile
     carrying: s.carrying ? { ...s.carrying } : null,
     hunger: s.hunger, energy: s.energy, homeId: s.homeId, appearance: { ...s.appearance },
     focus: s.focus ? { res: s.focus.res, x: s.focus.x, y: s.focus.y, until: s.focus.until } : null,
-    areaId: s.areaId, priorities: s.priorities ? [...s.priorities] : null,
+    areaId: s.areaId, priorities: s.priorities ? [...s.priorities] : null, settlementId: s.settlementId,
   }));
   const buildings: SavedBuilding[] = [...sim.buildings.values()].map((b) => {
     const sb: SavedBuilding = {
       id: b.id, type: b.type, x: b.x, y: b.y, built: b.built, progress: b.progress,
-      delivered: { ...b.delivered }, inventory: { ...b.inventory }, placedTick: b.placedTick, workers: [...b.workers],
+      delivered: { ...b.delivered }, inventory: { ...b.inventory }, placedTick: b.placedTick, workers: [...b.workers], wants: { ...b.wants },
     };
     if (BUILDINGS[b.type].span) {
       sb.w = b.w;
@@ -95,6 +95,7 @@ export function serializeSim(sim: Simulation, extras: SerializeExtras): SaveFile
       reached: [...sim.progression.reached],
       weather: { ...sim.weather },
       workAreas: sim.workAreas.map((a) => ({ ...a })),
+      settlements: sim.settlements.map((s) => ({ ...s })),
       chronicle: sim.chronicle.map((c) => ({ ...c })),
       session: sim.session ? { ...sim.session, startStats: { ...sim.session.startStats } } : null,
     },
@@ -119,6 +120,7 @@ export function deserializeSim(save: SaveFile): Simulation {
   sim.progression = { reached: [...d.reached] };
   sim.weather = { ...d.weather };
   sim.workAreas = d.workAreas.map((a) => ({ ...a }));
+  sim.settlements = d.settlements.map((s) => ({ ...s }));
   sim.chronicle = d.chronicle.map((c) => ({ ...c }));
   sim.session = d.session ? { ...d.session, startStats: { ...sim.stats, ...d.session.startStats } } : null;
 
@@ -145,7 +147,7 @@ export function deserializeSim(save: SaveFile): Simulation {
     const b: Building = {
       id: sb.id, type: sb.type, x: sb.x, y: sb.y, w: def.span ? sb.w ?? 1 : def.size.w, h: def.span ? sb.h ?? 1 : def.size.h,
       built: sb.built, progress: sb.progress, delivered: { ...sb.delivered }, incoming: {},
-      inventory: { ...sb.inventory }, reservedOut: {}, placedTick: sb.placedTick, workers: [...sb.workers],
+      inventory: { ...sb.inventory }, reservedOut: {}, placedTick: sb.placedTick, workers: [...sb.workers], wants: { ...sb.wants },
     };
     if (sb.field) b.field = { ...sb.field };
     if (sb.workshop) b.workshop = { ...sb.workshop, status: '' };
@@ -160,7 +162,7 @@ export function deserializeSim(save: SaveFile): Simulation {
       capacity: 10, hunger: ss.hunger, energy: ss.energy, homeId: ss.homeId, appearance: { ...ss.appearance },
       task: null, focus: ss.focus ? { kind: 'gather', ...ss.focus } : null, idleReason: '', hidden: false,
       path: null, pathIndex: 0, goalKey: null, repaths: 0, lastNotice: -9999, arrivedTick: 0,
-      areaId: ss.areaId, priorities: ss.priorities ? [...ss.priorities] : null, insideId: null, restNote: '', nextThink: 0,
+      areaId: ss.areaId, priorities: ss.priorities ? [...ss.priorities] : null, insideId: null, restNote: '', nextThink: 0, settlementId: ss.settlementId,
     };
     sim.settlers.push(s);
   }
@@ -170,6 +172,8 @@ export function deserializeSim(save: SaveFile): Simulation {
   const ids = new Set(sim.settlers.map((s) => s.id));
   for (const b of sim.buildings.values()) b.workers = b.workers.filter((id) => ids.has(id)).slice(0, BUILDINGS[b.type].maxWorkers ?? 0);
   for (const s of sim.settlers) if (s.areaId !== null && !sim.area(s.areaId)) s.areaId = null;
+  sim.settlements = sim.settlements.filter((st) => sim.buildings.has(st.id));
+  for (const s of sim.settlers) if (s.settlementId !== null && !sim.settlements.some((st) => st.id === s.settlementId)) s.settlementId = sim.settlements[0]?.id ?? null;
   assignHomes(sim);
   return sim;
 }

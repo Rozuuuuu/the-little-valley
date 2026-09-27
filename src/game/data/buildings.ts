@@ -33,6 +33,8 @@ export interface BuildingDef {
   span?: { min: number; max: number; costPerTile: Inventory; workPerTile: number };
   /** Finished buildings of this type can't be demolished. */
   permanent?: boolean;
+  /** Founds a settlement when finished; must be this many tiles from any other settlement centre. */
+  settlementCenter?: { minSpacing: number };
   recipes?: readonly RecipeId[];
   /** Night light radius in tiles. */
   light?: number;
@@ -46,14 +48,14 @@ export interface BuildingDef {
 
 export type BuildingId =
   | 'camp' | 'house' | 'cottage' | 'field' | 'storehouse' | 'workshop' | 'mill' | 'bakery'
-  | 'path' | 'bridge' | 'stoneBridge' | 'fence' | 'flowerbed' | 'lamp' | 'bench' | 'market';
+  | 'path' | 'bridge' | 'stoneBridge' | 'fence' | 'flowerbed' | 'lamp' | 'bench' | 'market' | 'waystation';
 
 export const BUILDINGS: Record<BuildingId, BuildingDef> = {
   camp: {
     id: 'camp', name: 'Camp', category: 'housing',
     description: 'Tents, a campfire and a modest stockpile. Where every valley story begins.',
     size: { w: 3, h: 2 }, cost: {}, work: 0, placement: 'land', blocks: true, buildable: false,
-    housing: 5, temporaryBeds: true, storage: 250, light: 6, reveal: 14,
+    housing: 5, temporaryBeds: true, storage: 250, light: 6, reveal: 14, settlementCenter: { minSpacing: 24 },
   },
   house: {
     id: 'house', name: 'House', category: 'housing',
@@ -95,6 +97,13 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     description: 'A roomy family home with 4 beds.',
     size: { w: 3, h: 2 }, cost: { wood: 30, stone: 20, planks: 10 }, work: 420, placement: 'land', blocks: true, buildable: true,
     housing: 4, light: 3, reveal: 6, unlock: 'village',
+  },
+  waystation: {
+    id: 'waystation', name: 'Waystation', category: 'project',
+    description: 'A hall that founds a new settlement: bedrolls for 4, a small store and a lantern. Must stand at least 24 tiles from any other settlement.',
+    size: { w: 3, h: 2 }, cost: { wood: 40, stone: 30, planks: 10 }, work: 480, placement: 'land', blocks: true, buildable: true,
+    housing: 4, temporaryBeds: true, storage: 150, light: 5, reveal: 14, maxBuilders: 3, permanent: true, unlock: 'village',
+    settlementCenter: { minSpacing: 24 },
   },
   stoneBridge: {
     id: 'stoneBridge', name: 'Stone Bridge', category: 'project',

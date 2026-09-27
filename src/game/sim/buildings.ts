@@ -9,6 +9,8 @@ import { O, OBJECTS, T, TERRAIN } from '../world/tiles';
 import { addInv, formatInv, hasAll, invEntries } from './inventory';
 import { findPath } from './pathfinding';
 import { canDo } from './priorities';
+import { seasonOf } from './seasons';
+import { foundSettlement, settlementAt, spacingProblem } from './settlements';
 import type { Simulation } from './Simulation';
 import type { Building } from './types';
 
@@ -88,6 +90,11 @@ export function checkPlacement(sim: Simulation, type: BuildingId, x: number, y: 
       tiles.push({ x: x + dx, y: y + dy, ok: !p });
     }
   }
+  const spacing = spacingProblem(sim, type, x, y);
+  if (spacing) {
+    reason ??= spacing;
+    for (const t of tiles) t.ok = false;
+  }
   return { ok: !reason, reason, tiles };
 }
 
@@ -157,7 +164,7 @@ export function placeBuilding(sim: Simulation, type: BuildingId, x: number, y: n
   const b: Building = {
     id: sim.allocId(), type, x, y, w: size?.w ?? def.size.w, h: size?.h ?? def.size.h,
     built: false, progress: 0, delivered: {}, incoming: {}, inventory: {}, reservedOut: {},
-    placedTick: sim.tick, workers: [],
+    placedTick: sim.tick, workers: [], wants: {},
   };
   sim.buildings.set(b.id, b);
   for (let dy = 0; dy < b.h; dy++) {
@@ -214,6 +221,7 @@ export function completeBuilding(sim: Simulation, b: Building, silent = false): 
   if (def.recipes) {
     b.workshop = { recipe: def.recipes[0], progress: 0, paused: false, status: '' };
   }
+  if (def.settlementCenter && b.type !== 'camp' && !sim.settlements.some((s) => s.id === b.id) && !silent) foundSettlement(sim, b);
   if (def.reveal) sim.world.reveal(cx, cy, def.reveal);
   if (def.housing) assignHomes(sim);
   sim.mapChanged();
@@ -346,14 +354,21 @@ export function bedReachable(sim: Simulation, b: Building): boolean {
  * A free bed for a newcomer: a real home first, the camp's bedrolls last.
  * Returns null when every reachable bed is taken.
  */
-export function findFreeBed(sim: Simulation, counts = residentCounts(sim), permanentOnly = false): Building | null {
+export function findFreeBed(sim: Simulation, counts = residentCounts(sim), permanentOnly = false, preferSettlement: number | null = null): Building | null {
   let best: Building | null = null;
+  let bestScore = -1;
   for (const b of sim.buildings.values()) {
     const beds = bedsOf(b);
     if (beds === 0 || (counts.get(b.id) ?? 0) >= beds) continue;
     if (permanentOnly && !isPermanentHome(b)) continue;
     if (!bedReachable(sim, b)) continue;
-    if (!best || (isPermanentHome(b) && !isPermanentHome(best))) best = b;
+    // Real beds first, then beds in the settler's own settlement.
+    const home = preferSettlement !== null && settlementAt(sim, b.x + b.w / 2, b.y + b.h / 2)?.id === preferSettlement;
+    const score = (isPermanentHome(b) ? 2 : 0) + (home ? 1 : 0);
+    if (score > bestScore) {
+      bestScore = score;
+      best = b;
+    }
   }
   return best;
 }
@@ -375,12 +390,15 @@ export function assignHomes(sim: Simulation): number {
     }
     counts.set(s.homeId, n + 1);
   }
-  // Upgrade anyone without a real home into a free house bed.
+  // Upgrade anyone without a real home in their own settlement into a free house bed there.
+  const multi = sim.settlements.length > 1;
+  const inOwn = (s: { settlementId: number | null }, b: Building) =>
+    !multi || s.settlementId === null || settlementAt(sim, b.x + b.w / 2, b.y + b.h / 2)?.id === s.settlementId;
   for (const s of sim.settlers) {
     const home = s.homeId !== null ? sim.buildings.get(s.homeId) : undefined;
-    if (home && isPermanentHome(home)) continue;
-    const bed = findFreeBed(sim, counts, true);
-    if (!bed) break;
+    if (home && isPermanentHome(home) && inOwn(s, home)) continue;
+    const bed = findFreeBed(sim, counts, true, s.settlementId);
+    if (!bed || !inOwn(s, bed)) continue;
     if (home) counts.set(home.id, (counts.get(home.id) ?? 1) - 1);
     s.homeId = bed.id;
     counts.set(bed.id, (counts.get(bed.id) ?? 0) + 1);
@@ -388,7 +406,7 @@ export function assignHomes(sim: Simulation): number {
   let homeless = 0;
   for (const s of sim.settlers) {
     if (s.homeId !== null) continue;
-    const bed = findFreeBed(sim, counts);
+    const bed = findFreeBed(sim, counts, false, s.settlementId);
     if (!bed) {
       homeless++;
       continue;
@@ -486,6 +504,11 @@ export function updateRegrowth(sim: Simulation): void {
     sim.regrowth.delete(k);
     if (sim.occupancy.has(k)) continue;
     let to = r.to;
+    // Berry bushes wait for the thaw.
+    if (to === O.Berry && !seasonOf(sim).def.berriesRegrow) {
+      sim.regrowth.set(k, { to: r.to, at: sim.tick + 400 });
+      continue;
+    }
     if (to === O.Oak && hash01(x, y, sim.seed ^ 0x7ee) < 0.35) to = O.Pine;
     // Never grow a blocking object on top of a settler.
     if (OBJECTS[to].blocks && sim.settlers.some((s) => Math.floor(s.x) === x && Math.floor(s.y) === y)) {

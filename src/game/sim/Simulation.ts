@@ -8,10 +8,12 @@ import { TERRAIN } from '../world/tiles';
 import { World } from '../world/World';
 import type { PathGrid } from './pathfinding';
 import type {
-  Appearance, Building, ChronicleEntry, ProgressionState, Regrowth, SessionMark, Settler, SimEvent, Stats, WeatherState, WorkArea,
+  Appearance, Building, ChronicleEntry, ProgressionState, Regrowth, SessionMark, Settlement, Settler, SimEvent, Stats, WeatherState, WorkArea,
 } from './types';
 import { updateSettler } from './settlers';
 import { updateFields, updateWeather } from './farming';
+import { updateSeason } from './seasons';
+import type { SeasonId } from '../data/seasons';
 import { updatePopulation } from './population';
 import { checkMilestones } from './progression';
 import { updateRegrowth, updateWorkshops } from './buildings';
@@ -66,12 +68,18 @@ export class Simulation implements PathGrid {
   populationStatus = '';
   events: SimEvent[] = [];
   workAreas: WorkArea[] = [];
+  /** Settlements, oldest first (the camp is always the first). */
+  settlements: Settlement[] = [];
+  /** Road-link results between settlements, cleared whenever the map changes (transient). */
+  readonly roadCache = new Map<string, boolean>();
   /** Notable events, newest last (saved; capped). */
   chronicle: ChronicleEntry[] = [];
   /** Where the current play session began (saved, so the next session can summarise it). */
   session: SessionMark | null = null;
   /** Path search nodes left this tick (transient). */
   pathBudget = PATH_BUDGET;
+  /** Last season announced (transient; seasons follow the calendar). */
+  lastSeason: SeasonId | null = null;
 
   constructor(seed: number, rngState = seed ^ 0x5bd1e995, genVersion = 1) {
     this.world = new World(seed, genVersion);
@@ -180,14 +188,14 @@ export class Simulation implements PathGrid {
     return `${this.rng.pick(SETTLER_NAMES)} ${this.settlers.length + 1}`;
   }
 
-  addSettler(x: number, y: number, job: JobId, name = this.pickName()): Settler {
+  addSettler(x: number, y: number, job: JobId, name = this.pickName(), settlementId: number | null = this.settlements[0]?.id ?? null): Settler {
     const s: Settler = {
       id: this.allocId(), name, x: x + 0.5, y: y + 0.5, px: x + 0.5, py: y + 0.5,
       facing: 0, anim: 'idle', tool: null, job, carrying: null, capacity: SETTLER_CAPACITY,
       hunger: 85 + this.rng.int(15), energy: 90, homeId: null, appearance: this.randomAppearance(),
       task: null, focus: null, idleReason: '', hidden: false, path: null, pathIndex: 0,
       goalKey: null, repaths: 0, lastNotice: -9999, arrivedTick: this.tick,
-      areaId: null, priorities: null, insideId: null, restNote: '', nextThink: 0,
+      areaId: null, priorities: null, insideId: null, restNote: '', nextThink: 0, settlementId,
     };
     this.settlers.push(s);
     return s;
@@ -224,6 +232,7 @@ export class Simulation implements PathGrid {
   mapChanged(): void {
     for (const k of [...this.unreachable.keys()]) if (k.startsWith('*:')) this.unreachable.delete(k);
     this.unreachableCount.clear();
+    this.roadCache.clear();
     this.wakeIdle();
   }
   isUnreachable(settlerId: number, target: string): boolean {
@@ -360,6 +369,7 @@ export class Simulation implements PathGrid {
       s.px = s.x;
       s.py = s.y;
     }
+    updateSeason(this);
     updateWeather(this);
     if (this.tick % 5 === 0) updateFields(this, 5);
     if (this.tick % 20 === 0) updateRegrowth(this);

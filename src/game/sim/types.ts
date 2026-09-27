@@ -5,6 +5,7 @@ import type { MilestoneId, StatId } from '../data/progression';
 import type { RecipeId } from '../data/recipes';
 import type { Inventory, ResourceId } from '../data/resources';
 import type { ObjectId } from '../world/tiles';
+import type { SeasonId } from '../data/seasons';
 
 export interface Carry {
   res: ResourceId;
@@ -90,6 +91,15 @@ export interface Settler {
   restNote: string;
   /** Earliest tick an idle settler looks for work again (transient back-off). */
   nextThink: number;
+  /** Home settlement (its centre building id). Settlers prefer work, beds and stores there. */
+  settlementId: number | null;
+}
+
+/** A settlement: a camp or waystation hall and the land around it. */
+export interface Settlement {
+  /** Id of the centre building (camp or waystation). */
+  id: number;
+  name: string;
 }
 
 export type AreaKind = 'farm' | 'wood' | 'stone' | 'build';
@@ -108,7 +118,7 @@ export interface WorkArea {
 /** Notable things that happened, kept for the Valley today summary. */
 export interface ChronicleEntry {
   tick: number;
-  kind: 'built' | 'arrival' | 'milestone' | 'bridge' | 'shortage';
+  kind: 'built' | 'arrival' | 'milestone' | 'bridge' | 'shortage' | 'season' | 'settlement';
   text: string;
   x?: number;
   y?: number;
@@ -158,6 +168,8 @@ export interface Building {
   placedTick: number;
   /** Settlers assigned to work here (production buildings), up to maxWorkers. */
   workers: number[];
+  /** Storage only: amounts haulers keep stocked here, fetched from other stores. */
+  wants: Inventory;
 }
 
 export interface Regrowth {
@@ -184,7 +196,7 @@ export type SimEvent =
   | { type: 'milestone'; id: MilestoneId }
   | { type: 'arrival'; settlerId: number }
   | { type: 'important' }
-  | { type: 'focus'; x: number; y: number; w: number; h: number };
+  | { type: 'season'; id: SeasonId };
 
 export type SfxName =
   | 'chop' | 'mine' | 'pick' | 'dig' | 'plant' | 'water' | 'harvest' | 'hammer' | 'saw'

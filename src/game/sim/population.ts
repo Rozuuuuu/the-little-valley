@@ -3,6 +3,7 @@ import { BUILDINGS } from '../data/buildings';
 import { assignHomes, campOf, entranceOf, findFreeBed, housingCapacity, isPermanentHome } from './buildings';
 import { MAX_POPULATION, type Simulation } from './Simulation';
 import type { Building } from './types';
+import { settlementAt } from './settlements';
 
 /** Food that must be in storage before a newcomer will settle. */
 export const ARRIVAL_FOOD = 20;
@@ -19,7 +20,9 @@ function pickNewcomerJob(sim: Simulation): JobId {
 }
 
 function arrivalSpot(sim: Simulation, bed: Building): { x: number; y: number } | null {
-  const camp = campOf(sim);
+  // Arrive near the hall of the settlement where the bed is.
+  const st = settlementAt(sim, bed.x + bed.w / 2, bed.y + bed.h / 2);
+  const camp = (st ? sim.buildings.get(st.id) : undefined) ?? campOf(sim);
   const cx = camp ? camp.x + 1 : bed.x;
   const cy = camp ? camp.y + 1 : bed.y;
   for (let attempt = 0; attempt < 40; attempt++) {
@@ -67,13 +70,15 @@ export function welcomeNewcomer(sim: Simulation): number | null {
   const spot = arrivalSpot(sim, bed);
   if (!spot) return null;
   sim.withdrawUnreserved('food', ARRIVAL_COST);
-  const s = sim.addSettler(spot.x, spot.y, pickNewcomerJob(sim));
+  const home = settlementAt(sim, bed.x + bed.w / 2, bed.y + bed.h / 2);
+  const s = sim.addSettler(spot.x, spot.y, pickNewcomerJob(sim), undefined, home?.id ?? sim.settlements[0]?.id ?? null);
   s.homeId = bed.id;
   sim.lastArrival = sim.tick;
   sim.stats.arrivals++;
   // Settle anyone still in bedrolls into free house beds too.
   assignHomes(sim);
-  const where = isPermanentHome(bed) ? `a bed in the ${BUILDINGS[bed.type].name.toLowerCase()}` : 'a bedroll at the camp';
+  const place = sim.settlements.length > 1 && home ? ` in ${home.name}` : '';
+  const where = isPermanentHome(bed) ? `a bed in the ${BUILDINGS[bed.type].name.toLowerCase()}${place}` : `a bedroll${place || ' at the camp'}`;
   sim.toast(`${s.name} has settled in the valley and taken ${where}!`, 'good');
   sim.record('arrival', `${s.name} arrived`, s.x, s.y);
   sim.emit({ type: 'sfx', name: 'arrival', x: s.x, y: s.y });

@@ -2,10 +2,11 @@ import { DAY_TICKS, tileKey } from '../core/constants';
 import { BUILDINGS, isBuildingId, type BuildingId } from '../data/buildings';
 import { isCropId, type CropId } from '../data/crops';
 import { isJobId, JOBS, type JobId, type WorkKind } from '../data/jobs';
+import { isResourceId, type ResourceId } from '../data/resources';
 import { isRecipeId, type RecipeId } from '../data/recipes';
 import { OBJECTS } from '../world/tiles';
 import {
-  bedsOf, checkPlacement, checkSpan, cropUnlocked, materialsComplete, maxWorkers, placeBuilding, removeBuilding, setFieldCrop, shortfall,
+  assignHomes, bedsOf, checkPlacement, checkSpan, cropUnlocked, materialsComplete, maxWorkers, placeBuilding, removeBuilding, setFieldCrop, shortfall,
 } from './buildings';
 import { cleanPriorities } from './priorities';
 import { fieldAction } from './farming';
@@ -32,7 +33,10 @@ export type Command =
   | { type: 'assignArea'; ids: number[]; areaId: number | null }
   | { type: 'setPriorities'; ids: number[]; priorities: WorkKind[] | null }
   | { type: 'assignWorker'; buildingId: number; ids: number[] }
-  | { type: 'unassignWorker'; buildingId: number; settlerId: number };
+  | { type: 'unassignWorker'; buildingId: number; settlerId: number }
+  | { type: 'assignSettlement'; ids: number[]; settlementId: number }
+  | { type: 'renameSettlement'; settlementId: number; name: string }
+  | { type: 'setWants'; buildingId: number; res: ResourceId; amount: number };
 
 const MAX_AREA = 40 * 40;
 /** Most settlers one work area can take. */
@@ -452,6 +456,45 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
         return err(`The ${name} already has ${max}/${max} worker${max > 1 ? 's' : ''} — unassign someone in its panel first`);
       }
       return ok(`${added.join(', ')} now work${added.length === 1 ? 's' : ''} at the ${name} (${b.workers.length}/${max}).`);
+    }
+
+    case 'assignSettlement': {
+      const st = sim.settlements.find((x) => x.id === cmd.settlementId);
+      if (!st) return err('That settlement is gone');
+      const hall = sim.buildings.get(st.id);
+      const list = pickSettlers(sim, cmd.ids).filter((s) => s.settlementId !== st.id);
+      if (list.length === 0) return err('Select settlers who live somewhere else first');
+      for (const s of list) {
+        takeOrder(sim, s);
+        s.settlementId = st.id;
+        // A new home means a new bed, and walking over there.
+        s.homeId = null;
+        s.areaId = null;
+        for (const b of sim.buildings.values()) b.workers = b.workers.filter((id) => id !== s.id);
+        if (hall) s.task = { kind: 'move', x: hall.x + Math.floor(hall.w / 2), y: hall.y + hall.h };
+      }
+      const homeless = assignHomes(sim);
+      const beds = homeless ? ` ${homeless} settler${homeless === 1 ? ' has' : 's have'} no bed yet.` : '';
+      return ok(`${list.map((s) => s.name).join(', ')} ${list.length === 1 ? 'is' : 'are'} moving to ${st.name}.${beds}`);
+    }
+
+    case 'renameSettlement': {
+      const st = sim.settlements.find((x) => x.id === cmd.settlementId);
+      if (!st) return err('That settlement is gone');
+      const name = typeof cmd.name === 'string' ? cmd.name.trim().slice(0, 30) : '';
+      if (!name) return err('Give it a name');
+      st.name = name;
+      return ok();
+    }
+
+    case 'setWants': {
+      const b = sim.buildings.get(cmd.buildingId);
+      if (!b || !BUILDINGS[b.type].storage) return err('Stock targets are for storehouses and settlement halls');
+      if (!isResourceId(cmd.res) || !isInt(cmd.amount) || cmd.amount < 0) return err('Invalid stock target');
+      const amount = Math.min(cmd.amount, sim.storageCapacity(b));
+      if (amount === 0) delete b.wants[cmd.res];
+      else b.wants[cmd.res] = amount;
+      return ok();
     }
 
     case 'unassignWorker': {

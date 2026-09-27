@@ -12,6 +12,8 @@ import { applyFieldAction, FIELD_WORK, fieldAction } from './farming';
 import { addInv, hasAll, invEntries } from './inventory';
 import { findPath, goalSatisfied, lastPathStats, type Goal } from './pathfinding';
 import { effectivePriorities } from './priorities';
+import { seasonOf } from './seasons';
+import { awayPenalty } from './settlements';
 import type { Simulation } from './Simulation';
 import type { Building, Settler, Task, ToolKind, WorkArea } from './types';
 
@@ -267,7 +269,7 @@ function findBuild(sim: Simulation, s: Settler, area?: WorkArea): Task | string 
     }
     if (slot < 0) continue;
     const c = centre(b);
-    const d = dist(s, c.x, c.y);
+    const d = dist(s, c.x, c.y) + awayPenalty(sim, s, c.x, c.y);
     if (d < bestD) {
       bestD = d;
       best = b;
@@ -284,6 +286,8 @@ interface HaulNeed {
   res: ResourceId;
   need: number;
   priority: number;
+  /** A store topping up its stock target from another store. */
+  supply?: boolean;
 }
 
 function haulNeeds(sim: Simulation, area?: WorkArea): HaulNeed[] {
@@ -297,16 +301,48 @@ function haulNeeds(sim: Simulation, area?: WorkArea): HaulNeed[] {
       }
     } else if (b.workshop) {
       for (const { res, need } of workshopNeeds(b)) out.push({ dst: b, res, need, priority: 12 });
+    } else if (BUILDINGS[b.type].storage) {
+      // Stock targets: keep this store supplied from others with a surplus.
+      const wants = invEntries(b.wants);
+      if (!wants.length) continue;
+      let incomingTotal = 0;
+      for (const [, n] of invEntries(b.incoming)) incomingTotal += n;
+      let free = sim.storageCapacity(b) - sim.storageUsed(b) - incomingTotal;
+      for (const [r, want] of wants) {
+        const need = Math.min(want - (b.inventory[r] ?? 0) - (b.incoming[r] ?? 0), free);
+        if (need <= 0) continue;
+        free -= need;
+        out.push({ dst: b, res: r, need, priority: 30, supply: true });
+      }
     }
   }
   return out;
 }
 
+/** Goods a store can spare: what it holds beyond its own stock target and promised loads. */
+export function surplus(sim: Simulation, b: Building, res: ResourceId): number {
+  return sim.available(b, res) - (b.wants[res] ?? 0);
+}
+
+function supplySource(sim: Simulation, n: HaulNeed): Building | null {
+  let best: Building | null = null;
+  let bestD = Infinity;
+  for (const b of sim.storages()) {
+    if (b === n.dst || surplus(sim, b, n.res) <= 0) continue;
+    const d = Math.hypot(b.x - n.dst.x, b.y - n.dst.y);
+    if (d < bestD) {
+      bestD = d;
+      best = b;
+    }
+  }
+  return best;
+}
+
 /** Plans a haul for one specific need. Returns a reason when stock is missing. */
 function planHaul(sim: Simulation, s: Settler, n: HaulNeed): Task | string {
-  const src = sim.nearestStorageWith(n.res, s.x, s.y);
-  if (!src) return `Waiting for ${RESOURCES[n.res].name.toLowerCase()} for the ${BUILDINGS[n.dst.type].name.toLowerCase()}`;
-  const amount = Math.min(n.need, sim.available(src, n.res), s.capacity);
+  const src = n.supply ? supplySource(sim, n) : sim.nearestStorageWith(n.res, s.x, s.y);
+  if (!src) return n.supply ? '' : `Waiting for ${RESOURCES[n.res].name.toLowerCase()} for the ${BUILDINGS[n.dst.type].name.toLowerCase()}`;
+  const amount = Math.min(n.need, n.supply ? surplus(sim, src, n.res) : sim.available(src, n.res), s.capacity);
   addInv(src.reservedOut, n.res, amount);
   addInv(n.dst.incoming, n.res, amount);
   return { kind: 'haul', src: src.id, dst: n.dst.id, res: n.res, amount, stage: 'toSrc' };
@@ -318,15 +354,16 @@ function findHaul(sim: Simulation, s: Settler, area?: WorkArea): Task | string |
     .filter((n) => !sim.isUnreachable(s.id, `b${n.dst.id}`))
     .map((n) => {
       const c = centre(n.dst);
-      return { n, score: dist(s, c.x, c.y) + n.priority };
+      return { n, score: dist(s, c.x, c.y) + n.priority + awayPenalty(sim, s, c.x, c.y) };
     })
     .sort((a, b) => a.score - b.score);
   for (const { n } of needs) {
-    if (!sim.nearestStorageWith(n.res, s.x, s.y)) {
-      reason ??= planHaul(sim, s, n) as string;
+    const r = planHaul(sim, s, n);
+    if (typeof r === 'string') {
+      if (r) reason ??= r;
       continue;
     }
-    return planHaul(sim, s, n);
+    return r;
   }
   return reason;
 }
@@ -354,7 +391,7 @@ function findFarm(sim: Simulation, s: Settler, area?: WorkArea): Task | string |
     if (!a || (a === 'harvest' && s.carrying)) continue;
     if (sim.isReserved(`field:${b.id}`, s.id) || sim.isUnreachable(s.id, `b${b.id}`)) continue;
     const bonus = a === 'harvest' ? 10 : a === 'plant' ? 5 : a === 'till' ? 2 : 0;
-    const score = dist(s, b.x + 0.5, b.y + 0.5) - bonus;
+    const score = dist(s, b.x + 0.5, b.y + 0.5) - bonus + (area ? 0 : awayPenalty(sim, s, b.x, b.y));
     if (score < bestScore) {
       bestScore = score;
       best = b;
@@ -362,6 +399,7 @@ function findFarm(sim: Simulation, s: Settler, area?: WorkArea): Task | string |
     }
   }
   if (!best || !action) {
+    if (anyFields && seasonOf(sim).id === 'winter') return 'Winter: the fields rest until spring';
     if (area) return anyFields ? `Fields in ${area.name} are growing — nothing to tend` : `${area.name} has no fields — place some inside it`;
     return effectivePriorities(s)[0] === 'farm' ? (anyFields ? 'Fields are growing — nothing to tend' : 'No fields yet — place some from the Build menu') : null;
   }
@@ -418,7 +456,7 @@ function findGather(sim: Simulation, s: Settler): Task | string | null {
       if (!OBJECTS[sim.world.obj(x, y)].resource) sim.designations.delete(k);
       continue;
     }
-    const d = Math.hypot(x + 0.5 - s.x, y + 0.5 - s.y);
+    const d = Math.hypot(x + 0.5 - s.x, y + 0.5 - s.y) + awayPenalty(sim, s, x, y);
     if (d < bestD) {
       bestD = d;
       best = { x, y };
@@ -435,7 +473,8 @@ function findGather(sim: Simulation, s: Settler): Task | string | null {
     .sort((a, b) => a.ratio - b.ratio);
   if (order.length === 0) return 'Stores are well stocked';
   if (!sim.nearestStorageWithSpace(s.x, s.y)) return 'Storage is full — build a storehouse';
-  const home = sim.storages()[0];
+  // Gather around the settler's own settlement.
+  const home = (s.settlementId !== null ? sim.buildings.get(s.settlementId) : undefined) ?? sim.storages()[0];
   const cx = home ? home.x + 1 : s.x;
   const cy = home ? home.y + 1 : s.y;
   for (const { r } of order) {
@@ -515,7 +554,7 @@ function findCraft(sim: Simulation, s: Settler): Task | string | null {
     }
     const c = centre(b);
     // Assigned workers strongly prefer their own building.
-    const d = dist(s, c.x, c.y) - (b.workers.includes(s.id) ? 1000 : 0);
+    const d = dist(s, c.x, c.y) - (b.workers.includes(s.id) ? 1000 : 0) + awayPenalty(sim, s, c.x, c.y);
     if (d < bestD) {
       bestD = d;
       best = b;
@@ -549,7 +588,9 @@ function homeFor(sim: Simulation, s: Settler): Building | null {
     const h = sim.buildings.get(s.homeId);
     if (h && h.built) return h;
   }
-  return campOf(sim) ?? null;
+  // No bed: rest at their own settlement's hall (or the camp).
+  const own = s.settlementId !== null ? sim.buildings.get(s.settlementId) : undefined;
+  return (own && own.built ? own : campOf(sim)) ?? null;
 }
 
 /**
@@ -719,6 +760,14 @@ function runHaul(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'haul' }>
   if (r === 'failed') return fail(sim, s, `Can't reach the ${BUILDINGS[dst.type].name.toLowerCase()}`, `b${dst.id}`);
   if (r !== 'arrived') return;
   addInv(dst.incoming, t.res, -t.amount);
+  if (BUILDINGS[dst.type].storage && dst.built) {
+    // Supply run: goods go into the store; anything that doesn't fit is delivered elsewhere.
+    const n = sim.deposit(dst, t.res, t.amount);
+    s.carrying = t.amount - n > 0 ? { res: t.res, amount: t.amount - n } : null;
+    sim.emit({ type: 'sfx', name: 'drop', x: s.x, y: s.y });
+    s.task = null;
+    return abortTask(sim, s);
+  }
   addInv(dst.delivered, t.res, t.amount);
   s.carrying = null;
   sim.emit({ type: 'sfx', name: 'drop', x: s.x, y: s.y });

@@ -12,6 +12,10 @@ export type Requirement =
   | { kind: 'beds'; count: number }
   /** Work areas with at least one assigned settler. */
   | { kind: 'staffedAreas'; count: number }
+  /** Settlements with at least `minResidents` settlers belonging to them. */
+  | { kind: 'settlements'; count: number; minResidents: number }
+  /** Two settlements joined by an unbroken road (paths and bridges). */
+  | { kind: 'roadLink' }
   /** Any `count` of the options: lets players choose their own path. */
   | { kind: 'anyOf'; count: number; label: string; options: readonly Requirement[] };
 
@@ -61,18 +65,25 @@ export const MILESTONES: Record<MilestoneId, MilestoneDef> = {
         ],
       },
     ],
-    unlocks: ['Cottages (4 beds)', 'Grand Market project', 'Benches', 'The camp becomes a village hall'],
+    unlocks: ['Cottages (4 beds)', 'Waystations: found a second settlement', 'Grand Market project', 'Benches', 'The camp becomes a village hall'],
   },
   town: {
     id: 'town', name: 'Town', tier: 3,
-    description: 'Develop districts, services and specialised industries.',
+    description: 'Grow past a single village: 16 settlers with 16 home beds, then any 2 town projects.',
     requirements: [
       { kind: 'population', count: 16 },
       { kind: 'beds', count: 16 },
-      { kind: 'built', building: 'market', count: 1 },
-      { kind: 'stat', stat: 'toolsCrafted', count: 10, label: 'Craft 10 tools' },
+      {
+        kind: 'anyOf', count: 2, label: 'Finish 2 of these town projects',
+        options: [
+          { kind: 'settlements', count: 2, minResidents: 4 },
+          { kind: 'roadLink' },
+          { kind: 'built', building: 'market', count: 1, label: 'Build the Grand Market' },
+          { kind: 'stat', stat: 'toolsCrafted', count: 10, label: 'Craft 10 tools' },
+        ],
+      },
     ],
-    unlocks: ['More to come: districts and services'],
+    unlocks: ['More to come: districts, services and trade'],
   },
   region: {
     id: 'region', name: 'Region', tier: 4, future: true,
