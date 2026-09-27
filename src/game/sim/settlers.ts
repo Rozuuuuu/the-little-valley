@@ -240,7 +240,7 @@ export function abortTask(sim: Simulation, s: Settler, reason?: string): void {
 }
 
 function fail(sim: Simulation, s: Settler, reason: string, target?: string): void {
-  if (target) sim.markUnreachable(s.id, target);
+  if (target) sim.markUnreachable(s.id, target, 300, s.x, s.y);
   abortTask(sim, s, reason);
 }
 
@@ -258,7 +258,7 @@ function findBuild(sim: Simulation, s: Settler, area?: WorkArea): Task | string 
   let bestD = Infinity;
   for (const b of sim.buildings.values()) {
     if (b.built || !materialsComplete(b) || !inArea(area, b.x, b.y, b.w, b.h)) continue;
-    if (sim.isUnreachable(s.id, `b${b.id}`)) continue;
+    if (sim.isUnreachable(s.id, `b${b.id}`, s.x, s.y)) continue;
     const max = BUILDINGS[b.type].maxBuilders ?? 2;
     let slot = -1;
     for (let i = 0; i < max; i++) {
@@ -351,7 +351,7 @@ function planHaul(sim: Simulation, s: Settler, n: HaulNeed): Task | string {
 function findHaul(sim: Simulation, s: Settler, area?: WorkArea): Task | string | null {
   let reason: string | null = null;
   const needs = haulNeeds(sim, area)
-    .filter((n) => !sim.isUnreachable(s.id, `b${n.dst.id}`))
+    .filter((n) => !sim.isUnreachable(s.id, `b${n.dst.id}`, s.x, s.y))
     .map((n) => {
       const c = centre(n.dst);
       return { n, score: dist(s, c.x, c.y) + n.priority + awayPenalty(sim, s, c.x, c.y) };
@@ -389,7 +389,7 @@ function findFarm(sim: Simulation, s: Settler, area?: WorkArea): Task | string |
     anyFields = true;
     const a = fieldAction(sim, b.field);
     if (!a || (a === 'harvest' && s.carrying)) continue;
-    if (sim.isReserved(`field:${b.id}`, s.id) || sim.isUnreachable(s.id, `b${b.id}`)) continue;
+    if (sim.isReserved(`field:${b.id}`, s.id) || sim.isUnreachable(s.id, `b${b.id}`, s.x, s.y)) continue;
     const bonus = a === 'harvest' ? 10 : a === 'plant' ? 5 : a === 'till' ? 2 : 0;
     const score = dist(s, b.x + 0.5, b.y + 0.5) - bonus + (area ? 0 : awayPenalty(sim, s, b.x, b.y));
     if (score < bestScore) {
@@ -418,7 +418,7 @@ function gatherable(sim: Simulation, s: Settler, x: number, y: number, res?: Res
   if (!def.resource || (res && def.resource !== res)) return false;
   if (sim.world.amount(x, y) <= 0 || !sim.world.explored(x, y)) return false;
   const k = tileKey(x, y);
-  return !sim.isReserved(`obj:${k}`, s.id) && !sim.isUnreachable(s.id, `o${k}`);
+  return !sim.isReserved(`obj:${k}`, s.id) && !sim.isUnreachable(s.id, `o${k}`, s.x, s.y);
 }
 
 /** Nearest harvestable object of a resource type within a square radius. */
@@ -496,7 +496,7 @@ function findAreaGather(sim: Simulation, s: Settler, area: WorkArea, res: 'wood'
       const def = OBJECTS[sim.world.obj(x, y)];
       if (def.resource !== res || sim.world.amount(x, y) <= 0 || !sim.world.explored(x, y)) continue;
       any++;
-      if (sim.isUnreachable(s.id, `o${tileKey(x, y)}`)) {
+      if (sim.isUnreachable(s.id, `o${tileKey(x, y)}`, s.x, s.y)) {
         unreachable++;
         continue;
       }
@@ -546,7 +546,7 @@ function findCraft(sim: Simulation, s: Settler): Task | string | null {
     if (!b.built || !ws) continue;
     any = true;
     if (ws.paused || !ws.recipe || !mayWorkAt(b, s.id)) continue;
-    if (sim.isReserved(`craft:${b.id}`, s.id) || sim.isUnreachable(s.id, `b${b.id}`)) continue;
+    if (sim.isReserved(`craft:${b.id}`, s.id) || sim.isUnreachable(s.id, `b${b.id}`, s.x, s.y)) continue;
     const name = BUILDINGS[b.type].name.toLowerCase();
     if (!hasAll(b.delivered, RECIPES[ws.recipe].inputs)) {
       reason ??= `The ${name} is waiting for ${invEntries(RECIPES[ws.recipe].inputs).map(([r]) => r).join(' and ')}`;

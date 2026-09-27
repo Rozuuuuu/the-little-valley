@@ -32,6 +32,8 @@ export const MAX_POPULATION = 300;
  */
 export const PATH_BUDGET = 6000;
 const CHRONICLE_LIMIT = 80;
+/** A shared "can't reach" note only holds back settlers within this many tiles (Manhattan) of the failed search. */
+export const SHARED_UNREACHABLE_RANGE = 12;
 
 export function emptyStats(): Stats {
   return {
@@ -58,6 +60,12 @@ export class Simulation implements PathGrid {
   readonly regrowth = new Map<number, Regrowth>();
   /** `${settlerId}:${target}` to tick until which the target is skipped. Transient. */
   readonly unreachable = new Map<string, number>();
+  /**
+   * Shared notes: target to where the failed search started and until when.
+   * Only settlers standing near that spot skip the target, so a settler on the
+   * far bank of a river is not held back by failures on the near bank. Transient.
+   */
+  readonly sharedUnreachable = new Map<string, { until: number; x: number; y: number }>();
   private readonly unreachableCount = new Map<string, number>();
   stats: Stats = emptyStats();
   progression: ProgressionState = { reached: ['camp'] };
@@ -221,30 +229,35 @@ export class Simulation implements PathGrid {
    * settlers for a shorter while (they usually stand on the same land), so a
    * cut-off site does not cost a failed search from every villager in turn.
    */
-  markUnreachable(settlerId: number, target: string, ticks = 300): void {
+  markUnreachable(settlerId: number, target: string, ticks = 300, x = NaN, y = NaN): void {
     this.unreachable.set(`${settlerId}:${target}`, this.tick + ticks);
     // Repeated failures back off (up to a day) until the map changes.
     const n = (this.unreachableCount.get(target) ?? 0) + 1;
     this.unreachableCount.set(target, n);
-    this.unreachable.set(`*:${target}`, this.tick + Math.min(DAY_TICKS, Math.round(ticks * 0.6) * 2 ** Math.min(n - 1, 4)));
+    const until = this.tick + Math.min(DAY_TICKS, Math.round(ticks * 0.6) * 2 ** Math.min(n - 1, 4));
+    this.sharedUnreachable.set(target, { until, x, y });
   }
   /** The map changed (something built, removed, a bridge finished): let everyone try again. */
   mapChanged(): void {
-    for (const k of [...this.unreachable.keys()]) if (k.startsWith('*:')) this.unreachable.delete(k);
+    this.sharedUnreachable.clear();
     this.unreachableCount.clear();
     this.roadCache.clear();
     this.wakeIdle();
   }
-  isUnreachable(settlerId: number, target: string): boolean {
+  /** Whether a settler (standing at x, y) should skip a target for now. */
+  isUnreachable(settlerId: number, target: string, x = NaN, y = NaN): boolean {
     const until = this.unreachable.get(`${settlerId}:${target}`);
     if (until !== undefined && until > this.tick) return true;
-    const shared = this.unreachable.get(`*:${target}`);
-    return shared !== undefined && shared > this.tick;
+    const shared = this.sharedUnreachable.get(target);
+    if (!shared || shared.until <= this.tick) return false;
+    // Without positions (older callers) the note applies to everyone.
+    if (Number.isNaN(x) || Number.isNaN(shared.x)) return true;
+    return Math.abs(x - shared.x) + Math.abs(y - shared.y) <= SHARED_UNREACHABLE_RANGE;
   }
   /** Nobody could reach this target recently (for UI explanations). */
   unreachableForAll(target: string): boolean {
-    const shared = this.unreachable.get(`*:${target}`);
-    return shared !== undefined && shared > this.tick;
+    const shared = this.sharedUnreachable.get(target);
+    return shared !== undefined && shared.until > this.tick;
   }
 
   // ---- storage ------------------------------------------------------------
@@ -394,5 +407,6 @@ export class Simulation implements PathGrid {
 
   private pruneUnreachable(): void {
     for (const [k, until] of this.unreachable) if (until <= this.tick) this.unreachable.delete(k);
+    for (const [k, n] of this.sharedUnreachable) if (n.until <= this.tick) this.sharedUnreachable.delete(k);
   }
 }
