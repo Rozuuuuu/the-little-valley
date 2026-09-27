@@ -122,6 +122,26 @@ describe('construction', () => {
   });
 });
 
+describe('bridges', () => {
+  it('builds a bridge over shallow water once unlocked', () => {
+    const sim = createNewGame(707);
+    camp(sim).inventory = { planks: 10, food: 60 };
+    // Find a shallow water tile at the pond's edge (next to land).
+    let spot: { x: number; y: number } | null = null;
+    for (let y = 0; y < 14 && !spot; y++) for (let x = 4; x < 16 && !spot; x++) {
+      if (sim.world.terrain(x, y) === 1 && sim.world.terrain(x - 1, y) !== 1 && sim.world.explored(x, y)) spot = { x, y };
+    }
+    expect(spot).not.toBeNull();
+    const locked = applyCommand(sim, { type: 'place', building: 'bridge', x: spot!.x, y: spot!.y });
+    expect(locked.message).toMatch(/Hamlet/);
+    sim.progression.reached.push('hamlet');
+    expect(applyCommand(sim, { type: 'place', building: 'bridge', x: spot!.x, y: spot!.y }).ok).toBe(true);
+    runUntil(sim, () => sim.world.terrain(spot!.x, spot!.y) === 8, DAY_TICKS);
+    expect(sim.walkable(spot!.x, spot!.y)).toBe(true);
+    expect(sim.totals().planks).toBe(8);
+  });
+});
+
 describe('farming', () => {
   it('tills, plants, grows through each stage and harvests food', () => {
     const sim = createNewGame(707);

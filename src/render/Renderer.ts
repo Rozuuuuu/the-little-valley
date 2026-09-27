@@ -15,7 +15,7 @@ import { Particles } from './particles';
 import { makeCanvas, tinted, type Sprite } from './pixel';
 import { FRAME } from './sprites/characters';
 import type { SpriteBank } from './sprites';
-import { paintChunk } from './terrainPainter';
+import { paintChunk, pixelsToCanvas, terrainGrid } from './terrainPainter';
 
 export interface PlacementPreview {
   type: BuildingId;
@@ -46,6 +46,8 @@ export interface RenderState {
   areaBox: { x0: number; y0: number; x1: number; y1: number; kind: 'mark' | 'unmark' } | null;
   markers: Marker[];
   showBuildHover: boolean;
+  /** Harvest marks and other work overlays (off on the title screen). */
+  showMarks: boolean;
 }
 
 interface Drawable {
@@ -74,6 +76,11 @@ export class Renderer {
   /** Chunks painted this frame; painting is expensive, so it is spread out. */
   private paintBudget = 0;
   stats = { drawables: 0, chunks: 0, paintMs: 0 };
+  private worker: Worker | null = null;
+  private pending = new Map<number, { key: number; version: number; gen: number }>();
+  private pendingKeys = new Set<number>();
+  private reqId = 0;
+  private cacheGen = 0;
 
   constructor(
     readonly canvas: HTMLCanvasElement,
@@ -83,6 +90,39 @@ export class Renderer {
     this.ctx = canvas.getContext('2d', { alpha: false })!;
     this.light = makeCanvas(1, 1);
     this.lightCtx = this.light.getContext('2d')!;
+    try {
+      this.worker = new Worker(new URL('./terrainWorker.ts', import.meta.url), { type: 'module' });
+      this.worker.onmessage = (e: MessageEvent<{ id: number; pixels: Uint32Array }>) => this.onPainted(e.data.id, e.data.pixels);
+      this.worker.onerror = () => {
+        // Fall back to painting on the main thread.
+        this.worker = null;
+        this.pending.clear();
+        this.pendingKeys.clear();
+      };
+    } catch {
+      this.worker = null;
+    }
+  }
+
+  private onPainted(id: number, pixels: Uint32Array): void {
+    const info = this.pending.get(id);
+    this.pending.delete(id);
+    if (!info) return;
+    this.pendingKeys.delete(info.key);
+    if (info.gen !== this.cacheGen) return;
+    this.ground.set(info.key, { canvas: pixelsToCanvas(pixels), version: info.version, used: this.frame });
+    this.evictGround();
+  }
+
+  private evictGround(): void {
+    if (this.ground.size <= MAX_CHUNK_CACHE) return;
+    let oldest: number | null = null;
+    let oldestUsed = Infinity;
+    for (const [key, v] of this.ground) if (v.used < oldestUsed) {
+      oldest = key;
+      oldestUsed = v.used;
+    }
+    if (oldest !== null) this.ground.delete(oldest);
   }
 
   resize(w: number, h: number): void {
@@ -103,6 +143,9 @@ export class Renderer {
   }
 
   clearCaches(): void {
+    this.cacheGen++;
+    this.pending.clear();
+    this.pendingKeys.clear();
     this.ground.clear();
     this.fog.clear();
     this.particles.list = [];
@@ -125,21 +168,24 @@ export class Renderer {
       e.used = this.frame;
       return e.canvas;
     }
+    if (e) e.used = this.frame;
+    if (!force && this.worker) {
+      // Paint off-thread; keep showing the old image (if any) meanwhile.
+      if (!this.pendingKeys.has(k) && this.pending.size < 4) {
+        const id = ++this.reqId;
+        this.pending.set(id, { key: k, version: c.terrainVersion, gen: this.cacheGen });
+        this.pendingKeys.add(k);
+        this.worker.postMessage({ id, seed: sim.seed, cx: c.cx, cy: c.cy, terr: terrainGrid(sim.world, c) });
+      }
+      return e?.canvas ?? null;
+    }
     if (!force && this.paintBudget <= 0) return e?.canvas ?? null;
     this.paintBudget--;
     const t0 = performance.now();
     const canvas = paintChunk(sim.world, c);
     this.stats.paintMs = performance.now() - t0;
     this.ground.set(k, { canvas, version: c.terrainVersion, used: this.frame });
-    if (this.ground.size > MAX_CHUNK_CACHE) {
-      let oldest: number | null = null;
-      let oldestUsed = Infinity;
-      for (const [key, v] of this.ground) if (v.used < oldestUsed) {
-        oldest = key;
-        oldestUsed = v.used;
-      }
-      if (oldest !== null) this.ground.delete(oldest);
-    }
+    this.evictGround();
     return canvas;
   }
 
@@ -590,7 +636,7 @@ export class Renderer {
   private drawOverlays(st: RenderState, tx0: number, ty0: number, tx1: number, ty1: number): void {
     const { sim } = st;
     // Harvest marks
-    for (const k of sim.designations) {
+    for (const k of st.showMarks ? sim.designations : []) {
       const x = keyX(k);
       const y = keyY(k);
       if (x < tx0 || x > tx1 || y < ty0 || y > ty1) continue;

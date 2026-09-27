@@ -128,6 +128,21 @@ describe('pathfinding', () => {
     expect(p).toBeNull();
   });
 
+  it('can return a partial path towards an unreachable goal', () => {
+    const ring = new Set<string>();
+    for (let i = -2; i <= 2; i++) {
+      ring.add(`${i},-2`);
+      ring.add(`${i},2`);
+      ring.add(`-2,${i}`);
+      ring.add(`2,${i}`);
+    }
+    expect(findPath(grid(ring), 10, 0, { x: 0, y: 0, w: 1, h: 1, adjacent: false }, 2000)).toBeNull();
+    const p = findPath(grid(ring), 10, 0, { x: 0, y: 0, w: 1, h: 1, adjacent: false }, 2000, true);
+    expect(p).not.toBeNull();
+    const end = p!.at(-1)!;
+    expect(Math.hypot(end.x, end.y)).toBeLessThan(4);
+  });
+
   it('reaches the side of a building footprint', () => {
     const house = new Set(['5,5', '6,5', '5,6', '6,6']);
     const p = findPath(grid(house), 0, 0, { x: 5, y: 5, w: 2, h: 2, adjacent: true });

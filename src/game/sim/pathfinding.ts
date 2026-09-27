@@ -99,7 +99,11 @@ export const lastPathStats: PathStats = { expanded: 0 };
  * Returns the steps to take (excluding the start tile), `[]` if the start
  * already satisfies the goal, or null if no path was found within budget.
  */
-export function findPath(grid: PathGrid, sx: number, sy: number, goal: Goal, maxNodes = 4000): PathStep[] | null {
+/**
+ * With `partial`, an unreachable goal yields a path to the closest tile found
+ * instead of null (used for plain move orders).
+ */
+export function findPath(grid: PathGrid, sx: number, sy: number, goal: Goal, maxNodes = 4000, partial = false): PathStep[] | null {
   if (goalSatisfied(goal, sx, sy)) return [];
   const xs: number[] = [];
   const ys: number[] = [];
@@ -124,6 +128,8 @@ export function findPath(grid: PathGrid, sx: number, sy: number, goal: Goal, max
 
   open.push(add(sx, sy, 0, -1));
   let expanded = 0;
+  let closest = 0;
+  let closestH = heuristic(goal, sx, sy);
   while (open.size > 0) {
     const cur = open.pop();
     if (closed[cur]) continue;
@@ -135,6 +141,11 @@ export function findPath(grid: PathGrid, sx: number, sy: number, goal: Goal, max
       const out: PathStep[] = [];
       for (let n = cur; parent[n] !== -1; n = parent[n]) out.push({ x: xs[n], y: ys[n] });
       return out.reverse();
+    }
+    const h = heuristic(goal, cx, cy);
+    if (h < closestH) {
+      closestH = h;
+      closest = cur;
     }
     if (++expanded > maxNodes) break;
     for (const [dx, dy, base] of DIRS) {
@@ -156,5 +167,10 @@ export function findPath(grid: PathGrid, sx: number, sy: number, goal: Goal, max
     }
   }
   lastPathStats.expanded = expanded;
+  if (partial && closest !== 0) {
+    const out: PathStep[] = [];
+    for (let n = closest; parent[n] !== -1; n = parent[n]) out.push({ x: xs[n], y: ys[n] });
+    return out.reverse();
+  }
   return null;
 }

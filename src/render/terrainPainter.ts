@@ -3,6 +3,7 @@ import { hash01, hash2, valueNoise } from '../game/core/rng';
 import type { Chunk } from '../game/world/Chunk';
 import { T, TERRAIN, type TerrainId } from '../game/world/tiles';
 import type { World } from '../game/world/World';
+import { terrainAt } from '../game/world/worldgen';
 import { P } from './palette';
 import { hexToRgb, makeCanvas } from './pixel';
 
@@ -29,6 +30,12 @@ const REACH: Record<number, number> = {
 };
 
 const isWater = (t: number) => t === T.Water || t === T.DeepWater;
+const PRIORITY = new Uint8Array(16);
+const REACH_T = new Float32Array(16);
+for (const [k, v] of Object.entries(TERRAIN)) {
+  PRIORITY[Number(k)] = v.priority;
+  REACH_T[Number(k)] = REACH[Number(k)];
+}
 
 /**
  * Paints one chunk's ground into a 512x512 canvas. Borders between terrains
@@ -36,7 +43,24 @@ const isWater = (t: number) => t === T.Water || t === T.DeepWater;
  * rather than tiled, and water gets foam and a shaded bank.
  */
 export function paintChunk(world: World, chunk: Chunk): HTMLCanvasElement {
-  const seed = world.seed;
+  return pixelsToCanvas(computePixels(world.seed, chunk.cx, chunk.cy, terrainGrid(world, chunk)));
+}
+
+export function pixelsToCanvas(pixels: Uint32Array): HTMLCanvasElement {
+  const canvas = makeCanvas(S, S);
+  const ctx = canvas.getContext('2d')!;
+  const img = ctx.createImageData(S, S);
+  new Uint32Array(img.data.buffer).set(pixels);
+  ctx.putImageData(img, 0, 0);
+  return canvas;
+}
+
+/**
+ * The chunk's terrain plus a one-tile border. Neighbours that were never
+ * generated are read straight from the generator, so painting never forces
+ * extra chunks into memory.
+ */
+export function terrainGrid(world: World, chunk: Chunk): Uint8Array {
   const ox = chunk.cx * CHUNK;
   const oy = chunk.cy * CHUNK;
   const terr = new Uint8Array(G * G);
@@ -45,59 +69,78 @@ export function paintChunk(world: World, chunk: Chunk): HTMLCanvasElement {
       const x = ox + gx - 1;
       const y = oy + gy - 1;
       const inside = gx > 0 && gy > 0 && gx <= CHUNK && gy <= CHUNK;
-      terr[gy * G + gx] = inside ? chunk.terrain[(gy - 1) * CHUNK + gx - 1] : world.terrain(x, y);
+      if (inside) terr[gy * G + gx] = chunk.terrain[(gy - 1) * CHUNK + gx - 1];
+      else {
+        const n = world.peekChunk(x >> 5, y >> 5);
+        terr[gy * G + gx] = n ? n.terrain[(y & 31) * CHUNK + (x & 31)] : terrainAt(world.seed, x, y);
+      }
     }
   }
+  return terr;
+}
+
+/** Pure pixel computation (ABGR words), safe to run in a worker. */
+export function computePixels(seed: number, cx: number, cy: number, terr: Uint8Array): Uint32Array {
+  const ox = cx * CHUNK;
+  const oy = cy * CHUNK;
   const tAt = (tx: number, ty: number) => terr[(ty + 1) * G + tx + 1] as TerrainId;
 
-  // Pass 1: which terrain each pixel shows.
+  // Pass 1: which terrain each pixel shows. Hot loop: no allocations, table lookups only.
   const cls = new Uint8Array(BW * BW);
+  const baseX = ox * TILE;
+  const baseY = oy * TILE;
   for (let py = -M; py < S + M; py++) {
     const ty = Math.floor(py / TILE);
     const ly = py - ty * TILE;
     const ey = ly < 8 ? -1 : 1;
     const dy = ly < 8 ? ly : 15 - ly;
+    const rowT = (ty + 1) * G + 1;
+    const rowN = (ty + ey + 1) * G + 1;
+    const wy = baseY + py;
     for (let px = -M; px < S + M; px++) {
       const tx = Math.floor(px / TILE);
       const lx = px - tx * TILE;
-      const t = tAt(tx, ty);
-      let best: number = t;
+      const t = terr[rowT + tx];
+      let best = t;
       if (t !== T.Bridge) {
         const ex = lx < 8 ? -1 : 1;
         const dx = lx < 8 ? lx : 15 - lx;
-        const wx = ox * TILE + px;
-        const wy = oy * TILE + py;
+        const wx = baseX + px;
         const n = hash01(wx >> 1, wy >> 1, seed ^ 0x1234) * 0.6 + hash01(wx >> 3, wy >> 3, seed ^ 0x77) * 0.4;
-        let bestP = TERRAIN[t].priority;
-        const tryN = (nt: TerrainId, d: number) => {
-          const p = TERRAIN[nt].priority;
-          if (p <= bestP || nt === T.Bridge) return;
-          if (d < (1.2 + n * 4.2) * REACH[nt]) {
-            best = nt;
-            bestP = p;
-          }
-        };
-        tryN(tAt(tx + ex, ty), dx);
-        tryN(tAt(tx, ty + ey), dy);
-        tryN(tAt(tx + ex, ty + ey), Math.hypot(dx + 0.5, dy + 0.5) * 1.1);
+        const spread = 1.2 + n * 4.2;
+        let bestP = PRIORITY[t];
+        let nt = terr[rowT + tx + ex];
+        if (PRIORITY[nt] > bestP && nt !== T.Bridge && dx < spread * REACH_T[nt]) {
+          best = nt;
+          bestP = PRIORITY[nt];
+        }
+        nt = terr[rowN + tx];
+        if (PRIORITY[nt] > bestP && nt !== T.Bridge && dy < spread * REACH_T[nt]) {
+          best = nt;
+          bestP = PRIORITY[nt];
+        }
+        nt = terr[rowN + tx + ex];
+        if (PRIORITY[nt] > bestP && nt !== T.Bridge && Math.hypot(dx + 0.5, dy + 0.5) * 1.1 < spread * REACH_T[nt]) best = nt;
       }
       cls[(py + M) * BW + px + M] = best;
     }
   }
   const clsAt = (px: number, py: number) => cls[(py + M) * BW + px + M];
 
+  // Slowly varying colour patches, sampled every 4px (they vary over ~28px).
+  const PS = S / 4 + 1;
+  const patches = new Float32Array(PS * PS);
+  for (let j = 0; j < PS; j++) for (let i = 0; i < PS; i++) patches[j * PS + i] = valueNoise((baseX + i * 4) / 28, (baseY + j * 4) / 28, seed ^ 0x55);
+
   // Pass 2: colour.
-  const canvas = makeCanvas(S, S);
-  const ctx = canvas.getContext('2d')!;
-  const img = ctx.createImageData(S, S);
-  const out = new Uint32Array(img.data.buffer);
+  const out = new Uint32Array(S * S);
   for (let py = 0; py < S; py++) {
     const wy = oy * TILE + py;
     for (let px = 0; px < S; px++) {
       const wx = ox * TILE + px;
       const c = clsAt(px, py);
       const h = hash01(wx, wy, seed ^ 0x99);
-      const patch = valueNoise(wx / 28, wy / 28, seed ^ 0x55);
+      const patch = patches[(py >> 2) * PS + (px >> 2)];
       let col: number;
       switch (c) {
         case T.Water:
@@ -168,7 +211,7 @@ export function paintChunk(world: World, chunk: Chunk): HTMLCanvasElement {
   };
   for (let ty = 0; ty < CHUNK; ty++) {
     for (let tx = 0; tx < CHUNK; tx++) {
-      const t = chunk.terrain[ty * CHUNK + tx];
+      const t = terr[(ty + 1) * G + tx + 1];
       const wtx = ox + tx;
       const wty = oy + ty;
       const hv = hash2(wtx, wty, seed ^ 0xdeca);
@@ -227,6 +270,5 @@ export function paintChunk(world: World, chunk: Chunk): HTMLCanvasElement {
       }
     }
   }
-  ctx.putImageData(img, 0, 0);
-  return canvas;
+  return out;
 }

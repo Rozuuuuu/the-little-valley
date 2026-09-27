@@ -164,6 +164,7 @@ export class GameController {
       areaBox: this.areaBox,
       markers: this.markers,
       showBuildHover: this.mode.kind !== 'select',
+      showMarks: !this.attract,
     });
     this.autosaveCheck(now);
     if (now - this.lastUi > UI_INTERVAL) this.publish();

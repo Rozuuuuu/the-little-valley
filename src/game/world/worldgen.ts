@@ -76,8 +76,8 @@ export function objectAt(seed: number, x: number, y: number, terrain: TerrainId)
   }
   switch (terrain) {
     case T.Forest:
-      if (r < 0.46) return elevation(seed, x, y) > 0.55 || kind < 0.35 ? O.Pine : O.Oak;
-      if (r < 0.49) return O.Berry;
+      if (r < 0.34) return elevation(seed, x, y) > 0.55 || kind < 0.35 ? O.Pine : O.Oak;
+      if (r < 0.37) return O.Berry;
       return O.None;
     case T.Grass:
       if (r < 0.045) return kind < 0.75 ? O.Oak : O.Pine;

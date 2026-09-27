@@ -3,6 +3,7 @@ import { AudioEngine } from '../audio/AudioEngine';
 import { seedFromString } from '../game/core/rng';
 import { SaveManager } from '../game/save/SaveManager';
 import { IndexedDbStore, localEmergencyStore, MemoryStore } from '../game/save/storage';
+import { applyCommand } from '../game/sim/commands';
 import { createNewGame } from '../game/sim/newGame';
 import { GameController } from '../engine/GameController';
 import { loadSettings } from '../engine/settings';
@@ -18,6 +19,17 @@ import { HelpModal, LoadModal, NewWorldModal, PauseMenu, SettingsModal } from '.
 const ATTRACT_SEED = 20260927;
 
 type Overlay = null | 'pause' | 'settings' | 'help' | 'new' | 'load';
+
+/** The title screen shows a valley that tends itself. */
+function startAttract(game: GameController): void {
+  const sim = createNewGame(ATTRACT_SEED);
+  applyCommand(sim, { type: 'designate', x0: -14, y0: -14, x1: 14, y1: 14, on: true });
+  applyCommand(sim, { type: 'placeArea', building: 'field', x0: -9, y0: 3, x1: -6, y1: 6, crop: 'wheat' });
+  sim.drainEvents();
+  game.attract = true;
+  game.start(sim, { slot: '', name: '', createdAt: 0 }, { tutorial: false });
+  game.speed = 2;
+}
 
 function makeStore() {
   try {
@@ -61,9 +73,7 @@ export function App() {
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
 
-    game.attract = true;
-    game.start(createNewGame(ATTRACT_SEED), { slot: '', name: '', createdAt: 0 }, { tutorial: false });
-    game.speed = 2;
+    startAttract(game);
 
     const onVisibility = () => {
       if (document.hidden) {
@@ -142,9 +152,7 @@ export function App() {
     setOverlay(null);
     setBuildOpen(false);
     setScreen('title');
-    game.attract = true;
-    game.start(createNewGame(ATTRACT_SEED), { slot: '', name: '', createdAt: 0 }, { tutorial: false });
-    game.speed = 2;
+    startAttract(game);
     void game.saves.list().then((l) => setLastSlot(l[0]?.slot ?? null));
   };
 

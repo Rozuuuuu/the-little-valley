@@ -72,7 +72,7 @@ function faceRect(s: Settler, x: number, y: number, w: number, h: number): void 
 }
 
 /** Walks towards a goal, planning a bounded path when needed. */
-export function goTo(sim: Simulation, s: Settler, g: Goal, maxNodes = 4000): MoveResult {
+export function goTo(sim: Simulation, s: Settler, g: Goal, maxNodes = 4000, partial = false): MoveResult {
   const gk = `${g.x},${g.y},${g.w},${g.h},${g.adjacent ? 1 : 0}`;
   const here = tileOf(s);
   if (s.goalKey !== gk) {
@@ -82,7 +82,7 @@ export function goTo(sim: Simulation, s: Settler, g: Goal, maxNodes = 4000): Mov
   }
   if (!s.path) {
     if (goalSatisfied(g, here.x, here.y)) return settle(sim, s, here.x, here.y);
-    const p = findPath(sim, here.x, here.y, g, maxNodes);
+    const p = findPath(sim, here.x, here.y, g, maxNodes, partial);
     if (!p) return 'failed';
     s.path = p;
     s.pathIndex = 0;
@@ -104,7 +104,9 @@ export function goTo(sim: Simulation, s: Settler, g: Goal, maxNodes = 4000): Mov
     if (s.pathIndex >= s.path.length) {
       s.path = null;
       const t = tileOf(s);
-      return goalSatisfied(g, t.x, t.y) ? 'arrived' : 'moving';
+      if (goalSatisfied(g, t.x, t.y)) return 'arrived';
+      // A partial path ends as close as we can get.
+      return partial ? 'failed' : 'moving';
     }
   }
   return 'moving';
@@ -731,11 +733,13 @@ function campSpot(sim: Simulation, b: Building, s: Settler): { x: number; y: num
 }
 
 function runMove(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'move' } | { kind: 'wander' }>): void {
-  const r = goTo(sim, s, { x: t.x, y: t.y, w: 1, h: 1, adjacent: false }, t.kind === 'move' ? 9000 : 400);
+  const r = goTo(sim, s, { x: t.x, y: t.y, w: 1, h: 1, adjacent: false }, t.kind === 'move' ? 9000 : 400, t.kind === 'move');
   if (r === 'failed') {
     if (t.kind === 'move') {
       s.lastNotice = sim.tick;
-      return abortTask(sim, s, "Couldn't find a way there");
+      const here = tileOf(s);
+      const close = Math.hypot(here.x - t.x, here.y - t.y) < 1.5;
+      return abortTask(sim, s, close ? '' : 'Went as close as the path allows');
     }
     return abortTask(sim, s);
   }
