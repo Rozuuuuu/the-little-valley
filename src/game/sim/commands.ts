@@ -51,6 +51,7 @@ export const AREA_LABELS: Record<AreaKind, { name: string; noun: string; does: s
  * hand are kept and delivered. Direct orders and needs are left alone.
  */
 function replan(sim: Simulation, s: Settler): void {
+  s.nextThink = 0;
   const k = s.task?.kind;
   if (k === 'gather' || k === 'farm' || k === 'build' || k === 'craft' || (k === 'haul' && s.task?.kind === 'haul' && s.task.stage === 'toSrc')) abortTask(sim, s);
 }
@@ -109,6 +110,12 @@ function normRect(c: { x0: number; y0: number; x1: number; y1: number }) {
 }
 
 export function applyCommand(sim: Simulation, cmd: Command): CommandResult {
+  const res = applyCommandInner(sim, cmd);
+  if (res.ok && cmd.type !== 'move' && cmd.type !== 'gather') sim.wakeIdle();
+  return res;
+}
+
+function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
   switch (cmd.type) {
     case 'move': {
       if (!isInt(cmd.x) || !isInt(cmd.y)) return err('Invalid location');

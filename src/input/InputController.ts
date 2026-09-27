@@ -75,11 +75,12 @@ export class InputController {
     if (d && !d.dragging && Math.hypot(sx - d.sx, sy - d.sy) > DRAG_THRESHOLD * this.dpr) d.dragging = true;
     const mode = g.mode;
     if (mode.kind === 'place') {
-      const paintDrag = d && d.button === 0 && BUILDINGS[mode.building].paint ? d.tile : null;
+      const def = BUILDINGS[mode.building];
+      const paintDrag = d && d.button === 0 && (def.paint || def.span) ? d.tile : null;
       g.updatePlacement(sx, sy, paintDrag);
-    } else if ((mode.kind === 'mark' || mode.kind === 'unmark') && d && d.button === 0) {
+    } else if ((mode.kind === 'mark' || mode.kind === 'unmark' || mode.kind === 'area') && d && d.button === 0) {
       const t = g.worldTile(sx, sy);
-      g.areaBox = { x0: d.tile.x, y0: d.tile.y, x1: t.x, y1: t.y, kind: mode.kind };
+      g.areaBox = { x0: d.tile.x, y0: d.tile.y, x1: t.x, y1: t.y, kind: mode.kind === 'area' ? 'area' : mode.kind };
     } else if (mode.kind === 'select' && d && d.button === 0 && d.dragging) {
       g.dragBox = { x0: d.sx, y0: d.sy, x1: sx, y1: sy };
     }
@@ -110,6 +111,11 @@ export class InputController {
     }
     if (mode.kind === 'mark' || mode.kind === 'unmark') {
       g.markArea(d.tile, sx, sy);
+      g.areaBox = null;
+      return;
+    }
+    if (mode.kind === 'area') {
+      g.commitArea(d.tile, sx, sy);
       g.areaBox = null;
       return;
     }

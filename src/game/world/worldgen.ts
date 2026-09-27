@@ -75,13 +75,13 @@ export function onFarBank(seed: number, x: number, y: number, gen: number): bool
   return x > edge + 1 && x < edge + 34;
 }
 
-export function terrainAt(seed: number, x: number, y: number, gen = 1): TerrainId {
-  const w = waterAt(seed, x, y, gen);
+export function terrainAt(seed: number, x: number, y: number, gen = 1, water: (x: number, y: number) => number = (wx, wy) => waterAt(seed, wx, wy, gen)): TerrainId {
+  const w = water(x, y);
   if (w === 2) return T.DeepWater;
   if (w === 1) return T.Water;
   for (let dy = -1; dy <= 1; dy++) {
     for (let dx = -1; dx <= 1; dx++) {
-      if ((dx || dy) && waterAt(seed, x + dx, y + dy, gen) !== 0) return T.Sand;
+      if ((dx || dy) && water(x + dx, y + dy) !== 0) return T.Sand;
     }
   }
   const d = Math.hypot(x, y);
@@ -150,12 +150,17 @@ export function generateChunk(seed: number, cx: number, cy: number, gen = 1): Ch
   const c = new Chunk(cx, cy);
   const ox = cx * CHUNK;
   const oy = cy * CHUNK;
+  // Water for the chunk plus a one-tile border, computed once (shores need neighbours).
+  const G = CHUNK + 2;
+  const water = new Uint8Array(G * G);
+  for (let gy = 0; gy < G; gy++) for (let gx = 0; gx < G; gx++) water[gy * G + gx] = waterAt(seed, ox + gx - 1, oy + gy - 1, gen);
+  const waterFn = (wx: number, wy: number) => water[(wy - oy + 1) * G + (wx - ox + 1)];
   for (let ly = 0; ly < CHUNK; ly++) {
     for (let lx = 0; lx < CHUNK; lx++) {
       const i = ly * CHUNK + lx;
       const x = ox + lx;
       const y = oy + ly;
-      const t = terrainAt(seed, x, y, gen);
+      const t = terrainAt(seed, x, y, gen, waterFn);
       const o = objectAt(seed, x, y, t, gen);
       c.terrain[i] = t;
       c.obj[i] = o;

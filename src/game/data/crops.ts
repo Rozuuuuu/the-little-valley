@@ -35,7 +35,7 @@ export const CROPS: Record<CropId, CropDef> = {
     description: 'Grain for the mill. Milled and baked, a wheat field feeds far more settlers than any other crop.',
     stages: 4,
     growTicks: 1700,
-    yield: { wheat: 6 },
+    yield: { wheat: 4 },
     art: { style: 'grain', leaf: '#7bb45a', leafDark: '#4f8a3c', fruit: '#e9c65a', fruitDark: '#b8913a' },
   },
   pumpkin: {

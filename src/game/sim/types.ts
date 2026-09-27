@@ -88,6 +88,8 @@ export interface Settler {
   insideId: number | null;
   /** Why the settler is resting where they are (shown while asleep). */
   restNote: string;
+  /** Earliest tick an idle settler looks for work again (transient back-off). */
+  nextThink: number;
 }
 
 export type AreaKind = 'farm' | 'wood' | 'stone' | 'build';

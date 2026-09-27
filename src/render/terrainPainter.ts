@@ -26,7 +26,7 @@ const C = Object.fromEntries(
 /** How far (in pixels) a terrain may creep into a lower-priority neighbour. */
 const REACH: Record<number, number> = {
   [T.DeepWater]: 0, [T.Water]: 0.9, [T.Sand]: 1, [T.Grass]: 1, [T.Meadow]: 0.85,
-  [T.Forest]: 1, [T.Rocky]: 0.9, [T.Road]: 0.45, [T.Bridge]: 0,
+  [T.Forest]: 1, [T.Rocky]: 0.9, [T.Road]: 0.45, [T.Bridge]: 0, [T.StoneBridge]: 0,
 };
 
 const isWater = (t: number) => t === T.Water || t === T.DeepWater;
@@ -72,7 +72,7 @@ export function terrainGrid(world: World, chunk: Chunk): Uint8Array {
       if (inside) terr[gy * G + gx] = chunk.terrain[(gy - 1) * CHUNK + gx - 1];
       else {
         const n = world.peekChunk(x >> 5, y >> 5);
-        terr[gy * G + gx] = n ? n.terrain[(y & 31) * CHUNK + (x & 31)] : terrainAt(world.seed, x, y);
+        terr[gy * G + gx] = n ? n.terrain[(y & 31) * CHUNK + (x & 31)] : terrainAt(world.seed, x, y, world.genVersion);
       }
     }
   }
@@ -102,7 +102,7 @@ export function computePixels(seed: number, cx: number, cy: number, terr: Uint8A
       const lx = px - tx * TILE;
       const t = terr[rowT + tx];
       let best = t;
-      if (t !== T.Bridge) {
+      if (t !== T.Bridge && t !== T.StoneBridge) {
         const ex = lx < 8 ? -1 : 1;
         const dx = lx < 8 ? lx : 15 - lx;
         const wx = baseX + px;
@@ -180,6 +180,21 @@ export function computePixels(seed: number, cx: number, cy: number, terr: Uint8A
           col = edge ? C.dirt0 : h < 0.06 ? C.dirt2 : h > 0.96 ? C.dirt3 : C.dirt1;
           break;
         }
+        case T.StoneBridge: {
+          const tx = Math.floor(px / TILE);
+          const ty = Math.floor(py / TILE);
+          const lx = px - tx * TILE;
+          const ly = py - ty * TILE;
+          const horiz = tAt(tx - 1, ty) === T.StoneBridge || tAt(tx + 1, ty) === T.StoneBridge || !isWater(tAt(tx - 1, ty)) || !isWater(tAt(tx + 1, ty));
+          const along = horiz ? lx + tx * TILE : ly + ty * TILE;
+          const across = horiz ? ly : lx;
+          // Parapets on both sides, dressed stone slabs between.
+          if (across <= 1 || across >= 14) col = across === 0 || across === 15 ? C.stone0 : (along % 6 === 0 ? C.stone0 : C.stone1);
+          else if (across === 2 || across === 13) col = C.stone0;
+          else if (along % 8 === 0 || (across === 8 && along % 8 === 4)) col = C.stone1;
+          else col = h < 0.06 ? C.stone3 : across < 6 ? C.stone3 : C.stone2;
+          break;
+        }
         case T.Bridge: {
           const tx = Math.floor(px / TILE);
           const ty = Math.floor(py / TILE);
@@ -198,7 +213,7 @@ export function computePixels(seed: number, cx: number, cy: number, terr: Uint8A
           col = C.grass1;
       }
       // Land lip above water: a darker edge so banks read as raised.
-      if (!isWater(c) && c !== T.Bridge && isWater(clsAt(px, py + 1))) col = c === T.Sand ? C.sand3 : C.grass0;
+      if (!isWater(c) && c !== T.Bridge && c !== T.StoneBridge && isWater(clsAt(px, py + 1))) col = c === T.Sand ? C.sand3 : C.grass0;
       out[py * S + px] = col;
     }
   }

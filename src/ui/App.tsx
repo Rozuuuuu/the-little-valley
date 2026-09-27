@@ -14,6 +14,7 @@ import { Renderer } from '../render/Renderer';
 import { SpriteBank } from '../render/sprites';
 import { GameContext, useGame, type GameContextValue } from './context';
 import { BuildDock, HoverInfo, Inspector, PausedBanner, SidePanel, Toasts, TopBar, Tutorial } from './Hud';
+import { Celebration, MinimapPanel, ValleyToday } from './Village';
 import { HelpModal, LoadModal, NewWorldModal, PauseMenu, SettingsModal } from './Modals';
 
 const ATTRACT_SEED = 20260927;
@@ -47,6 +48,7 @@ export function App() {
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [buildOpen, setBuildOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [lastSlot, setLastSlot] = useState<string | null>(null);
   const screenRef = useRef(screen);
   screenRef.current = screen;
@@ -134,6 +136,7 @@ export function App() {
       game.start(res.sim, { slot, name: res.save.meta.name, createdAt: res.save.meta.createdAt }, {
         tutorial: false,
         tutorialState: res.save.tutorial,
+        overview: true,
         view: res.save.view,
       });
       setOverlay(null);
@@ -142,7 +145,8 @@ export function App() {
       if (res.usedBackup) game.toast(`The latest save was damaged (${res.problem}). Loaded the backup from just before it.`, 'warn');
       else game.toast(`Welcome back to ${res.save.meta.name}.`, 'good');
     } catch (e) {
-      game.toast(`Couldn't load that valley: ${e instanceof Error ? e.message : String(e)}`, 'bad');
+      // Never start a fresh world in its place: say exactly what went wrong and keep the save untouched.
+      setLoadError(`${e instanceof Error ? e.message : String(e)}`);
     }
   };
 
@@ -179,6 +183,9 @@ export function App() {
               <Inspector />
               <BuildDock open={buildOpen} setOpen={setBuildOpen} />
               <HoverInfo />
+              <MinimapPanel />
+              <ValleyToday />
+              <Celebration />
             </>
           )}
           {overlay === 'pause' && <PauseMenu onClose={closeOverlay} onSettings={() => setOverlay('settings')} onHelp={() => setOverlay('help')} onQuit={quitToTitle} />}
@@ -188,6 +195,20 @@ export function App() {
           {overlay === 'load' && <LoadModal onClose={closeOverlay} onLoad={load} />}
           {screen === 'title' && <Toasts />}
         </GameContext.Provider>
+      )}
+      {loadError && (
+        <div className="scrim">
+          <div className="panel modal" role="alertdialog" aria-label="This valley could not be opened">
+            <h2>This valley could not be opened</h2>
+            <div className="error-box">{loadError}</div>
+            <p className="muted">Neither the latest save nor its backup could be read. Nothing has been overwritten or deleted, so a later version of the game may still be able to open it.</p>
+            <div className="buttons">
+              <button className="btn primary" onClick={() => setLoadError(null)} autoFocus>
+                Back to the title screen
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       {error && (
         <div className="scrim">

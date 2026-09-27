@@ -3,7 +3,9 @@ import { hash01 } from '../game/core/rng';
 import { BUILDINGS, type BuildingId } from '../game/data/buildings';
 import { CROPS } from '../game/data/crops';
 import { fieldStage, WATER_THRESHOLD } from '../game/sim/farming';
-import { materialsComplete } from '../game/sim/buildings';
+import { costOf, isPermanentHome, materialsComplete, workOf } from '../game/sim/buildings';
+import { invEntries } from '../game/sim/inventory';
+import type { AreaKind } from '../game/sim/types';
 import type { Simulation } from '../game/sim/Simulation';
 import type { Building, Settler } from '../game/sim/types';
 import type { Chunk } from '../game/world/Chunk';
@@ -43,12 +45,21 @@ export interface RenderState {
   hoverTile: { x: number; y: number } | null;
   placement: PlacementPreview | null;
   dragBox: { x0: number; y0: number; x1: number; y1: number } | null;
-  areaBox: { x0: number; y0: number; x1: number; y1: number; kind: 'mark' | 'unmark' } | null;
+  areaBox: { x0: number; y0: number; x1: number; y1: number; kind: 'mark' | 'unmark' | 'area' } | null;
   markers: Marker[];
   showBuildHover: boolean;
   /** Harvest marks and other work overlays (off on the title screen). */
   showMarks: boolean;
+  selectedArea: number | null;
+  /** Work-area tools are open: show every area clearly. */
+  areaMode: boolean;
+  /** Something the player just jumped to (tile rect), pulsing briefly. */
+  highlight: { x: number; y: number; w: number; h: number; t0: number } | null;
 }
+
+export const AREA_COLORS: Record<AreaKind, string> = { farm: '#e9c65a', wood: '#8ee07a', stone: '#d6dadc', build: '#8fc9e0' };
+/** A letter per area kind so areas never rely on colour alone. */
+export const AREA_SYMBOL: Record<AreaKind, string> = { farm: 'F', wood: 'W', stone: 'Q', build: 'B' };
 
 interface Drawable {
   y: number;
@@ -288,11 +299,15 @@ export class Renderer {
 
     // Flat things: fields, path/bridge sites, selection rings
     const drawables: Drawable[] = [];
+    const occupied = new Set<number>();
+    for (const s of sim.settlers) if (s.insideId !== null) occupied.add(s.insideId);
     for (const b of sim.buildings.values()) {
       if (b.x > tx1 || b.y > ty1 || b.x + b.w < tx0 || b.y + b.h < ty0 - 4) continue;
       if (b.field) this.drawField(b, st.time);
       else if (!b.built && (b.type === 'path' || b.type === 'bridge')) this.drawFlatSite(b, st.time);
-      else drawables.push({ y: (b.y + b.h) * TILE, draw: () => this.drawBuilding(sim, b, st, night) });
+      else if (b.type === 'stoneBridge') {
+        if (!b.built) this.drawStoneBridgeSite(b, st.time);
+      } else drawables.push({ y: (b.y + b.h) * TILE, draw: () => this.drawBuilding(sim, b, st, night, occupied) });
     }
     for (const s of sim.settlers) {
       if (s.hidden) continue;
@@ -327,6 +342,8 @@ export class Renderer {
         if (!b.built || b.x > tx1 || b.x + b.w < tx0 || b.y > ty1 || b.y < ty0 - 3) continue;
         if (b.type === 'house') this.particles.fx('smoke', b.x + 23.5 / 16, b.y - 14 / 16, this.sprites.ui);
         if (b.type === 'workshop') this.particles.fx('smoke', b.x + 35.5 / 16, b.y - 16 / 16, this.sprites.ui);
+        if (b.type === 'bakery') this.particles.fx('smoke', b.x + 38 / 16, b.y - 16 / 16, this.sprites.ui);
+        if (b.type === 'cottage') this.particles.fx('smoke', b.x + 38.5 / 16, b.y - 14 / 16, this.sprites.ui);
         if (b.type === 'camp') this.particles.fx('spark', b.x + 1.5, b.y + 1.6, this.sprites.ui);
       }
     }
@@ -334,6 +351,7 @@ export class Renderer {
     this.particles.draw(ctx, sc, cam.tx, cam.ty);
 
     this.drawOverlays(st, tx0, ty0, tx1, ty1);
+    this.drawHighlight(st);
 
     // Fog of war
     ctx.imageSmoothingEnabled = true;
@@ -350,6 +368,8 @@ export class Renderer {
 
     this.drawLighting(sim, st, light);
     this.drawWeather(sim, st.time, dt, light.dark);
+    // Areas are a planning layer: above fog and night so they stay readable.
+    this.drawAreas(st);
     this.drawUiLayer(st);
   }
 
@@ -422,14 +442,15 @@ export class Renderer {
 
   private spriteFor(sim: Simulation, b: Building, night: boolean): Sprite | null {
     if (b.type === 'fence') return this.sprites.fence[this.fenceMask(sim, b.x, b.y)];
-    const set = this.sprites.buildings[b.type];
+    const set = b.type === 'camp' && sim.progression.reached.includes('village') ? this.sprites.villageHall : this.sprites.buildings[b.type];
     if (!set) return null;
     return night ? set.night : set.day;
   }
 
-  private drawBuilding(sim: Simulation, b: Building, st: RenderState, night: boolean): void {
-    const def = BUILDINGS[b.type];
-    const sprite = this.spriteFor(sim, b, night);
+  private drawBuilding(sim: Simulation, b: Building, st: RenderState, night: boolean, occupied: ReadonlySet<number>): void {
+    // Homes only light their windows when someone is asleep inside.
+    const lit = night && (!isPermanentHome(b) || occupied.has(b.id));
+    const sprite = this.spriteFor(sim, b, lit);
     const wx = b.x * TILE;
     const wy = b.y * TILE;
     const w = b.w * TILE;
@@ -440,12 +461,19 @@ export class Renderer {
     this.ctx.globalAlpha = 1;
     if (b.built) {
       if (sprite) this.blit(sprite, wx, wy);
+      else this.drawPlaceholder(wx, wy, w, h);
       if (b.type === 'camp') this.drawCampfire(wx + 24, wy + 28, st.time);
       if (b.type === 'market') this.drawFountain(wx + 40, wy + 36, st.time);
+      if (b.type === 'mill') {
+        // Sails turn faster while the miller is grinding.
+        const busy = !!b.workshop && b.workshop.progress > 0;
+        const f = Math.floor(st.time * (busy ? 5 : 1.5) + b.id) % this.sprites.millSails.length;
+        this.blit(this.sprites.millSails[f], wx + 16, wy - 7);
+      }
       return;
     }
     // Construction site
-    const f = Math.min(1, b.progress / Math.max(1, def.work));
+    const f = Math.min(1, b.progress / Math.max(1, workOf(b)));
     this.ctx.globalAlpha = 0.5;
     this.rectW(wx, wy, w, h, P.dirt1);
     this.ctx.globalAlpha = 1;
@@ -454,7 +482,7 @@ export class Renderer {
       const sc = cam.scale;
       const x = Math.round((wx - sprite.ax) * sc + cam.tx);
       const y = Math.round((wy - sprite.ay) * sc + cam.ty);
-      const ghost = this.ghost(sprite, `${b.type}:${night}`);
+      const ghost = this.ghost(sprite, `${b.type}:${lit}`);
       this.ctx.globalAlpha = 0.35;
       this.ctx.drawImage(ghost, x, y, sprite.w * sc, sprite.h * sc);
       this.ctx.globalAlpha = 1;
@@ -470,14 +498,135 @@ export class Renderer {
     // Progress and material status
     const bw = Math.min(24, w);
     this.drawBar(wx + (w - bw) / 2, top - 5, bw, f, P.uiGood);
-    if (!materialsComplete(b)) {
-      const missing = Object.entries(def.cost).find(([r, n]) => (b.delivered[r as keyof typeof b.delivered] ?? 0) < (n as number));
-      if (missing) {
-        const icon = this.sprites.resources[missing[0] as keyof typeof this.sprites.resources];
-        const blink = Math.floor(st.time * 2) % 2 === 0;
-        this.blit(icon, wx + w / 2, top - 12 + (blink ? 0 : -1));
+    this.drawMissing(b, wx + w / 2, top - 12, st.time);
+  }
+
+  /** Fallback look for a finished building that has no sprite yet. */
+  private drawPlaceholder(wx: number, wy: number, w: number, h: number): void {
+    this.rectW(wx + 1, wy + 2, w - 2, h - 2, P.wall1);
+    this.rectW(wx, wy, w, 3, P.roof1);
+    this.rectW(wx + w / 2 - 2, wy + h - 6, 4, 6, P.wood1);
+  }
+
+  /** A blinking icon of the first material a site still lacks. */
+  private drawMissing(b: Building, x: number, y: number, time: number): void {
+    if (materialsComplete(b)) return;
+    const missing = invEntries(costOf(b)).find(([r, n]) => (b.delivered[r] ?? 0) < n);
+    if (!missing) return;
+    const blink = Math.floor(time * 2) % 2 === 0;
+    this.blit(this.sprites.resources[missing[0]], x, y + (blink ? 0 : -1));
+  }
+
+  /**
+   * A stone bridge rises in visible stages: a marked line with stakes, stone
+   * piers out of the water, arches closing in from both banks, then deck and
+   * parapets. The finished bridge is painted into the ground by the terrain painter.
+   */
+  private drawStoneBridgeSite(b: Building, time: number): void {
+    const f = Math.min(1, b.progress / Math.max(1, workOf(b)));
+    const horiz = b.w >= b.h;
+    const n = Math.max(b.w, b.h);
+    const tileAt = (i: number) => ({ x: (b.x + (horiz ? i : 0)) * TILE, y: (b.y + (horiz ? 0 : i)) * TILE });
+    this.ctx.globalAlpha = 0.35 + Math.sin(time * 3) * 0.08;
+    for (let i = 0; i < n; i++) {
+      const t = tileAt(i);
+      if (horiz) this.rectW(t.x, t.y + 3, TILE, 10, P.stone3);
+      else this.rectW(t.x + 3, t.y, 10, TILE, P.stone3);
+    }
+    this.ctx.globalAlpha = 1;
+    const piers = Math.min(1, f / 0.35);
+    const arches = Math.max(0, Math.min(1, (f - 0.35) / 0.35));
+    const deck = Math.max(0, (f - 0.7) / 0.3);
+    for (let i = 0; i < n; i++) {
+      const t = tileAt(i);
+      if (i % 2 === 1 || n <= 2) {
+        const ph = Math.round(10 * piers);
+        if (ph > 0) {
+          if (horiz) {
+            this.rectW(t.x + 5, t.y + 16 - ph, 6, ph, P.stone1);
+            this.rectW(t.x + 5, t.y + 16 - ph, 2, ph, P.stone2);
+          } else {
+            this.rectW(t.x + 2, t.y + 5, 3, 6, P.stone1);
+            this.rectW(t.x + 11, t.y + 5, 3, 6, P.stone1);
+          }
+        }
+      }
+      const fromEdge = Math.min(i, n - 1 - i);
+      if (arches > 0 && fromEdge < Math.ceil((arches * n) / 2)) {
+        if (horiz) {
+          this.rectW(t.x, t.y + 4, TILE, 8, P.stone2);
+          this.rectW(t.x, t.y + 11, TILE, 1, P.stone0);
+        } else {
+          this.rectW(t.x + 3, t.y, 10, TILE, P.stone2);
+          this.rectW(t.x + 12, t.y, 1, TILE, P.stone0);
+        }
+      }
+      if (deck > 0 && fromEdge < Math.ceil((deck * n) / 2)) {
+        if (horiz) {
+          this.rectW(t.x, t.y + 2, TILE, 2, P.stone0);
+          this.rectW(t.x, t.y + 12, TILE, 2, P.stone0);
+        } else {
+          this.rectW(t.x + 1, t.y, 2, TILE, P.stone0);
+          this.rectW(t.x + 13, t.y, 2, TILE, P.stone0);
+        }
       }
     }
+    for (const p of [tileAt(0), tileAt(n - 1)]) this.rectW(p.x + 7, p.y - 2, 2, 5, P.wood2);
+    const mid = tileAt(Math.floor(n / 2));
+    this.drawBar(mid.x - 4, mid.y - 6, 24, f, P.uiGood);
+    this.drawMissing(b, mid.x + 8, mid.y - 13, time);
+  }
+
+  /** Work areas: a tinted rectangle, a dashed edge and a name tag (never colour alone). */
+  private drawAreas(st: RenderState): void {
+    const ctx = this.ctx;
+    const cam = this.camera;
+    const sc = cam.scale;
+    for (const a of st.sim.workAreas) {
+      const selected = st.selectedArea === a.id;
+      const strong = selected || st.areaMode;
+      const color = AREA_COLORS[a.kind];
+      const p0 = cam.worldToScreen(a.x0 * TILE, a.y0 * TILE);
+      const p1 = cam.worldToScreen((a.x1 + 1) * TILE, (a.y1 + 1) * TILE);
+      if (p1.x < 0 || p1.y < 0 || p0.x > cam.width || p0.y > cam.height) continue;
+      ctx.globalAlpha = strong ? 0.2 : 0.07;
+      ctx.fillStyle = color;
+      ctx.fillRect(p0.x, p0.y, p1.x - p0.x, p1.y - p0.y);
+      ctx.globalAlpha = strong ? 0.95 : 0.5;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = Math.max(1, Math.round(sc / (selected ? 1 : 2)));
+      ctx.setLineDash([sc * 4, sc * 2]);
+      ctx.strokeRect(p0.x + 0.5, p0.y + 0.5, p1.x - p0.x - 1, p1.y - p0.y - 1);
+      ctx.setLineDash([]);
+      if (strong || sc >= 3) {
+        const label = `${AREA_SYMBOL[a.kind]} ${a.name}`;
+        ctx.font = `700 ${Math.max(11, Math.round(sc * 3.6))}px "Atkinson Hyperlegible", sans-serif`;
+        const w = ctx.measureText(label).width;
+        ctx.globalAlpha = 0.85;
+        ctx.fillStyle = '#1f2b25';
+        // Keep the tag on screen even when the area's corner is not.
+        const lx = Math.max(4, Math.min(p0.x, p1.x - w - sc * 4));
+        const ly = Math.max(4, Math.min(p0.y, p1.y - sc * 5.5));
+        ctx.fillRect(lx, ly, w + sc * 4, sc * 5.5);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = color;
+        ctx.fillText(label, lx + sc * 2, ly + sc * 4.2);
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  /** A pulsing frame around whatever the player just jumped to. */
+  private drawHighlight(st: RenderState): void {
+    const h = st.highlight;
+    if (!h) return;
+    const age = st.time - h.t0;
+    if (age > 2.6) return;
+    const pulse = 2 + Math.round((Math.sin(age * 8) + 1) * 1.5);
+    this.ctx.globalAlpha = Math.min(1, (2.6 - age) * 1.5);
+    this.drawBrackets(h.x * TILE - pulse, h.y * TILE - pulse, h.w * TILE + pulse * 2, h.h * TILE + pulse * 2, P.select);
+    this.drawBrackets(h.x * TILE - pulse - 1, h.y * TILE - pulse - 1, h.w * TILE + pulse * 2 + 2, h.h * TILE + pulse * 2 + 2, P.uiWarn);
+    this.ctx.globalAlpha = 1;
   }
 
   private ghost(sprite: Sprite, key: string): HTMLCanvasElement {
@@ -665,7 +814,8 @@ export class Renderer {
     const sc = cam.scale;
     for (const m of st.markers) {
       const t = (st.time - m.t0) / 0.6;
-      if (t > 1) continue;
+      // Guard against clock skew (e.g. a marker stamped after this frame's time).
+      if (t > 1 || t < 0) continue;
       const color = m.kind === 'move' ? P.uiGood : m.kind === 'work' ? P.uiWarn : P.uiBad;
       ctx.globalAlpha = 1 - t;
       ctx.strokeStyle = color;
@@ -851,9 +1001,9 @@ export class Renderer {
       const a = st.areaBox;
       const p0 = cam.worldToScreen(Math.min(a.x0, a.x1) * TILE, Math.min(a.y0, a.y1) * TILE);
       const p1 = cam.worldToScreen((Math.max(a.x0, a.x1) + 1) * TILE, (Math.max(a.y0, a.y1) + 1) * TILE);
-      ctx.fillStyle = a.kind === 'mark' ? 'rgba(255, 214, 90, 0.18)' : 'rgba(255, 110, 90, 0.18)';
+      ctx.fillStyle = a.kind === 'unmark' ? 'rgba(255, 110, 90, 0.18)' : a.kind === 'area' ? 'rgba(143, 201, 224, 0.2)' : 'rgba(255, 214, 90, 0.18)';
       ctx.fillRect(p0.x, p0.y, p1.x - p0.x, p1.y - p0.y);
-      ctx.strokeStyle = a.kind === 'mark' ? P.uiWarn : P.uiBad;
+      ctx.strokeStyle = a.kind === 'unmark' ? P.uiBad : a.kind === 'area' ? '#8fc9e0' : P.uiWarn;
       ctx.lineWidth = Math.max(1, sc >> 1);
       ctx.setLineDash([sc * 3, sc * 2]);
       ctx.strokeRect(p0.x + 0.5, p0.y + 0.5, p1.x - p0.x - 1, p1.y - p0.y - 1);

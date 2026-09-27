@@ -177,6 +177,7 @@ export function placeBuilding(sim: Simulation, type: BuildingId, x: number, y: n
     b.field = { crop: crop === undefined ? 'turnip' : crop, state: 'wild', growth: 0, moisture: 0.5 };
   }
   if (workOf(b) === 0 && invEntries(costOf(b)).length === 0) completeBuilding(sim, b, true);
+  else sim.mapChanged();
   return b;
 }
 
@@ -200,6 +201,7 @@ export function completeBuilding(sim: Simulation, b: Building, silent = false): 
       }
     }
     sim.buildings.delete(b.id);
+    sim.mapChanged();
     if (def.convertsTo === 'road') sim.stats.pathsBuilt += b.w * b.h;
     sim.emit({ type: 'fx', kind: 'dust', x: cx, y: cy });
     if (def.convertsTo === 'bridge') sim.emit({ type: 'sfx', name: 'complete', x: cx, y: cy });
@@ -214,6 +216,7 @@ export function completeBuilding(sim: Simulation, b: Building, silent = false): 
   }
   if (def.reveal) sim.world.reveal(cx, cy, def.reveal);
   if (def.housing) assignHomes(sim);
+  sim.mapChanged();
   if (!silent) {
     sim.emit({ type: 'fx', kind: 'sparkle', x: cx, y: cy });
     sim.emit({ type: 'sfx', name: 'complete', x: cx, y: cy });
@@ -258,6 +261,7 @@ export function removeBuilding(sim: Simulation, b: Building): string {
       s.hidden = false;
     }
   }
+  sim.mapChanged();
   const homeless = displaced > 0 ? assignHomes(sim) : 0;
   sim.emit({ type: 'fx', kind: 'dust', x: cx, y: cy });
   sim.emit({ type: 'important' });

@@ -309,8 +309,193 @@ const bench: Draw = (p) => {
   }
 };
 
+/** Stone windmill tower (2x2). Sails are separate, animated sprites. */
+const mill: Draw = (p, lit) => {
+  // Tapered stone tower, lit from the left.
+  for (let y = -8; y <= 31; y++) {
+    const f = (y + 8) / 39;
+    const half = 8 + f * 5;
+    for (let x = Math.round(16 - half); x <= Math.round(15 + half); x++) {
+      const rel = (x - 16 + 0.5) / half;
+      const brick = (y % 4 === 0) || ((x + (Math.floor(y / 4) % 2) * 3) % 6 === 0);
+      let c: string = rel < -0.45 ? P.stone3 : rel < 0.4 ? P.stone2 : P.stone1;
+      if (brick) c = rel < 0.4 ? P.stone1 : P.stone0;
+      p.px(x, y, c);
+    }
+  }
+  p.hline(3, 28, 31, P.stone0);
+  // Wooden cap
+  for (let y = -18; y <= -7; y++) {
+    const half = 3 + ((y + 18) / 11) * 8;
+    for (let x = Math.round(16 - half); x <= Math.round(15 + half); x++) {
+      const rel = (x - 16 + 0.5) / half;
+      p.px(x, y, (y + 18) % 3 === 2 ? P.wood1 : rel < -0.3 ? P.wood3 : rel < 0.45 ? P.wood2 : P.wood1);
+    }
+  }
+  p.hline(5, 26, -7, P.wood0);
+  // Door, window, flour sacks
+  p.rect(13, 22, 6, 10, P.wood0);
+  p.rect(14, 23, 4, 9, P.wood2);
+  p.vline(16, 23, 31, P.wood1);
+  windowAt(p, 13, 6, 6, 6, lit);
+  p.rect(22, 26, 5, 5, P.wall2);
+  p.hline(22, 26, 26, P.wall1);
+  p.rect(5, 27, 4, 4, P.wall2);
+  p.px(6, 27, P.wall1);
+};
+
+const bakery: Draw = (p, lit) => {
+  // Warm brick walls
+  for (let y = 10; y < 32; y++) {
+    for (let x = 1; x < 47; x++) {
+      const mortar = y % 3 === 0 || (x + ((y / 3) | 0) % 2 * 2) % 5 === 0;
+      p.px(x, y, mortar ? P.wall1 : x < 5 ? P.roof3 : y > 27 ? P.roof0 : P.roof1);
+    }
+  }
+  p.rect(1, 29, 46, 3, P.stone1);
+  p.hline(1, 46, 29, P.stone2);
+  // Oven chimney
+  p.rect(35, -16, 6, 16, P.stone2);
+  p.vline(40, -16, -1, P.stone1);
+  p.hline(35, 40, -16, P.stone0);
+  if (lit) p.hline(36, 39, -15, P.fire2);
+  shingles(p, -1, 48, -9, 11, SLATE, 3);
+  p.hline(0, 47, 12, P.wood0);
+  // Striped awning over the shop window
+  for (let x = 4; x < 25; x++) {
+    const c = Math.floor((x - 4) / 3) % 2 ? P.wall2 : P.flowerY;
+    p.vline(x, 14, 17, c);
+    if ((x - 4) % 3 !== 1) p.px(x, 18, c);
+  }
+  p.hline(4, 24, 14, P.wood1);
+  // Shop window with loaves
+  p.rect(5, 19, 19, 8, P.wood0);
+  p.rect(6, 20, 17, 6, lit ? P.glassLit : P.glass);
+  for (let i = 0; i < 4; i++) {
+    p.rect(7 + i * 4, 23, 3, 2, P.wood3);
+    p.px(8 + i * 4, 23, P.wood4);
+  }
+  // Door and bread sign
+  p.rect(29, 18, 7, 14, P.wood0);
+  p.rect(30, 19, 5, 13, P.wood2);
+  p.px(34, 25, P.fire2);
+  p.rect(38, 15, 7, 5, P.wood3);
+  p.ellipse(41.5, 17.5, 2.6, 1.4, P.wood4);
+  p.hline(40, 43, 17, P.wood2);
+  // Oven glow by the side at night
+  if (lit) p.rect(39, 24, 5, 4, P.fire1);
+  else p.rect(39, 24, 5, 4, P.stone0);
+  p.hline(38, 44, 23, P.stone2);
+};
+
+const cottage: Draw = (p, lit) => {
+  p.rect(1, 12, 46, 20, P.wall2);
+  p.rect(1, 12, 3, 17, '#fbf1d6');
+  for (const x of [1, 16, 31, 46]) p.vline(x, 12, 28, P.wood1);
+  p.hline(1, 46, 20, P.wood1);
+  for (let i = 0; i < 4; i++) {
+    p.px(2 + i * 3, 21 + i, P.wood1);
+    p.px(44 - i * 3, 21 + i, P.wood1);
+  }
+  p.rect(1, 28, 46, 4, P.stone1);
+  p.hline(1, 46, 28, P.stone2);
+  p.rect(36, -14, 5, 12, P.stone2);
+  p.hline(36, 40, -14, P.stone0);
+  shingles(p, -1, 48, -9, 13, SLATE, 3);
+  p.hline(0, 47, 14, P.wall0);
+  // Blue door, two windows with flower boxes
+  p.rect(21, 18, 7, 14, P.wood0);
+  p.rect(22, 19, 5, 13, P.slate2);
+  p.vline(24, 19, 31, P.slate1);
+  p.px(26, 25, P.fire2);
+  p.hline(20, 28, 31, P.stone2);
+  for (const x of [6, 34]) {
+    windowAt(p, x, 17, 7, 6, lit);
+    p.rect(x - 1, 23, 9, 2, P.wood1);
+    for (let i = 0; i < 9; i += 2) p.px(x - 1 + i, 22, i % 4 ? P.flowerV : P.flowerR);
+  }
+};
+
+/** The camp after reaching Village: a timber hall with a bell cupola and bunting. */
+const villageHall: Draw = (p, lit) => {
+  p.rect(3, 4, 42, 18, P.wall2);
+  for (const x of [3, 14, 24, 34, 44]) p.vline(x, 4, 21, P.wood1);
+  p.hline(3, 44, 12, P.wood1);
+  p.rect(3, 20, 42, 3, P.stone1);
+  shingles(p, 0, 47, -12, 5, ROOF, 3);
+  // Bell cupola
+  p.rect(20, -22, 8, 10, P.wood2);
+  p.rect(21, -20, 6, 6, P.wood0);
+  p.rect(22, -19, 4, 4, P.fire2);
+  p.px(23, -18, '#fff3a8');
+  for (let y = 0; y < 5; y++) p.hline(19 + y, 28 - y, -27 + y, P.roof2);
+  // Double doors, windows
+  p.rect(19, 10, 10, 12, P.wood0);
+  p.rect(20, 11, 8, 11, P.wood2);
+  p.vline(24, 11, 21, P.wood0);
+  windowAt(p, 7, 8, 6, 6, lit);
+  windowAt(p, 35, 8, 6, 6, lit);
+  // Bunting across the front
+  const flags = [P.roof2, P.flowerY, P.slate2, P.leaf3];
+  for (let x = 2; x < 46; x += 4) {
+    const c = flags[(x / 4) % 4 | 0];
+    p.hline(x, x + 2, 5, c);
+    p.px(x + 1, 6, c);
+  }
+  // Fire ring stays in front (flames drawn by the renderer)
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2;
+    p.px(Math.round(24 + Math.cos(a) * 4), Math.round(28 + Math.sin(a) * 2), i % 2 ? P.stone1 : P.stone2);
+  }
+  p.hline(22, 26, 28, P.wood1);
+  // Benches either side of the fire
+  p.rect(8, 27, 9, 2, P.wood3);
+  p.rect(31, 27, 9, 2, P.wood3);
+  p.hline(8, 16, 29, P.wood0);
+  p.hline(31, 39, 29, P.wood0);
+};
+
+/** Windmill sails in 8 rotation frames, anchored at the hub. */
+export function makeMillSails(): Sprite[] {
+  const frames: Sprite[] = [];
+  const R = 17;
+  for (let f = 0; f < 8; f++) {
+    const p = new Painter(R * 2 + 5, R * 2 + 5, R + 2, R + 2);
+    for (let blade = 0; blade < 4; blade++) {
+      const a = (blade / 4) * Math.PI * 2 + (f / 8) * (Math.PI / 2);
+      const dx = Math.cos(a);
+      const dy = Math.sin(a);
+      const nx = -dy;
+      const ny = dx;
+      for (let t = 2; t <= R; t++) {
+        const bx = dx * t;
+        const by = dy * t;
+        p.px(Math.round(bx), Math.round(by), P.wood1);
+        if (t > 5) {
+          for (let w = 1; w <= 3; w++) {
+            const c = (t + w) % 4 === 0 ? P.wood2 : w === 3 ? P.canvas1 : P.canvas2;
+            p.px(Math.round(bx + nx * w), Math.round(by + ny * w), c);
+          }
+        }
+      }
+    }
+    p.rect(-1, -1, 3, 3, P.wood0);
+    p.px(0, 0, P.wood3);
+    p.outline();
+    frames.push(p.sprite(R + 2, R + 2));
+  }
+  return frames;
+}
+
+export function makeVillageHall(): BuildingSprites {
+  return make(52, 58, 2, 28, villageHall);
+}
+
 export function makeBuildingSprites(): Partial<Record<BuildingId, BuildingSprites>> {
   return {
+    mill: make(40, 58, 4, 22, mill),
+    bakery: make(54, 52, 3, 20, bakery),
+    cottage: make(54, 50, 3, 17, cottage),
     camp: make(52, 46, 2, 12, camp),
     house: make(36, 50, 2, 17, house),
     storehouse: make(54, 46, 3, 13, storehouse),

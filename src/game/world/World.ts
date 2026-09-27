@@ -35,8 +35,20 @@ export class World {
     return this.chunks.get(chunkKey(cx, cy));
   }
 
+  // Neighbouring tiles almost always share a chunk: remember the last one.
+  private lastCx = NaN;
+  private lastCy = NaN;
+  private lastChunk: Chunk | null = null;
+
   chunkAt(x: number, y: number): Chunk {
-    return this.chunk(x >> CHUNK_SHIFT, y >> CHUNK_SHIFT);
+    const cx = x >> CHUNK_SHIFT;
+    const cy = y >> CHUNK_SHIFT;
+    if (cx === this.lastCx && cy === this.lastCy && this.lastChunk) return this.lastChunk;
+    const c = this.chunk(cx, cy);
+    this.lastCx = cx;
+    this.lastCy = cy;
+    this.lastChunk = c;
+    return c;
   }
 
   private idx(x: number, y: number): number {

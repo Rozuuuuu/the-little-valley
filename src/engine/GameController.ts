@@ -5,7 +5,12 @@ import type { CropId } from '../game/data/crops';
 import type { JobId } from '../game/data/jobs';
 import type { RecipeId } from '../game/data/recipes';
 import type { SaveManager } from '../game/save/SaveManager';
-import { checkPlacement } from '../game/sim/buildings';
+import { MILESTONES, type MilestoneId } from '../game/data/progression';
+import { campOf, checkPlacement, checkSpan, materialsComplete } from '../game/sim/buildings';
+import type { AreaKind, SessionMark } from '../game/sim/types';
+import type { WorkKind } from '../game/data/jobs';
+import type { Minimap } from '../render/Minimap';
+import { buildOverview, suggestCrossing, type Overview, type Target } from './overview';
 import { applyCommand, type Command } from '../game/sim/commands';
 import type { Simulation } from '../game/sim/Simulation';
 import type { CommandResult, SimEvent } from '../game/sim/types';
@@ -15,10 +20,11 @@ import type { Camera } from '../render/Camera';
 import type { Marker, PlacementPreview, Renderer, RenderState } from '../render/Renderer';
 import type { Settings } from './settings';
 import {
-  buildingInfo, clockOf, emptySnapshot, hoverText, housingOf, milestoneInfo, settlerInfo, unlockedSets,
+  areaInfo, buildingInfo, celebrationInfo, clockOf, emptySnapshot, hoverText, housingOf, milestoneInfo, settlerInfo, unlockedSets,
   type Mode, type Toast, type UiSnapshot,
 } from './snapshot';
 import { Store } from './store';
+import { bedSummary } from '../game/sim/population';
 import { TUTORIAL, TUTORIAL_OUTRO } from './tutorial';
 
 export interface SessionInfo {
@@ -74,6 +80,17 @@ export class GameController {
   /** Title-screen mode: the valley plays itself behind the menu. */
   attract = false;
   onFatal?: (e: unknown) => void;
+  selectedArea: number | null = null;
+  /** Set while the Areas tab is showing, so every area is drawn clearly. */
+  areasTabOpen = false;
+  highlight: RenderState['highlight'] = null;
+  overview: Overview | null = null;
+  overviewOpen = false;
+  celebration: MilestoneId | null = null;
+  private pendingOverview: { previous: SessionMark | null; at: number } | null = null;
+  minimap: Minimap | null = null;
+  private lastMinimap = 0;
+  private findCursor: Record<string, number> = {};
 
   constructor(
     readonly renderer: Renderer,
@@ -85,11 +102,25 @@ export class GameController {
 
   // ---- lifecycle ------------------------------------------------------------
 
-  start(sim: Simulation, session: SessionInfo, opts: { tutorial: boolean; tutorialState?: { step: number; done: boolean }; view?: { camX: number; camY: number; zoom: number } }): void {
+  start(
+    sim: Simulation,
+    session: SessionInfo,
+    opts: { tutorial: boolean; tutorialState?: { step: number; done: boolean }; view?: { camX: number; camY: number; zoom: number }; overview?: boolean },
+  ): void {
     this.sim = sim;
     this.session = session;
     this.selected.clear();
     this.selectedBuildings.clear();
+    this.selectedArea = null;
+    this.highlight = null;
+    this.celebration = null;
+    // Summarise the previous session before this one starts overwriting the mark.
+    // Settlers pick their work during the first second, so issues are gathered a moment later.
+    const previous = sim.session;
+    this.overview = null;
+    this.overviewOpen = false;
+    this.pendingOverview = opts.overview ? { previous, at: sim.tick + 12 } : null;
+    if (!this.attract) sim.startSession();
     this.mode = { kind: 'select' };
     this.paused = false;
     this.speed = 1;
@@ -135,7 +166,7 @@ export class GameController {
   private tickFrame(now: number): void {
     const dt = Math.min(0.25, (now - this.lastFrame) / 1000);
     this.lastFrame = now;
-    const halted = this.paused || this.menuOpen;
+    const halted = this.paused || this.menuOpen || this.celebration !== null;
     if (!halted) {
       this.acc += dt * 1000 * this.speed;
       let steps = 0;
@@ -147,6 +178,12 @@ export class GameController {
       }
       if (steps >= maxSteps) this.acc = 0;
       this.handleEvents(this.sim.drainEvents());
+    }
+    if (this.pendingOverview && this.sim.tick >= this.pendingOverview.at) {
+      this.overview = buildOverview(this.sim, this.pendingOverview.previous);
+      this.overviewOpen = true;
+      this.pendingOverview = null;
+      this.publish(true);
     }
     this.updateCamera(dt);
     this.audio.setMood(this.sim.isNight(), this.sim.weather.raining);
@@ -165,7 +202,14 @@ export class GameController {
       markers: this.markers,
       showBuildHover: this.mode.kind !== 'select',
       showMarks: !this.attract,
+      selectedArea: this.selectedArea,
+      areaMode: this.mode.kind === 'area' || this.areasTabOpen,
+      highlight: this.highlight,
     });
+    if (this.minimap && !this.attract && now - this.lastMinimap > 200) {
+      this.lastMinimap = now;
+      this.minimap.draw(this.sim, this.camera, now / 1000, this.highlight && now / 1000 - this.highlight.t0 < 2.6 ? this.highlight : null);
+    }
     this.autosaveCheck(now);
     if (now - this.lastUi > UI_INTERVAL) this.publish();
   }
@@ -209,6 +253,14 @@ export class GameController {
           break;
         case 'important':
           this.pendingImportant ||= performance.now();
+          break;
+        case 'milestone':
+          if (!this.attract && MILESTONES[e.id].tier >= 2) {
+            // A short, quiet celebration: bunting sparkles around the camp and a card with what's next.
+            this.celebration = e.id;
+            const camp = campOf(this.sim);
+            if (camp) for (let i = 0; i < 6; i++) this.renderer.particles.fx('sparkle', camp.x + Math.random() * 3, camp.y + Math.random() * 2, this.renderer.sprites.ui);
+          }
           break;
         default:
           break;
@@ -410,6 +462,14 @@ export class GameController {
     const type = this.mode.building;
     const def = BUILDINGS[type];
     const t = this.worldTile(sx, sy);
+    if (def.span) {
+      // Stone bridge: drag from bank to bank; the preview explains any problem before release.
+      const from = dragFrom ?? t;
+      const c = checkSpan(this.sim, type, from.x, from.y, t.x, t.y);
+      this.placement = { type, x: c.rect.x, y: c.rect.y, tiles: c.tiles, ok: c.ok };
+      this.placementReason = dragFrom ? c.reason ?? null : 'Press on the first water tile by the bank and drag across to the far side';
+      return;
+    }
     if (def.paint && dragFrom) {
       const x0 = Math.min(dragFrom.x, t.x);
       const x1 = Math.max(dragFrom.x, t.x);
@@ -443,6 +503,17 @@ export class GameController {
     const crop = this.mode.crop;
     const def = BUILDINGS[type];
     let res: CommandResult;
+    if (def.span) {
+      const t = this.worldTile(sx, sy);
+      const f = from ?? t;
+      res = this.dispatch({ type: 'placeSpan', building: type, x0: f.x, y0: f.y, x1: t.x, y1: t.y });
+      if (res.ok) {
+        this.setMode({ kind: 'select' });
+        if (res.id) this.selectedBuildings = new Set([res.id]);
+      }
+      this.updatePlacement(sx, sy, null);
+      return;
+    }
     if (def.paint) {
       const t = this.worldTile(sx, sy);
       const f = from ?? t;
@@ -462,6 +533,133 @@ export class GameController {
     const on = this.mode.kind === 'mark';
     const res = this.dispatch({ type: 'designate', x0: from.x, y0: from.y, x1: t.x, y1: t.y, on });
     if (res.ok) this.audio.play('command');
+  }
+
+  // ---- work areas --------------------------------------------------------------
+
+  startArea(areaKind: AreaKind, editId: number | null = null): void {
+    this.setMode({ kind: 'area', areaKind, editId });
+  }
+
+  /** Finishes drawing (or redrawing) a work area and selects it. */
+  commitArea(from: { x: number; y: number }, sx: number, sy: number): void {
+    if (this.mode.kind !== 'area') return;
+    const t = this.worldTile(sx, sy);
+    const rect = { x0: from.x, y0: from.y, x1: t.x, y1: t.y };
+    const res = this.mode.editId !== null
+      ? this.dispatch({ type: 'updateArea', areaId: this.mode.editId, rect })
+      : this.dispatch({ type: 'createArea', kind: this.mode.areaKind, ...rect });
+    if (!res.ok) return;
+    this.audio.play('complete');
+    this.selectedArea = this.mode.kind === 'area' && this.mode.editId !== null ? this.mode.editId : res.id ?? null;
+    // Newly drawn areas take the selected settlers straight away.
+    if (this.selectedArea !== null && this.selected.size && this.mode.editId === null) {
+      this.dispatch({ type: 'assignArea', ids: [...this.selected], areaId: this.selectedArea });
+    }
+    this.setMode({ kind: 'select' });
+  }
+
+  selectArea(id: number | null, focus = false): void {
+    this.selectedArea = id;
+    const a = id !== null ? this.sim.area(id) : undefined;
+    if (a && focus) this.focusTarget({ x: a.x0, y: a.y0, w: a.x1 - a.x0 + 1, h: a.y1 - a.y0 + 1 }, false);
+    this.publish(true);
+  }
+
+  // ---- navigation ----------------------------------------------------------------
+
+  /** Moves the camera to a target, selects it if it is a settler or building, and pulses a highlight. */
+  focusTarget(t: Target, select = true): void {
+    this.camera.centerOn((t.x + t.w / 2) * TILE, (t.y + t.h / 2) * TILE);
+    this.highlight = { x: t.x, y: t.y, w: t.w, h: t.h, t0: performance.now() / 1000 };
+    if (select && t.settlerId !== undefined) {
+      this.selected = new Set([t.settlerId]);
+      this.selectedBuildings.clear();
+    } else if (select && t.buildingId !== undefined) {
+      this.selected.clear();
+      this.selectedBuildings = new Set([t.buildingId]);
+    }
+    this.audio.play('select');
+    this.publish(true);
+  }
+
+  focusBuildingById(id: number): void {
+    const b = this.sim.buildings.get(id);
+    if (b) this.focusTarget({ x: b.x, y: b.y, w: b.w, h: b.h, buildingId: b.id });
+  }
+
+  focusSettler(id: number): void {
+    const s = this.sim.settler(id);
+    if (s) this.focusTarget({ x: Math.floor(s.x), y: Math.floor(s.y), w: 1, h: 1, settlerId: s.id });
+  }
+
+  /** Targets for the quick-find buttons. */
+  findList(kind: 'idle' | 'waiting' | 'sites' | 'bridge' | 'home'): Target[] {
+    const sim = this.sim;
+    const rect = (b: { id: number; x: number; y: number; w: number; h: number }) => ({ x: b.x, y: b.y, w: b.w, h: b.h, buildingId: b.id });
+    switch (kind) {
+      case 'idle':
+        return sim.settlers
+          .filter((s) => (!s.task || s.task.kind === 'wander') && s.idleReason && s.idleReason !== 'Stores are well stocked')
+          .map((s) => ({ x: Math.floor(s.x), y: Math.floor(s.y), w: 1, h: 1, settlerId: s.id }));
+      case 'waiting':
+        return [...sim.buildings.values()]
+          .filter((b) => (b.built && b.workshop && /Needs|Waiting|No worker|full|turned off/.test(b.workshop.status)) || (!b.built && !b.field && !materialsComplete(b)))
+          .map(rect);
+      case 'sites':
+        return [...sim.buildings.values()].filter((b) => !b.built && !b.field).map(rect);
+      case 'bridge': {
+        const b = [...sim.buildings.values()].find((x) => x.type === 'stoneBridge');
+        if (b) return [rect(b)];
+        const c = suggestCrossing(sim);
+        return c ? [c] : [];
+      }
+      case 'home': {
+        const camp = campOf(sim);
+        return camp ? [rect(camp)] : [];
+      }
+    }
+  }
+
+  findNext(kind: 'idle' | 'waiting' | 'sites' | 'bridge' | 'home'): void {
+    const list = this.findList(kind);
+    if (!list.length) {
+      const empty = { idle: 'Nobody is idle.', waiting: 'Nothing is waiting for resources.', sites: 'No construction under way.', bridge: 'No stone bridge yet, and no explored river crossing to suggest. Explore east.', home: 'No camp found.' };
+      this.toast(empty[kind], 'info');
+      return;
+    }
+    const i = ((this.findCursor[kind] ?? -1) + 1) % list.length;
+    this.findCursor[kind] = i;
+    this.focusTarget(list[i]);
+  }
+
+  minimapClick(mx: number, my: number): void {
+    if (!this.minimap) return;
+    const t = this.minimap.tileAt(mx, my);
+    this.camera.centerOn((t.x + 0.5) * TILE, (t.y + 0.5) * TILE);
+    this.lastMinimap = 0;
+  }
+
+  closeOverview(): void {
+    this.overviewOpen = false;
+    this.publish(true);
+  }
+
+  openOverview(): void {
+    this.overview = buildOverview(this.sim, null);
+    this.overview.since = null;
+    this.overview.sinceNote = 'How the valley stands right now:';
+    this.overviewOpen = true;
+    this.publish(true);
+  }
+
+  closeCelebration(): void {
+    this.celebration = null;
+    this.publish(true);
+  }
+
+  setPriorities(ids: number[], priorities: WorkKind[] | null): void {
+    this.dispatch({ type: 'setPriorities', ids, priorities }, true);
   }
 
   // ---- inspector actions -----------------------------------------------------
@@ -690,6 +888,17 @@ export class GameController {
       unlocked: unlockedSets(sim),
       worldName: this.session.name,
       explored: sim.world.exploredTileCount(),
+      beds: bedSummary(sim),
+      areas: areaInfo(sim),
+      selectedArea: this.selectedArea !== null && sim.area(this.selectedArea) ? this.selectedArea : null,
+      overview: this.overviewOpen ? this.overview : null,
+      celebration: this.celebration ? celebrationInfo(this.celebration) : null,
+      finds: {
+        idle: this.findList('idle').length,
+        waiting: this.findList('waiting').length,
+        sites: this.findList('sites').length,
+        bridge: this.findList('bridge').length > 0,
+      },
     });
   }
 }

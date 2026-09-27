@@ -1,24 +1,30 @@
 import { TILE, tileKey } from '../game/core/constants';
 import { BUILDINGS, BUILDING_IDS, type BuildingId } from '../game/data/buildings';
 import { CROPS, CROP_IDS, type CropId } from '../game/data/crops';
-import type { JobId } from '../game/data/jobs';
-import { MILESTONES } from '../game/data/progression';
+import type { JobId, WorkKind } from '../game/data/jobs';
+import { MILESTONES, type MilestoneId } from '../game/data/progression';
 import { RECIPES, type RecipeId } from '../game/data/recipes';
 import { RESOURCE_IDS, type ResourceId } from '../game/data/resources';
-import { cropUnlocked, housingCapacity, isUnlocked, residentsOf, unlockName } from '../game/sim/buildings';
+import {
+  bedsOf, costOf, cropUnlocked, housingCapacity, isPermanentHome, isUnlocked, maxWorkers, unlockName, workOf,
+} from '../game/sim/buildings';
+import { AREA_LABELS, AREA_MAX_WORKERS } from '../game/sim/commands';
 import { fieldStage } from '../game/sim/farming';
 import { invEntries } from '../game/sim/inventory';
+import { effectivePriorities } from '../game/sim/priorities';
 import { currentMilestone, nextMilestone, requirementProgress, type RequirementProgress } from '../game/sim/progression';
 import { describeTask } from '../game/sim/settlers';
 import type { Simulation } from '../game/sim/Simulation';
-import type { Building, Settler } from '../game/sim/types';
+import type { AreaKind, Building, Settler } from '../game/sim/types';
 import { OBJECTS, TERRAIN } from '../game/world/tiles';
+import type { Overview } from './overview';
 
 export type Mode =
   | { kind: 'select' }
   | { kind: 'place'; building: BuildingId; crop: CropId | null }
   | { kind: 'mark' }
-  | { kind: 'unmark' };
+  | { kind: 'unmark' }
+  | { kind: 'area'; areaKind: AreaKind; editId: number | null };
 
 export interface SettlerInfo {
   id: number;
@@ -31,6 +37,14 @@ export interface SettlerInfo {
   hunger: number;
   energy: number;
   home: string;
+  homeId: number | null;
+  /** Why they sleep where they do, e.g. no free bed. */
+  bedNote: string;
+  areaId: number | null;
+  areaName: string;
+  priorities: WorkKind[];
+  customOrder: boolean;
+  workplace: string;
 }
 
 export interface BuildingInfo {
@@ -43,10 +57,26 @@ export interface BuildingInfo {
   materials: { res: ResourceId; have: number; need: number; incoming: number }[];
   status: string;
   storage?: { entries: [ResourceId, number][]; used: number; capacity: number };
-  residents?: { names: string[]; capacity: number };
+  residents?: { people: { id: number; name: string; asleep: boolean }[]; capacity: number; temporary: boolean };
   field?: { crop: CropId | null; state: string; stage: number; stages: number; growth: number; moisture: number; ripeIn: string };
   workshop?: { recipe: RecipeId | null; recipes: RecipeId[]; status: string; paused: boolean; buffer: [ResourceId, number][]; progress: number };
+  workers?: { people: { id: number; name: string }[]; max: number };
+  span?: { length: number };
   canRemove: boolean;
+  permanent: boolean;
+}
+
+export interface AreaInfo {
+  id: number;
+  name: string;
+  kind: AreaKind;
+  kindName: string;
+  does: string;
+  workers: { id: number; name: string }[];
+  max: number;
+  size: string;
+  /** Work available inside right now, in plain words. */
+  status: string;
 }
 
 export interface Toast {
@@ -69,6 +99,7 @@ export interface UiSnapshot {
   storage: { used: number; capacity: number };
   population: number;
   housing: number;
+  beds: string;
   populationStatus: string;
   wellEquipped: boolean;
   milestone: { current: string; tier: number; next: { name: string; description: string; unlocks: string[]; reqs: RequirementProgress[]; future: boolean } | null };
@@ -85,6 +116,11 @@ export interface UiSnapshot {
   unlocked: { buildings: BuildingId[]; locked: { id: BuildingId; at: string }[]; crops: CropId[] };
   worldName: string;
   explored: number;
+  areas: AreaInfo[];
+  selectedArea: number | null;
+  overview: Overview | null;
+  celebration: { id: MilestoneId; name: string; unlocks: string[]; next: { name: string; description: string; future: boolean }[] } | null;
+  finds: { idle: number; waiting: number; sites: number; bridge: boolean };
 }
 
 export function emptySnapshot(): UiSnapshot {
@@ -92,10 +128,11 @@ export function emptySnapshot(): UiSnapshot {
   for (const r of RESOURCE_IDS) resources[r] = 0;
   return {
     running: false, paused: false, speed: 1, day: 1, clock: '', period: '', isNight: false, raining: false,
-    resources, storage: { used: 0, capacity: 0 }, population: 0, housing: 0, populationStatus: '', wellEquipped: false,
+    resources, storage: { used: 0, capacity: 0 }, population: 0, housing: 0, beds: '', populationStatus: '', wellEquipped: false,
     milestone: { current: 'Camp', tier: 0, next: null }, mode: { kind: 'select' }, selection: [], building: null,
     settlers: [], idleCount: 0, toasts: [], tutorial: null, tutorialOutro: false, hover: null, saveStatus: '',
     unlocked: { buildings: [], locked: [], crops: [] }, worldName: '', explored: 0,
+    areas: [], selectedArea: null, overview: null, celebration: null, finds: { idle: 0, waiting: 0, sites: 0, bridge: false },
   };
 }
 
@@ -110,10 +147,19 @@ export function clockOf(t: number): { clock: string; period: string } {
 export function settlerInfo(sim: Simulation, s: Settler): SettlerInfo {
   const home = s.homeId !== null ? sim.buildings.get(s.homeId) : undefined;
   const idle = (!s.task || s.task.kind === 'wander') && !!s.idleReason;
+  const area = sim.area(s.areaId);
+  const workplace = [...sim.buildings.values()].find((b) => b.workers.includes(s.id));
+  let bedNote = '';
+  if (!home) bedNote = 'No free bed anywhere — rests by the campfire. Build a house.';
+  else if (!isPermanentHome(home)) bedNote = 'Sleeps in a camp bedroll until a house bed is free.';
   return {
     id: s.id, name: s.name, job: s.job, task: describeTask(sim, s), idleReason: s.idleReason, idle,
     carrying: s.carrying ? { ...s.carrying } : null, hunger: Math.round(s.hunger), energy: Math.round(s.energy),
-    home: home ? `${BUILDINGS[home.type].name}` : 'Camp tents',
+    home: home ? (isPermanentHome(home) ? `${BUILDINGS[home.type].name}` : 'Camp bedroll') : 'No bed',
+    homeId: home?.id ?? null, bedNote,
+    areaId: area?.id ?? null, areaName: area?.name ?? '',
+    priorities: [...effectivePriorities(s)], customOrder: s.priorities !== null,
+    workplace: workplace ? BUILDINGS[workplace.type].name : '',
   };
 }
 
@@ -127,25 +173,36 @@ export function buildingInfo(sim: Simulation, list: Building[]): BuildingInfo | 
   if (list.length === 0) return null;
   const b = list[0];
   const def = BUILDINGS[b.type];
+  const work = workOf(b);
   const info: BuildingInfo = {
     ids: list.map((x) => x.id), type: b.type, name: list.length > 1 ? `${list.length} ${def.name}s` : def.name,
     description: def.description, built: b.built,
-    progress: def.work > 0 ? Math.min(1, b.progress / def.work) : 1,
-    materials: invEntries(def.cost).map(([res, need]) => ({ res, need, have: Math.min(need, b.delivered[res] ?? 0), incoming: b.incoming[res] ?? 0 })),
-    status: '', canRemove: b.type !== 'camp',
+    progress: work > 0 ? Math.min(1, b.progress / work) : 1,
+    materials: invEntries(costOf(b)).map(([res, need]) => ({ res, need, have: Math.min(need, b.delivered[res] ?? 0), incoming: b.incoming[res] ?? 0 })),
+    status: '', canRemove: b.type !== 'camp' && !(b.built && def.permanent), permanent: !!def.permanent,
   };
-  if (!b.built) {
+  if (def.span) info.span = { length: Math.max(b.w, b.h) };
+  if (!b.built && sim.unreachableForAll(`b${b.id}`)) {
+    info.status = 'Settlers can’t reach this site — clear a way to it or build a bridge';
+  } else if (!b.built) {
     const missing = info.materials.find((m) => m.have < m.need);
     if (missing) {
       const stock = sim.storedTotal(missing.res);
-      info.status = stock > 0 || missing.incoming > 0 ? `Haulers are bringing ${missing.res}` : `Waiting for ${missing.res} — none in storage`;
+      const left = missing.need - missing.have - missing.incoming;
+      info.status = stock > 0 || missing.incoming > 0
+        ? `Haulers are bringing ${missing.res}${left > stock ? ` — ${left - stock} more needed than is in storage` : ''}`
+        : `Waiting for ${missing.need - missing.have} ${missing.res} — none in storage`;
     } else info.status = 'Materials ready — builders at work';
   }
   if (def.storage && b.built) {
     info.storage = { entries: invEntries(b.inventory), used: sim.storageUsed(b), capacity: sim.storageCapacity(b) };
   }
   if (def.housing && b.built) {
-    info.residents = { names: b.type === 'camp' ? sim.settlers.filter((s) => s.homeId === null).map((s) => s.name) : residentsOf(sim, b), capacity: def.housing };
+    info.residents = {
+      people: sim.settlers.filter((s) => s.homeId === b.id).map((s) => ({ id: s.id, name: s.name, asleep: s.insideId === b.id || (s.task?.kind === 'sleep' && s.task.stage === 'sleep') })),
+      capacity: bedsOf(b),
+      temporary: !!def.temporaryBeds,
+    };
   }
   if (b.field) {
     const f = b.field;
@@ -170,9 +227,54 @@ export function buildingInfo(sim: Simulation, list: Building[]): BuildingInfo | 
       recipe: ws.recipe, recipes: [...(def.recipes ?? [])], status: ws.status, paused: ws.paused,
       buffer: invEntries(b.delivered), progress: ws.recipe ? Math.min(1, ws.progress / RECIPES[ws.recipe].work) : 0,
     };
+    info.workers = { people: b.workers.map((id) => ({ id, name: sim.settler(id)?.name ?? '?' })), max: maxWorkers(b) };
     info.status = ws.status;
   }
   return info;
+}
+
+/** Plain-language state of a work area, including why its workers might be idle. */
+export function areaInfo(sim: Simulation): AreaInfo[] {
+  return sim.workAreas.map((a) => {
+    const workers = sim.settlers.filter((s) => s.areaId === a.id).map((s) => ({ id: s.id, name: s.name }));
+    let count = 0;
+    let explored = 0;
+    for (let y = a.y0; y <= a.y1; y++) {
+      for (let x = a.x0; x <= a.x1; x++) {
+        if (!sim.world.explored(x, y)) continue;
+        explored++;
+        if (a.kind === 'wood' || a.kind === 'stone') {
+          const d = OBJECTS[sim.world.obj(x, y)];
+          if (d.resource === a.kind && sim.world.amount(x, y) > 0) count++;
+        }
+      }
+    }
+    let status = '';
+    if (explored === 0) status = 'Unexplored — send someone to look';
+    else if (a.kind === 'wood') status = count ? `${count} tree${count === 1 ? '' : 's'} to chop` : 'No trees left — saplings regrow in time';
+    else if (a.kind === 'stone') status = count ? `${count} rock${count === 1 ? '' : 's'} to mine` : 'No rocks left — redraw it somewhere stony';
+    else if (a.kind === 'farm') {
+      const fields = [...sim.buildings.values()].filter((b) => b.field && b.x >= a.x0 && b.x <= a.x1 && b.y >= a.y0 && b.y <= a.y1);
+      status = fields.length ? `${fields.length} field${fields.length === 1 ? '' : 's'} (${fields.filter((f) => f.field!.state === 'ripe').length} ripe)` : 'No fields inside — place some here';
+    } else {
+      const sites = [...sim.buildings.values()].filter((b) => !b.built && !b.field && b.x <= a.x1 && b.x + b.w - 1 >= a.x0 && b.y <= a.y1 && b.y + b.h - 1 >= a.y0);
+      status = sites.length ? `${sites.length} site${sites.length === 1 ? '' : 's'} to build` : 'No construction inside';
+    }
+    if (workers.length === 0) status += ' · nobody assigned';
+    return {
+      id: a.id, name: a.name, kind: a.kind, kindName: AREA_LABELS[a.kind].name, does: AREA_LABELS[a.kind].does,
+      workers, max: AREA_MAX_WORKERS, size: `${a.x1 - a.x0 + 1}×${a.y1 - a.y0 + 1}`, status,
+    };
+  });
+}
+
+export function celebrationInfo(id: MilestoneId): UiSnapshot['celebration'] {
+  const def = MILESTONES[id];
+  const next = Object.values(MILESTONES).filter((m) => m.tier > def.tier).slice(0, 2);
+  return {
+    id, name: def.name, unlocks: [...def.unlocks],
+    next: next.map((m) => ({ name: m.name, description: m.description, future: !!m.future })),
+  };
 }
 
 export function hoverText(sim: Simulation, wx: number, wy: number): string | null {

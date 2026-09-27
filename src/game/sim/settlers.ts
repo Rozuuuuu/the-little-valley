@@ -4,13 +4,13 @@ import { CROPS } from '../data/crops';
 import type { WorkKind } from '../data/jobs';
 import { RECIPES } from '../data/recipes';
 import { RESOURCES, type ResourceId } from '../data/resources';
-import { O, OBJECTS, TERRAIN, type ObjectId } from '../world/tiles';
+import { O, OBJECTS, T, TERRAIN, type ObjectId } from '../world/tiles';
 import {
   campOf, completeBuilding, costOf, entranceOf, isPermanentHome, materialsComplete, mayWorkAt, scheduleRegrowth, workOf, workshopNeeds,
 } from './buildings';
 import { applyFieldAction, FIELD_WORK, fieldAction } from './farming';
 import { addInv, hasAll, invEntries } from './inventory';
-import { findPath, goalSatisfied, type Goal } from './pathfinding';
+import { findPath, goalSatisfied, lastPathStats, type Goal } from './pathfinding';
 import { effectivePriorities } from './priorities';
 import type { Simulation } from './Simulation';
 import type { Building, Settler, Task, ToolKind, WorkArea } from './types';
@@ -21,11 +21,27 @@ export const ENERGY_DECAY = 100 / (DAY_TICKS * 0.8);
 export const EAT_THRESHOLD = 32;
 export const MEAL_VALUE = 65;
 export const REVEAL_RADIUS = 6.5;
+/** Open water gives a clear view: from a riverbank settlers can see the far side. */
+export const RIVER_REVEAL_RADIUS = 12;
+
+const lastReveal = new WeakMap<Settler, number>();
+
+function nearWater(sim: Simulation, s: Settler): boolean {
+  const x = Math.floor(s.x);
+  const y = Math.floor(s.y);
+  for (const [dx, dy] of [[2, 0], [-2, 0], [0, 2], [0, -2]]) {
+    const t = sim.world.terrain(x + dx, y + dy);
+    if (t === T.Water || t === T.DeepWater) return true;
+  }
+  return false;
+}
 export const AUTO_GATHER_RADIUS = 18;
 export const FOCUS_RADIUS = 7;
 /** Below this energy a settler takes a daytime nap; they wake once rested. */
 export const NAP_THRESHOLD = 12;
 export const WAKE_ENERGY = 60;
+/** Ticks an idle settler waits before searching for work again. */
+export const IDLE_BACKOFF = 14;
 
 type MoveResult = 'arrived' | 'moving' | 'failed';
 type Finder = (sim: Simulation, s: Settler) => Task | string | null;
@@ -88,7 +104,13 @@ export function goTo(sim: Simulation, s: Settler, g: Goal, maxNodes = 4000, part
   }
   if (!s.path) {
     if (goalSatisfied(g, here.x, here.y)) return settle(sim, s, here.x, here.y);
+    // Out of search budget this tick: wait a moment rather than stall the frame.
+    if (sim.pathBudget <= 0) {
+      s.anim = 'idle';
+      return 'moving';
+    }
     const p = findPath(sim, here.x, here.y, g, maxNodes, partial);
+    sim.pathBudget -= lastPathStats.expanded + 1;
     if (!p) return 'failed';
     s.path = p;
     s.pathIndex = 0;
@@ -210,6 +232,7 @@ export function taskKeys(s: Settler): string[] {
 export function abortTask(sim: Simulation, s: Settler, reason?: string): void {
   releaseTask(sim, s);
   clearTask(s);
+  s.nextThink = 0;
   if (s.hidden) s.hidden = false;
   if (reason) s.idleReason = reason;
 }
@@ -558,7 +581,7 @@ export function assignTask(sim: Simulation, s: Settler): void {
       return;
     }
   }
-  if (sim.isNight() || s.energy < NAP_THRESHOLD) {
+  if (sim.isBedtime(s.id) || s.energy < NAP_THRESHOLD) {
     const home = homeFor(sim, s);
     set({ kind: 'sleep', home: home?.id ?? null, stage: 'walk' });
     return;
@@ -594,6 +617,8 @@ export function assignTask(sim: Simulation, s: Settler): void {
   if (s.hunger < EAT_THRESHOLD) reason = 'Hungry, but there is no food in storage';
   if (effectivePriorities(s).length === 0 && !area) reason = 'Every kind of work is switched off in their work order';
   s.idleReason = reason ?? 'Nothing to do';
+  // Nothing to do rarely changes within a second: look again a little later.
+  s.nextThink = sim.tick + IDLE_BACKOFF + (s.id % 5);
   if (!s.task && sim.rng.chance(0.08)) {
     const t = tileOf(s);
     const x = t.x + sim.rng.int(5) - 2;
@@ -809,7 +834,7 @@ function wake(sim: Simulation, s: Settler): void {
 }
 
 function runSleep(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'sleep' }>): void {
-  if (!sim.isNight() && s.energy >= WAKE_ENERGY) return wake(sim, s);
+  if (!sim.isBedtime(s.id) && s.energy >= WAKE_ENERGY) return wake(sim, s);
   if (t.stage === 'walk') {
     const home = t.home !== null ? sim.buildings.get(t.home) : undefined;
     if (!home) {
@@ -909,13 +934,20 @@ export function updateSettler(sim: Simulation, s: Settler): void {
   s.hunger = Math.max(0, s.hunger - HUNGER_DECAY);
   const sleeping = s.task?.kind === 'sleep' && s.task.stage === 'sleep';
   if (!sleeping) s.energy = Math.max(0, s.energy - ENERGY_DECAY);
-  if ((!s.task || s.task.kind === 'wander') && (sim.tick + s.id) % 4 === 0) assignTask(sim, s);
+  if ((!s.task || s.task.kind === 'wander') && (sim.tick + s.id) % 4 === 0 && sim.tick >= s.nextThink) assignTask(sim, s);
   if (s.task) runTask(sim, s);
   else {
     s.anim = 'idle';
     s.tool = null;
   }
-  if ((sim.tick + s.id) % 10 === 0 && !s.hidden) sim.world.reveal(s.x, s.y, REVEAL_RADIUS);
+  if ((sim.tick + s.id) % 10 === 0 && !s.hidden) {
+    // Only re-reveal after moving to a new tile.
+    const key = Math.floor(s.x) * 100003 + Math.floor(s.y);
+    if (key !== lastReveal.get(s)) {
+      lastReveal.set(s, key);
+      sim.world.reveal(s.x, s.y, nearWater(sim, s) ? RIVER_REVEAL_RADIUS : REVEAL_RADIUS);
+    }
+  }
 }
 
 /** Short description of what a settler is doing, for the UI. */

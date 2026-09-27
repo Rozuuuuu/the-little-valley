@@ -160,7 +160,7 @@ export function deserializeSim(save: SaveFile): Simulation {
       capacity: 10, hunger: ss.hunger, energy: ss.energy, homeId: ss.homeId, appearance: { ...ss.appearance },
       task: null, focus: ss.focus ? { kind: 'gather', ...ss.focus } : null, idleReason: '', hidden: false,
       path: null, pathIndex: 0, goalKey: null, repaths: 0, lastNotice: -9999, arrivedTick: 0,
-      areaId: ss.areaId, priorities: ss.priorities ? [...ss.priorities] : null, insideId: null, restNote: '',
+      areaId: ss.areaId, priorities: ss.priorities ? [...ss.priorities] : null, insideId: null, restNote: '', nextThink: 0,
     };
     sim.settlers.push(s);
   }

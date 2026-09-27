@@ -63,7 +63,9 @@ class MinHeap {
     while (i > 0) {
       const p = (i - 1) >> 1;
       if (this.score[a[p]] <= this.score[a[i]]) break;
-      [a[p], a[i]] = [a[i], a[p]];
+      const tmp = a[p];
+      a[p] = a[i];
+      a[i] = tmp;
       i = p;
     }
   }
@@ -81,7 +83,9 @@ class MinHeap {
         if (l < a.length && this.score[a[l]] < this.score[a[m]]) m = l;
         if (r < a.length && this.score[a[r]] < this.score[a[m]]) m = r;
         if (m === i) break;
-        [a[m], a[i]] = [a[i], a[m]];
+        const tmp = a[m];
+        a[m] = a[i];
+        a[i] = tmp;
         i = m;
       }
     }
@@ -94,6 +98,8 @@ export interface PathStats {
 }
 
 export const lastPathStats: PathStats = { expanded: 0 };
+/** Running totals for profiling (never reset by the game). */
+export const pathTotals = { calls: 0, expanded: 0 };
 
 /**
  * Returns the steps to take (excluding the start tile), `[]` if the start
@@ -105,6 +111,7 @@ export const lastPathStats: PathStats = { expanded: 0 };
  */
 export function findPath(grid: PathGrid, sx: number, sy: number, goal: Goal, maxNodes = 4000, partial = false): PathStep[] | null {
   if (goalSatisfied(goal, sx, sy)) return [];
+  pathTotals.calls++;
   const xs: number[] = [];
   const ys: number[] = [];
   const g: number[] = [];
@@ -138,6 +145,7 @@ export function findPath(grid: PathGrid, sx: number, sy: number, goal: Goal, max
     const cy = ys[cur];
     if (goalSatisfied(goal, cx, cy)) {
       lastPathStats.expanded = expanded;
+      pathTotals.expanded += expanded;
       const out: PathStep[] = [];
       for (let n = cur; parent[n] !== -1; n = parent[n]) out.push({ x: xs[n], y: ys[n] });
       return out.reverse();
@@ -167,6 +175,7 @@ export function findPath(grid: PathGrid, sx: number, sy: number, goal: Goal, max
     }
   }
   lastPathStats.expanded = expanded;
+  pathTotals.expanded += expanded;
   if (partial && closest !== 0) {
     const out: PathStep[] = [];
     for (let n = closest; parent[n] !== -1; n = parent[n]) out.push({ x: xs[n], y: ys[n] });

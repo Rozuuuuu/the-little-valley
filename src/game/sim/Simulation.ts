@@ -23,6 +23,12 @@ export const STARTING_SETTLERS = 5;
  * says so) rather than letting a very large town slow every tick.
  */
 export const MAX_POPULATION = 300;
+/**
+ * Path search nodes allowed per tick across all settlers. A settler whose search
+ * does not fit waits a tick, so a village-wide rush (bedtime, morning) can't
+ * stall a frame.
+ */
+export const PATH_BUDGET = 6000;
 const CHRONICLE_LIMIT = 80;
 
 export function emptyStats(): Stats {
@@ -50,6 +56,7 @@ export class Simulation implements PathGrid {
   readonly regrowth = new Map<number, Regrowth>();
   /** `${settlerId}:${target}` to tick until which the target is skipped. Transient. */
   readonly unreachable = new Map<string, number>();
+  private readonly unreachableCount = new Map<string, number>();
   stats: Stats = emptyStats();
   progression: ProgressionState = { reached: ['camp'] };
   weather: WeatherState = { raining: false, nextChange: Math.round(DAY_TICKS * 0.9) };
@@ -63,6 +70,8 @@ export class Simulation implements PathGrid {
   chronicle: ChronicleEntry[] = [];
   /** Where the current play session began (saved, so the next session can summarise it). */
   session: SessionMark | null = null;
+  /** Path search nodes left this tick (transient). */
+  pathBudget = PATH_BUDGET;
 
   constructor(seed: number, rngState = seed ^ 0x5bd1e995, genVersion = 1) {
     this.world = new World(seed, genVersion);
@@ -85,6 +94,13 @@ export class Simulation implements PathGrid {
   isNight(): boolean {
     const t = this.timeOfDay;
     return t >= NIGHT_START || t < MORNING;
+  }
+
+  /** Settlers turn in, and get up, over a few minutes rather than all at once. */
+  isBedtime(settlerId: number): boolean {
+    const t = this.timeOfDay;
+    const off = (settlerId % 12) * 0.0025;
+    return t >= NIGHT_START + off || t < MORNING + off;
   }
 
   // ---- grid ---------------------------------------------------------------
@@ -120,6 +136,11 @@ export class Simulation implements PathGrid {
 
   startSession(): void {
     this.session = { startTick: this.tick, startStats: { ...this.stats }, startPopulation: this.settlers.length };
+  }
+
+  /** New work appeared: idle settlers look again right away instead of after their back-off. */
+  wakeIdle(): void {
+    for (const s of this.settlers) s.nextThink = 0;
   }
 
   area(id: number | null): WorkArea | undefined {
@@ -166,7 +187,7 @@ export class Simulation implements PathGrid {
       hunger: 85 + this.rng.int(15), energy: 90, homeId: null, appearance: this.randomAppearance(),
       task: null, focus: null, idleReason: '', hidden: false, path: null, pathIndex: 0,
       goalKey: null, repaths: 0, lastNotice: -9999, arrivedTick: this.tick,
-      areaId: null, priorities: null, insideId: null, restNote: '',
+      areaId: null, priorities: null, insideId: null, restNote: '', nextThink: 0,
     };
     this.settlers.push(s);
     return s;
@@ -187,12 +208,34 @@ export class Simulation implements PathGrid {
     const owner = this.reservations.get(key);
     return owner !== undefined && owner !== settlerId;
   }
+  /**
+   * Remembers that a target could not be reached. The note is shared by all
+   * settlers for a shorter while (they usually stand on the same land), so a
+   * cut-off site does not cost a failed search from every villager in turn.
+   */
   markUnreachable(settlerId: number, target: string, ticks = 300): void {
     this.unreachable.set(`${settlerId}:${target}`, this.tick + ticks);
+    // Repeated failures back off (up to a day) until the map changes.
+    const n = (this.unreachableCount.get(target) ?? 0) + 1;
+    this.unreachableCount.set(target, n);
+    this.unreachable.set(`*:${target}`, this.tick + Math.min(DAY_TICKS, Math.round(ticks * 0.6) * 2 ** Math.min(n - 1, 4)));
+  }
+  /** The map changed (something built, removed, a bridge finished): let everyone try again. */
+  mapChanged(): void {
+    for (const k of [...this.unreachable.keys()]) if (k.startsWith('*:')) this.unreachable.delete(k);
+    this.unreachableCount.clear();
+    this.wakeIdle();
   }
   isUnreachable(settlerId: number, target: string): boolean {
     const until = this.unreachable.get(`${settlerId}:${target}`);
-    return until !== undefined && until > this.tick;
+    if (until !== undefined && until > this.tick) return true;
+    const shared = this.unreachable.get(`*:${target}`);
+    return shared !== undefined && shared > this.tick;
+  }
+  /** Nobody could reach this target recently (for UI explanations). */
+  unreachableForAll(target: string): boolean {
+    const shared = this.unreachable.get(`*:${target}`);
+    return shared !== undefined && shared > this.tick;
   }
 
   // ---- storage ------------------------------------------------------------
@@ -312,6 +355,7 @@ export class Simulation implements PathGrid {
 
   step(): void {
     this.tick++;
+    this.pathBudget = PATH_BUDGET;
     for (const s of this.settlers) {
       s.px = s.x;
       s.py = s.y;

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BUILDINGS, type BuildingCategory, type BuildingId } from '../game/data/buildings';
 import { CROPS, type CropId } from '../game/data/crops';
 import { JOBS, JOB_IDS, type JobId } from '../game/data/jobs';
@@ -7,12 +7,18 @@ import { RESOURCES, type ResourceId } from '../game/data/resources';
 import { invEntries } from '../game/sim/inventory';
 import { SPEEDS, TUTORIAL_OUTRO } from '../engine/GameController';
 import type { BuildingInfo, SettlerInfo } from '../engine/snapshot';
+import type { RequirementProgress } from '../game/sim/progression';
+import { WORK_KINDS, WORK_LABELS } from '../game/sim/priorities';
+import { AREA_LABELS } from '../game/sim/commands';
+import type { AreaKind } from '../game/sim/types';
+import { AREA_COLORS, AREA_SYMBOL } from '../render/Renderer';
+import type { WorkKind } from '../game/data/jobs';
 import { keyLabel } from '../input/bindings';
 import { useGame, useSnapshot } from './context';
 import { ResIcon, UiIcon } from './Icon';
 
 const MAIN_RES: ResourceId[] = ['food', 'wood', 'stone'];
-const CRAFTED: ResourceId[] = ['planks', 'tools'];
+const CRAFTED: ResourceId[] = ['wheat', 'flour', 'planks', 'tools'];
 
 export function TopBar({ onMenu }: { onMenu: () => void }) {
   const { game } = useGame();
@@ -66,6 +72,9 @@ export function TopBar({ onMenu }: { onMenu: () => void }) {
               {sp}×
             </button>
           ))}
+          <button className="btn" onClick={() => game.openOverview()} title="Valley today: issues and ideas">
+            Today
+          </button>
           <button className="btn" onClick={onMenu} title="Menu (Esc)">
             ☰
           </button>
@@ -277,16 +286,86 @@ function JobSelect({ ids, value }: { ids: number[]; value: JobId | '' }) {
   );
 }
 
+function WorkOrder({ s }: { s: SettlerInfo }) {
+  const { game } = useGame();
+  const order = s.priorities;
+  const off = WORK_KINDS.filter((k) => !order.includes(k));
+  const set = (next: WorkKind[]) => game.setPriorities([s.id], next);
+  return (
+    <div className="work-order">
+      <div className="row">
+        <span>Work order{s.customOrder ? '' : ` (${JOBS[s.job].name} default)`}</span>
+        {s.customOrder && (
+          <button className="btn small" onClick={() => game.setPriorities([s.id], null)}>
+            Reset
+          </button>
+        )}
+      </div>
+      <ol className="order-list">
+        {order.map((k, i) => (
+          <li key={k}>
+            <span className="rank">{i + 1}</span>
+            <span className="kind">{WORK_LABELS[k]}</span>
+            <button className="btn small" disabled={i === 0} onClick={() => set(order.map((x, j) => (j === i - 1 ? k : j === i ? order[i - 1] : x)))} aria-label={`Move ${WORK_LABELS[k]} earlier`}>
+              ↑
+            </button>
+            <button className="btn small" disabled={i === order.length - 1} onClick={() => set(order.map((x, j) => (j === i + 1 ? k : j === i ? order[i + 1] : x)))} aria-label={`Move ${WORK_LABELS[k]} later`}>
+              ↓
+            </button>
+            <button className="btn small" onClick={() => set(order.filter((x) => x !== k))} aria-label={`Turn off ${WORK_LABELS[k]}`}>
+              Off
+            </button>
+          </li>
+        ))}
+      </ol>
+      {off.length > 0 && (
+        <div className="row muted">
+          Off:
+          <span style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+            {off.map((k) => (
+              <button key={k} className="chip" onClick={() => set([...order, k])}>
+                + {WORK_LABELS[k]}
+              </button>
+            ))}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AreaSelect({ ids, value }: { ids: number[]; value: number | null | '' }) {
+  const { game } = useGame();
+  const s = useSnapshot();
+  return (
+    <select
+      value={value === null ? 'none' : String(value)}
+      onChange={(e) => game.dispatch({ type: 'assignArea', ids, areaId: e.target.value === 'none' ? null : Number(e.target.value) })}
+      aria-label="Work area"
+    >
+      {value === '' && <option value="">Mixed</option>}
+      <option value="none">No work area</option>
+      {s.areas.map((a) => (
+        <option key={a.id} value={a.id}>
+          {a.name} ({a.kindName}, {a.workers.length}/{a.max})
+        </option>
+      ))}
+    </select>
+  );
+}
+
 function SettlerCard({ s }: { s: SettlerInfo }) {
+  const { game } = useGame();
   return (
     <>
       <h2>{s.name}</h2>
       <div className="row">
-        <span className="muted">{JOBS[s.job].description}</span>
-      </div>
-      <div className="row">
         Job <JobSelect ids={[s.id]} value={s.job} />
       </div>
+      <div className="row">
+        Work area <AreaSelect ids={[s.id]} value={s.areaId} />
+      </div>
+      {s.workplace && <div className="row muted">Works at the {s.workplace.toLowerCase()}</div>}
       <div className="row">
         <span>{s.task}</span>
         {s.carrying && (
@@ -295,15 +374,24 @@ function SettlerCard({ s }: { s: SettlerInfo }) {
           </span>
         )}
       </div>
-      {s.idle && <div className="reason">{s.idleReason}</div>}
+      {s.idle && <div className="reason">⚠ {s.idleReason}</div>}
       <div className="row">
-        Fed <Bar value={s.hunger / 100} kind="food" />
+        Fed <Bar value={s.hunger / 100} kind="food" /> <span className="muted">{s.hunger < 15 ? 'Hungry: slower' : ''}</span>
       </div>
       <div className="row">
-        Rested <Bar value={s.energy / 100} kind="energy" />
+        Rested <Bar value={s.energy / 100} kind="energy" /> <span className="muted">{s.energy < 15 ? 'Tired: slower' : ''}</span>
       </div>
-      <div className="row muted">Sleeps in: {s.home}</div>
-      <div className="muted">Right-click a tree, rock, field, site or spot to give an order.</div>
+      <div className="row">
+        <span>Bed: {s.home}</span>
+        {s.homeId !== null && (
+          <button className="btn small" onClick={() => game.focusBuildingById(s.homeId!)}>
+            Show home
+          </button>
+        )}
+      </div>
+      {s.bedNote && <div className="muted">{s.bedNote}</div>}
+      <WorkOrder s={s} />
+      <div className="muted">Right-click a tree, rock, field, site or spot to give a direct order. They go back to this routine afterwards.</div>
     </>
   );
 }
@@ -311,11 +399,15 @@ function SettlerCard({ s }: { s: SettlerInfo }) {
 function GroupCard({ list }: { list: SettlerInfo[] }) {
   const { game } = useGame();
   const job = list.every((s) => s.job === list[0].job) ? list[0].job : '';
+  const area = list.every((s) => s.areaId === list[0].areaId) ? list[0].areaId : '';
   return (
     <>
       <h2>{list.length} settlers</h2>
       <div className="row">
         Set job for all <JobSelect ids={list.map((s) => s.id)} value={job} />
+      </div>
+      <div className="row">
+        Work area <AreaSelect ids={list.map((s) => s.id)} value={area} />
       </div>
       <div className="sel-list">
         {list.map((s) => (
@@ -339,17 +431,19 @@ function BuildingCard({ info }: { info: BuildingInfo }) {
     <>
       <h2>{info.name}</h2>
       <div className="muted">{info.description}</div>
+      {info.span && <div className="row muted">Spans {info.span.length} tiles of water.{info.permanent ? ' Permanent once built.' : ''}</div>}
       {!info.built && (
         <>
           <div className="row">
             Construction <Bar value={info.progress} />
+            <span className="muted">{Math.round(info.progress * 100)}%</span>
           </div>
           {info.materials.length > 0 && (
             <div className="mats">
               {info.materials.map((m) => (
                 <div key={m.res} className={`mat${m.have >= m.need ? ' done' : ''}`}>
                   <ResIcon res={m.res} size={18} /> {m.have}/{m.need}
-                  {m.incoming > 0 && <span className="muted"> (+{m.incoming})</span>}
+                  {m.incoming > 0 && <span className="muted"> (+{m.incoming} coming)</span>}
                 </div>
               ))}
             </div>
@@ -378,12 +472,12 @@ function BuildingCard({ info }: { info: BuildingInfo }) {
               <option value="">Leave fallow</option>
               {s.unlocked.crops.map((c) => (
                 <option key={c} value={c}>
-                  {CROPS[c].name} ({CROPS[c].yield.food} food)
+                  {CROPS[c].name} ({invEntries(CROPS[c].yield).map(([r, n]) => `${n} ${r}`).join(', ')})
                 </option>
               ))}
             </select>
           </div>
-          {info.ids.length === 1 && <div className="muted">Drag a box over empty fields to select many.</div>}
+          {info.ids.length === 1 && <div className="muted">Drag a box over fields to select many.</div>}
         </>
       )}
       {info.storage && (
@@ -404,8 +498,25 @@ function BuildingCard({ info }: { info: BuildingInfo }) {
         </>
       )}
       {info.residents && (
-        <div className="row muted">
-          {info.type === 'camp' ? 'Sleeping in tents' : `Residents (${info.residents.names.length}/${info.residents.capacity})`}: {info.residents.names.join(', ') || 'nobody yet'}
+        <div className="residents">
+          <div className="row">
+            <span>{info.residents.temporary ? 'Camp bedrolls' : 'Beds'}</span>
+            <span className="beds" aria-label={`${info.residents.people.length} of ${info.residents.capacity} beds taken`}>
+              {Array.from({ length: info.residents.capacity }, (_, i) => (
+                <i key={i} className={i < info.residents!.people.length ? 'on' : ''} />
+              ))}
+              <span className="muted">
+                {' '}
+                {info.residents.people.length}/{info.residents.capacity}
+              </span>
+            </span>
+          </div>
+          <div className="muted">
+            {info.residents.people.length
+              ? info.residents.people.map((p) => `${p.name}${p.asleep ? ' (asleep)' : ''}`).join(', ')
+              : 'Nobody lives here yet.'}
+          </div>
+          {info.residents.temporary && <div className="muted">Bedrolls are temporary: settlers move into house beds as soon as they free up.</div>}
         </div>
       )}
       {info.workshop && (
@@ -424,12 +535,30 @@ function BuildingCard({ info }: { info: BuildingInfo }) {
           <div className="row">
             Progress <Bar value={info.workshop.progress} />
           </div>
-          {info.workshop.buffer.length > 0 && (
-            <div className="row muted">
-              Inputs on hand: {info.workshop.buffer.map(([r, n]) => `${n} ${r}`).join(', ')}
+          <div className="row muted">
+            Inputs on hand: {info.workshop.buffer.length ? info.workshop.buffer.map(([r, n]) => `${n} ${r}`).join(', ') : 'none'}
+          </div>
+          {info.workers && (
+            <div className="row">
+              <span>
+                Workers {info.workers.people.length}/{info.workers.max}
+              </span>
+              <span style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                {info.workers.people.map((p) => (
+                  <button key={p.id} className="chip" onClick={() => game.dispatch({ type: 'unassignWorker', buildingId: info.ids[0], settlerId: p.id })} title="Unassign">
+                    {p.name} ✕
+                  </button>
+                ))}
+                {info.workers.people.length === 0 && <span className="muted">Anyone with Craft in their work order</span>}
+              </span>
             </div>
           )}
-          <div className="reason">{info.workshop.status}</div>
+          <div className="reason">{/^(Grind|Saw|Craft|Bake|Worker on|Ready)/.test(info.workshop.status) ? '' : '⚠ '}{info.workshop.status}</div>
+          {info.workers && info.workers.people.length < info.workers.max && s.selection.length > 0 && (
+            <button className="btn small" onClick={() => game.dispatch({ type: 'assignWorker', buildingId: info.ids[0], ids: s.selection.map((x) => x.id) })}>
+              Assign selected settler
+            </button>
+          )}
         </>
       )}
       <div className="actions">
@@ -450,36 +579,143 @@ function BuildingCard({ info }: { info: BuildingInfo }) {
 
 export function Inspector() {
   const s = useSnapshot();
-  if (s.selection.length === 1) {
-    return (
-      <div className="panel inspector">
-        <SettlerCard s={s.selection[0]} />
-      </div>
-    );
-  }
-  if (s.selection.length > 1) {
-    return (
-      <div className="panel inspector">
-        <GroupCard list={s.selection} />
-      </div>
-    );
-  }
-  if (s.building) {
-    return (
-      <div className="panel inspector">
-        <BuildingCard info={s.building} />
-      </div>
-    );
-  }
-  return null;
+  let body: React.ReactNode = null;
+  if (s.selection.length === 1) body = <SettlerCard s={s.selection[0]} />;
+  else if (s.selection.length > 1) body = <GroupCard list={s.selection} />;
+  else if (s.building) body = <BuildingCard info={s.building} />;
+  if (!body) return null;
+  // Keep the map clear while placing buildings or drawing areas.
+  if (s.mode.kind === 'place' || s.mode.kind === 'area') return null;
+  return <div className="panel inspector">{body}</div>;
 }
 
 // ---- side drawer -------------------------------------------------------------
 
+function RequirementRow({ r }: { r: RequirementProgress }) {
+  return (
+    <>
+      <div className={`req${r.done ? ' done' : ''}`}>
+        <span className="box" aria-hidden />
+        <span>
+          {r.label} {!r.done && <span className="muted">({r.current}/{r.target})</span>}
+          <span className="sr-only">{r.done ? ' done' : ' not done'}</span>
+        </span>
+      </div>
+      {r.options && (
+        <div className="req-options">
+          {r.options.map((o) => (
+            <div key={o.label} className={`req small${o.done ? ' done' : ''}`}>
+              <span className="box" aria-hidden />
+              <span>
+                {o.label} {!o.done && <span className="muted">({o.current}/{o.target})</span>}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+function AreasTab() {
+  const { game } = useGame();
+  const s = useSnapshot();
+  const [editing, setEditing] = useState<number | null>(null);
+  const [name, setName] = useState('');
+  const selected = s.selection.map((x) => x.id);
+  const kinds: AreaKind[] = ['farm', 'wood', 'stone', 'build'];
+  return (
+    <>
+      <p className="muted" style={{ marginTop: 0 }}>
+        Draw an area, then assign settlers. They do the area's work first and fall back to their work order.
+      </p>
+      <div className="area-new">
+        {kinds.map((k) => (
+          <button key={k} className={`btn small${s.mode.kind === 'area' && s.mode.areaKind === k && s.mode.editId === null ? ' on' : ''}`} onClick={() => game.startArea(k)} title={AREA_LABELS[k].does}>
+            + {AREA_LABELS[k].name}
+          </button>
+        ))}
+      </div>
+      {s.mode.kind === 'area' && <p className="reason">Drag on the map to {s.mode.editId === null ? 'draw the area' : 'redraw it'}. Right-click or Esc cancels.</p>}
+      {s.areas.length === 0 && <p className="muted">No work areas yet.</p>}
+      {s.areas.map((a) => (
+        <div key={a.id} className={`area-card${s.selectedArea === a.id ? ' sel' : ''}`}>
+          <button className="area-head" onClick={() => game.selectArea(a.id, true)}>
+            <span className="swatch" style={{ borderColor: AREA_COLORS[a.kind] }}>
+              {AREA_SYMBOL[a.kind]}
+            </span>
+            <span className="nm">{a.name}</span>
+            <span className="muted">
+              {a.workers.length}/{a.max}
+            </span>
+          </button>
+          {s.selectedArea === a.id && (
+            <div className="area-body">
+              <div className="muted">
+                {a.kindName} · {a.size} tiles · {a.does}.
+              </div>
+              <div className={a.status.includes('No') || a.status.includes('nobody') ? 'reason' : 'muted'}>{a.status}</div>
+              <div className="muted">Workers: {a.workers.map((w) => w.name).join(', ') || 'none'}</div>
+              {editing === a.id ? (
+                <form
+                  className="row"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    game.dispatch({ type: 'updateArea', areaId: a.id, name });
+                    setEditing(null);
+                  }}
+                >
+                  <input type="text" value={name} maxLength={30} onChange={(e) => setName(e.target.value)} autoFocus aria-label="Area name" />
+                  <button className="btn small primary" type="submit">
+                    Save
+                  </button>
+                </form>
+              ) : null}
+              <div className="actions">
+                <button className="btn small primary" disabled={selected.length === 0} onClick={() => game.dispatch({ type: 'assignArea', ids: selected, areaId: a.id })}>
+                  Assign selected{selected.length ? ` (${selected.length})` : ''}
+                </button>
+                <button className="btn small" onClick={() => { setEditing(a.id); setName(a.name); }}>
+                  Rename
+                </button>
+                <button className="btn small" onClick={() => game.startArea(a.kind, a.id)}>
+                  Redraw
+                </button>
+                <select value={a.kind} onChange={(e) => game.dispatch({ type: 'updateArea', areaId: a.id, kind: e.target.value as AreaKind })} aria-label="Area kind">
+                  {kinds.map((k) => (
+                    <option key={k} value={k}>
+                      {AREA_LABELS[k].name}
+                    </option>
+                  ))}
+                </select>
+                <button className="btn small danger" onClick={() => game.dispatch({ type: 'deleteArea', areaId: a.id })}>
+                  Remove
+                </button>
+              </div>
+              {a.workers.length > 0 && (
+                <div className="actions">
+                  {a.workers.map((w) => (
+                    <button key={w.id} className="chip" onClick={() => game.dispatch({ type: 'assignArea', ids: [w.id], areaId: null })} title="Unassign">
+                      {w.name} ✕
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
+    </>
+  );
+}
+
 export function SidePanel() {
   const { game } = useGame();
   const s = useSnapshot();
-  const [tab, setTab] = useState<'people' | 'goals' | null>('goals');
+  const [tab, setTab] = useState<'people' | 'areas' | 'goals' | null>('goals');
+  useEffect(() => {
+    game.areasTabOpen = tab === 'areas';
+  }, [tab, game]);
   if (!tab) {
     return (
       <div className="side-toggle">
@@ -495,7 +731,10 @@ export function SidePanel() {
     <div className="panel side">
       <div className="side-tabs" role="tablist">
         <button role="tab" aria-selected={tab === 'people'} className={tab === 'people' ? 'on' : ''} onClick={() => setTab('people')}>
-          Settlers {s.idleCount > 0 ? `· ${s.idleCount} idle` : ''}
+          Settlers{s.idleCount > 0 && <span className="badge" title={`${s.idleCount} idle`}>{s.idleCount}</span>}
+        </button>
+        <button role="tab" aria-selected={tab === 'areas'} className={tab === 'areas' ? 'on' : ''} onClick={() => setTab('areas')}>
+          Areas
         </button>
         <button role="tab" aria-selected={tab === 'goals'} className={tab === 'goals' ? 'on' : ''} onClick={() => setTab('goals')}>
           Goals
@@ -510,13 +749,15 @@ export function SidePanel() {
             {s.settlers.map((p) => (
               <button key={p.id} className={`settler-row${selected.has(p.id) ? ' sel' : ''}`} onClick={() => game.selectSettlers([p.id], true)}>
                 <span className="nm">{p.name}</span>
-                <span className="jb">{JOBS[p.job].name}</span>
-                <span className={`tk${p.idle ? ' idle' : ''}`}>{p.idle ? p.idleReason : p.task}</span>
+                <span className="jb">{p.areaName || JOBS[p.job].name}</span>
+                <span className={`tk${p.idle ? ' idle' : ''}`}>{p.idle ? `⚠ ${p.idleReason}` : p.task}</span>
               </button>
             ))}
+            <p className="muted">{s.beds}</p>
             <p className="muted">{s.populationStatus}</p>
           </>
         )}
+        {tab === 'areas' && <AreasTab />}
         {tab === 'goals' && (
           <>
             <h3>{s.milestone.current}</h3>
@@ -528,22 +769,19 @@ export function SidePanel() {
                 {next.future ? (
                   <p className="muted">This stage arrives in a future update. Keep building. There is no cap on how big your valley can grow.</p>
                 ) : (
-                  next.reqs.map((r) => (
-                    <div key={r.label} className={`req${r.done ? ' done' : ''}`}>
-                      <span className="box" />
-                      <span>
-                        {r.label} {!r.done && <span className="muted">({r.current}/{r.target})</span>}
-                      </span>
-                    </div>
-                  ))
+                  next.reqs.map((r) => <RequirementRow key={r.label} r={r} />)
                 )}
                 <p className="muted">Unlocks: {next.unlocks.join(', ')}</p>
               </>
             ) : (
               <p className="muted">Every milestone reached.</p>
             )}
+            <p className="muted">{s.beds}</p>
             <p className="muted">{s.populationStatus}</p>
             {s.wellEquipped && <p className="muted">Well equipped: tools for everyone speed up work by 25%.</p>}
+            <button className="btn small" onClick={() => game.openOverview()}>
+              Open “Valley today”
+            </button>
           </>
         )}
       </div>
