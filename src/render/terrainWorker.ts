@@ -1,5 +1,5 @@
 /// <reference lib="webworker" />
-import { computePixels } from './terrainPainter';
+import { computePixels, type GroundSeason } from './terrainPainter';
 
 export interface PaintRequest {
   id: number;
@@ -7,11 +7,12 @@ export interface PaintRequest {
   cx: number;
   cy: number;
   terr: Uint8Array;
+  season: GroundSeason;
 }
 
 /** Paints chunk ground off the main thread so exploring never stutters. */
 self.onmessage = (e: MessageEvent<PaintRequest>) => {
-  const { id, seed, cx, cy, terr } = e.data;
-  const pixels = computePixels(seed, cx, cy, terr);
+  const { id, seed, cx, cy, terr, season } = e.data;
+  const pixels = computePixels(seed, cx, cy, terr, season);
   (self as unknown as Worker).postMessage({ id, pixels }, [pixels.buffer]);
 };

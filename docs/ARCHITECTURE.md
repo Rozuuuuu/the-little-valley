@@ -223,3 +223,8 @@ when the page closes.
 React components in `src/ui` read `useSnapshot()` and call controller methods. New panels: Valley today (`ui/Village.tsx`), the minimap with layer toggles and quick-find buttons (idle settlers, buildings waiting, sites, the bridge, home), the Areas tab, the work-order editor, and the celebration card. The minimap canvas is owned by `render/Minimap.ts` and drawn by the controller, never by React.
 Menus that should stop the world set `game.menuOpen`. The title screen runs a
 separate "attract" simulation behind the menu. It has no autosave, toasts or sounds.
+
+
+## Seasons and settlements continuation
+
+Seasons derive from the saved day: four days per season, sixteen per year. `data/seasons.ts` defines climate, and `sim/seasons.ts` supplies calendar and advisory winter food forecasts. Winter pauses planting and growth without destroying crops. Settlement centres, settler membership and storage targets are authoritative simulation state. Local work is preferred; workers can still help elsewhere. Target hauling uses existing incoming/outgoing reservations. `regionalInfo` publishes calendar, centre supplies, membership and cached road connectivity through the existing UI snapshot cadence. Ground cache entries and worker requests carry season identity; old ground remains visible while replacement chunks are painted.

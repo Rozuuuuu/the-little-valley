@@ -1,3 +1,4 @@
+import { regionalInfo } from './snapshot';
 import { AudioEngine, type SoundName } from '../audio/AudioEngine';
 import { TICK_MS, TILE } from '../game/core/constants';
 import { BUILDINGS, type BuildingId } from '../game/data/buildings';
@@ -860,6 +861,7 @@ export class GameController {
     const step = !t.done ? TUTORIAL[t.step] : null;
     const hover = this.hoverWorld ? hoverText(sim, this.hoverWorld.x, this.hoverWorld.y) : null;
     this.ui.set({
+      region: regionalInfo(sim),
       running: true,
       paused: this.paused,
       speed: this.speed,

@@ -77,3 +77,8 @@ Scale: 1 = strongly disagree … 5 = strongly agree.
 Group notes by task. Treat anything that stopped 2 or more players as a must-fix, and
 file the rest as candidates. Compare against the telemetry-free signals above: times,
 failed clicks, and panels opened.
+
+
+## Seasons and settlements continuation
+
+For 5–8 unfamiliar players, use a separate test save at Village near autumn. Ask them to prepare for winter and establish a second settlement without coaching. Observe whether they discover Towns, understand food targets versus current stock, assign settlers, provide beds and connect roads. Ask them to save and resume, then explain winter crop behavior and their next goal. Record stalled production, failed clicks, inaccessible routes and confusion about home versus settlement membership. Rate clarity, controls, art, pacing and desire to resume this same world from 1–5, with one desired improvement. No human testing has been performed for this continuation.

@@ -493,6 +493,7 @@ export function makeVillageHall(): BuildingSprites {
 
 export function makeBuildingSprites(): Partial<Record<BuildingId, BuildingSprites>> {
   return {
+    waystation: make(52, 58, 2, 28, villageHall),
     mill: make(40, 58, 4, 22, mill),
     bakery: make(54, 52, 3, 20, bakery),
     cottage: make(54, 50, 3, 17, cottage),

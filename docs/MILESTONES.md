@@ -333,3 +333,12 @@ Played in Chrome at 1920×901, then as a headless test (`tests/journey.test.ts`)
 - More long projects: a stone bridge that permanently spans a river, plus the
   district and road network that lead toward Town.
 - A performance pass for 100+ settlers (spatial index for job search, staggered AI).
+
+
+## Seasons and settlements continuation
+
+Continuation verified on 2026-09-28: season-aware terrain/tree rendering and snowfall, visible seasonal calendar and winter food forecast, Towns panel with centre navigation, renaming, selected-settler reassignment, food targets and road status. Winter crop inspectors explain that growth resumes in spring. Build a waystation after Village, move selected settlers, establish local homes/work areas, set food targets and connect centres with roads. The existing simulation includes climate crop modifiers, local preferences and Town requirements.
+
+Verification: 95 tests passed before the final status-text adjustment; final test/build results are reported in the delivery message. Legacy generator check: 18/18 identical chunks. Offline `profile-village.ts` on Windows, Node 22.14.0: 101 settlers, 99 buildings, 5,760 measured ticks after warmup. Day average 0.474 ms, p95 1.418 ms, p99 3.355 ms, max 22.81 ms; night average 0.141 ms, p95 0.742 ms, max 8.41 ms. Fixture had 32 homeless and average 22 daytime active workers. These are simulation timings, not frame times or a two-town throughput benchmark.
+
+Limitations: no browser or human playtest in this continuation, no measured browser frame time, and no new server started because the earlier server was stopped under memory pressure. Towns food targets currently use blur-to-apply inputs; waystation reuses hall art. Global food forecast is advisory and does not guarantee food distribution to each town. All settlements remain in detailed simulation. Next milestone: visibly validate the two-town journey, local logistics diagnostics and transport capacity before adding distant settlement abstraction.

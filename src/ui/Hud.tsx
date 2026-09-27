@@ -56,11 +56,11 @@ export function TopBar({ onMenu }: { onMenu: () => void }) {
         <UiIcon id={s.raining ? 'rain' : s.isNight ? 'moon' : 'sun'} />
         <div>
           <div className="time">
-            Day {s.day} · {s.clock}
+            {s.region.calendar} · {s.clock}
           </div>
           <div className="sub">
             {s.period}
-            {s.raining ? ', raining' : ''} · {s.milestone.current}
+            {s.raining ? (s.region.calendar.startsWith('Winter') ? ', snowing' : ', raining') : ''} · {s.milestone.current}
           </div>
         </div>
         <div className="speed" role="group" aria-label="Game speed">
@@ -712,7 +712,7 @@ function AreasTab() {
 export function SidePanel() {
   const { game } = useGame();
   const s = useSnapshot();
-  const [tab, setTab] = useState<'people' | 'areas' | 'goals' | null>('goals');
+  const [tab, setTab] = useState<'people' | 'areas' | 'towns' | 'goals' | null>('goals');
   useEffect(() => {
     game.areasTabOpen = tab === 'areas';
   }, [tab, game]);
@@ -736,6 +736,7 @@ export function SidePanel() {
         <button role="tab" aria-selected={tab === 'areas'} className={tab === 'areas' ? 'on' : ''} onClick={() => setTab('areas')}>
           Areas
         </button>
+        <button role="tab" aria-selected={tab === 'towns'} onClick={() => setTab('towns')}>Towns</button>
         <button role="tab" aria-selected={tab === 'goals'} className={tab === 'goals' ? 'on' : ''} onClick={() => setTab('goals')}>
           Goals
         </button>
@@ -758,6 +759,19 @@ export function SidePanel() {
           </>
         )}
         {tab === 'areas' && <AreasTab />}
+        {tab === 'towns' && <>
+          <h3>{s.region.calendar}</h3><p>{s.region.seasonNote}</p><p>{s.region.forecast}</p>
+          <p className="muted">After Village, build a waystation at least 24 tiles from another centre. Assign selected settlers here, then add homes and local work areas. Connect centres with paths and bridges.</p>
+          {s.region.towns.map(t => <section key={t.id}>
+            <button className="btn" onClick={() => game.focusBuilding(t.id)}>{t.name} · {t.people.length} settlers</button>
+            <label>Settlement name <input aria-label={`Rename ${t.name}`} key={t.name} defaultValue={t.name} maxLength={40} onBlur={e => { if(e.target.value.trim() !== t.name) game.dispatch({type:'renameSettlement', settlementId:t.id, name:e.target.value}); }} /></label>
+            <p className="muted">{t.people.join(', ') || 'No residents yet'} · {t.linked ? 'Road connected' : 'No road connection'}</p>
+            <button className="btn small" disabled={!s.selection.length} onClick={() => game.dispatch({type:'assignSettlement', ids:s.selection.map(p => p.id), settlementId:t.id})}>Assign {s.selection.length} selected settlers</button>
+            <p>Centre food: {t.food} · target {t.target}</p>
+            <label>Food to keep <input type="number" min="0" max="150" key={`${t.id}-${t.target}`} defaultValue={t.target} onBlur={e => game.dispatch({type:'setWants', buildingId:t.id, res:'food', amount:Number(e.target.value)})} /></label>
+            <p className="muted">Haulers bring surplus from other stores. Targets reserve local supplies; keep room for incoming goods.</p>
+          </section>)}
+        </>}
         {tab === 'goals' && (
           <>
             <h3>{s.milestone.current}</h3>

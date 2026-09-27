@@ -116,3 +116,8 @@ attention.
 - The minimap uses the terrain palette at one pixel per tile. Settlers are cream dots
   with a dark outline (idle ones are yellow), grouped per 2×2 tiles so busy villages
   stay readable.
+
+
+## Seasons and settlements continuation
+
+Seasonal ground palettes retain 16-pixel tiles and existing geometry. Autumn oaks recolour the original canopy; winter oaks use original bare-branch pixel drawings, pines retain snow-tipped foliage, and depleted berry bushes become dormant. Winter precipitation falls slowly as snow. Waystations currently reuse the original village hall day/night sprite; a distinct waystation silhouette remains future art work.

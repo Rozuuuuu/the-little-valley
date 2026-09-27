@@ -191,3 +191,31 @@ export function makeSapling(): Sprite {
   p.outline();
   return p.sprite(cx, 14);
 }
+
+/** Winter oak: bare branches with a dusting of snow, drawn in the same frame as the leafy canopy. */
+export function makeBareOak(variant: number): Sprite {
+  const W = 32;
+  const H = 38;
+  const cx = 16;
+  const p = new Painter(W, H);
+  const branch = (x0: number, y0: number, dx: number, dy: number, len: number, c: string) => {
+    for (let i = 0; i < len; i++) p.px(Math.round(x0 + dx * i), Math.round(y0 + dy * i), c);
+  };
+  const j = (n: number) => Math.round((hash01(variant, n, 91) - 0.5) * 3);
+  p.rect(cx - 1, 12, 2, 14, P.wood1);
+  branch(cx - 1, 20, -0.8, -1, 9 + j(1), P.wood1);
+  branch(cx, 18, 0.8, -1, 10 + j(2), P.wood1);
+  branch(cx, 14, -0.4, -1, 8 + j(3), P.wood0);
+  branch(cx, 12, 0.5, -1, 9, P.wood0);
+  branch(cx - 6, 13, -1, -0.5, 4, P.wood0);
+  branch(cx + 7, 11, 1, -0.4, 4, P.wood0);
+  // Snow resting on the upper sides of branches.
+  for (let i = 0; i < 12; i++) {
+    const x = Math.round(cx - 9 + hash01(i, variant, 92) * 18);
+    const y = Math.round(3 + hash01(variant, i, 93) * 14);
+    const d = p.ctx.getImageData(x, y + 1, 1, 1).data;
+    if (d[3] > 0) p.px(x, y, '#f4f8fb');
+  }
+  p.outline();
+  return p.sprite(cx, 36);
+}

@@ -1,3 +1,5 @@
+import { seasonOf } from '../game/sim/seasons';
+import type { SeasonId } from '../game/data/seasons';
 import { CHUNK, DUSK, MORNING, NIGHT_START, TILE, tileKey, keyX, keyY } from '../game/core/constants';
 import { hash01 } from '../game/core/rng';
 import { BUILDINGS, type BuildingId } from '../game/data/buildings';
@@ -73,7 +75,7 @@ const MAX_CHUNK_CACHE = 48;
 export class Renderer {
   readonly ctx: CanvasRenderingContext2D;
   readonly particles = new Particles();
-  private ground = new Map<number, { canvas: HTMLCanvasElement; version: number; used: number }>();
+  private ground = new Map<number, { canvas: HTMLCanvasElement; version: number; season: SeasonId; used: number }>();
   private fog = new Map<number, { canvas: HTMLCanvasElement; version: number }>();
   private light: HTMLCanvasElement;
   private lightCtx: CanvasRenderingContext2D;
@@ -83,12 +85,13 @@ export class Renderer {
   private fireflies: { x: number; y: number; phase: number; life: number }[] = [];
   private smokeTimer = 0;
   private frame = 0;
+  private season: SeasonId = 'spring';
   private lastTime = 0;
   /** Chunks painted this frame; painting is expensive, so it is spread out. */
   private paintBudget = 0;
   stats = { drawables: 0, chunks: 0, paintMs: 0 };
   private worker: Worker | null = null;
-  private pending = new Map<number, { key: number; version: number; gen: number }>();
+  private pending = new Map<number, { key: number; version: number; season: SeasonId; gen: number }>();
   private pendingKeys = new Set<number>();
   private reqId = 0;
   private cacheGen = 0;
@@ -121,7 +124,7 @@ export class Renderer {
     if (!info) return;
     this.pendingKeys.delete(info.key);
     if (info.gen !== this.cacheGen) return;
-    this.ground.set(info.key, { canvas: pixelsToCanvas(pixels), version: info.version, used: this.frame });
+    this.ground.set(info.key, { canvas: pixelsToCanvas(pixels), version: info.version, season: info.season, used: this.frame });
     this.evictGround();
   }
 
@@ -173,9 +176,10 @@ export class Renderer {
   }
 
   private groundFor(sim: Simulation, c: Chunk, force = false): HTMLCanvasElement | null {
+    const season = seasonOf(sim).id;
     const k = chunkKey(c.cx, c.cy);
     const e = this.ground.get(k);
-    if (e && e.version === c.terrainVersion) {
+    if (e && e.version === c.terrainVersion && e.season === season) {
       e.used = this.frame;
       return e.canvas;
     }
@@ -184,18 +188,18 @@ export class Renderer {
       // Paint off-thread; keep showing the old image (if any) meanwhile.
       if (!this.pendingKeys.has(k) && this.pending.size < 4) {
         const id = ++this.reqId;
-        this.pending.set(id, { key: k, version: c.terrainVersion, gen: this.cacheGen });
+        this.pending.set(id, { key: k, version: c.terrainVersion, season, gen: this.cacheGen });
         this.pendingKeys.add(k);
-        this.worker.postMessage({ id, seed: sim.seed, cx: c.cx, cy: c.cy, terr: terrainGrid(sim.world, c) });
+        this.worker.postMessage({ id, season, seed: sim.seed, cx: c.cx, cy: c.cy, terr: terrainGrid(sim.world, c) });
       }
       return e?.canvas ?? null;
     }
     if (!force && this.paintBudget <= 0) return e?.canvas ?? null;
     this.paintBudget--;
     const t0 = performance.now();
-    const canvas = paintChunk(sim.world, c);
+    const canvas = paintChunk(sim.world, c, season);
     this.stats.paintMs = performance.now() - t0;
-    this.ground.set(k, { canvas, version: c.terrainVersion, used: this.frame });
+    this.ground.set(k, { canvas, version: c.terrainVersion, season, used: this.frame });
     this.evictGround();
     return canvas;
   }
@@ -261,6 +265,7 @@ export class Renderer {
   // ---- main ---------------------------------------------------------------
 
   render(st: RenderState): void {
+    this.season = seasonOf(st.sim).id;
     const { sim } = st;
     const ctx = this.ctx;
     const cam = this.camera;
@@ -673,7 +678,8 @@ export class Renderer {
     switch (o) {
       case O.Oak:
       case O.Pine: {
-        const tree = o === O.Oak ? this.sprites.oaks[v % 3] : this.sprites.pines[v % 2];
+        if (o === O.Oak && this.season === 'winter') { this.blit(this.sprites.winterOaks[v % 3], x, y); return; }
+        const tree = o === O.Oak ? (this.season === 'autumn' ? this.sprites.autumnOaks : this.sprites.oaks)[v % 3] : (this.season === 'winter' ? this.sprites.winterPines : this.sprites.pines)[v % 2];
         const sway = Math.round(Math.sin(time * 1.3 + tx * 0.9 + ty * 0.4) * 0.7);
         this.ctx.globalAlpha = 0.25;
         this.rectW(x - 7, y - 3, 14, 3, '#10241a');
@@ -686,7 +692,7 @@ export class Renderer {
         this.blit(this.sprites.berry[v % 2], x, y);
         return;
       case O.BerryEmpty:
-        this.blit(this.sprites.berryEmpty[v % 2], x, y);
+        this.blit((this.season === 'winter' ? this.sprites.winterBushes : this.sprites.berryEmpty)[v % 2], x, y);
         return;
       case O.Rock:
         this.blit(this.sprites.rocks[v], x, y);
@@ -930,14 +936,14 @@ export class Renderer {
       const sc = cam.scale;
       ctx.fillStyle = 'rgba(190, 210, 235, 0.55)';
       for (const d of this.rain) {
-        d.y += dt * 260 * sc * d.v;
+        d.y += dt * (this.season === 'winter' ? 32 : 260) * sc * d.v;
         d.x -= dt * 50 * sc * d.v;
         if (d.y > H) {
           d.y -= H + 20;
           d.x = Math.random() * W * 1.2;
         }
         if (d.x < 0) d.x += W;
-        ctx.fillRect(Math.round(d.x), Math.round(d.y), Math.max(1, sc >> 1), sc * 4);
+        ctx.fillRect(Math.round(d.x), Math.round(d.y), Math.max(1, sc >> 1), this.season === 'winter' ? Math.max(1, sc >> 1) : sc * 4);
       }
     }
     // Fireflies at night, drifting pollen by day.

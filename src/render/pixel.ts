@@ -142,3 +142,28 @@ export function tinted(src: HTMLCanvasElement, color: string, alpha: number): HT
   ctx.fillRect(0, 0, c.width, c.height);
   return c;
 }
+
+/** Copies a canvas, swapping exact colours (used for seasonal variants of sprites). */
+export function recolor(src: HTMLCanvasElement, map: Record<string, string>): HTMLCanvasElement {
+  const c = makeCanvas(src.width, src.height);
+  const ctx = c.getContext('2d')!;
+  ctx.drawImage(src, 0, 0);
+  const img = ctx.getImageData(0, 0, c.width, c.height);
+  const d = img.data;
+  const lookup = new Map<number, [number, number, number]>();
+  for (const [from, to] of Object.entries(map)) {
+    const [r, g, b] = hexToRgb(from);
+    lookup.set((r << 16) | (g << 8) | b, hexToRgb(to));
+  }
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] === 0) continue;
+    const hit = lookup.get((d[i] << 16) | (d[i + 1] << 8) | d[i + 2]);
+    if (hit) {
+      d[i] = hit[0];
+      d[i + 1] = hit[1];
+      d[i + 2] = hit[2];
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  return c;
+}

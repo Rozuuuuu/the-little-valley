@@ -17,11 +17,39 @@ function rgba(hex: string): number {
   return (255 << 24) | (b << 16) | (g << 8) | r;
 }
 
-const C = Object.fromEntries(
+const BASE = Object.fromEntries(
   Object.entries(P)
     .filter(([, v]) => typeof v === 'string' && v.startsWith('#'))
     .map(([k, v]) => [k, rgba(v as string)]),
 ) as Record<string, number>;
+
+export type GroundSeason = 'spring' | 'summer' | 'autumn' | 'winter';
+
+/** Seasonal ground colours: autumn warms the greens, winter lays snow over the land. */
+const SEASON_OVERRIDES: Record<GroundSeason, Record<string, string>> = {
+  spring: {},
+  summer: { grass1: '#5a9a3c', grass2: '#6aa742', meadow1: '#72b046', meadow2: '#83bf4c' },
+  autumn: {
+    grass0: '#6b7a34', grass1: '#84913f', grass2: '#98a147', grass3: '#c3a44c',
+    meadow0: '#7d8a3a', meadow1: '#9aa548', meadow2: '#b3ad50', meadow3: '#d0a24e',
+    forest0: '#4a4a26', forest1: '#5b5a2c', forest2: '#6a6230', forestLeaf: '#c8702e',
+  },
+  winter: {
+    grass0: '#aebdca', grass1: '#e3eaf0', grass2: '#edf2f6', grass3: '#f8fbfd',
+    meadow0: '#aebdca', meadow1: '#e6ecf1', meadow2: '#f0f4f7', meadow3: '#fafcfe',
+    forest0: '#9fb0be', forest1: '#d7e0e8', forest2: '#e2e9ef', forestLeaf: '#8a7a5a',
+    sand0: '#c4ccd2', sand1: '#dde4ea', sand2: '#eef2f5', sand3: '#b3bec8',
+    rock0: '#a9b4bd', rock1: '#cfd7de', rock2: '#e3e9ee', rock3: '#97a2ac',
+    dirt0: '#8a7862', dirt1: '#b9ab98', dirt2: '#d6ccbf', dirt3: '#9a8a74',
+  },
+};
+
+const PALETTES = Object.fromEntries(
+  (Object.keys(SEASON_OVERRIDES) as GroundSeason[]).map((s) => [
+    s,
+    { ...BASE, ...Object.fromEntries(Object.entries(SEASON_OVERRIDES[s]).map(([k, v]) => [k, rgba(v)])) },
+  ]),
+) as Record<GroundSeason, Record<string, number>>;
 
 /** How far (in pixels) a terrain may creep into a lower-priority neighbour. */
 const REACH: Record<number, number> = {
@@ -42,8 +70,8 @@ for (const [k, v] of Object.entries(TERRAIN)) {
  * are resolved per pixel with chunky dithered noise so edges look hand-placed
  * rather than tiled, and water gets foam and a shaded bank.
  */
-export function paintChunk(world: World, chunk: Chunk): HTMLCanvasElement {
-  return pixelsToCanvas(computePixels(world.seed, chunk.cx, chunk.cy, terrainGrid(world, chunk)));
+export function paintChunk(world: World, chunk: Chunk, season: GroundSeason = 'spring'): HTMLCanvasElement {
+  return pixelsToCanvas(computePixels(world.seed, chunk.cx, chunk.cy, terrainGrid(world, chunk), season));
 }
 
 export function pixelsToCanvas(pixels: Uint32Array): HTMLCanvasElement {
@@ -80,7 +108,9 @@ export function terrainGrid(world: World, chunk: Chunk): Uint8Array {
 }
 
 /** Pure pixel computation (ABGR words), safe to run in a worker. */
-export function computePixels(seed: number, cx: number, cy: number, terr: Uint8Array): Uint32Array {
+export function computePixels(seed: number, cx: number, cy: number, terr: Uint8Array, season: GroundSeason = 'spring'): Uint32Array {
+  const C = PALETTES[season];
+  const winter = season === 'winter';
   const ox = cx * CHUNK;
   const oy = cy * CHUNK;
   const tAt = (tx: number, ty: number) => terr[(ty + 1) * G + tx + 1] as TerrainId;
@@ -248,7 +278,7 @@ export function computePixels(seed: number, cx: number, cy: number, terr: Uint8A
           put(x + 1, y + 2, dark, t);
         }
       }
-      if ((t === T.Meadow && r(5) < 0.55) || (t === T.Grass && r(5) < 0.07)) {
+      if (!winter && ((t === T.Meadow && r(5) < 0.55) || (t === T.Grass && r(5) < (season === 'autumn' ? 0.02 : 0.07)))) {
         const petals = [C.flowerY, C.flowerW, C.flowerP, C.flowerV, C.flowerR];
         const n = t === T.Meadow && r(6) > 0.6 ? 2 : 1;
         for (let i = 0; i < n; i++) {

@@ -49,3 +49,8 @@ lighting and fog.
 | Music | generative I–vi–IV–V pads and pentatonic plucks through an echo; sparser at night |
 
 Master, music and effects volumes (plus mute) are independent settings.
+
+
+## Seasons and settlements continuation
+
+Seasonal variants live in `render/sprites/index.ts`, bare oaks in `render/sprites/props.ts`, and terrain palettes in `render/terrainPainter.ts`. `pixel.recolor` substitutes exact palette colours without resampling. Waystation uses the existing original village hall artwork, including lit windows. No external assets added.

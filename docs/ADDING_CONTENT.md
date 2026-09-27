@@ -109,3 +109,8 @@ Never edit an existing generator. Add a new version in `worldgen.ts` (branch on
 `gen`), bump `CURRENT_GEN`, add it to `SUPPORTED_GENS`, and add a fingerprint
 alongside `tests/fixtures/gen-v1-fingerprint.json`. See
 [SAVE_FORMAT.md](SAVE_FORMAT.md).
+
+
+## Seasons and settlements continuation
+
+Crop `seasons` entries multiply the season-wide growth factor; omitted entries default to one. Configure climate in `data/seasons.ts`. Buildings with `settlementCenter.minSpacing` can found settlements; keep their placement, temporary/permanent beds and storage explicit. Storage `wants` are target quantities, not newly created goods. Surplus is available stock minus the source target. The Towns UI currently exposes food targets for centres; the command supports typed resources on stores.

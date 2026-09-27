@@ -130,3 +130,8 @@ Tests (`tests/save.test.ts`, `tests/village.test.ts`) cover:
 - v2 recovered from the backup and from an emergency copy
 - an unrecoverable slot
 - exact v3 round trips of all new state
+
+
+## Seasons and settlements continuation
+
+Current format is version 4. The appended v3-to-v4 migration establishes the original camp settlement, assigns existing settlers to it and initializes storage targets. Settlers persist `settlementId`, buildings persist `wants`, and simulation state persists `settlements`. Earlier migrations are retained. Seasons derive from saved game time, with no offline progression: an older world can therefore resume in summer, autumn or winter according to its saved day. Generator versions and original chunk generation remain unchanged. The genuine v3 fixture joins existing migration coverage.

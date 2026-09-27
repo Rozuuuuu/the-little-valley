@@ -7,7 +7,9 @@ import { makeBuildingSprites, makeFenceSprites, makeMillSails, makeVillageHall, 
 import { appearanceKey, makeSettlerSheet, type SettlerSheet } from './characters';
 import { makeCropSprites, makeSoil, type SoilState } from './crops';
 import { makeResourceIcons, makeToolSprites, makeUiIcons, type UiIconId } from './icons';
-import { makeBerryBush, makeBoulder, makeOak, makePine, makeRock, makeSapling, makeStump, type TreeSprite } from './props';
+import { makeBareOak, makeBerryBush, makeBoulder, makeOak, makePine, makeRock, makeSapling, makeStump, type TreeSprite } from './props';
+import { recolor } from '../pixel';
+import { P } from '../palette';
 
 /**
  * Every sprite in the game, generated once at startup from code. No image
@@ -18,6 +20,17 @@ export class SpriteBank {
   readonly pines: TreeSprite[] = [0, 1].map(makePine);
   readonly berry: Sprite[] = [0, 1].map((v) => makeBerryBush(true, v));
   readonly berryEmpty: Sprite[] = [0, 1].map((v) => makeBerryBush(false, v));
+  /** Seasonal variants, recoloured from the originals so shapes stay identical. */
+  readonly autumnOaks: TreeSprite[] = this.oaks.map((t) => ({
+    trunk: t.trunk,
+    canopy: { ...t.canopy, canvas: recolor(t.canopy.canvas, { [P.leaf0]: '#7a3a1e', [P.leaf1]: '#b0552a', [P.leaf2]: '#d07a32', [P.leaf3]: '#e3a340', [P.leaf4]: '#f2c65a' }) },
+  }));
+  readonly winterOaks: Sprite[] = [0, 1, 2].map(makeBareOak);
+  readonly winterPines: TreeSprite[] = this.pines.map((t) => ({
+    trunk: t.trunk,
+    canopy: { ...t.canopy, canvas: recolor(t.canopy.canvas, { [P.pine3]: '#f4f8fb', [P.pine2]: '#bcd0d6' }) },
+  }));
+  readonly winterBushes: Sprite[] = this.berryEmpty.map((s) => ({ ...s, canvas: recolor(s.canvas, { [P.leaf0]: '#4e4034', [P.leaf1]: '#655444', [P.leaf2]: '#7c6a56', [P.leaf3]: '#e9eff4' }) }));
   readonly rocks: Sprite[] = [0, 1, 2].map(makeRock);
   readonly boulders: Sprite[] = [0, 1].map(makeBoulder);
   readonly stump = makeStump();

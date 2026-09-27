@@ -1,3 +1,5 @@
+import { seasonOf, winterForecast } from '../game/sim/seasons';
+import { roadLinked } from '../game/sim/settlements';
 import { TILE, tileKey } from '../game/core/constants';
 import { BUILDINGS, BUILDING_IDS, type BuildingId } from '../game/data/buildings';
 import { CROPS, CROP_IDS, type CropId } from '../game/data/crops';
@@ -9,7 +11,7 @@ import {
   bedsOf, costOf, cropUnlocked, housingCapacity, isPermanentHome, isUnlocked, maxWorkers, unlockName, workOf,
 } from '../game/sim/buildings';
 import { AREA_LABELS, AREA_MAX_WORKERS } from '../game/sim/commands';
-import { fieldStage } from '../game/sim/farming';
+import { fieldStage, seasonalGrowth } from '../game/sim/farming';
 import { invEntries } from '../game/sim/inventory';
 import { effectivePriorities } from '../game/sim/priorities';
 import { currentMilestone, nextMilestone, requirementProgress, type RequirementProgress } from '../game/sim/progression';
@@ -86,7 +88,16 @@ export interface Toast {
   at: number;
 }
 
+export function regionalInfo(sim: Simulation) {
+  const season = seasonOf(sim);
+  return { calendar: `${season.def.name} ${season.day}/4 · Year ${season.year}`, forecast: winterForecast(sim).text, seasonNote: season.def.arrival, towns: sim.settlements.map(t => {
+    const b = sim.buildings.get(t.id)!;
+    return { id: t.id, name: t.name, people: sim.settlers.filter(p => p.settlementId === t.id).map(p => p.name), food: b.inventory.food ?? 0, target: b.wants.food ?? 0, linked: sim.settlements.some(other => other.id !== t.id && roadLinked(sim, t.id, other.id)) };
+  }) };
+}
+
 export interface UiSnapshot {
+  region: ReturnType<typeof regionalInfo>;
   running: boolean;
   paused: boolean;
   speed: number;
@@ -127,6 +138,7 @@ export function emptySnapshot(): UiSnapshot {
   const resources = {} as Record<ResourceId, number>;
   for (const r of RESOURCE_IDS) resources[r] = 0;
   return {
+    region: { calendar: '', forecast: '', seasonNote: '', towns: [] },
     running: false, paused: false, speed: 1, day: 1, clock: '', period: '', isNight: false, raining: false,
     resources, storage: { used: 0, capacity: 0 }, population: 0, housing: 0, beds: '', populationStatus: '', wellEquipped: false,
     milestone: { current: 'Camp', tier: 0, next: null }, mode: { kind: 'select' }, selection: [], building: null,
@@ -209,7 +221,7 @@ export function buildingInfo(sim: Simulation, list: Building[]): BuildingInfo | 
     const crop = f.crop ? CROPS[f.crop] : null;
     const stage = fieldStage(f);
     const fert = TERRAIN[sim.world.terrain(b.x, b.y)].fertility;
-    const left = crop && f.state === 'growing' ? (crop.growTicks - f.growth) / Math.max(0.1, fert) : 0;
+    const left = crop && f.state === 'growing' ? (crop.growTicks - f.growth) / Math.max(0.01, fert * seasonalGrowth(sim, f.crop!)) : 0;
     info.field = {
       crop: f.crop,
       state: f.state === 'wild' ? 'Waiting to be tilled' : f.state === 'tilled' ? (f.crop ? 'Tilled, ready for seeds' : 'Tilled — choose a crop') : f.state === 'growing' ? 'Growing' : 'Ripe — ready to harvest',
@@ -217,7 +229,7 @@ export function buildingInfo(sim: Simulation, list: Building[]): BuildingInfo | 
       stages: crop?.stages ?? 4,
       growth: crop ? Math.min(1, f.growth / crop.growTicks) : 0,
       moisture: f.moisture,
-      ripeIn: f.state === 'growing' ? `about ${ticksLabel(left)}${f.moisture < 0.12 ? ' (dry: slower)' : ''}` : '',
+      ripeIn: f.state === 'growing' && seasonOf(sim).id === 'winter' ? 'Resting until spring; crops survive' : f.state === 'growing' ? `about ${ticksLabel(left)}${f.moisture < 0.12 ? ' (dry: slower)' : ''}` : '',
     };
     info.status = `${Math.round(fert * 100)}% fertile soil`;
   }
