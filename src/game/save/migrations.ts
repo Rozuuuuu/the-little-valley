@@ -1,6 +1,8 @@
-import { isBuildingId } from '../data/buildings';
+import { BUILDINGS, isBuildingId } from '../data/buildings';
 import { isCropId } from '../data/crops';
 import { isJobId } from '../data/jobs';
+import { WORK_KINDS } from '../sim/priorities';
+import { SUPPORTED_GENS } from '../world/worldgen';
 import { isMilestoneId } from '../data/progression';
 import { isResourceId } from '../data/resources';
 import { emptyStats } from '../sim/Simulation';
@@ -50,6 +52,30 @@ export const MIGRATIONS: Record<number, (save: AnyRecord) => AnyRecord> = {
         weather: { raining: false, nextChange: ((v1.tick as number) ?? 0) + 2000 },
       },
       world: { chunks: v1.chunks ?? [] },
+    };
+  },
+
+  /**
+   * v2 was Milestone 1. v3 adds the world generator version (every v2 world
+   * was made by generator 1), work areas, personal work orders, production
+   * workers, span building sizes, the chronicle and session marks.
+   */
+  2: (v2) => {
+    const sim = v2.sim as AnyRecord;
+    const world = v2.world as AnyRecord;
+    return {
+      ...v2,
+      version: 3,
+      sim: {
+        ...sim,
+        settlers: ((sim.settlers as AnyRecord[] | undefined) ?? []).map((s) => ({ ...s, areaId: null, priorities: null })),
+        buildings: ((sim.buildings as AnyRecord[] | undefined) ?? []).map((b) => ({ ...b, workers: [] })),
+        stats: { ...emptyStats(), ...(sim.stats as AnyRecord | undefined) },
+        workAreas: [],
+        chronicle: [],
+        session: null,
+      },
+      world: { ...world, genVersion: 1 },
     };
   },
 };
@@ -106,6 +132,8 @@ export function validateSave(save: AnyRecord): void {
       const c = s.carrying as AnyRecord;
       check(isResourceId(c.res) && isNum(c.amount), `settler ${s.id} carrying`);
     }
+    check(s.areaId === null || isInt(s.areaId), `settler ${s.id} work area`);
+    check(s.priorities === null || (Array.isArray(s.priorities) && (s.priorities as unknown[]).every((k) => WORK_KINDS.includes(k as never))), `settler ${s.id} work order`);
   }
   check(Array.isArray(sim.buildings), 'building list');
   for (const b of sim.buildings as AnyRecord[]) {
@@ -115,6 +143,8 @@ export function validateSave(save: AnyRecord): void {
     check(isInt(b.x) && isInt(b.y) && typeof b.built === 'boolean' && isNum(b.progress), `building ${b.id} fields`);
     checkInventory(b.delivered, `building ${b.id} delivered`);
     checkInventory(b.inventory, `building ${b.id}`);
+    check(Array.isArray(b.workers) && (b.workers as unknown[]).every(isInt), `building ${b.id} workers`);
+    if (BUILDINGS[b.type as keyof typeof BUILDINGS].span) check(isInt(b.w) && isInt(b.h) && (b.w as number) >= 1 && (b.h as number) >= 1, `building ${b.id} size`);
     if (b.field) {
       const f = b.field as AnyRecord;
       check(f.crop === null || isCropId(f.crop), `field ${b.id} crop`);
@@ -125,8 +155,16 @@ export function validateSave(save: AnyRecord): void {
   check(Array.isArray(sim.designations) && Array.isArray(sim.regrowth), 'designations');
   check(sim.stats && typeof sim.stats === 'object', 'stats');
   check(Array.isArray(sim.reached) && (sim.reached as unknown[]).every(isMilestoneId), 'progression');
+  check(Array.isArray(sim.workAreas), 'work areas');
+  for (const a of sim.workAreas as AnyRecord[]) {
+    check(isInt(a.id) && typeof a.name === 'string' && ['farm', 'wood', 'stone', 'build'].includes(a.kind as string), 'work area');
+    check([a.x0, a.y0, a.x1, a.y1].every(isInt), 'work area bounds');
+  }
+  check(Array.isArray(sim.chronicle), 'chronicle');
+  check(sim.session === null || (typeof sim.session === 'object' && isInt((sim.session as AnyRecord).startTick)), 'session');
   const world = save.world as AnyRecord;
   check(world && Array.isArray(world.chunks), 'world');
+  check(SUPPORTED_GENS.includes(world.genVersion as number), `world generator version ${String(world.genVersion)} is not supported by this game version`);
   for (const c of world.chunks as AnyRecord[]) {
     check(isInt(c.cx) && isInt(c.cy) && typeof c.explored === 'string', 'chunk header');
   }

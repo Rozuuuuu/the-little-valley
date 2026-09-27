@@ -4,7 +4,7 @@ import type { MilestoneId } from './progression';
 
 export type BuildingCategory = 'housing' | 'farming' | 'storage' | 'production' | 'infrastructure' | 'decor' | 'project';
 /** Which terrain a footprint must sit on. */
-export type PlacementRule = 'land' | 'farmland' | 'water';
+export type PlacementRule = 'land' | 'farmland' | 'water' | 'span';
 
 export interface BuildingDef {
   id: string;
@@ -22,8 +22,17 @@ export interface BuildingDef {
   paint?: boolean;
   /** Player can place it from the build menu. */
   buildable: boolean;
+  /** Beds. Every resident needs one; a home never holds more residents than beds. */
   housing?: number;
+  /** Temporary sleeping places (the founding camp's bedrolls) rather than a real home. */
+  temporaryBeds?: boolean;
   storage?: number;
+  /** Most settlers that can be assigned to work here (production buildings). */
+  maxWorkers?: number;
+  /** Built by dragging a straight line across water; cost and work scale with length. */
+  span?: { min: number; max: number; costPerTile: Inventory; workPerTile: number };
+  /** Finished buildings of this type can't be demolished. */
+  permanent?: boolean;
   recipes?: readonly RecipeId[];
   /** Night light radius in tiles. */
   light?: number;
@@ -35,18 +44,20 @@ export interface BuildingDef {
   unlock?: MilestoneId;
 }
 
-export type BuildingId = 'camp' | 'house' | 'field' | 'storehouse' | 'workshop' | 'path' | 'bridge' | 'fence' | 'flowerbed' | 'lamp' | 'bench' | 'market';
+export type BuildingId =
+  | 'camp' | 'house' | 'cottage' | 'field' | 'storehouse' | 'workshop' | 'mill' | 'bakery'
+  | 'path' | 'bridge' | 'stoneBridge' | 'fence' | 'flowerbed' | 'lamp' | 'bench' | 'market';
 
 export const BUILDINGS: Record<BuildingId, BuildingDef> = {
   camp: {
     id: 'camp', name: 'Camp', category: 'housing',
     description: 'Tents, a campfire and a modest stockpile. Where every valley story begins.',
     size: { w: 3, h: 2 }, cost: {}, work: 0, placement: 'land', blocks: true, buildable: false,
-    housing: 5, storage: 250, light: 6, reveal: 14,
+    housing: 5, temporaryBeds: true, storage: 250, light: 6, reveal: 14,
   },
   house: {
     id: 'house', name: 'House', category: 'housing',
-    description: 'A cosy cottage for two. Free beds and spare food attract new settlers.',
+    description: 'A cosy home with 2 beds. Free beds and spare food attract new settlers.',
     size: { w: 2, h: 2 }, cost: { wood: 20, stone: 6 }, work: 260, placement: 'land', blocks: true, buildable: true,
     housing: 2, light: 3, reveal: 6,
   },
@@ -65,7 +76,32 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     id: 'workshop', name: 'Workshop', category: 'production',
     description: 'A crafter turns wood into planks and planks into tools.',
     size: { w: 3, h: 2 }, cost: { wood: 30, stone: 16 }, work: 360, placement: 'land', blocks: true, buildable: true,
-    recipes: ['planks', 'tools'], light: 2, reveal: 6,
+    recipes: ['planks', 'tools'], light: 2, reveal: 6, maxWorkers: 1,
+  },
+  mill: {
+    id: 'mill', name: 'Mill', category: 'production',
+    description: 'A windmill. Its miller grinds 3 wheat into 2 flour.',
+    size: { w: 2, h: 2 }, cost: { wood: 30, stone: 20 }, work: 320, placement: 'land', blocks: true, buildable: true,
+    recipes: ['flour'], light: 2, reveal: 6, maxWorkers: 1, unlock: 'hamlet',
+  },
+  bakery: {
+    id: 'bakery', name: 'Bakery', category: 'production',
+    description: 'Its baker turns 2 flour and 1 wood (for the oven) into 5 food.',
+    size: { w: 3, h: 2 }, cost: { wood: 20, stone: 25, planks: 6 }, work: 340, placement: 'land', blocks: true, buildable: true,
+    recipes: ['bread'], light: 3, reveal: 6, maxWorkers: 1, unlock: 'hamlet',
+  },
+  cottage: {
+    id: 'cottage', name: 'Cottage', category: 'housing',
+    description: 'A roomy family home with 4 beds.',
+    size: { w: 3, h: 2 }, cost: { wood: 30, stone: 20, planks: 10 }, work: 420, placement: 'land', blocks: true, buildable: true,
+    housing: 4, light: 3, reveal: 6, unlock: 'village',
+  },
+  stoneBridge: {
+    id: 'stoneBridge', name: 'Stone Bridge', category: 'project',
+    description: 'A permanent stone crossing over any river, even deep water. Drag across the water from bank to bank.',
+    size: { w: 1, h: 1 }, cost: {}, work: 0, placement: 'span', blocks: false, buildable: true,
+    span: { min: 2, max: 12, costPerTile: { stone: 6, planks: 2 }, workPerTile: 100 },
+    maxBuilders: 3, permanent: true, reveal: 8, unlock: 'hamlet',
   },
   path: {
     id: 'path', name: 'Path', category: 'infrastructure',

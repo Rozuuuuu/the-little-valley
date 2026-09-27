@@ -3,7 +3,7 @@ import { O, T } from '../src/game/world/tiles';
 
 const seed = Number(process.argv[2] ?? 12345);
 const R = Number(process.argv[3] ?? 40);
-const w = new World(seed);
+const w = new World(seed, Number(process.argv[4] ?? 2));
 const tch: Record<number, string> = { [T.DeepWater]: '#', [T.Water]: '~', [T.Sand]: ':', [T.Grass]: '.', [T.Meadow]: ',', [T.Forest]: '"', [T.Rocky]: '^' };
 const och: Record<number, string> = { [O.Oak]: 'T', [O.Pine]: 'A', [O.Berry]: 'b', [O.Rock]: 'o', [O.Boulder]: 'O' };
 const counts: Record<string, number> = {};

@@ -1,6 +1,6 @@
 import type { BuildingId } from '../data/buildings';
 import type { CropId } from '../data/crops';
-import type { JobId } from '../data/jobs';
+import type { JobId, WorkKind } from '../data/jobs';
 import type { MilestoneId, StatId } from '../data/progression';
 import type { RecipeId } from '../data/recipes';
 import type { Inventory, ResourceId } from '../data/resources';
@@ -80,6 +80,43 @@ export interface Settler {
   /** Tick of the last "I could not do my order" notice, so feedback is not spammy. */
   lastNotice: number;
   arrivedTick: number;
+  /** Work area this settler is assigned to. Area work comes before job priorities. */
+  areaId: number | null;
+  /** Personal work order; null means the job's default order. */
+  priorities: WorkKind[] | null;
+  /** Home the settler is currently asleep inside (transient, for lit windows and occupancy). */
+  insideId: number | null;
+  /** Why the settler is resting where they are (shown while asleep). */
+  restNote: string;
+}
+
+export type AreaKind = 'farm' | 'wood' | 'stone' | 'build';
+
+/** A player-drawn rectangle whose assigned settlers do one kind of work inside it first. */
+export interface WorkArea {
+  id: number;
+  name: string;
+  kind: AreaKind;
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+/** Notable things that happened, kept for the Valley today summary. */
+export interface ChronicleEntry {
+  tick: number;
+  kind: 'built' | 'arrival' | 'milestone' | 'bridge' | 'shortage';
+  text: string;
+  x?: number;
+  y?: number;
+}
+
+/** Where a play session started, so the next session can summarise it. */
+export interface SessionMark {
+  startTick: number;
+  startStats: Stats;
+  startPopulation: number;
 }
 
 export interface FieldState {
@@ -117,6 +154,8 @@ export interface Building {
   field?: FieldState;
   workshop?: WorkshopState;
   placedTick: number;
+  /** Settlers assigned to work here (production buildings), up to maxWorkers. */
+  workers: number[];
 }
 
 export interface Regrowth {
@@ -142,15 +181,18 @@ export type SimEvent =
   | { type: 'fx'; kind: FxKind; x: number; y: number }
   | { type: 'milestone'; id: MilestoneId }
   | { type: 'arrival'; settlerId: number }
-  | { type: 'important' };
+  | { type: 'important' }
+  | { type: 'focus'; x: number; y: number; w: number; h: number };
 
 export type SfxName =
   | 'chop' | 'mine' | 'pick' | 'dig' | 'plant' | 'water' | 'harvest' | 'hammer' | 'saw'
-  | 'drop' | 'complete' | 'place' | 'arrival' | 'milestone' | 'error' | 'eat';
+  | 'drop' | 'complete' | 'place' | 'arrival' | 'milestone' | 'error' | 'eat' | 'mill' | 'bake';
 
 export type FxKind = 'woodchips' | 'stonechips' | 'leaves' | 'sparkle' | 'dust' | 'splash' | 'hearts' | 'soil';
 
 export interface CommandResult {
   ok: boolean;
   message?: string;
+  /** Id of whatever the command created (e.g. a work area). */
+  id?: number;
 }

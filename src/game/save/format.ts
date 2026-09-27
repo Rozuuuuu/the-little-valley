@@ -1,16 +1,16 @@
 import type { BuildingId } from '../data/buildings';
 import type { CropId } from '../data/crops';
-import type { JobId } from '../data/jobs';
+import type { JobId, WorkKind } from '../data/jobs';
 import type { MilestoneId } from '../data/progression';
 import type { RecipeId } from '../data/recipes';
 import type { Inventory, ResourceId } from '../data/resources';
-import type { Appearance, Facing, Stats } from '../sim/types';
+import type { Appearance, ChronicleEntry, Facing, SessionMark, Stats, WorkArea } from '../sim/types';
 
 /**
  * Save file format. Bump SAVE_VERSION whenever this shape changes and add a
  * migration in migrations.ts so older worlds keep loading.
  */
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 export interface SaveMeta {
   name: string;
@@ -46,6 +46,8 @@ export interface SavedSettler {
   homeId: number | null;
   appearance: Appearance;
   focus: { res: ResourceId; x: number; y: number; until: number } | null;
+  areaId: number | null;
+  priorities: WorkKind[] | null;
 }
 
 export interface SavedBuilding {
@@ -60,6 +62,10 @@ export interface SavedBuilding {
   field?: { crop: CropId | null; state: 'wild' | 'tilled' | 'growing' | 'ripe'; growth: number; moisture: number };
   workshop?: { recipe: RecipeId | null; progress: number; paused: boolean };
   placedTick: number;
+  /** Only for span buildings, whose size varies. */
+  w?: number;
+  h?: number;
+  workers: number[];
 }
 
 export interface SaveView {
@@ -89,7 +95,25 @@ export interface SaveFileV2 {
   tutorial?: { step: number; done: boolean };
 }
 
-export type SaveFile = SaveFileV2;
+export interface SaveFileV3 {
+  version: 3;
+  meta: SaveMeta;
+  sim: SaveFileV2['sim'] & {
+    workAreas: WorkArea[];
+    chronicle: ChronicleEntry[];
+    /** Where the last play session started (null for saves from before v3). */
+    session: SessionMark | null;
+  };
+  world: {
+    /** World generator version (see worldgen.ts). Old worlds keep generating with their version. */
+    genVersion: number;
+    chunks: SavedChunk[];
+  };
+  view?: SaveView;
+  tutorial?: { step: number; done: boolean };
+}
+
+export type SaveFile = SaveFileV3;
 
 export class SaveError extends Error {
   constructor(message: string) {

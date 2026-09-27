@@ -15,13 +15,17 @@ export function chunkKey(cx: number, cy: number): number {
 export class World {
   readonly chunks = new Map<number, Chunk>();
 
-  constructor(readonly seed: number) {}
+  /** Generator version this world was created with (see worldgen.ts). */
+  constructor(
+    readonly seed: number,
+    readonly genVersion = 1,
+  ) {}
 
   chunk(cx: number, cy: number): Chunk {
     const k = chunkKey(cx, cy);
     let c = this.chunks.get(k);
     if (!c) {
-      c = generateChunk(this.seed, cx, cy);
+      c = generateChunk(this.seed, cx, cy, this.genVersion);
       this.chunks.set(k, c);
     }
     return c;

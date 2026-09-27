@@ -1,16 +1,17 @@
 import { DAY_TICKS, tileKey } from '../core/constants';
 import { BUILDINGS, isBuildingId, type BuildingId } from '../data/buildings';
 import { isCropId, type CropId } from '../data/crops';
-import { isJobId, JOBS, type JobId } from '../data/jobs';
+import { isJobId, JOBS, type JobId, type WorkKind } from '../data/jobs';
 import { isRecipeId, type RecipeId } from '../data/recipes';
 import { OBJECTS } from '../world/tiles';
 import {
-  checkPlacement, cropUnlocked, materialsComplete, placeBuilding, removeBuilding, setFieldCrop, shortfall,
+  bedsOf, checkPlacement, checkSpan, cropUnlocked, materialsComplete, maxWorkers, placeBuilding, removeBuilding, setFieldCrop, shortfall,
 } from './buildings';
+import { cleanPriorities } from './priorities';
 import { fieldAction } from './farming';
 import { abortTask, findHaulFor } from './settlers';
 import type { Simulation } from './Simulation';
-import type { CommandResult, Settler } from './types';
+import type { AreaKind, CommandResult, Settler } from './types';
 
 export type Command =
   | { type: 'move'; ids: number[]; x: number; y: number }
@@ -23,9 +24,45 @@ export type Command =
   | { type: 'setCrop'; buildingIds: number[]; crop: CropId | null }
   | { type: 'designate'; x0: number; y0: number; x1: number; y1: number; on: boolean }
   | { type: 'setRecipe'; buildingId: number; recipe: RecipeId | null }
-  | { type: 'toggleWorkshop'; buildingId: number };
+  | { type: 'toggleWorkshop'; buildingId: number }
+  | { type: 'placeSpan'; building: BuildingId; x0: number; y0: number; x1: number; y1: number }
+  | { type: 'createArea'; kind: AreaKind; x0: number; y0: number; x1: number; y1: number; name?: string }
+  | { type: 'updateArea'; areaId: number; name?: string; kind?: AreaKind; rect?: { x0: number; y0: number; x1: number; y1: number } }
+  | { type: 'deleteArea'; areaId: number }
+  | { type: 'assignArea'; ids: number[]; areaId: number | null }
+  | { type: 'setPriorities'; ids: number[]; priorities: WorkKind[] | null }
+  | { type: 'assignWorker'; buildingId: number; ids: number[] }
+  | { type: 'unassignWorker'; buildingId: number; settlerId: number };
 
 const MAX_AREA = 40 * 40;
+/** Most settlers one work area can take. */
+export const AREA_MAX_WORKERS = 12;
+const AREA_KINDS: AreaKind[] = ['farm', 'wood', 'stone', 'build'];
+export const AREA_LABELS: Record<AreaKind, { name: string; noun: string; does: string }> = {
+  farm: { name: 'Farm area', noun: 'Farm', does: 'Till, plant, water and harvest the fields inside' },
+  wood: { name: 'Woodlot', noun: 'Woodlot', does: 'Chop every tree inside (no harvest marks needed)' },
+  stone: { name: 'Quarry', noun: 'Quarry', does: 'Mine every rock and boulder inside' },
+  build: { name: 'Building area', noun: 'Works', does: 'Build and supply construction sites inside' },
+};
+
+/**
+ * Stops work that came from an area or job the player just changed, so the
+ * settler re-plans at once. Reservations are released by abortTask; goods in
+ * hand are kept and delivered. Direct orders and needs are left alone.
+ */
+function replan(sim: Simulation, s: Settler): void {
+  const k = s.task?.kind;
+  if (k === 'gather' || k === 'farm' || k === 'build' || k === 'craft' || (k === 'haul' && s.task?.kind === 'haul' && s.task.stage === 'toSrc')) abortTask(sim, s);
+}
+
+function areaRectOk(sim: Simulation, r: { x0: number; y0: number; x1: number; y1: number }): string | null {
+  if (![r.x0, r.y0, r.x1, r.y1].every(isInt)) return 'Invalid area';
+  const w = Math.abs(r.x1 - r.x0) + 1;
+  const h = Math.abs(r.y1 - r.y0) + 1;
+  if (w * h > MAX_AREA) return 'That area is too large (40×40 tiles at most)';
+  for (let y = Math.min(r.y0, r.y1); y <= Math.max(r.y0, r.y1); y++) for (let x = Math.min(r.x0, r.x1); x <= Math.max(r.x0, r.x1); x++) if (sim.world.explored(x, y)) return null;
+  return 'Explore this area first';
+}
 
 function ok(message?: string): CommandResult {
   return { ok: true, message };
@@ -34,7 +71,7 @@ function err(message: string): CommandResult {
   return { ok: false, message };
 }
 
-function isInt(n: unknown): n is number {
+export function isInt(n: unknown): n is number {
   return typeof n === 'number' && Number.isInteger(n) && Math.abs(n) < 1_000_000;
 }
 
@@ -151,13 +188,7 @@ export function applyCommand(sim: Simulation, cmd: Command): CommandResult {
         s.task = { kind: 'farm', field: b.id, action, stage: 'walk', timer: 0 };
         return ok();
       }
-      if (b.workshop) {
-        for (const s of list) {
-          takeOrder(sim, s);
-          s.job = 'crafter';
-        }
-        return ok(`${list.map((s) => s.name).join(', ')} will now work as ${list.length > 1 ? 'crafters' : 'a crafter'}.`);
-      }
+      if (b.workshop) return applyCommand(sim, { type: 'assignWorker', buildingId: b.id, ids: list.map((s) => s.id) });
       if (def.storage) {
         for (const s of list) {
           takeOrder(sim, s);
@@ -165,17 +196,19 @@ export function applyCommand(sim: Simulation, cmd: Command): CommandResult {
         }
         return ok();
       }
-      if (b.type === 'house') {
-        const cap = def.housing ?? 0;
-        const residents = sim.settlers.filter((s) => s.homeId === b.id);
+      if (def.housing && b.built && !def.temporaryBeds) {
+        const cap = bedsOf(b);
+        let residents = sim.settlers.filter((s) => s.homeId === b.id).length;
         let moved = 0;
         for (const s of list) {
           if (s.homeId === b.id) continue;
-          if (residents.length + moved >= cap) break;
+          if (residents >= cap) break;
           s.homeId = b.id;
+          residents++;
           moved++;
         }
-        return moved > 0 ? ok(`${moved} settler${moved > 1 ? 's' : ''} moved in.`) : err('This house is full');
+        if (moved > 0) return ok(`${moved} settler${moved > 1 ? 's' : ''} moved in (${residents}/${cap} beds).`);
+        return err(`This ${def.name.toLowerCase()} is full (${cap}/${cap} beds)`);
       }
       for (const s of list) {
         takeOrder(sim, s);
@@ -227,6 +260,7 @@ export function applyCommand(sim: Simulation, cmd: Command): CommandResult {
       const b = sim.buildings.get(cmd.buildingId);
       if (!b) return err('Nothing to remove');
       if (b.type === 'camp') return err('The camp is the heart of the valley and stays put');
+      if (b.built && BUILDINGS[b.type].permanent) return err(`The ${BUILDINGS[b.type].name.toLowerCase()} is permanent and can't be demolished`);
       return ok(removeBuilding(sim, b));
     }
 
@@ -234,9 +268,11 @@ export function applyCommand(sim: Simulation, cmd: Command): CommandResult {
       if (!isJobId(cmd.job)) return err('Unknown job');
       const list = pickSettlers(sim, cmd.ids);
       for (const s of list) {
-        if (s.job === cmd.job) continue;
+        if (s.job === cmd.job && s.priorities === null) continue;
         s.job = cmd.job;
-        if (s.task && s.task.kind !== 'sleep' && s.task.kind !== 'eat' && s.task.kind !== 'move') abortTask(sim, s);
+        // Choosing a job resets any custom work order to that job's default.
+        s.priorities = null;
+        replan(sim, s);
       }
       return ok(list.length === 1 ? `${list[0].name} is now a ${JOBS[cmd.job].name}.` : undefined);
     }
@@ -288,6 +324,136 @@ export function applyCommand(sim: Simulation, cmd: Command): CommandResult {
       if (!b?.workshop) return err('Not a workshop');
       b.workshop.paused = !b.workshop.paused;
       return ok(b.workshop.paused ? 'Workshop paused.' : 'Workshop resumed.');
+    }
+
+    case 'placeSpan': {
+      if (!isBuildingId(cmd.building) || !BUILDINGS[cmd.building].span) return err('Invalid building');
+      if (![cmd.x0, cmd.y0, cmd.x1, cmd.y1].every(isInt)) return err('Invalid location');
+      const check = checkSpan(sim, cmd.building, cmd.x0, cmd.y0, cmd.x1, cmd.y1);
+      if (!check.ok) return err(check.reason ?? "Can't build here");
+      const r = check.rect;
+      const b = placeBuilding(sim, cmd.building, r.x, r.y, undefined, { w: r.w, h: r.h });
+      sim.emit({ type: 'sfx', name: 'place', x: r.x, y: r.y });
+      sim.emit({ type: 'important' });
+      const short = shortfall(sim, cmd.building, 1, r);
+      return { ok: true, id: b.id, message: `Stone bridge planned: ${Math.max(r.w, r.h)} tiles.${short ? ` Builders will wait for ${short}.` : ''}` };
+    }
+
+    case 'createArea': {
+      if (!AREA_KINDS.includes(cmd.kind)) return err('Unknown kind of area');
+      const bad = areaRectOk(sim, cmd);
+      if (bad) return err(bad);
+      const n = sim.workAreas.filter((a) => a.kind === cmd.kind).length + 1;
+      const name = (typeof cmd.name === 'string' && cmd.name.trim().slice(0, 30)) || `${AREA_LABELS[cmd.kind].noun} ${n}`;
+      const id = sim.allocId();
+      sim.workAreas.push({
+        id, name, kind: cmd.kind,
+        x0: Math.min(cmd.x0, cmd.x1), y0: Math.min(cmd.y0, cmd.y1), x1: Math.max(cmd.x0, cmd.x1), y1: Math.max(cmd.y0, cmd.y1),
+      });
+      sim.emit({ type: 'important' });
+      return { ok: true, id, message: `Created ${name}. Assign settlers to it from the Areas tab.` };
+    }
+
+    case 'updateArea': {
+      const a = sim.area(cmd.areaId);
+      if (!a) return err('That work area is gone');
+      if (cmd.rect) {
+        const bad = areaRectOk(sim, cmd.rect);
+        if (bad) return err(bad);
+        a.x0 = Math.min(cmd.rect.x0, cmd.rect.x1);
+        a.y0 = Math.min(cmd.rect.y0, cmd.rect.y1);
+        a.x1 = Math.max(cmd.rect.x0, cmd.rect.x1);
+        a.y1 = Math.max(cmd.rect.y0, cmd.rect.y1);
+      }
+      if (cmd.kind && AREA_KINDS.includes(cmd.kind)) a.kind = cmd.kind;
+      if (typeof cmd.name === 'string' && cmd.name.trim()) a.name = cmd.name.trim().slice(0, 30);
+      for (const s of sim.settlers) if (s.areaId === a.id) replan(sim, s);
+      return ok();
+    }
+
+    case 'deleteArea': {
+      const a = sim.area(cmd.areaId);
+      if (!a) return err('That work area is gone');
+      sim.workAreas = sim.workAreas.filter((x) => x.id !== a.id);
+      for (const s of sim.settlers) {
+        if (s.areaId !== a.id) continue;
+        s.areaId = null;
+        replan(sim, s);
+      }
+      return ok(`Removed ${a.name}. Its settlers went back to their usual work.`);
+    }
+
+    case 'assignArea': {
+      const list = pickSettlers(sim, cmd.ids);
+      if (list.length === 0) return err('Select a settler first');
+      if (cmd.areaId === null) {
+        for (const s of list) {
+          s.areaId = null;
+          replan(sim, s);
+        }
+        return ok();
+      }
+      const a = sim.area(cmd.areaId);
+      if (!a) return err('That work area is gone');
+      let count = sim.settlers.filter((s) => s.areaId === a.id).length;
+      let added = 0;
+      for (const s of list) {
+        if (s.areaId === a.id) continue;
+        if (count >= AREA_MAX_WORKERS) break;
+        s.areaId = a.id;
+        replan(sim, s);
+        count++;
+        added++;
+      }
+      const skipped = list.filter((s) => s.areaId !== a.id).length;
+      if (added === 0 && skipped > 0) return err(`${a.name} already has ${AREA_MAX_WORKERS}/${AREA_MAX_WORKERS} workers`);
+      return ok(`${added} settler${added === 1 ? '' : 's'} now work in ${a.name} (${count}/${AREA_MAX_WORKERS}).${skipped ? ` ${skipped} didn't fit.` : ''}`);
+    }
+
+    case 'setPriorities': {
+      const list = pickSettlers(sim, cmd.ids);
+      const pr = cmd.priorities === null ? null : cleanPriorities(cmd.priorities);
+      if (cmd.priorities !== null && pr === null) return err('Invalid work order');
+      for (const s of list) {
+        s.priorities = pr;
+        replan(sim, s);
+      }
+      return ok();
+    }
+
+    case 'assignWorker': {
+      const b = sim.buildings.get(cmd.buildingId);
+      if (!b?.workshop || !b.built) return err('Workers can only be assigned to finished workshops, mills and bakeries');
+      const list = pickSettlers(sim, cmd.ids);
+      if (list.length === 0) return err('Select a settler first');
+      const max = maxWorkers(b);
+      const name = BUILDINGS[b.type].name.toLowerCase();
+      const added: string[] = [];
+      for (const s of list) {
+        if (b.workers.includes(s.id)) continue;
+        if (b.workers.length >= max) break;
+        for (const other of sim.buildings.values()) if (other !== b) other.workers = other.workers.filter((id) => id !== s.id);
+        b.workers.push(s.id);
+        takeOrder(sim, s);
+        // Make sure crafting is in their work order, and first.
+        if (s.priorities === null && s.job !== 'crafter') s.job = 'crafter';
+        else if (s.priorities) s.priorities = ['craft', ...s.priorities.filter((k) => k !== 'craft')];
+        added.push(s.name);
+      }
+      if (added.length === 0) {
+        if (list.every((s) => b.workers.includes(s.id))) return ok(`Already working at the ${name}.`);
+        return err(`The ${name} already has ${max}/${max} worker${max > 1 ? 's' : ''} — unassign someone in its panel first`);
+      }
+      return ok(`${added.join(', ')} now work${added.length === 1 ? 's' : ''} at the ${name} (${b.workers.length}/${max}).`);
+    }
+
+    case 'unassignWorker': {
+      const b = sim.buildings.get(cmd.buildingId);
+      if (!b) return err('That building is gone');
+      b.workers = b.workers.filter((id) => id !== cmd.settlerId);
+      const s = sim.settler(cmd.settlerId);
+      if (s) replan(sim, s);
+      return ok();
     }
   }
   return err('Unknown command');

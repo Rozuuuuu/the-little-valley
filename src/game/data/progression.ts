@@ -1,11 +1,19 @@
 import type { BuildingId } from './buildings';
 
-export type StatId = 'woodGathered' | 'stoneGathered' | 'foodGathered' | 'harvested' | 'planksCrafted' | 'toolsCrafted' | 'arrivals';
+export type StatId =
+  | 'woodGathered' | 'stoneGathered' | 'foodGathered' | 'harvested' | 'planksCrafted' | 'toolsCrafted' | 'arrivals'
+  | 'wheatHarvested' | 'flourMilled' | 'bakedFood' | 'pathsBuilt';
 
 export type Requirement =
   | { kind: 'population'; count: number }
-  | { kind: 'built'; building: BuildingId; count: number }
-  | { kind: 'stat'; stat: StatId; count: number; label: string };
+  | { kind: 'built'; building: BuildingId; count: number; label?: string }
+  | { kind: 'stat'; stat: StatId; count: number; label: string }
+  /** Permanent beds in finished homes (camp bedrolls don't count). */
+  | { kind: 'beds'; count: number }
+  /** Work areas with at least one assigned settler. */
+  | { kind: 'staffedAreas'; count: number }
+  /** Any `count` of the options: lets players choose their own path. */
+  | { kind: 'anyOf'; count: number; label: string; options: readonly Requirement[] };
 
 export interface MilestoneDef {
   id: string;
@@ -35,25 +43,32 @@ export const MILESTONES: Record<MilestoneId, MilestoneDef> = {
       { kind: 'built', building: 'house', count: 1 },
       { kind: 'stat', stat: 'harvested', count: 10, label: 'Harvest 10 food from fields' },
     ],
-    unlocks: ['Pumpkins', 'Bridges', 'Lantern Posts'],
+    unlocks: ['Mill and Bakery', 'Stone Bridge project', 'Pumpkins', 'Wooden bridges', 'Lantern Posts'],
   },
   village: {
     id: 'village', name: 'Village', tier: 2,
-    description: 'Plan roads, workshops and production.',
+    description: 'Grow to 10 settlers with 8 real beds, then finish any 2 village projects, in whatever order suits your valley.',
     requirements: [
-      { kind: 'population', count: 9 },
-      { kind: 'built', building: 'workshop', count: 1 },
-      { kind: 'built', building: 'storehouse', count: 1 },
-      { kind: 'stat', stat: 'planksCrafted', count: 20, label: 'Craft 20 planks' },
+      { kind: 'population', count: 10 },
+      { kind: 'beds', count: 8 },
+      {
+        kind: 'anyOf', count: 2, label: 'Finish 2 of these village projects',
+        options: [
+          { kind: 'stat', stat: 'bakedFood', count: 30, label: 'Bake 30 food at a bakery' },
+          { kind: 'staffedAreas', count: 2 },
+          { kind: 'built', building: 'stoneBridge', count: 1, label: 'Complete a stone bridge' },
+          { kind: 'stat', stat: 'pathsBuilt', count: 25, label: 'Lay 25 path tiles' },
+        ],
+      },
     ],
-    unlocks: ['Grand Market project', 'Benches'],
+    unlocks: ['Cottages (4 beds)', 'Grand Market project', 'Benches', 'The camp becomes a village hall'],
   },
   town: {
     id: 'town', name: 'Town', tier: 3,
     description: 'Develop districts, services and specialised industries.',
     requirements: [
       { kind: 'population', count: 16 },
-      { kind: 'built', building: 'house', count: 7 },
+      { kind: 'beds', count: 16 },
       { kind: 'built', building: 'market', count: 1 },
       { kind: 'stat', stat: 'toolsCrafted', count: 10, label: 'Craft 10 tools' },
     ],

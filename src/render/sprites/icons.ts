@@ -47,6 +47,25 @@ export const RESOURCE_ICON_DRAW: Record<ResourceId, (p: Painter) => void> = {
     p.px(2, 2, P.wood1);
     p.px(7, 6, P.wood1);
   },
+  wheat: (p) => {
+    for (const x of [2, 4, 6, 8]) p.vline(x, 4, 9, '#c9a54a');
+    for (const x of [2, 4, 6, 8]) {
+      p.rect(x - (x < 5 ? 1 : 0), 0, 2, 4, P.flowerY);
+      p.px(x, 0, '#fff0a8');
+    }
+    p.hline(1, 9, 7, P.wood2);
+  },
+  flour: (p) => {
+    p.rect(1, 3, 8, 7, P.wall2);
+    p.hline(1, 8, 9, P.wall0);
+    p.vline(8, 3, 9, P.wall1);
+    p.hline(3, 6, 1, P.wall1);
+    p.rect(2, 2, 6, 1, P.wall1);
+    p.hline(3, 6, 2, P.wood2);
+    p.px(4, 5, P.stone2);
+    p.px(5, 6, P.stone2);
+    p.px(4, 7, P.stone2);
+  },
   tools: (p) => {
     for (let i = 0; i < 7; i++) p.px(2 + i, 9 - i, P.wood2);
     for (let i = 0; i < 6; i++) p.px(3 + i, 9 - i, P.wood1);

@@ -8,7 +8,7 @@ import { TERRAIN } from '../world/tiles';
 import { World } from '../world/World';
 import type { PathGrid } from './pathfinding';
 import type {
-  Appearance, Building, ProgressionState, Regrowth, Settler, SimEvent, Stats, WeatherState,
+  Appearance, Building, ChronicleEntry, ProgressionState, Regrowth, SessionMark, Settler, SimEvent, Stats, WeatherState, WorkArea,
 } from './types';
 import { updateSettler } from './settlers';
 import { updateFields, updateWeather } from './farming';
@@ -18,9 +18,18 @@ import { updateRegrowth, updateWorkshops } from './buildings';
 
 export const SETTLER_CAPACITY = 10;
 export const STARTING_SETTLERS = 5;
+/**
+ * Simulation ceiling for one valley. Growth stops openly at this size (the UI
+ * says so) rather than letting a very large town slow every tick.
+ */
+export const MAX_POPULATION = 300;
+const CHRONICLE_LIMIT = 80;
 
 export function emptyStats(): Stats {
-  return { woodGathered: 0, stoneGathered: 0, foodGathered: 0, harvested: 0, planksCrafted: 0, toolsCrafted: 0, arrivals: 0 };
+  return {
+    woodGathered: 0, stoneGathered: 0, foodGathered: 0, harvested: 0, planksCrafted: 0, toolsCrafted: 0, arrivals: 0,
+    wheatHarvested: 0, flourMilled: 0, bakedFood: 0, pathsBuilt: 0,
+  };
 }
 
 /**
@@ -49,9 +58,14 @@ export class Simulation implements PathGrid {
   lastArrival = 0;
   populationStatus = '';
   events: SimEvent[] = [];
+  workAreas: WorkArea[] = [];
+  /** Notable events, newest last (saved; capped). */
+  chronicle: ChronicleEntry[] = [];
+  /** Where the current play session began (saved, so the next session can summarise it). */
+  session: SessionMark | null = null;
 
-  constructor(seed: number, rngState = seed ^ 0x5bd1e995) {
-    this.world = new World(seed);
+  constructor(seed: number, rngState = seed ^ 0x5bd1e995, genVersion = 1) {
+    this.world = new World(seed, genVersion);
     this.rng = new Rng(rngState);
   }
 
@@ -98,6 +112,20 @@ export class Simulation implements PathGrid {
   toast(text: string, level: 'info' | 'good' | 'warn' = 'info'): void {
     this.emit({ type: 'toast', text, level });
   }
+  /** Records a notable event for the next Valley today summary. */
+  record(kind: ChronicleEntry['kind'], text: string, x?: number, y?: number): void {
+    this.chronicle.push({ tick: this.tick, kind, text, x, y });
+    if (this.chronicle.length > CHRONICLE_LIMIT) this.chronicle.splice(0, this.chronicle.length - CHRONICLE_LIMIT);
+  }
+
+  startSession(): void {
+    this.session = { startTick: this.tick, startStats: { ...this.stats }, startPopulation: this.settlers.length };
+  }
+
+  area(id: number | null): WorkArea | undefined {
+    return id === null ? undefined : this.workAreas.find((a) => a.id === id);
+  }
+
   drainEvents(): SimEvent[] {
     const out = this.events;
     this.events = [];
@@ -138,6 +166,7 @@ export class Simulation implements PathGrid {
       hunger: 85 + this.rng.int(15), energy: 90, homeId: null, appearance: this.randomAppearance(),
       task: null, focus: null, idleReason: '', hidden: false, path: null, pathIndex: 0,
       goalKey: null, repaths: 0, lastNotice: -9999, arrivedTick: this.tick,
+      areaId: null, priorities: null, insideId: null, restNote: '',
     };
     this.settlers.push(s);
     return s;

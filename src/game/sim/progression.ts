@@ -1,6 +1,6 @@
 import { BUILDINGS } from '../data/buildings';
 import { MILESTONES, MILESTONE_ORDER, type MilestoneId, type Requirement } from '../data/progression';
-import { builtCount } from './buildings';
+import { builtCount, permanentBeds } from './buildings';
 import type { Simulation } from './Simulation';
 
 export interface RequirementProgress {
@@ -8,6 +8,14 @@ export interface RequirementProgress {
   current: number;
   target: number;
   done: boolean;
+  /** For "any N of" requirements: each option's own progress. */
+  options?: RequirementProgress[];
+}
+
+export function staffedAreaCount(sim: Simulation): number {
+  const staffed = new Set<number>();
+  for (const s of sim.settlers) if (s.areaId !== null && sim.area(s.areaId)) staffed.add(s.areaId);
+  return staffed.size;
 }
 
 export function requirementProgress(sim: Simulation, req: Requirement): RequirementProgress {
@@ -20,12 +28,25 @@ export function requirementProgress(sim: Simulation, req: Requirement): Requirem
       break;
     case 'built':
       current = builtCount(sim, req.building);
-      label = `Build ${req.count > 1 ? `${req.count} ` : 'a '}${BUILDINGS[req.building].name}${req.count > 1 ? 's' : ''}`;
+      label = req.label ?? `Build ${req.count > 1 ? `${req.count} ` : 'a '}${BUILDINGS[req.building].name}${req.count > 1 ? 's' : ''}`;
       break;
     case 'stat':
       current = sim.stats[req.stat];
       label = req.label;
       break;
+    case 'beds':
+      current = permanentBeds(sim);
+      label = `Have ${req.count} beds in houses or cottages`;
+      break;
+    case 'staffedAreas':
+      current = staffedAreaCount(sim);
+      label = `Run ${req.count} work areas with settlers assigned`;
+      break;
+    case 'anyOf': {
+      const options = req.options.map((o) => requirementProgress(sim, o));
+      current = options.filter((o) => o.done).length;
+      return { label: req.label, current: Math.min(current, req.count), target: req.count, done: current >= req.count, options };
+    }
   }
   return { label, current: Math.min(current, req.count), target: req.count, done: current >= req.count };
 }
@@ -47,6 +68,7 @@ export function checkMilestones(sim: Simulation): void {
   if (!def.requirements.every((r) => requirementProgress(sim, r).done)) return;
   sim.progression.reached.push(next);
   sim.toast(`Your settlement is now a ${def.name}! Unlocked: ${def.unlocks.join(', ')}.`, 'good');
+  sim.record('milestone', `Became a ${def.name}`);
   sim.emit({ type: 'milestone', id: next });
   sim.emit({ type: 'sfx', name: 'milestone' });
   sim.emit({ type: 'important' });

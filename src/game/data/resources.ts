@@ -10,6 +10,8 @@ export const RESOURCES = {
   stone: { id: 'stone', name: 'Stone', description: 'Mined from rocks and boulders.' },
   planks: { id: 'planks', name: 'Planks', description: 'Sawn at a workshop from wood. Used for bridges and finer buildings.' },
   tools: { id: 'tools', name: 'Tools', description: 'Crafted at a workshop. A well-equipped settlement works faster.' },
+  wheat: { id: 'wheat', name: 'Wheat', description: 'Harvested from wheat fields. A mill grinds it into flour.' },
+  flour: { id: 'flour', name: 'Flour', description: 'Ground at a mill. A bakery turns it into bread (food).' },
 } as const satisfies Record<string, ResourceDef>;
 
 export type ResourceId = keyof typeof RESOURCES;

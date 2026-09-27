@@ -11,6 +11,7 @@ export const T = {
   Rocky: 6,
   Road: 7,
   Bridge: 8,
+  StoneBridge: 9,
 } as const;
 export type TerrainId = (typeof T)[keyof typeof T];
 
@@ -37,6 +38,7 @@ export const TERRAIN: Record<TerrainId, TerrainDef> = {
   [T.Rocky]: { name: 'Rocky hillside', walkable: true, buildable: true, fertility: 0, moveCost: 1.25, priority: 3 },
   [T.Road]: { name: 'Path', walkable: true, buildable: false, fertility: 0, moveCost: 0.6, priority: 8 },
   [T.Bridge]: { name: 'Bridge', walkable: true, buildable: false, fertility: 0, moveCost: 0.6, priority: 9 },
+  [T.StoneBridge]: { name: 'Stone bridge', walkable: true, buildable: false, fertility: 0, moveCost: 0.6, priority: 10 },
 };
 
 export const O = {

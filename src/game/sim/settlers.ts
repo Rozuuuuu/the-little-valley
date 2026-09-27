@@ -1,16 +1,19 @@
 import { DAY_TICKS, tileKey, keyX, keyY } from '../core/constants';
 import { BUILDINGS } from '../data/buildings';
 import { CROPS } from '../data/crops';
-import { JOBS, type WorkKind } from '../data/jobs';
+import type { WorkKind } from '../data/jobs';
 import { RECIPES } from '../data/recipes';
 import { RESOURCES, type ResourceId } from '../data/resources';
 import { O, OBJECTS, TERRAIN, type ObjectId } from '../world/tiles';
-import { completeBuilding, materialsComplete, scheduleRegrowth, workshopNeeds } from './buildings';
+import {
+  campOf, completeBuilding, costOf, entranceOf, isPermanentHome, materialsComplete, mayWorkAt, scheduleRegrowth, workOf, workshopNeeds,
+} from './buildings';
 import { applyFieldAction, FIELD_WORK, fieldAction } from './farming';
 import { addInv, hasAll, invEntries } from './inventory';
 import { findPath, goalSatisfied, type Goal } from './pathfinding';
+import { effectivePriorities } from './priorities';
 import type { Simulation } from './Simulation';
-import type { Building, Settler, Task, ToolKind } from './types';
+import type { Building, Settler, Task, ToolKind, WorkArea } from './types';
 
 export const BASE_SPEED = 0.24;
 export const HUNGER_DECAY = 100 / (DAY_TICKS * 1.2);
@@ -20,6 +23,9 @@ export const MEAL_VALUE = 65;
 export const REVEAL_RADIUS = 6.5;
 export const AUTO_GATHER_RADIUS = 18;
 export const FOCUS_RADIUS = 7;
+/** Below this energy a settler takes a daytime nap; they wake once rested. */
+export const NAP_THRESHOLD = 12;
+export const WAKE_ENERGY = 60;
 
 type MoveResult = 'arrived' | 'moving' | 'failed';
 type Finder = (sim: Simulation, s: Settler) => Task | string | null;
@@ -179,6 +185,25 @@ function clearTask(s: Settler): void {
   s.goalKey = null;
   s.anim = 'idle';
   s.tool = null;
+  s.insideId = null;
+}
+
+/** Reservation keys the settler's current task holds (for consistency checks). */
+export function taskKeys(s: Settler): string[] {
+  const t = s.task;
+  if (!t) return [];
+  switch (t.kind) {
+    case 'gather':
+      return [`obj:${tileKey(t.x, t.y)}`];
+    case 'build':
+      return [`build:${t.site}:${t.slot}`];
+    case 'farm':
+      return [`field:${t.field}`];
+    case 'craft':
+      return [`craft:${t.ws}`];
+    default:
+      return [];
+  }
 }
 
 /** Stops the current task and gives back anything it had reserved. */
@@ -196,12 +221,18 @@ function fail(sim: Simulation, s: Settler, reason: string, target?: string): voi
 
 // ---- job finders -----------------------------------------------------------
 
-function findBuild(sim: Simulation, s: Settler): Task | string | null {
+/** Does a building's footprint overlap a work area? */
+function inArea(a: WorkArea | undefined, x: number, y: number, w = 1, h = 1): boolean {
+  if (!a) return true;
+  return x <= a.x1 && x + w - 1 >= a.x0 && y <= a.y1 && y + h - 1 >= a.y0;
+}
+
+function findBuild(sim: Simulation, s: Settler, area?: WorkArea): Task | string | null {
   let best: Building | null = null;
   let bestSlot = -1;
   let bestD = Infinity;
   for (const b of sim.buildings.values()) {
-    if (b.built || !materialsComplete(b)) continue;
+    if (b.built || !materialsComplete(b) || !inArea(area, b.x, b.y, b.w, b.h)) continue;
     if (sim.isUnreachable(s.id, `b${b.id}`)) continue;
     const max = BUILDINGS[b.type].maxBuilders ?? 2;
     let slot = -1;
@@ -232,11 +263,12 @@ interface HaulNeed {
   priority: number;
 }
 
-function haulNeeds(sim: Simulation): HaulNeed[] {
+function haulNeeds(sim: Simulation, area?: WorkArea): HaulNeed[] {
   const out: HaulNeed[] = [];
   for (const b of sim.buildings.values()) {
+    if (!inArea(area, b.x, b.y, b.w, b.h)) continue;
     if (!b.built) {
-      for (const [r, n] of invEntries(BUILDINGS[b.type].cost)) {
+      for (const [r, n] of invEntries(costOf(b))) {
         const need = n - (b.delivered[r] ?? 0) - (b.incoming[r] ?? 0);
         if (need > 0) out.push({ dst: b, res: r, need, priority: 0 });
       }
@@ -257,9 +289,9 @@ function planHaul(sim: Simulation, s: Settler, n: HaulNeed): Task | string {
   return { kind: 'haul', src: src.id, dst: n.dst.id, res: n.res, amount, stage: 'toSrc' };
 }
 
-function findHaul(sim: Simulation, s: Settler): Task | string | null {
+function findHaul(sim: Simulation, s: Settler, area?: WorkArea): Task | string | null {
   let reason: string | null = null;
-  const needs = haulNeeds(sim)
+  const needs = haulNeeds(sim, area)
     .filter((n) => !sim.isUnreachable(s.id, `b${n.dst.id}`))
     .map((n) => {
       const c = centre(n.dst);
@@ -287,13 +319,13 @@ export function findHaulFor(sim: Simulation, s: Settler, dst: Building): Task | 
   return reason;
 }
 
-function findFarm(sim: Simulation, s: Settler): Task | string | null {
+function findFarm(sim: Simulation, s: Settler, area?: WorkArea): Task | string | null {
   let best: Building | null = null;
   let bestScore = Infinity;
   let action: ReturnType<typeof fieldAction> = null;
   let anyFields = false;
   for (const b of sim.buildings.values()) {
-    if (!b.field) continue;
+    if (!b.field || !inArea(area, b.x, b.y)) continue;
     anyFields = true;
     const a = fieldAction(sim, b.field);
     if (!a || (a === 'harvest' && s.carrying)) continue;
@@ -306,7 +338,10 @@ function findFarm(sim: Simulation, s: Settler): Task | string | null {
       action = a;
     }
   }
-  if (!best || !action) return s.job === 'farmer' ? (anyFields ? 'Fields are growing — nothing to tend' : 'No fields yet — place some from the Build menu') : null;
+  if (!best || !action) {
+    if (area) return anyFields ? `Fields in ${area.name} are growing — nothing to tend` : `${area.name} has no fields — place some inside it`;
+    return effectivePriorities(s)[0] === 'farm' ? (anyFields ? 'Fields are growing — nothing to tend' : 'No fields yet — place some from the Build menu') : null;
+  }
   sim.reserve(`field:${best.id}`, s.id);
   return { kind: 'farm', field: best.id, action, stage: 'walk', timer: 0 };
 }
@@ -387,6 +422,58 @@ function findGather(sim: Simulation, s: Settler): Task | string | null {
   return 'Nothing left to gather near storage — mark resources with the Harvest tool';
 }
 
+/** Wood or stone inside a woodlot or quarry area. Areas harvest without needing marks. */
+function findAreaGather(sim: Simulation, s: Settler, area: WorkArea, res: 'wood' | 'stone'): Task | string {
+  if (!sim.nearestStorageWithSpace(s.x, s.y)) return 'Storage is full — build a storehouse';
+  let best: { x: number; y: number } | null = null;
+  let bestD = Infinity;
+  let any = 0;
+  let unreachable = 0;
+  for (let y = area.y0; y <= area.y1; y++) {
+    for (let x = area.x0; x <= area.x1; x++) {
+      const def = OBJECTS[sim.world.obj(x, y)];
+      if (def.resource !== res || sim.world.amount(x, y) <= 0 || !sim.world.explored(x, y)) continue;
+      any++;
+      if (sim.isUnreachable(s.id, `o${tileKey(x, y)}`)) {
+        unreachable++;
+        continue;
+      }
+      if (sim.isReserved(`obj:${tileKey(x, y)}`, s.id)) continue;
+      const d = Math.hypot(x + 0.5 - s.x, y + 0.5 - s.y);
+      if (d < bestD) {
+        bestD = d;
+        best = { x, y };
+      }
+    }
+  }
+  if (best) return objectTask(sim, s, best.x, best.y);
+  const noun = res === 'wood' ? 'trees' : 'rocks';
+  if (any === 0) return `No ${noun} left in ${area.name} — ${res === 'wood' ? 'saplings will regrow, or ' : ''}redraw the area`;
+  if (unreachable === any) return `Can't reach the ${noun} in ${area.name} — a path may be blocked`;
+  return `Every ${res === 'wood' ? 'tree' : 'rock'} in ${area.name} already has a worker`;
+}
+
+/** Work inside the settler's assigned area, or a reason why there is none. */
+function findAreaWork(sim: Simulation, s: Settler, area: WorkArea, handsFull: boolean): Task | string | null {
+  switch (area.kind) {
+    case 'farm':
+      return findFarm(sim, s, area);
+    case 'wood':
+    case 'stone':
+      return handsFull ? null : findAreaGather(sim, s, area, area.kind);
+    case 'build': {
+      const b = findBuild(sim, s, area);
+      if (b && typeof b === 'object') return b;
+      if (!handsFull) {
+        const h = findHaul(sim, s, area);
+        if (h && typeof h === 'object') return h;
+        if (typeof h === 'string') return h;
+      }
+      return `No construction in ${area.name}`;
+    }
+  }
+}
+
 function findCraft(sim: Simulation, s: Settler): Task | string | null {
   let reason: string | null = null;
   let best: Building | null = null;
@@ -396,30 +483,32 @@ function findCraft(sim: Simulation, s: Settler): Task | string | null {
     const ws = b.workshop;
     if (!b.built || !ws) continue;
     any = true;
-    if (ws.paused || !ws.recipe) continue;
+    if (ws.paused || !ws.recipe || !mayWorkAt(b, s.id)) continue;
     if (sim.isReserved(`craft:${b.id}`, s.id) || sim.isUnreachable(s.id, `b${b.id}`)) continue;
+    const name = BUILDINGS[b.type].name.toLowerCase();
     if (!hasAll(b.delivered, RECIPES[ws.recipe].inputs)) {
-      reason ??= `Workshop is waiting for ${invEntries(RECIPES[ws.recipe].inputs).map(([r]) => r).join(' and ')}`;
+      reason ??= `The ${name} is waiting for ${invEntries(RECIPES[ws.recipe].inputs).map(([r]) => r).join(' and ')}`;
       continue;
     }
     const c = centre(b);
-    const d = dist(s, c.x, c.y);
+    // Assigned workers strongly prefer their own building.
+    const d = dist(s, c.x, c.y) - (b.workers.includes(s.id) ? 1000 : 0);
     if (d < bestD) {
       bestD = d;
       best = b;
     }
   }
-  if (!any) return 'No workshop built yet';
+  if (!any) return 'No workshop, mill or bakery built yet';
   if (!best) return reason;
-  if (!sim.nearestStorageWithSpace(s.x, s.y)) return 'Storage is full';
+  if (!sim.nearestStorageWithSpace(s.x, s.y)) return 'Storage is full — nowhere to put what I make';
   sim.reserve(`craft:${best.id}`, s.id);
   return { kind: 'craft', ws: best.id, stage: 'walk' };
 }
 
 const FINDERS: Record<WorkKind, Finder> = {
-  build: findBuild,
-  haul: findHaul,
-  farm: findFarm,
+  build: (sim, s) => findBuild(sim, s),
+  haul: (sim, s) => findHaul(sim, s),
+  farm: (sim, s) => findFarm(sim, s),
   gather: findGather,
   craft: findCraft,
 };
@@ -431,16 +520,19 @@ function findFocus(sim: Simulation, s: Settler): Task | null {
   return t ? objectTask(sim, s, t.x, t.y) : null;
 }
 
+/** Where a settler sleeps: their own bed, or the campfire if they have none. */
 function homeFor(sim: Simulation, s: Settler): Building | null {
   if (s.homeId !== null) {
     const h = sim.buildings.get(s.homeId);
     if (h && h.built) return h;
   }
-  for (const b of sim.buildings.values()) if (b.type === 'camp') return b;
-  return null;
+  return campOf(sim) ?? null;
 }
 
-/** Picks the next task by needs, standing orders, then job priorities. */
+/**
+ * Picks the next task: needs first (deliver, eat, sleep), then a temporary
+ * direct order (focus), then the assigned work area, then the work order.
+ */
 export function assignTask(sim: Simulation, s: Settler): void {
   const wandering = s.task?.kind === 'wander';
   const set = (t: Task) => {
@@ -466,7 +558,7 @@ export function assignTask(sim: Simulation, s: Settler): void {
       return;
     }
   }
-  if (sim.isNight()) {
+  if (sim.isNight() || s.energy < NAP_THRESHOLD) {
     const home = homeFor(sim, s);
     set({ kind: 'sleep', home: home?.id ?? null, stage: 'walk' });
     return;
@@ -480,7 +572,16 @@ export function assignTask(sim: Simulation, s: Settler): void {
     s.focus = null;
   }
   let reason: string | null = null;
-  for (const kind of JOBS[s.job].priorities) {
+  const area = sim.area(s.areaId);
+  if (area) {
+    const r = findAreaWork(sim, s, area, handsFull);
+    if (r && typeof r === 'object') {
+      set(r);
+      return;
+    }
+    if (typeof r === 'string') reason = r;
+  }
+  for (const kind of effectivePriorities(s)) {
     if (handsFull && kind !== 'farm' && kind !== 'build') continue;
     const r = FINDERS[kind](sim, s);
     if (r && typeof r === 'object') {
@@ -491,6 +592,7 @@ export function assignTask(sim: Simulation, s: Settler): void {
   }
   if (handsFull) reason = 'Storage is full — build a storehouse';
   if (s.hunger < EAT_THRESHOLD) reason = 'Hungry, but there is no food in storage';
+  if (effectivePriorities(s).length === 0 && !area) reason = 'Every kind of work is switched off in their work order';
   s.idleReason = reason ?? 'Nothing to do';
   if (!s.task && sim.rng.chance(0.08)) {
     const t = tileOf(s);
@@ -616,7 +718,7 @@ function runBuild(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'build' 
     sim.emit({ type: 'sfx', name: 'hammer', x: site.x + site.w / 2, y: site.y + site.h / 2 });
     sim.emit({ type: 'fx', kind: 'dust', x: site.x + site.w / 2, y: site.y + site.h - 0.2 });
   }
-  if (site.progress >= BUILDINGS[site.type].work) {
+  if (site.progress >= workOf(site)) {
     completeBuilding(sim, site);
     abortTask(sim, s);
   }
@@ -639,13 +741,17 @@ function runFarm(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'farm' }>
   t.timer += workSpeed(sim, s);
   if (t.timer < FIELD_WORK[t.action]) return;
   if (t.action === 'harvest' && b.field.crop) {
-    const yieldFood = CROPS[b.field.crop].yield.food ?? 0;
-    s.carrying = { res: 'food', amount: yieldFood };
-    sim.stats.harvested += yieldFood;
+    const [res, amount] = invEntries(CROPS[b.field.crop].yield)[0];
+    s.carrying = { res, amount };
+    if (res === 'food') sim.stats.harvested += amount;
+    if (res === 'wheat') sim.stats.wheatHarvested += amount;
   }
   applyFieldAction(sim, b, t.action);
   abortTask(sim, s);
 }
+
+const CRAFT_TOOL: Record<string, ToolKind> = { planks: 'saw', tools: 'hammer', flour: 'hand', bread: 'hand' };
+const CRAFT_SFX: Record<string, 'saw' | 'hammer' | 'mill' | 'bake'> = { planks: 'saw', tools: 'hammer', flour: 'mill', bread: 'bake' };
 
 function runCraft(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'craft' }>): void {
   const b = sim.buildings.get(t.ws);
@@ -655,15 +761,15 @@ function runCraft(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'craft' 
   if (!hasAll(b.delivered, recipe.inputs)) return abortTask(sim, s);
   if (t.stage === 'walk') {
     const r = goTo(sim, s, bGoal(b));
-    if (r === 'failed') return fail(sim, s, "Can't reach the workshop", `b${b.id}`);
+    if (r === 'failed') return fail(sim, s, `Can't reach the ${BUILDINGS[b.type].name.toLowerCase()}`, `b${b.id}`);
     if (r === 'arrived') t.stage = 'work';
     return;
   }
   faceRect(s, b.x, b.y, b.w, b.h);
   s.anim = 'work';
-  s.tool = ws.recipe === 'planks' ? 'saw' : 'hammer';
+  s.tool = CRAFT_TOOL[ws.recipe];
   ws.progress += workSpeed(sim, s);
-  if ((sim.tick + s.id) % 10 === 0) sim.emit({ type: 'sfx', name: ws.recipe === 'planks' ? 'saw' : 'hammer', x: b.x + b.w / 2, y: b.y + b.h / 2 });
+  if ((sim.tick + s.id) % 10 === 0) sim.emit({ type: 'sfx', name: CRAFT_SFX[ws.recipe], x: b.x + b.w / 2, y: b.y + b.h / 2 });
   if (ws.progress < recipe.work) return;
   ws.progress = 0;
   for (const [r, n] of invEntries(recipe.inputs)) addInv(b.delivered, r, -n);
@@ -671,6 +777,8 @@ function runCraft(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'craft' 
   s.carrying = { res: out, amount: n };
   if (out === 'planks') sim.stats.planksCrafted += n;
   if (out === 'tools') sim.stats.toolsCrafted += n;
+  if (out === 'flour') sim.stats.flourMilled += n;
+  if (out === 'food') sim.stats.bakedFood += n;
   sim.emit({ type: 'fx', kind: 'sparkle', x: b.x + b.w / 2, y: b.y + b.h / 2 });
   abortTask(sim, s);
 }
@@ -695,24 +803,46 @@ function runEat(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'eat' }>):
   abortTask(sim, s);
 }
 
+function wake(sim: Simulation, s: Settler): void {
+  s.restNote = '';
+  abortTask(sim, s);
+}
+
 function runSleep(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'sleep' }>): void {
-  if (!sim.isNight()) return abortTask(sim, s);
+  if (!sim.isNight() && s.energy >= WAKE_ENERGY) return wake(sim, s);
   if (t.stage === 'walk') {
     const home = t.home !== null ? sim.buildings.get(t.home) : undefined;
     if (!home) {
       t.stage = 'sleep';
+      s.restNote = 'No bed anywhere — dozing where they stand';
       return;
     }
-    // Houses take everyone inside; around the camp each settler gets their own spot by the tents.
-    const spot = home.type === 'house' ? null : campSpot(sim, home, s);
-    const r = goTo(sim, s, spot ? { x: spot.x, y: spot.y, w: 1, h: 1, adjacent: false } : bGoal(home));
+    const name = BUILDINGS[home.type].name.toLowerCase();
+    const ownHome = isPermanentHome(home) && s.homeId === home.id;
+    let goal: Goal;
+    if (ownHome) {
+      // Walk to the door; if something stands in front of it, any side will do.
+      const e = entranceOf(home);
+      goal = sim.walkable(e.x, e.y) ? { x: e.x, y: e.y, w: 1, h: 1, adjacent: false } : bGoal(home);
+    } else {
+      const spot = campSpot(sim, home, s);
+      goal = spot ? { x: spot.x, y: spot.y, w: 1, h: 1, adjacent: false } : bGoal(home);
+    }
+    const r = goTo(sim, s, goal, 6000);
     if (r === 'failed') {
+      // Never loop: rest here tonight and try again tomorrow.
       t.stage = 'sleep';
+      s.restNote = ownHome ? `The way to their ${name} is blocked, so they are resting outside tonight` : 'Resting where they are — the camp is out of reach';
       return;
     }
     if (r === 'arrived') {
       t.stage = 'sleep';
-      s.hidden = home.type === 'house';
+      if (ownHome) {
+        s.hidden = true;
+        s.insideId = home.id;
+        s.restNote = `Asleep at home in the ${name}`;
+      } else if (s.homeId === home.id) s.restNote = 'Asleep in a camp bedroll';
+      else s.restNote = 'No free bed — resting by the campfire';
     }
     return;
   }
@@ -814,11 +944,15 @@ export function describeTask(sim: Simulation, s: Settler): string {
       return `Building the ${bname(t.site)}`;
     case 'farm':
       return { till: 'Tilling a field', plant: 'Planting seeds', water: 'Watering a field', harvest: 'Harvesting' }[t.action];
-    case 'craft':
-      return 'Crafting at the workshop';
+    case 'craft': {
+      const b = sim.buildings.get(t.ws);
+      const r = b?.workshop?.recipe;
+      return r ? `${RECIPES[r].name} at the ${bname(t.ws)}` : 'Working';
+    }
     case 'eat':
       return 'Having a meal';
     case 'sleep':
-      return t.stage === 'sleep' ? 'Sleeping' : 'Heading home for the night';
+      if (t.stage === 'sleep') return s.restNote || 'Sleeping';
+      return sim.isNight() ? 'Heading to bed for the night' : 'Tired — going for a nap';
   }
 }

@@ -23,8 +23,35 @@ function moisture(seed: number, x: number, y: number): number {
   return fbm(x / 46 + 300, y / 46 - 200, seed ^ 0x9e37, 3);
 }
 
+/**
+ * Generator versions. Saves record the version their world was created with,
+ * and unexplored chunks of old worlds keep using that version forever.
+ * 1: Milestone 1 generator.
+ * 2: adds the great river east of the spawn and its fertile, stony far bank.
+ */
+export const CURRENT_GEN = 2;
+export const SUPPORTED_GENS = [1, 2];
+
+/** Centre line of the great river (generator 2+), meandering north to south. */
+export function riverCenter(seed: number, y: number): number {
+  return 28 + 5 * Math.sin(y / 21 + (Math.abs(seed) % 628) / 100) + (fbm(y / 37, 0.5, seed ^ 0xb1e5, 2) - 0.5) * 12;
+}
+function riverHalfWidth(seed: number, y: number): number {
+  return 3 + fbm(y / 13, 1.5, seed ^ 0x77aa, 2) * 1.6;
+}
+
 /** 0 = land, 1 = shallow water, 2 = deep water. */
-export function waterAt(seed: number, x: number, y: number): 0 | 1 | 2 {
+export function waterAt(seed: number, x: number, y: number, gen = 1): 0 | 1 | 2 {
+  if (gen >= 2) {
+    const d = Math.abs(x - riverCenter(seed, y));
+    const hw = riverHalfWidth(seed, y);
+    // No fords: the deep channel can only be crossed by a stone bridge.
+    if (d < hw) return d < hw - 1.6 ? 2 : 1;
+  }
+  return waterAtV1(seed, x, y);
+}
+
+function waterAtV1(seed: number, x: number, y: number): 0 | 1 | 2 {
   const pond = Math.hypot(x - POND.x, y - POND.y) - (hash01(x, y, seed ^ 0x77) * 0.6);
   if (pond < POND.r) return 1;
   const d = Math.hypot(x, y);
@@ -41,32 +68,50 @@ export function waterAt(seed: number, x: number, y: number): 0 | 1 | 2 {
   return 0;
 }
 
-export function terrainAt(seed: number, x: number, y: number): TerrainId {
-  const w = waterAt(seed, x, y);
+/** True east of the great river, where the riverlands lie (generator 2+). */
+export function onFarBank(seed: number, x: number, y: number, gen: number): boolean {
+  if (gen < 2) return false;
+  const edge = riverCenter(seed, y) + riverHalfWidth(seed, y);
+  return x > edge + 1 && x < edge + 34;
+}
+
+export function terrainAt(seed: number, x: number, y: number, gen = 1): TerrainId {
+  const w = waterAt(seed, x, y, gen);
   if (w === 2) return T.DeepWater;
   if (w === 1) return T.Water;
   for (let dy = -1; dy <= 1; dy++) {
     for (let dx = -1; dx <= 1; dx++) {
-      if ((dx || dy) && waterAt(seed, x + dx, y + dy) !== 0) return T.Sand;
+      if ((dx || dy) && waterAt(seed, x + dx, y + dy, gen) !== 0) return T.Sand;
     }
   }
   const d = Math.hypot(x, y);
   if (Math.hypot(x - MEADOW.x, y - MEADOW.y) < MEADOW.r + hash01(x, y, seed ^ 0x19) * 1.2) return T.Meadow;
   const e = elevation(seed, x, y);
   const m = moisture(seed, x, y);
+  if (onFarBank(seed, x, y, gen)) {
+    // The riverlands: open fertile meadow with rocky knolls.
+    if (e > 0.62) return T.Rocky;
+    return m > 0.6 ? T.Forest : T.Meadow;
+  }
   if (e > 0.6 && d > 14) return T.Rocky;
   if (m > 0.555 && d > 9) return T.Forest;
   if (m > 0.47 && m <= 0.555) return T.Meadow;
   return T.Grass;
 }
 
-export function objectAt(seed: number, x: number, y: number, terrain: TerrainId): ObjectId {
+export function objectAt(seed: number, x: number, y: number, terrain: TerrainId, gen = 1): ObjectId {
   const d = Math.hypot(x, y);
   if (d < SPAWN_CLEAR) return O.None;
   if (terrain === T.Water || terrain === T.DeepWater || terrain === T.Road || terrain === T.Bridge) return O.None;
   const r = hash01(x, y, seed ^ 0xabc1);
   const kind = hash01(x, y, seed ^ 0x5eed);
   const ring = d < 16 ? hash01(x, y, seed ^ 0x2222) : 1;
+  if (onFarBank(seed, x, y, gen) && terrain === T.Meadow) {
+    if (r < 0.018) return O.Boulder;
+    if (r < 0.04) return O.Berry;
+    if (r < 0.055) return O.Oak;
+    return O.None;
+  }
 
   // A friendly ring of resources around the camp, so the first minutes are about choices rather than searching.
   if (d < 16 && terrain !== T.Sand) {
@@ -101,7 +146,7 @@ export function objectAt(seed: number, x: number, y: number, terrain: TerrainId)
   return O.None;
 }
 
-export function generateChunk(seed: number, cx: number, cy: number): Chunk {
+export function generateChunk(seed: number, cx: number, cy: number, gen = 1): Chunk {
   const c = new Chunk(cx, cy);
   const ox = cx * CHUNK;
   const oy = cy * CHUNK;
@@ -110,8 +155,8 @@ export function generateChunk(seed: number, cx: number, cy: number): Chunk {
       const i = ly * CHUNK + lx;
       const x = ox + lx;
       const y = oy + ly;
-      const t = terrainAt(seed, x, y);
-      const o = objectAt(seed, x, y, t);
+      const t = terrainAt(seed, x, y, gen);
+      const o = objectAt(seed, x, y, t, gen);
       c.terrain[i] = t;
       c.obj[i] = o;
       c.amt[i] = OBJECTS[o].amount;

@@ -202,7 +202,10 @@ describe('needs and population', () => {
     findSpot(sim, 'house');
     runUntil(sim, () => sim.settlers.length === 6, DAY_TICKS * 2);
     expect(sim.stats.arrivals).toBe(1);
-    expect(sim.settlers.filter((s) => s.homeId !== null)).toHaveLength(2);
+    const house = [...sim.buildings.values()].find((b) => b.type === 'house')!;
+    expect(sim.settlers.filter((s) => s.homeId === house.id)).toHaveLength(2);
+    // Everyone else has an explicit camp bedroll.
+    expect(sim.settlers.every((s) => s.homeId !== null)).toBe(true);
   });
 
   it('does not grow without housing', () => {
@@ -234,7 +237,7 @@ describe('production', () => {
     const ws = findSpot(sim, 'workshop');
     runUntil(sim, () => ws.built, DAY_TICKS * 2);
     run(sim, 20);
-    expect(ws.workshop!.status).toMatch(/crafter/i);
+    expect(ws.workshop!.status).toMatch(/No worker/i);
   });
 });
 
