@@ -1,0 +1,22 @@
+import type { JobId } from '../data/jobs';
+import { completeBuilding, placeBuilding } from './buildings';
+import { Simulation, STARTING_SETTLERS } from './Simulation';
+
+export const STARTING_GOODS = { food: 30, wood: 15, stone: 5 };
+const STARTING_JOBS: JobId[] = ['farmer', 'gatherer', 'builder', 'laborer', 'laborer'];
+
+/** A fresh valley: a camp in the clearing, five settlers and a little food. */
+export function createNewGame(seed: number): Simulation {
+  const sim = new Simulation(seed);
+  sim.world.reveal(0.5, 0.5, 15);
+  const camp = placeBuilding(sim, 'camp', -1, -1);
+  completeBuilding(sim, camp, true);
+  camp.inventory = { ...STARTING_GOODS };
+  const spots = [[-1, 2], [0, 2], [1, 2], [-2, 1], [2, 1]];
+  for (let i = 0; i < STARTING_SETTLERS; i++) {
+    const [x, y] = spots[i];
+    sim.addSettler(x, y, STARTING_JOBS[i]);
+  }
+  sim.drainEvents();
+  return sim;
+}

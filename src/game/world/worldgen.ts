@@ -1,0 +1,121 @@
+import { CHUNK } from '../core/constants';
+import { fbm, hash01 } from '../core/rng';
+import { Chunk } from './Chunk';
+import { O, OBJECTS, T, type ObjectId, type TerrainId } from './tiles';
+
+/**
+ * Deterministic world generation. Every function here is pure in (seed, x, y), so
+ * any chunk can be regenerated on demand and only player changes need saving.
+ *
+ * The spawn at (0,0) is shaped by hand: a guaranteed clearing, a pond, a fertile
+ * meadow patch and a ring of trees, rocks and berries within easy reach.
+ */
+
+const SPAWN_CLEAR = 6.5;
+const SPAWN_SAFE = 11;
+const POND = { x: 9, y: 6, r: 2.7 };
+const MEADOW = { x: -7, y: 5, r: 5.5 };
+
+function elevation(seed: number, x: number, y: number): number {
+  return fbm(x / 72, y / 72, seed, 4);
+}
+function moisture(seed: number, x: number, y: number): number {
+  return fbm(x / 46 + 300, y / 46 - 200, seed ^ 0x9e37, 3);
+}
+
+/** 0 = land, 1 = shallow water, 2 = deep water. */
+export function waterAt(seed: number, x: number, y: number): 0 | 1 | 2 {
+  const pond = Math.hypot(x - POND.x, y - POND.y) - (hash01(x, y, seed ^ 0x77) * 0.6);
+  if (pond < POND.r) return 1;
+  const d = Math.hypot(x, y);
+  if (d < SPAWN_SAFE) return 0;
+  const fade = Math.min(1, (d - SPAWN_SAFE) / 12);
+  const river = Math.abs(fbm(x / 120, y / 120, seed ^ 0x51f1, 3) - 0.5);
+  const width = (0.004 + 0.006 * fbm(x / 40, y / 40, seed ^ 0x3a, 2)) * fade;
+  // Fords break every river loop so the spawn is never sealed in by water.
+  const ford = fbm(x / 26, y / 26, seed ^ 0x0f0d, 2) > 0.6;
+  if (river < width && !ford) return river < width * 0.3 && d > 40 ? 2 : 1;
+  const e = elevation(seed, x, y);
+  const lake = 0.33 - (1 - fade) * 0.3;
+  if (e < lake) return e < lake - 0.045 ? 2 : 1;
+  return 0;
+}
+
+export function terrainAt(seed: number, x: number, y: number): TerrainId {
+  const w = waterAt(seed, x, y);
+  if (w === 2) return T.DeepWater;
+  if (w === 1) return T.Water;
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if ((dx || dy) && waterAt(seed, x + dx, y + dy) !== 0) return T.Sand;
+    }
+  }
+  const d = Math.hypot(x, y);
+  if (Math.hypot(x - MEADOW.x, y - MEADOW.y) < MEADOW.r + hash01(x, y, seed ^ 0x19) * 1.2) return T.Meadow;
+  const e = elevation(seed, x, y);
+  const m = moisture(seed, x, y);
+  if (e > 0.6 && d > 14) return T.Rocky;
+  if (m > 0.555 && d > 9) return T.Forest;
+  if (m > 0.47 && m <= 0.555) return T.Meadow;
+  return T.Grass;
+}
+
+export function objectAt(seed: number, x: number, y: number, terrain: TerrainId): ObjectId {
+  const d = Math.hypot(x, y);
+  if (d < SPAWN_CLEAR) return O.None;
+  if (terrain === T.Water || terrain === T.DeepWater || terrain === T.Road || terrain === T.Bridge) return O.None;
+  const r = hash01(x, y, seed ^ 0xabc1);
+  const kind = hash01(x, y, seed ^ 0x5eed);
+  const ring = d < 16 ? hash01(x, y, seed ^ 0x2222) : 1;
+
+  // A friendly ring of resources around the camp, so the first minutes are about choices rather than searching.
+  if (d < 16 && terrain !== T.Sand) {
+    if (ring < 0.09) return kind < 0.7 ? O.Oak : O.Pine;
+    if (ring < 0.115) return O.Rock;
+    if (ring < 0.14) return O.Berry;
+  }
+  switch (terrain) {
+    case T.Forest:
+      if (r < 0.46) return elevation(seed, x, y) > 0.55 || kind < 0.35 ? O.Pine : O.Oak;
+      if (r < 0.49) return O.Berry;
+      return O.None;
+    case T.Grass:
+      if (r < 0.045) return kind < 0.75 ? O.Oak : O.Pine;
+      if (r < 0.058) return O.Berry;
+      if (r < 0.066) return O.Rock;
+      return O.None;
+    case T.Meadow:
+      if (d < 14) return O.None;
+      if (r < 0.02) return O.Oak;
+      if (r < 0.045) return O.Berry;
+      return O.None;
+    case T.Rocky:
+      if (r < 0.08) return O.Rock;
+      if (r < 0.125) return O.Boulder;
+      if (r < 0.16) return O.Pine;
+      return O.None;
+    case T.Sand:
+      if (r < 0.012) return O.Rock;
+      return O.None;
+  }
+  return O.None;
+}
+
+export function generateChunk(seed: number, cx: number, cy: number): Chunk {
+  const c = new Chunk(cx, cy);
+  const ox = cx * CHUNK;
+  const oy = cy * CHUNK;
+  for (let ly = 0; ly < CHUNK; ly++) {
+    for (let lx = 0; lx < CHUNK; lx++) {
+      const i = ly * CHUNK + lx;
+      const x = ox + lx;
+      const y = oy + ly;
+      const t = terrainAt(seed, x, y);
+      const o = objectAt(seed, x, y, t);
+      c.terrain[i] = t;
+      c.obj[i] = o;
+      c.amt[i] = OBJECTS[o].amount;
+    }
+  }
+  return c;
+}
