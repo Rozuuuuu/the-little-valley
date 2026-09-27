@@ -4,6 +4,8 @@ import { assignHomes, campOf, entranceOf, findFreeBed, housingCapacity, isPerman
 import { MAX_POPULATION, type Simulation } from './Simulation';
 import type { Building } from './types';
 import { settlementAt } from './settlements';
+import { committedPopulation } from './households';
+import { RECRUIT_APPLES } from '../data/kingdomBalance';
 
 /** Food that must be in storage before a newcomer will settle. */
 export const ARRIVAL_FOOD = 20;
@@ -88,12 +90,29 @@ export function welcomeNewcomer(sim: Simulation): number | null {
   return s.id;
 }
 
+/** What deliberate growth is waiting on, in plain words. */
+function deliberateStatus(sim: Simulation): string {
+  if (committedPopulation(sim) >= MAX_POPULATION) return `Your valley has reached the simulation limit of ${MAX_POPULATION} people.`;
+  const expecting = sim.households.filter((h) => h.pending).length;
+  const travelling = sim.recruits.filter((r) => r.state === 'travelling').length;
+  const parts: string[] = [];
+  if (expecting) parts.push(`${expecting} household${expecting > 1 ? 's are' : ' is'} expecting a child`);
+  if (travelling) parts.push(`${travelling} traveller${travelling > 1 ? 's are' : ' is'} on the way`);
+  if (sim.offer) parts.push(`${sim.offer.name} is visiting and would settle for ${RECRUIT_APPLES} apples`);
+  if (parts.length) return `${parts.join('; ')}.`;
+  return 'New people come from households (People panel) and from visitors you welcome with apples.';
+}
+
 /**
  * Housing and food together draw newcomers, one at a time. Population never
  * shrinks: a shortage only slows growth, it never punishes the player.
  * The status line always says exactly what is (or isn't) holding growth back.
  */
 export function updatePopulation(sim: Simulation): void {
+  if (sim.growthMode === 'deliberate') {
+    sim.populationStatus = deliberateStatus(sim);
+    return;
+  }
   const pop = sim.settlers.length;
   const food = sim.storedTotal('food');
   if (pop >= MAX_POPULATION) {

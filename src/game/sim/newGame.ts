@@ -9,6 +9,8 @@ const STARTING_JOBS: JobId[] = ['farmer', 'gatherer', 'builder', 'laborer', 'lab
 /** A fresh valley: a camp in the clearing, five settlers and a little food. */
 export function createNewGame(seed: number, genVersion = CURRENT_GEN): Simulation {
   const sim = new Simulation(seed, undefined, genVersion);
+  // New valleys grow through families and welcomed travellers.
+  sim.growthMode = 'deliberate';
   sim.world.reveal(0.5, 0.5, 15);
   const camp = placeBuilding(sim, 'camp', -1, -1);
   completeBuilding(sim, camp, true);

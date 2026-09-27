@@ -11,6 +11,7 @@ import { findPath } from './pathfinding';
 import { canDo } from './priorities';
 import { seasonOf } from './seasons';
 import { foundSettlement, settlementAt, spacingProblem } from './settlements';
+import { relocateClaims } from './households';
 import type { Simulation } from './Simulation';
 import type { Building } from './types';
 
@@ -270,6 +271,8 @@ export function removeBuilding(sim: Simulation, b: Building): string {
     }
   }
   sim.mapChanged();
+  // Beds promised to an expected child or a traveller move elsewhere, or wait.
+  if (sim.bedClaims.some((c) => c.homeId === b.id)) relocateClaims(sim, b.id);
   const homeless = displaced > 0 ? assignHomes(sim) : 0;
   sim.emit({ type: 'fx', kind: 'dust', x: cx, y: cy });
   sim.emit({ type: 'important' });
@@ -317,6 +320,20 @@ export function residentCounts(sim: Simulation): Map<number, number> {
   return m;
 }
 
+/** Beds held for expected children and accepted travellers, per home. */
+export function claimCounts(sim: Simulation): Map<number, number> {
+  const m = new Map<number, number>();
+  for (const c of sim.bedClaims) m.set(c.homeId, (m.get(c.homeId) ?? 0) + 1);
+  return m;
+}
+
+/** Beds in use per home: residents plus claims. A home never has more than its bed count. */
+export function bedUseCounts(sim: Simulation): Map<number, number> {
+  const m = residentCounts(sim);
+  for (const c of sim.bedClaims) m.set(c.homeId, (m.get(c.homeId) ?? 0) + 1);
+  return m;
+}
+
 export function builtCount(sim: Simulation, type: BuildingId): number {
   let n = 0;
   for (const b of sim.buildings.values()) if (b.built && b.type === type) n++;
@@ -354,7 +371,7 @@ export function bedReachable(sim: Simulation, b: Building): boolean {
  * A free bed for a newcomer: a real home first, the camp's bedrolls last.
  * Returns null when every reachable bed is taken.
  */
-export function findFreeBed(sim: Simulation, counts = residentCounts(sim), permanentOnly = false, preferSettlement: number | null = null): Building | null {
+export function findFreeBed(sim: Simulation, counts = bedUseCounts(sim), permanentOnly = false, preferSettlement: number | null = null): Building | null {
   let best: Building | null = null;
   let bestScore = -1;
   for (const b of sim.buildings.values()) {
@@ -379,7 +396,8 @@ export function findFreeBed(sim: Simulation, counts = residentCounts(sim), perma
  * Returns how many settlers are left without any bed.
  */
 export function assignHomes(sim: Simulation): number {
-  const counts = new Map<number, number>();
+  // Claimed beds (an expected child, a traveller on the way) are not free.
+  const counts = claimCounts(sim);
   for (const s of sim.settlers) {
     if (s.homeId === null) continue;
     const home = sim.buildings.get(s.homeId);

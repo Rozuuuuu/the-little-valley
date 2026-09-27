@@ -1,9 +1,10 @@
-import { BUILDINGS } from '../src/game/data/buildings';
+import { BUILDINGS, type BuildingId } from '../src/game/data/buildings';
 import { RECIPES } from '../src/game/data/recipes';
-import { costOf } from '../src/game/sim/buildings';
+import { completeBuilding, costOf, placeBuilding } from '../src/game/sim/buildings';
 import { taskKeys } from '../src/game/sim/settlers';
 import { RESOURCE_IDS, type ResourceId } from '../src/game/data/resources';
-import { OBJECTS } from '../src/game/world/tiles';
+import { OBJECTS, T } from '../src/game/world/tiles';
+import type { Building } from '../src/game/sim/types';
 import type { Simulation } from '../src/game/sim/Simulation';
 
 export function run(sim: Simulation, ticks: number): void {
@@ -102,4 +103,34 @@ export function assertNoNegativeReservations(sim: Simulation): void {
       if ((b.reservedOut[r] ?? 0) > (b.inventory[r] ?? 0)) throw new Error(`Over-reserved ${r} on ${b.type}#${b.id}`);
     }
   }
+}
+
+/** An explored, clear w×h spot (with a one-tile margin) near a point. */
+export function clearSpot(sim: Simulation, w: number, h: number, near: { x: number; y: number }): { x: number; y: number } {
+  for (let r = 0; r < 30; r++) {
+    for (let y = near.y - r; y <= near.y + r; y++) {
+      for (let x = near.x - r; x <= near.x + r; x++) {
+        let ok = true;
+        for (let dy = -1; dy <= h && ok; dy++) {
+          for (let dx = -1; dx <= w && ok; dx++) {
+            const t = sim.world.terrain(x + dx, y + dy);
+            ok = sim.world.explored(x + dx, y + dy) && !sim.buildingAt(x + dx, y + dy) && (t === T.Grass || t === T.Meadow || t === T.Forest)
+              && !OBJECTS[sim.world.obj(x + dx, y + dy)].blocks;
+          }
+        }
+        if (ok) return { x, y };
+      }
+    }
+  }
+  throw new Error('no clear spot');
+}
+
+/** Places a building and finishes it at once, with its cost counted as delivered (for setting up scenes). */
+export function instant(sim: Simulation, type: BuildingId, near: { x: number; y: number }): Building {
+  const def = BUILDINGS[type];
+  const p = clearSpot(sim, def.size.w, def.size.h, near);
+  const b = placeBuilding(sim, type, p.x, p.y);
+  b.delivered = { ...costOf(b) };
+  completeBuilding(sim, b);
+  return b;
 }

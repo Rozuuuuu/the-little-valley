@@ -198,6 +198,7 @@ describe('needs and population', () => {
 
   it('welcomes a newcomer when there is a free bed and food', () => {
     const sim = createNewGame(1010);
+    sim.growthMode = 'legacy'; // worlds from before deliberate growth keep automatic arrivals
     camp(sim).inventory = { wood: 40, stone: 20, food: 80 };
     findSpot(sim, 'house');
     runUntil(sim, () => sim.settlers.length === 6, DAY_TICKS * 2);

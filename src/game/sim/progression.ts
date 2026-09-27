@@ -2,6 +2,7 @@ import { BUILDINGS } from '../data/buildings';
 import { MILESTONES, MILESTONE_ORDER, type MilestoneId, type Requirement } from '../data/progression';
 import { builtCount, permanentBeds } from './buildings';
 import { anyRoadLink, residentsOfSettlement } from './settlements';
+import { adults } from './households';
 import type { Simulation } from './Simulation';
 
 export interface RequirementProgress {
@@ -24,8 +25,9 @@ export function requirementProgress(sim: Simulation, req: Requirement): Requirem
   let label = '';
   switch (req.kind) {
     case 'population':
-      current = sim.settlers.length;
-      label = `Reach ${req.count} settlers`;
+      // Children don't count toward the workforce a milestone asks for.
+      current = adults(sim).length;
+      label = `Reach ${req.count} adult settlers`;
       break;
     case 'built':
       current = builtCount(sim, req.building);

@@ -1,4 +1,5 @@
 import { BUILDINGS, type BuildingId } from '../data/buildings';
+import type { ResourceId } from '../data/resources';
 import { T } from '../world/tiles';
 import type { Simulation } from './Simulation';
 import type { Building, Settlement, Settler } from './types';
@@ -45,6 +46,20 @@ export function settlementOfBuilding(sim: Simulation, b: Building): Settlement |
 export function settlementName(sim: Simulation, id: number | null): string {
   if (id === null) return 'No settlement';
   return sim.settlements.find((s) => s.id === id)?.name ?? 'Unknown';
+}
+
+/** Stores that belong to a settlement (every store while there is only one settlement). */
+export function localStores(sim: Simulation, settlementId: number | null): Building[] {
+  const all = sim.storages();
+  if (sim.settlements.length <= 1 || settlementId === null) return all;
+  return all.filter((b) => settlementOfBuilding(sim, b)?.id === settlementId);
+}
+
+/** Unreserved goods in a settlement's own stores. */
+export function localAvailable(sim: Simulation, settlementId: number | null, res: ResourceId): number {
+  let n = 0;
+  for (const b of localStores(sim, settlementId)) n += Math.max(0, sim.available(b, res));
+  return n;
 }
 
 export function residentsOfSettlement(sim: Simulation, id: number): Settler[] {

@@ -9,6 +9,7 @@ import {
   assignHomes, bedsOf, checkPlacement, checkSpan, cropUnlocked, materialsComplete, maxWorkers, placeBuilding, removeBuilding, setFieldCrop, shortfall,
 } from './buildings';
 import { cleanPriorities } from './priorities';
+import { adoptDeliberateGrowth, cancelChildRequest, formHousehold, isChild, requestChild } from './households';
 import { fieldAction } from './farming';
 import { abortTask, findHaulFor } from './settlers';
 import type { Simulation } from './Simulation';
@@ -36,7 +37,11 @@ export type Command =
   | { type: 'unassignWorker'; buildingId: number; settlerId: number }
   | { type: 'assignSettlement'; ids: number[]; settlementId: number }
   | { type: 'renameSettlement'; settlementId: number; name: string }
-  | { type: 'setWants'; buildingId: number; res: ResourceId; amount: number };
+  | { type: 'setWants'; buildingId: number; res: ResourceId; amount: number }
+  | { type: 'formHousehold'; ids: number[] }
+  | { type: 'requestChild'; householdId: number }
+  | { type: 'cancelChildRequest'; householdId: number }
+  | { type: 'adoptDeliberateGrowth' };
 
 const MAX_AREA = 40 * 40;
 /** Most settlers one work area can take. */
@@ -83,6 +88,19 @@ export function isInt(n: unknown): n is number {
 function pickSettlers(sim: Simulation, ids: unknown): Settler[] {
   if (!Array.isArray(ids)) return [];
   return ids.map((id) => sim.settler(id as number)).filter((s): s is Settler => !!s);
+}
+
+/**
+ * Settlers who can take a work order: children are left out. Returns an error
+ * message when the selection held only children.
+ */
+function pickWorkers(sim: Simulation, ids: unknown, what: string): Settler[] | string {
+  const all = pickSettlers(sim, ids);
+  if (all.length === 0) return 'Select a settler first';
+  const list = all.filter((s) => !isChild(s));
+  if (list.length > 0) return list;
+  const who = all.length === 1 ? `${all[0].name} is a child` : 'These are children';
+  return `${who} — children play near home and can't ${what} until they grow up`;
 }
 
 /** Interrupts whatever a settler was doing for a direct order. */
@@ -137,8 +155,8 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
 
     case 'gather': {
       if (!isInt(cmd.x) || !isInt(cmd.y)) return err('Invalid location');
-      const list = pickSettlers(sim, cmd.ids);
-      if (list.length === 0) return err('Select a settler first');
+      const list = pickWorkers(sim, cmd.ids, 'gather');
+      if (typeof list === 'string') return err(list);
       const def = OBJECTS[sim.world.obj(cmd.x, cmd.y)];
       if (!def.resource || sim.world.amount(cmd.x, cmd.y) <= 0) return err('Nothing to gather there');
       const k = tileKey(cmd.x, cmd.y);
@@ -156,11 +174,14 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
     }
 
     case 'work': {
-      const list = pickSettlers(sim, cmd.ids);
       const b = sim.buildings.get(cmd.buildingId);
-      if (list.length === 0) return err('Select a settler first');
       if (!b) return err('That building is gone');
       const def = BUILDINGS[b.type];
+      // Anyone can move into a home; everything else is adult work.
+      const picked = def.housing && b.built && !def.temporaryBeds ? pickSettlers(sim, cmd.ids) : pickWorkers(sim, cmd.ids, 'work');
+      if (typeof picked === 'string') return err(picked);
+      const list = picked;
+      if (list.length === 0) return err('Select a settler first');
       if (!b.built) {
         let assigned = 0;
         let reason: string | null = null;
@@ -209,7 +230,8 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
       }
       if (def.housing && b.built && !def.temporaryBeds) {
         const cap = bedsOf(b);
-        let residents = sim.settlers.filter((s) => s.homeId === b.id).length;
+        // Beds held for an expected child or a traveller are taken too.
+        let residents = sim.settlers.filter((s) => s.homeId === b.id).length + sim.bedClaims.filter((c) => c.homeId === b.id).length;
         let moved = 0;
         for (const s of list) {
           if (s.homeId === b.id) continue;
@@ -277,7 +299,8 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
 
     case 'setJob': {
       if (!isJobId(cmd.job)) return err('Unknown job');
-      const list = pickSettlers(sim, cmd.ids);
+      const list = pickWorkers(sim, cmd.ids, 'take a job');
+      if (typeof list === 'string') return err(list);
       for (const s of list) {
         if (s.job === cmd.job && s.priorities === null) continue;
         s.job = cmd.job;
@@ -395,8 +418,8 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
     }
 
     case 'assignArea': {
-      const list = pickSettlers(sim, cmd.ids);
-      if (list.length === 0) return err('Select a settler first');
+      const list = pickWorkers(sim, cmd.ids, 'work in an area');
+      if (typeof list === 'string') return err(list);
       if (cmd.areaId === null) {
         for (const s of list) {
           s.areaId = null;
@@ -422,7 +445,8 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
     }
 
     case 'setPriorities': {
-      const list = pickSettlers(sim, cmd.ids);
+      const list = pickWorkers(sim, cmd.ids, 'follow a work order');
+      if (typeof list === 'string') return err(list);
       const pr = cmd.priorities === null ? null : cleanPriorities(cmd.priorities);
       if (cmd.priorities !== null && pr === null) return err('Invalid work order');
       for (const s of list) {
@@ -435,8 +459,8 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
     case 'assignWorker': {
       const b = sim.buildings.get(cmd.buildingId);
       if (!b?.workshop || !b.built) return err('Workers can only be assigned to finished workshops, mills and bakeries');
-      const list = pickSettlers(sim, cmd.ids);
-      if (list.length === 0) return err('Select a settler first');
+      const list = pickWorkers(sim, cmd.ids, 'work at a workshop');
+      if (typeof list === 'string') return err(list);
       const max = maxWorkers(b);
       const name = BUILDINGS[b.type].name.toLowerCase();
       const added: string[] = [];
@@ -496,6 +520,15 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
       else b.wants[cmd.res] = amount;
       return ok();
     }
+
+    case 'formHousehold':
+      return formHousehold(sim, cmd.ids);
+    case 'requestChild':
+      return requestChild(sim, cmd.householdId);
+    case 'cancelChildRequest':
+      return cancelChildRequest(sim, cmd.householdId);
+    case 'adoptDeliberateGrowth':
+      return adoptDeliberateGrowth(sim);
 
     case 'unassignWorker': {
       const b = sim.buildings.get(cmd.buildingId);

@@ -13,6 +13,8 @@ export const WORK_LABELS: Record<WorkKind, string> = {
 
 /** The work order a settler follows: their personal order, or their job's default. */
 export function effectivePriorities(s: Settler): readonly WorkKind[] {
+  // Children take no adult work.
+  if (s.lifeStage === 'child') return [];
   return s.priorities ?? JOBS[s.job].priorities;
 }
 

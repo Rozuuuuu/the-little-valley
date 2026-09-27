@@ -47,7 +47,7 @@ export interface BuildingDef {
 }
 
 export type BuildingId =
-  | 'camp' | 'house' | 'cottage' | 'field' | 'storehouse' | 'workshop' | 'mill' | 'bakery'
+  | 'camp' | 'house' | 'familyHome' | 'cottage' | 'field' | 'storehouse' | 'workshop' | 'mill' | 'bakery'
   | 'path' | 'bridge' | 'stoneBridge' | 'fence' | 'flowerbed' | 'lamp' | 'bench' | 'market' | 'waystation';
 
 export const BUILDINGS: Record<BuildingId, BuildingDef> = {
@@ -62,6 +62,12 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     description: 'A cosy home with 2 beds. Free beds and spare food attract new settlers.',
     size: { w: 2, h: 2 }, cost: { wood: 20, stone: 6 }, work: 260, placement: 'land', blocks: true, buildable: true,
     housing: 2, light: 3, reveal: 6,
+  },
+  familyHome: {
+    id: 'familyHome', name: 'Family Home', category: 'housing',
+    description: 'A home with 3 beds: room for a couple and a child. Households ask for children here.',
+    size: { w: 3, h: 2 }, cost: { wood: 20, stone: 10 }, work: 300, placement: 'land', blocks: true, buildable: true,
+    housing: 3, light: 3, reveal: 6,
   },
   field: {
     id: 'field', name: 'Field', category: 'farming',

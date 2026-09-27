@@ -4,13 +4,15 @@ import type { JobId, WorkKind } from '../data/jobs';
 import type { MilestoneId } from '../data/progression';
 import type { RecipeId } from '../data/recipes';
 import type { Inventory, ResourceId } from '../data/resources';
-import type { Appearance, ChronicleEntry, Facing, SessionMark, Settlement, Stats, WorkArea } from '../sim/types';
+import type {
+  Appearance, BedClaim, ChronicleEntry, Facing, GrowthMode, Household, LifeStage, OrchardState, Recruitment, SessionMark, Settlement, Stats, TravelerOffer, WorkArea,
+} from '../sim/types';
 
 /**
  * Save file format. Bump SAVE_VERSION whenever this shape changes and add a
  * migration in migrations.ts so older worlds keep loading.
  */
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 export interface SaveMeta {
   name: string;
@@ -49,6 +51,9 @@ export interface SavedSettler {
   areaId: number | null;
   priorities: WorkKind[] | null;
   settlementId: number | null;
+  lifeStage: LifeStage;
+  ageTicks: number;
+  householdId: number | null;
 }
 
 export interface SavedBuilding {
@@ -62,6 +67,7 @@ export interface SavedBuilding {
   inventory: Inventory;
   field?: { crop: CropId | null; state: 'wild' | 'tilled' | 'growing' | 'ripe'; growth: number; moisture: number };
   workshop?: { recipe: RecipeId | null; progress: number; paused: boolean };
+  orchard?: OrchardState;
   placedTick: number;
   /** Only for span buildings, whose size varies. */
   w?: number;
@@ -123,7 +129,21 @@ export interface SaveFileV4 extends Omit<SaveFileV3, 'version' | 'sim'> {
   };
 }
 
-export type SaveFile = SaveFileV4;
+export interface SaveFileV5 extends Omit<SaveFileV4, 'version' | 'sim'> {
+  version: 5;
+  sim: SaveFileV4['sim'] & {
+    growthMode: GrowthMode;
+    households: Household[];
+    bedClaims: BedClaim[];
+    offer: TravelerOffer | null;
+    nextVisitor: number;
+    recruits: Recruitment[];
+    /** Tick the last traveller settled, or null if none has. */
+    lastRecruit: number | null;
+  };
+}
+
+export type SaveFile = SaveFileV5;
 
 export class SaveError extends Error {
   constructor(message: string) {

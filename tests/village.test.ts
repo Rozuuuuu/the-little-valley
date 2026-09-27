@@ -419,6 +419,7 @@ describe('housing and routines', () => {
 
   it('5: housed settlers sleep inside their own homes at night and go back to work after waking', () => {
     const sim = createNewGame(2525);
+    sim.growthMode = 'legacy'; // newcomer arrivals, as in worlds from before deliberate growth
     const p = clearSpot(sim, 2, 2);
     const house = instant(sim, 'house', p.x, p.y);
     assignHomes(sim);
@@ -600,6 +601,7 @@ describe('save compatibility', () => {
 describe('Hamlet → Village journey', () => {
   it('reaches Village through player commands: bread, work areas, homes', () => {
     const sim = createNewGame(20261001);
+    sim.growthMode = 'legacy'; // this journey covers the arrival rules older worlds keep
     const ids = () => sim.settlers.map((s) => s.id);
     camp(sim).inventory = { food: 60, wood: 90, stone: 50 };
     // Hamlet: a house, fields, a harvest.
@@ -670,6 +672,7 @@ describe('exploring to the river and the Valley today summary', () => {
   it('summarises only recorded events and targets real things', async () => {
     const { buildOverview } = await import('../src/engine/overview');
     const sim = createNewGame(4141);
+    sim.growthMode = 'legacy';
     // No earlier session: say so rather than invent history.
     const first = buildOverview(sim, null);
     expect(first.since).toBeNull();

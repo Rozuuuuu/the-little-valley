@@ -3,6 +3,7 @@ import { BUILDINGS } from '../data/buildings';
 import { CROPS } from '../data/crops';
 import type { WorkKind } from '../data/jobs';
 import { RECIPES } from '../data/recipes';
+import { CHILD_ADULT_TICKS } from '../data/kingdomBalance';
 import { RESOURCES, type ResourceId } from '../data/resources';
 import { O, OBJECTS, T, TERRAIN, type ObjectId } from '../world/tiles';
 import {
@@ -593,6 +594,19 @@ function homeFor(sim: Simulation, s: Settler): Building | null {
   return (own && own.built ? own : campOf(sim)) ?? null;
 }
 
+/** Children play within a few tiles of home (or their settlement hall) until they grow up. */
+function playNearHome(sim: Simulation, s: Settler): void {
+  const days = Math.max(1, Math.ceil((CHILD_ADULT_TICKS - s.ageTicks) / DAY_TICKS));
+  s.idleReason = `A child — plays near home and grows up in ${days} day${days === 1 ? '' : 's'}`;
+  s.nextThink = sim.tick + IDLE_BACKOFF * 3 + (s.id % 7);
+  if (s.task) return;
+  const home = homeFor(sim, s);
+  const c = home ? { x: home.x + Math.floor(home.w / 2), y: home.y + home.h + 1 } : tileOf(s);
+  const x = c.x + sim.rng.int(7) - 3;
+  const y = c.y + sim.rng.int(5) - 1;
+  if (sim.walkable(x, y) && sim.world.explored(x, y)) s.task = { kind: 'wander', x, y };
+}
+
 /**
  * Picks the next task: needs first (deliver, eat, sleep), then a temporary
  * direct order (focus), then the assigned work area, then the work order.
@@ -625,6 +639,10 @@ export function assignTask(sim: Simulation, s: Settler): void {
   if (sim.isBedtime(s.id) || s.energy < NAP_THRESHOLD) {
     const home = homeFor(sim, s);
     set({ kind: 'sleep', home: home?.id ?? null, stage: 'walk' });
+    return;
+  }
+  if (s.lifeStage === 'child') {
+    playNearHome(sim, s);
     return;
   }
   if (s.focus) {

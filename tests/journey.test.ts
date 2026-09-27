@@ -23,9 +23,10 @@ function placeNear(sim: Simulation, building: 'house' | 'workshop' | 'storehouse
  * The first complete player journey from the design brief, played headless
  * through the same commands the UI sends.
  */
-describe('first player journey', () => {
+describe('first player journey (legacy growth)', () => {
   it('start → gather → farm → harvest → house & workshop → newcomer → explore → save & resume', () => {
     const sim = createNewGame(20260927);
+    sim.growthMode = 'legacy'; // the original journey; the deliberate-growth journey is in recruitment.test.ts
     const ids = sim.settlers.map((s) => s.id);
 
     // Gather wood and stone with direct orders.

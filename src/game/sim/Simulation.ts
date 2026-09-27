@@ -8,13 +8,15 @@ import { TERRAIN } from '../world/tiles';
 import { World } from '../world/World';
 import type { PathGrid } from './pathfinding';
 import type {
-  Appearance, Building, ChronicleEntry, ProgressionState, Regrowth, SessionMark, Settlement, Settler, SimEvent, Stats, WeatherState, WorkArea,
+  Appearance, BedClaim, Building, ChronicleEntry, GrowthMode, Household, Recruitment, TravelerOffer, ProgressionState, Regrowth, SessionMark, Settlement, Settler, SimEvent, Stats, WeatherState, WorkArea,
 } from './types';
 import { updateSettler } from './settlers';
 import { updateFields, updateWeather } from './farming';
 import { updateSeason } from './seasons';
 import type { SeasonId } from '../data/seasons';
 import { updatePopulation } from './population';
+import { updateHouseholds } from './households';
+import { GROWTH_STEP } from '../data/kingdomBalance';
 import { checkMilestones } from './progression';
 import { updateRegrowth, updateWorkshops } from './buildings';
 
@@ -38,7 +40,7 @@ export const SHARED_UNREACHABLE_RANGE = 12;
 export function emptyStats(): Stats {
   return {
     woodGathered: 0, stoneGathered: 0, foodGathered: 0, harvested: 0, planksCrafted: 0, toolsCrafted: 0, arrivals: 0,
-    wheatHarvested: 0, flourMilled: 0, bakedFood: 0, pathsBuilt: 0,
+    wheatHarvested: 0, flourMilled: 0, bakedFood: 0, pathsBuilt: 0, births: 0, applesPicked: 0,
   };
 }
 
@@ -86,6 +88,18 @@ export class Simulation implements PathGrid {
   session: SessionMark | null = null;
   /** Path search nodes left this tick (transient). */
   pathBudget = PATH_BUDGET;
+  /** See GrowthMode. New valleys are 'deliberate' (set by createNewGame). */
+  growthMode: GrowthMode = 'legacy';
+  households: Household[] = [];
+  /** Beds held for expected children and accepted travellers (saved). */
+  bedClaims: BedClaim[] = [];
+  /** The visitor currently waiting for an answer, if any. */
+  offer: TravelerOffer | null = null;
+  /** When the next visitor arrives (when none is waiting). */
+  nextVisitor = 0;
+  recruits: Recruitment[] = [];
+  /** Tick the last recruited traveller settled (for the once-per-two-days limit). */
+  lastRecruit = -Infinity;
   /** Last season announced (transient; seasons follow the calendar). */
   lastSeason: SeasonId | null = null;
 
@@ -204,6 +218,7 @@ export class Simulation implements PathGrid {
       task: null, focus: null, idleReason: '', hidden: false, path: null, pathIndex: 0,
       goalKey: null, repaths: 0, lastNotice: -9999, arrivedTick: this.tick,
       areaId: null, priorities: null, insideId: null, restNote: '', nextThink: 0, settlementId,
+      lifeStage: 'adult', ageTicks: 0, householdId: null,
     };
     this.settlers.push(s);
     return s;
@@ -388,7 +403,8 @@ export class Simulation implements PathGrid {
     if (this.tick % 20 === 0) updateRegrowth(this);
     for (const s of this.settlers) updateSettler(this, s);
     if (this.tick % 10 === 0) updateWorkshops(this);
-    if (this.tick % 50 === 0) {
+    if (this.tick % GROWTH_STEP === 0) {
+      updateHouseholds(this);
       updatePopulation(this);
       this.checkStorage();
       checkMilestones(this);

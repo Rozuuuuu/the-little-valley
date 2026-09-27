@@ -5,6 +5,7 @@ import { chunkKey } from '../world/World';
 import { generateChunk } from '../world/worldgen';
 import type { ObjectId } from '../world/tiles';
 import { assignHomes } from '../sim/buildings';
+import { validateClaims } from '../sim/households';
 import { currentMilestone } from '../sim/progression';
 import { Simulation } from '../sim/Simulation';
 import type { Building, Settler } from '../sim/types';
@@ -66,6 +67,7 @@ export function serializeSim(sim: Simulation, extras: SerializeExtras): SaveFile
     hunger: s.hunger, energy: s.energy, homeId: s.homeId, appearance: { ...s.appearance },
     focus: s.focus ? { res: s.focus.res, x: s.focus.x, y: s.focus.y, until: s.focus.until } : null,
     areaId: s.areaId, priorities: s.priorities ? [...s.priorities] : null, settlementId: s.settlementId,
+    lifeStage: s.lifeStage, ageTicks: s.ageTicks, householdId: s.householdId,
   }));
   const buildings: SavedBuilding[] = [...sim.buildings.values()].map((b) => {
     const sb: SavedBuilding = {
@@ -77,6 +79,7 @@ export function serializeSim(sim: Simulation, extras: SerializeExtras): SaveFile
       sb.h = b.h;
     }
     if (b.field) sb.field = { ...b.field };
+    if (b.orchard) sb.orchard = { ...b.orchard };
     if (b.workshop) sb.workshop = { recipe: b.workshop.recipe, progress: b.workshop.progress, paused: b.workshop.paused };
     return sb;
   });
@@ -98,6 +101,13 @@ export function serializeSim(sim: Simulation, extras: SerializeExtras): SaveFile
       settlements: sim.settlements.map((s) => ({ ...s })),
       chronicle: sim.chronicle.map((c) => ({ ...c })),
       session: sim.session ? { ...sim.session, startStats: { ...sim.session.startStats } } : null,
+      growthMode: sim.growthMode,
+      households: sim.households.map((h) => ({ ...h, adults: [...h.adults] as [number, number], children: [...h.children], pending: h.pending ? { ...h.pending } : null })),
+      bedClaims: sim.bedClaims.map((c) => ({ ...c, owner: { ...c.owner } })),
+      offer: sim.offer ? { ...sim.offer, appearance: { ...sim.offer.appearance } } : null,
+      nextVisitor: sim.nextVisitor,
+      recruits: sim.recruits.map((r) => ({ ...r, appearance: { ...r.appearance }, escrow: { ...r.escrow } })),
+      lastRecruit: Number.isFinite(sim.lastRecruit) ? sim.lastRecruit : null,
     },
     world: { genVersion: sim.world.genVersion, chunks },
     view: extras.view,
@@ -123,6 +133,13 @@ export function deserializeSim(save: SaveFile): Simulation {
   sim.settlements = d.settlements.map((s) => ({ ...s }));
   sim.chronicle = d.chronicle.map((c) => ({ ...c }));
   sim.session = d.session ? { ...d.session, startStats: { ...sim.stats, ...d.session.startStats } } : null;
+  sim.growthMode = d.growthMode;
+  sim.households = d.households.map((h) => ({ ...h, adults: [...h.adults] as [number, number], children: [...h.children], pending: h.pending ? { ...h.pending } : null }));
+  sim.bedClaims = d.bedClaims.map((c) => ({ ...c, owner: { ...c.owner } }));
+  sim.offer = d.offer ? { ...d.offer, appearance: { ...d.offer.appearance } } : null;
+  sim.nextVisitor = d.nextVisitor;
+  sim.recruits = d.recruits.map((r) => ({ ...r, appearance: { ...r.appearance }, escrow: { ...r.escrow } }));
+  sim.lastRecruit = d.lastRecruit ?? -Infinity;
 
   for (const sc of save.world.chunks) {
     const c = generateChunk(sim.seed, sc.cx, sc.cy, save.world.genVersion);
@@ -150,6 +167,7 @@ export function deserializeSim(save: SaveFile): Simulation {
       inventory: { ...sb.inventory }, reservedOut: {}, placedTick: sb.placedTick, workers: [...sb.workers], wants: { ...sb.wants },
     };
     if (sb.field) b.field = { ...sb.field };
+    if (sb.orchard) b.orchard = { ...sb.orchard };
     if (sb.workshop) b.workshop = { ...sb.workshop, status: '' };
     sim.buildings.set(b.id, b);
     for (let dy = 0; dy < b.h; dy++) for (let dx = 0; dx < b.w; dx++) sim.occupancy.set(tileKey(b.x + dx, b.y + dy), b.id);
@@ -163,6 +181,7 @@ export function deserializeSim(save: SaveFile): Simulation {
       task: null, focus: ss.focus ? { kind: 'gather', ...ss.focus } : null, idleReason: '', hidden: false,
       path: null, pathIndex: 0, goalKey: null, repaths: 0, lastNotice: -9999, arrivedTick: 0,
       areaId: ss.areaId, priorities: ss.priorities ? [...ss.priorities] : null, insideId: null, restNote: '', nextThink: 0, settlementId: ss.settlementId,
+      lifeStage: ss.lifeStage, ageTicks: ss.ageTicks, householdId: ss.householdId,
     };
     sim.settlers.push(s);
   }
@@ -174,6 +193,12 @@ export function deserializeSim(save: SaveFile): Simulation {
   for (const s of sim.settlers) if (s.areaId !== null && !sim.area(s.areaId)) s.areaId = null;
   sim.settlements = sim.settlements.filter((st) => sim.buildings.has(st.id));
   for (const s of sim.settlers) if (s.settlementId !== null && !sim.settlements.some((st) => st.id === s.settlementId)) s.settlementId = sim.settlements[0]?.id ?? null;
+  // Households only reference people who exist; bed claims are restored before ordinary homes.
+  for (const h of sim.households) h.children = h.children.filter((id) => ids.has(id));
+  sim.households = sim.households.filter((h) => h.adults.every((id) => ids.has(id)));
+  const households = new Set(sim.households.map((h) => h.id));
+  for (const s of sim.settlers) if (s.householdId !== null && !households.has(s.householdId)) s.householdId = null;
+  validateClaims(sim);
   assignHomes(sim);
   return sim;
 }

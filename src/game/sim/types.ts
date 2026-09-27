@@ -93,6 +93,88 @@ export interface Settler {
   nextThink: number;
   /** Home settlement (its centre building id). Settlers prefer work, beds and stores there. */
   settlementId: number | null;
+  /** Children eat, sleep and play but take no adult work or orders. */
+  lifeStage: LifeStage;
+  /** Game ticks lived as a child (0 for adults). */
+  ageTicks: number;
+  householdId: number | null;
+}
+
+export type LifeStage = 'child' | 'adult';
+
+/**
+ * How a valley grows. 'legacy' is the original rule (a free bed and spare food
+ * draw newcomers on their own); 'deliberate' grows only through families and
+ * travellers the player welcomes. Old worlds keep 'legacy' until the player
+ * adopts the new rules.
+ */
+export type GrowthMode = 'legacy' | 'deliberate';
+
+/** A child the household asked for, waiting for steady conditions. */
+export interface PendingChild {
+  requestedTick: number;
+  /** Ticks of steady conditions so far; the child is born at CHILD_STABLE_TICKS. */
+  stableTicks: number;
+  /** The bed held for the child, or null while none is free. */
+  claimId: number | null;
+  /** Why the wait is paused ('' while it advances). */
+  blocked: string;
+}
+
+/** Two adults who share a home and may ask for children. */
+export interface Household {
+  id: number;
+  adults: [number, number];
+  children: number[];
+  pending: PendingChild | null;
+  /** No new request before this tick. */
+  cooldownUntil: number;
+}
+
+/**
+ * A bed held for someone who does not live here yet (an expected child or an
+ * accepted traveller). Claims are saved and count as occupied beds, so two
+ * newcomers can never be promised the same bed.
+ */
+export interface BedClaim {
+  id: number;
+  homeId: number;
+  owner: { kind: 'birth'; id: number } | { kind: 'recruit'; id: number };
+}
+
+/** A traveller offering to settle in exchange for a welcome package of apples. */
+export interface TravelerOffer {
+  id: number;
+  name: string;
+  appearance: Appearance;
+  arrivedTick: number;
+  expiresTick: number;
+}
+
+/**
+ * An accepted traveller on their way in. The apples are taken out of storage
+ * into escrow when the player accepts, and handed over on arrival; a cancelled
+ * recruitment returns them (keeping any that don't fit until there is room).
+ */
+export interface Recruitment {
+  id: number;
+  name: string;
+  appearance: Appearance;
+  settlementId: number;
+  claimId: number | null;
+  state: 'travelling' | 'refunding';
+  escrow: Inventory;
+  arrivesTick: number;
+  blocked: string;
+}
+
+export interface OrchardState {
+  /** Growing-season ticks spent establishing (bears fruit once established). */
+  growth: number;
+  /** Ripe apples on the trees (fractional while ripening). */
+  fruit: number;
+  /** Trees keep bearing until this tick; a tending visit extends it. */
+  careUntil: number;
 }
 
 /** A settlement: a camp or waystation hall and the land around it. */
@@ -118,7 +200,7 @@ export interface WorkArea {
 /** Notable things that happened, kept for the Valley today summary. */
 export interface ChronicleEntry {
   tick: number;
-  kind: 'built' | 'arrival' | 'milestone' | 'bridge' | 'shortage' | 'season' | 'settlement';
+  kind: 'built' | 'arrival' | 'milestone' | 'bridge' | 'shortage' | 'season' | 'settlement' | 'birth' | 'family';
   text: string;
   x?: number;
   y?: number;
@@ -164,6 +246,7 @@ export interface Building {
   /** Stored goods promised to a hauler, crafter or eater. Transient. */
   reservedOut: Inventory;
   field?: FieldState;
+  orchard?: OrchardState;
   workshop?: WorkshopState;
   placedTick: number;
   /** Settlers assigned to work here (production buildings), up to maxWorkers. */

@@ -103,6 +103,32 @@ export const MIGRATIONS: Record<number, (save: AnyRecord) => AnyRecord> = {
       },
     };
   },
+
+  /**
+   * v4 was Seasons and settlements. v5 adds deliberate growth: every existing
+   * settler is an adult with no household (no families are invented), and the
+   * world keeps its old newcomer arrivals ('legacy') until the player adopts
+   * the new rules. No bed claims, visitors or recruitments exist yet.
+   */
+  4: (v4) => {
+    const sim = v4.sim as AnyRecord;
+    return {
+      ...v4,
+      version: 5,
+      sim: {
+        ...sim,
+        settlers: ((sim.settlers as AnyRecord[] | undefined) ?? []).map((s) => ({ ...s, lifeStage: 'adult', ageTicks: 0, householdId: null })),
+        stats: { ...emptyStats(), ...(sim.stats as AnyRecord | undefined) },
+        growthMode: 'legacy',
+        households: [],
+        bedClaims: [],
+        offer: null,
+        nextVisitor: 0,
+        recruits: [],
+        lastRecruit: null,
+      },
+    };
+  },
 };
 
 export function migrate(raw: unknown): SaveFile {
@@ -160,6 +186,8 @@ export function validateSave(save: AnyRecord): void {
     check(s.areaId === null || isInt(s.areaId), `settler ${s.id} work area`);
     check(s.priorities === null || (Array.isArray(s.priorities) && (s.priorities as unknown[]).every((k) => WORK_KINDS.includes(k as never))), `settler ${s.id} work order`);
     check(s.settlementId === null || isInt(s.settlementId), `settler ${s.id} settlement`);
+    check((s.lifeStage === 'adult' || s.lifeStage === 'child') && isInt(s.ageTicks) && (s.ageTicks as number) >= 0, `settler ${s.id} age`);
+    check(s.householdId === null || isInt(s.householdId), `settler ${s.id} household`);
   }
   check(Array.isArray(sim.buildings), 'building list');
   for (const b of sim.buildings as AnyRecord[]) {
@@ -189,6 +217,30 @@ export function validateSave(save: AnyRecord): void {
   }
   check(Array.isArray(sim.chronicle), 'chronicle');
   check(Array.isArray(sim.settlements) && (sim.settlements as AnyRecord[]).every((s) => isInt(s.id) && typeof s.name === 'string'), 'settlements');
+  check(sim.growthMode === 'legacy' || sim.growthMode === 'deliberate', 'growth mode');
+  check(Array.isArray(sim.households), 'households');
+  for (const h of sim.households as AnyRecord[]) {
+    check(isInt(h.id) && Array.isArray(h.adults) && (h.adults as unknown[]).length === 2 && (h.adults as unknown[]).every(isInt), 'household');
+    check(Array.isArray(h.children) && (h.children as unknown[]).every(isInt) && isNum(h.cooldownUntil), `household ${h.id}`);
+    if (h.pending !== null) {
+      const p = h.pending as AnyRecord;
+      check(p && isInt(p.stableTicks) && (p.stableTicks as number) >= 0 && (p.claimId === null || isInt(p.claimId)) && typeof p.blocked === 'string', `household ${h.id} pending child`);
+    }
+  }
+  check(Array.isArray(sim.bedClaims), 'bed claims');
+  for (const c of sim.bedClaims as AnyRecord[]) {
+    const o = c.owner as AnyRecord | undefined;
+    check(isInt(c.id) && isInt(c.homeId) && o && (o.kind === 'birth' || o.kind === 'recruit') && isInt(o.id), 'bed claim');
+  }
+  check(sim.offer === null || (typeof sim.offer === 'object' && isInt((sim.offer as AnyRecord).id) && isNum((sim.offer as AnyRecord).expiresTick)), 'visitor');
+  check(isNum(sim.nextVisitor), 'next visitor');
+  check(sim.lastRecruit === null || isNum(sim.lastRecruit), 'last recruit');
+  check(Array.isArray(sim.recruits), 'recruits');
+  for (const r of sim.recruits as AnyRecord[]) {
+    check(isInt(r.id) && isInt(r.settlementId) && (r.state === 'travelling' || r.state === 'refunding') && isNum(r.arrivesTick), 'recruit');
+    check(r.claimId === null || isInt(r.claimId), `recruit ${r.id} bed`);
+    checkInventory(r.escrow, `recruit ${r.id} escrow`);
+  }
   check(sim.session === null || (typeof sim.session === 'object' && isInt((sim.session as AnyRecord).startTick)), 'session');
   const world = save.world as AnyRecord;
   check(world && Array.isArray(world.chunks), 'world');
