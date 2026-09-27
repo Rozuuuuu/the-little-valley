@@ -1,6 +1,6 @@
 # Little Valley: Families, Industry and Kingdoms — Implementation Plan
 
-> **Status (2026-09-28):** M0 and M1 are implemented on branch `families-to-kingdoms` (see §11 for results, the decisions taken during implementation and the plan changes they caused). M2–M8 remain plans; each still needs its own authorization.
+> **Status (2026-09-28):** M0 and M1 are implemented on branch `families-to-kingdoms` (see §10 for results, the decisions taken during implementation and the plan changes they caused). M2–M8 remain plans; each still needs its own authorization.
 > For execution: use superpowers:executing-plans, or subagent-driven-development when suitable tools are available. Implement only the milestone the user authorizes.
 
 **Goal:** Extend the existing persistent farming game into a slowly growing kingdom with families, mining, travelers, a player monarch, equipped armies, territorial diplomacy and believable news.
@@ -32,7 +32,7 @@ Multiplayer, offline attacks/progression, dynastic succession, royal death, a co
 
 ## 2. Actual repository baseline
 
-Inspected on 2026-09-28, before M0 (see §11 for the state after M1):
+Inspected on 2026-09-28, before M0 (see §10 for the state after M1):
 
 - Save version 4; existing migration, validation, backup and emergency recovery infrastructure.
 - Population currently arrives automatically with 20 stored food, spending 10 food, on a 900-tick cooldown. At 10 Hz this is 90 seconds. New recruitment must replace that behavior in deliberate-growth worlds, not run alongside it.
@@ -70,7 +70,7 @@ These are concrete initial balancing proposals, not previously approved numerica
 | Growth mode | New worlds use deliberate growth. Existing worlds retain legacy arrivals until an explained adoption command. |
 | Orchard | Available at Camp; 2×2 footprint, 10 wood/2 stone; establishes over two growing-season days; yields 25 apples per growing-season day with worker care. Winter pauses establishment/production. |
 | Apple consumption | Recruitment reservations protect apples. An explicit recipe converts surplus apples into ordinary food. |
-| Recruitment | 50 apples in the destination settlement's own stores, one free reachable bed (real homes first; a camp bedroll is acceptable — see §11), at least 20 unreserved local food; one completed recruit per kingdom per two game days. |
+| Recruitment | 50 apples in the destination settlement's own stores, one free reachable bed (real homes first; a camp bedroll is acceptable — see §10), at least 20 unreserved local food; one completed recruit per kingdom per two game days. |
 | Early visitor | Guaranteed eligible camp recruitment visit; the sixth settler does not require an inn, currency or Hamlet. |
 | Family home | Available at Camp; three permanent beds, 20 wood/10 stone. Existing houses are not silently resized. |
 | Household | Two distinct adults, one household per adult; player requests a child; two stable days before birth with a reserved permanent bed. |
@@ -559,7 +559,7 @@ These are selected inspirations, not a universal model of medieval politics:
 
 Protected homelands, numeric concern scores, abstract shafts and simplified training are deliberate game design choices, not historical claims.
 
-## 11. Progress, decisions and lessons (updated after M0 + M1)
+## 10. Progress, decisions and lessons (updated after M0 + M1)
 
 ### Results
 
@@ -631,7 +631,7 @@ run; the M0 visual check and the M1 art remain release gates.
 - **All:** each milestone's player journey test is the acceptance test; write it
   first with only commands, and let it drive the missing UI status lines.
 
-## 10. Review and next authorization
+## 11. Review and next authorization
 
 Review the proposed population timings, legacy adoption, safe-boundary size, Civilization military gate and casualty rules before implementation. Start with **M0 and M1 only**; verify slower growth is enjoyable before building industry and political complexity.
 
