@@ -154,6 +154,32 @@ export const RESOURCE_ICON_DRAW: Record<ResourceId, (p: Painter) => void> = {
     p.px(5, 6, P.stone2);
     p.px(4, 7, P.stone2);
   },
+  hides: (p) => {
+    // A stretched pelt.
+    p.ellipse(5, 5.5, 4, 4.2, '#9a6a44');
+    p.ellipse(5, 5.5, 2.6, 3, '#b8835a');
+    for (const [x, y] of [[1, 1], [9, 1], [1, 10], [9, 10]]) p.px(x, y, '#7a4e30');
+    p.px(4, 4, '#d0a070');
+  },
+  wool: (p) => {
+    p.ellipse(3.5, 6, 3, 3, '#f2efe6');
+    p.ellipse(7, 5, 3, 3, '#e8e3d6');
+    p.ellipse(5.5, 7.5, 3, 2.5, '#f7f4ec');
+    p.px(4, 5, '#ffffff');
+    p.px(7, 4, '#d6d0c0');
+  },
+  leather: (p) => {
+    p.rect(1, 2, 9, 7, '#7a4a28');
+    p.hline(1, 9, 2, '#9a6238');
+    p.hline(1, 9, 8, '#5a3418');
+    for (let x = 2; x < 10; x += 2) p.px(x, 5, '#c89060');
+  },
+  cloth: (p) => {
+    p.rect(1, 2, 9, 7, '#3a6ea8');
+    p.rect(1, 2, 9, 2, '#5a8ec8');
+    for (let x = 1; x < 10; x += 2) p.vline(x, 4, 8, '#2e5a8c');
+    p.hline(1, 9, 8, '#d8c060');
+  },
   tools: (p) => {
     for (let i = 0; i < 7; i++) p.px(2 + i, 9 - i, P.wood2);
     for (let i = 0; i < 6; i++) p.px(3 + i, 9 - i, P.wood1);

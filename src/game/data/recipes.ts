@@ -17,7 +17,7 @@ export const FUELS = ['coal', 'charcoal'] as const;
 export type RecipeId =
   | 'planks' | 'tools' | 'flour' | 'bread' | 'driedApples'
   | 'charcoal' | 'smeltCopper' | 'smeltIron' | 'forgeCopperTools' | 'forgeIronTools'
-  | 'forgeSwords' | 'forgeArmor' | 'makeBows';
+  | 'forgeSwords' | 'forgeArmor' | 'makeBows' | 'tanLeather' | 'weaveCloth';
 
 export const RECIPES: Record<RecipeId, RecipeDef> = {
   planks: { id: 'planks', name: 'Saw planks', inputs: { wood: 2 }, outputs: { planks: 1 }, work: 60 },
@@ -33,6 +33,8 @@ export const RECIPES: Record<RecipeId, RecipeDef> = {
   forgeArmor: { id: 'forgeArmor', name: 'Forge armour', inputs: { ironIngot: 2 }, outputs: { armor: 1 }, work: 160 },
   makeBows: { id: 'makeBows', name: 'Make bows', inputs: { planks: 2 }, outputs: { bows: 1 }, work: 90 },
   forgeIronTools: { id: 'forgeIronTools', name: 'Forge iron tools', inputs: { ironIngot: 1, planks: 1 }, outputs: { tools: 2 }, work: 100 },
+  tanLeather: { id: 'tanLeather', name: 'Tan leather', inputs: { hides: 2 }, outputs: { leather: 1 }, work: 90 },
+  weaveCloth: { id: 'weaveCloth', name: 'Weave cloth', inputs: { wool: 2 }, outputs: { cloth: 1 }, work: 80 },
 };
 export function recipeDef(id: RecipeId): RecipeDef {
   return RECIPES[id];

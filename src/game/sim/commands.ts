@@ -509,7 +509,8 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
 
     case 'assignWorker': {
       const b = sim.buildings.get(cmd.buildingId);
-      if (!b || !(b.workshop || BUILDINGS[b.type].extraction || BUILDINGS[b.type].depot) || !b.built) return err('Workers can only be assigned to finished workshops, mills, bakeries, quarries, mines, kilns, smelters, forges and caravan depots');
+      const bdef = b ? BUILDINGS[b.type] : undefined;
+      if (!b || !bdef || !(b.workshop || bdef.extraction || bdef.depot || bdef.hunting || bdef.pen) || !b.built) return err('Workers can only be assigned to finished workshops, mills, bakeries, quarries, mines, fisheries, kilns, smelters, forges, lodges, pens and caravan depots');
       const list = pickWorkers(sim, cmd.ids, 'work at a workshop');
       if (typeof list === 'string') return err(list);
       const max = maxWorkers(b);
@@ -520,12 +521,16 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
         if (b.workers.length >= max) break;
         for (const other of sim.buildings.values()) if (other !== b) other.workers = other.workers.filter((id) => id !== s.id);
         b.workers.push(s.id);
+        sim.forgetWorkIndex();
         takeOrder(sim, s);
         // Make sure crafting is in their work order, and first (teamsters keep their usual work between trips).
-        if (BUILDINGS[b.type].depot) {
+        // Hunters gather first, herders farm first, everyone else crafts first.
+        const kind = bdef.hunting ? 'gather' : bdef.pen ? 'farm' : 'craft';
+        const job = bdef.hunting ? 'hunter' : bdef.pen ? 'herder' : 'crafter';
+        if (bdef.depot) {
           // nothing to change
-        } else if (s.priorities === null && s.job !== 'crafter') s.job = 'crafter';
-        else if (s.priorities) s.priorities = ['craft', ...s.priorities.filter((k) => k !== 'craft')];
+        } else if (s.priorities === null && s.job !== job) s.job = job;
+        else if (s.priorities) s.priorities = [kind, ...s.priorities.filter((k) => k !== kind)];
         added.push(s.name);
       }
       if (added.length === 0) {

@@ -89,6 +89,7 @@ export function serializeSim(sim: Simulation, extras: SerializeExtras): SaveFile
     if (b.mine) sb.mine = { ...b.mine };
     if (b.quarry) sb.quarry = { ...b.quarry };
     if (b.level && b.level > 1) sb.level = b.level;
+    if (b.pen) sb.pen = { breed: b.pen.breed, ready: b.pen.ready };
     if (b.upgrade) sb.upgrade = { to: b.upgrade.to, progress: b.upgrade.progress, paid: { ...b.upgrade.paid } };
     if (b.workshop) sb.workshop = { recipe: b.workshop.recipe, progress: b.workshop.progress, paused: b.workshop.paused };
     return sb;
@@ -125,6 +126,8 @@ export function serializeSim(sim: Simulation, extras: SerializeExtras): SaveFile
       kingdoms: sim.kingdoms.map((k) => JSON.parse(JSON.stringify({ ...k, companies: k.companies.map((c) => ({ ...c, path: null })) })) as Kingdom),
       horseDay: sim.horseDay,
       rallyReadyAt: sim.rallyReadyAt,
+      animals: sim.animals.map((a) => ({ id: a.id, species: a.species, x: a.x, y: a.y, homeX: a.homeX, homeY: a.homeY, penId: a.penId, facing: a.facing })),
+      animalRng: sim.animalRng.state,
       war: JSON.parse(JSON.stringify({ states: [...sim.warStates], sieges: [...sim.sieges], occupationTimers: [...sim.occupationTimers] })),
       diplomacy: JSON.parse(JSON.stringify({
         worldEvents: sim.worldEvents,
@@ -191,6 +194,11 @@ export function deserializeSim(save: SaveFile): Simulation {
   sim.kingdoms = d.kingdoms.map((k) => JSON.parse(JSON.stringify(k)) as Kingdom);
   sim.horseDay = d.horseDay;
   sim.rallyReadyAt = d.rallyReadyAt ?? 0;
+  if (d.animalRng !== undefined) sim.animalRng.state = d.animalRng;
+  sim.animals = (d.animals ?? []).map((a) => ({
+    id: a.id, species: a.species, x: a.x, y: a.y, px: a.x, py: a.y, homeX: a.homeX, homeY: a.homeY,
+    tx: a.x, ty: a.y, moving: false, flee: false, timer: 0, facing: a.facing, penId: a.penId, huntedBy: null,
+  }));
   sim.warStates = new Map(d.war.states);
   sim.sieges = new Map(d.war.sieges);
   sim.occupationTimers = new Map(d.war.occupationTimers);
@@ -241,6 +249,7 @@ export function deserializeSim(save: SaveFile): Simulation {
     if (sb.mine) b.mine = { ...sb.mine };
     if (sb.quarry) b.quarry = { ...sb.quarry };
     if (sb.level) b.level = sb.level;
+    if (sb.pen) b.pen = { breed: sb.pen.breed, ready: sb.pen.ready };
     if (sb.upgrade) {
       b.upgrade = { to: sb.upgrade.to, progress: sb.upgrade.progress, paid: { ...sb.upgrade.paid } };
       sim.upgrading.add(b.id);

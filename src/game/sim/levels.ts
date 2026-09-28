@@ -46,6 +46,11 @@ export const lodgingOf = (b: Building): number => stat(b, 'lodging') ?? 0;
 export const lightOf = (b: Building): number => stat(b, 'light') ?? 0;
 export const revealOf = (b: Building): number => stat(b, 'reveal') ?? 0;
 export const trainingSlotsOf = (b: Building): number => stat(b, 'trainingSlots') ?? 0;
+export const wellRadiusOf = (b: Building): number => {
+  const levels = levelsOf(b);
+  if (levels) for (let i = Math.min(levelOf(b), levels.length) - 1; i >= 0; i--) if (levels[i].wellRadius !== undefined) return levels[i].wellRadius!;
+  return BUILDINGS[b.type].well?.radius ?? 0;
+};
 /** Work speed multiplier for crafting and digging here. */
 export const speedOf = (b: Building): number => stat(b, 'speed') ?? 1;
 

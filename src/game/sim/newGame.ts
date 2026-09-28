@@ -4,6 +4,7 @@ import { CURRENT_GEN } from '../world/worldgen';
 import type { HabitatId } from '../data/habitats';
 import { newPlayerKingdom } from './kingdoms';
 import { addRuler } from './ruler';
+import { seedWildlife } from './animals';
 import { FIRST_VISITOR_TICK } from '../data/kingdomBalance';
 import { Simulation, STARTING_SETTLERS } from './Simulation';
 
@@ -35,6 +36,8 @@ export function createNewGame(seed: number, genVersion = CURRENT_GEN, habitat: H
   }
   if (options.rulerName?.trim()) addRuler(sim, options.rulerName.trim().slice(0, 24), 0, 3);
   assignHomes(sim);
+  // A few herds in sight of the hall, of the habitat's own animals.
+  seedWildlife(sim);
   sim.startSession();
   sim.drainEvents();
   return sim;

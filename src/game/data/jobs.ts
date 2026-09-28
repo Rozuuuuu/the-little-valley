@@ -8,7 +8,7 @@ export interface JobDef {
   priorities: readonly WorkKind[];
 }
 
-export type JobId = 'laborer' | 'farmer' | 'gatherer' | 'builder' | 'hauler' | 'crafter';
+export type JobId = 'laborer' | 'farmer' | 'gatherer' | 'builder' | 'hauler' | 'crafter' | 'hunter' | 'herder';
 
 export const JOBS: Record<JobId, JobDef> = {
   laborer: { id: 'laborer', name: 'Laborer', description: 'Builds, hauls, farms and harvests marked resources.', priorities: ['build', 'haul', 'farm', 'gather'] },
@@ -17,6 +17,8 @@ export const JOBS: Record<JobId, JobDef> = {
   builder: { id: 'builder', name: 'Builder', description: 'Constructs and supplies building sites.', priorities: ['build', 'haul', 'gather'] },
   hauler: { id: 'hauler', name: 'Hauler', description: 'Moves materials to sites and workshops.', priorities: ['haul', 'build', 'gather'] },
   crafter: { id: 'crafter', name: 'Crafter', description: 'Works at a workshop, mill or bakery.', priorities: ['craft', 'haul', 'build', 'gather'] },
+  hunter: { id: 'hunter', name: 'Hunter', description: "Hunts game from a hunter's lodge, then gathers.", priorities: ['gather', 'haul', 'build'] },
+  herder: { id: 'herder', name: 'Herder', description: 'Tends pens and pastures first, then fields.', priorities: ['farm', 'haul', 'build', 'gather'] },
 };
 export const JOB_IDS = Object.keys(JOBS) as JobId[];
 export function isJobId(v: unknown): v is JobId {

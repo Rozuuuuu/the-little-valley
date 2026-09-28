@@ -8,7 +8,7 @@ import { TERRAIN } from '../world/tiles';
 import { World } from '../world/World';
 import type { PathGrid } from './pathfinding';
 import type {
-  Appearance, BedClaim, Building, ChronicleEntry, CoalitionCommitment, ConcernState, GrowthMode, Household, Incident, Kingdom, Manifest, NewsReport, Party, Recruitment, Route, Stance,
+  Animal, Appearance, BedClaim, Building, ChronicleEntry, CoalitionCommitment, ConcernState, GrowthMode, Household, Incident, Kingdom, Manifest, NewsReport, Party, Recruitment, Route, Stance,
   TerritoryClaim, TravelerOffer, TreatyOffer, WarPlan, WarState, Warning, WorldEvent, ProgressionState, Regrowth, SessionMark, Settlement, Settler, SimEvent, Stats, WeatherState, WorkArea,
 } from './types';
 import { updateSettler } from './settlers';
@@ -20,6 +20,7 @@ import { updatePopulation } from './population';
 import { updateHouseholds } from './households';
 import { updateOrchards } from './orchards';
 import { storageOf, updateUpgrades } from './levels';
+import { updateAnimals } from './animals';
 import { surveyedCell, type SurveyedCell } from './mining';
 import { updateParties, updateTravelers } from './travelers';
 import { LOGISTICS_STEP, updateLogistics } from './logistics';
@@ -171,12 +172,17 @@ export class Simulation implements PathGrid {
   lastSeason: SeasonId | null = null;
   /** When the ruler can Rally again. */
   rallyReadyAt = 0;
+  /** Wild and penned animals. */
+  animals: Animal[] = [];
+  /** Animals draw from their own stream, so they never change what settlers do. */
+  animalRng: Rng;
   /** Buildings with an upgrade under way (rebuilt from buildings on load). */
   readonly upgrading = new Set<number>();
 
   constructor(seed: number, rngState = seed ^ 0x5bd1e995, genVersion = 1, habitat: HabitatId = 'valley') {
     this.world = new World(seed, genVersion, habitat);
     this.rng = new Rng(rngState);
+    this.animalRng = new Rng(seed ^ 0x0a11a1);
   }
 
   get seed(): number {
@@ -317,6 +323,31 @@ export class Simulation implements PathGrid {
   }
   private rulerTick = -1;
   private rulerRef: Settler | undefined;
+  /** Lodges, pens and who works where, rebuilt at most once a tick for the work finders. */
+  workIndex(): { lodges: Building[]; pens: Building[]; assigned: Map<number, Building> } {
+    if (this.workIndexTick !== this.tick || !this.workIndexCache) {
+      const lodges: Building[] = [];
+      const pens: Building[] = [];
+      const assigned = new Map<number, Building>();
+      for (const b of this.buildings.values()) {
+        if (!b.built) continue;
+        const def = BUILDINGS[b.type];
+        if (def.hunting) lodges.push(b);
+        if (def.pen) pens.push(b);
+        for (const id of b.workers) assigned.set(id, b);
+      }
+      this.workIndexCache = { lodges, pens, assigned };
+      this.workIndexTick = this.tick;
+    }
+    return this.workIndexCache;
+  }
+  private workIndexTick = -1;
+  private workIndexCache: { lodges: Building[]; pens: Building[]; assigned: Map<number, Building> } | null = null;
+  /** Call when buildings or workers change within a tick. */
+  forgetWorkIndex(): void {
+    this.workIndexCache = null;
+  }
+
   /** Call after adding or removing the ruler within a tick. */
   forgetRuler(): void {
     this.rulerTick = -1;
@@ -553,6 +584,7 @@ export class Simulation implements PathGrid {
     if (this.tick % 10 === 0) updateWorkshops(this);
     updateKingdoms(this);
     if (this.upgrading.size) updateUpgrades(this);
+    updateAnimals(this);
     if (this.tick % GROWTH_STEP === 0) {
       updateHouseholds(this);
       updateTravelers(this);

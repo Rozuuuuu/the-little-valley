@@ -1,6 +1,7 @@
 import type { BuildingId } from '../data/buildings';
 import type { CropId } from '../data/crops';
 import type { JobId, WorkKind } from '../data/jobs';
+import type { SpeciesId } from '../data/animals';
 import type { MilestoneId, StatId } from '../data/progression';
 import type { RecipeId } from '../data/recipes';
 import type { Inventory, ResourceId } from '../data/resources';
@@ -47,6 +48,8 @@ export type Task =
   | { kind: 'train'; site: number; stage: 'walk' | 'drill' }
   | { kind: 'extract'; site: number; slot: number; amount: number; stage: 'walk' | 'work'; timer: number }
   | { kind: 'craft'; ws: number; stage: 'walk' | 'work' }
+  | { kind: 'hunt'; lodge: number; animal: number; stage: 'stalk' | 'aim'; timer: number; tx: number; ty: number }
+  | { kind: 'herd'; pen: number; stage: 'walk' | 'work'; timer: number }
   | { kind: 'eat'; src: number }
   | { kind: 'sleep'; home: number | null; stage: 'walk' | 'sleep' };
 
@@ -573,6 +576,8 @@ export interface Building {
   orchard?: OrchardState;
   /** Upgrade level (absent means 1). */
   level?: number;
+  /** Pens: breeding progress (ticks) and products waiting for a herder. */
+  pen?: { breed: number; ready: number };
   /** An upgrade in progress: already paid for, finishing on a timer. */
   upgrade?: { to: number; progress: number; paid: Inventory };
   /** Mines: the deposit worked (its cell id) and the shaft level (1–3). */
@@ -585,6 +590,30 @@ export interface Building {
   workers: number[];
   /** Storage only: amounts haulers keep stocked here, fetched from other stores. */
   wants: Inventory;
+}
+
+/** A wild or penned animal. Light-weight: no paths, no needs. */
+export interface Animal {
+  id: number;
+  species: SpeciesId;
+  x: number;
+  y: number;
+  /** Position at the previous tick, for render interpolation. Not saved. */
+  px: number;
+  py: number;
+  /** Wild animals roam around this tile. */
+  homeX: number;
+  homeY: number;
+  tx: number;
+  ty: number;
+  moving: boolean;
+  flee: boolean;
+  timer: number;
+  facing: 2 | 3;
+  /** The pen it lives in, or null for wild animals. */
+  penId: number | null;
+  /** The hunter stalking it. Not saved: hunts are re-planned after loading. */
+  huntedBy: number | null;
 }
 
 export interface Regrowth {

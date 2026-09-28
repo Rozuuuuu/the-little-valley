@@ -994,6 +994,231 @@ export function makeTownHallSprites(): BuildingSprites[] {
   return [make(68, 94, 2, 46, townHall1), make(68, 104, 2, 56, townHall2), make(68, 118, 2, 70, townHall3)];
 }
 
+
+// ---- animals, food and crafts (2026-09) -------------------------------------------
+
+/** Hunter's lodge: a log cabin with antlers over the door and pelts drying on a rack. */
+const hunterLodge: Draw = (p, lit) => {
+  p.rect(1, 6, 30, 24, P.wood1);
+  for (let y = 8; y < 30; y += 3) p.hline(1, 30, y, P.wood0);
+  for (const x of [1, 30]) for (let y = 7; y < 30; y += 3) p.px(x, y, P.wood2);
+  shingles(p, -1, 32, -6, 8, [P.wood0, P.wood1, P.wood2, P.wood3], 3);
+  p.rect(12, 16, 7, 14, P.wood0);
+  p.rect(13, 17, 5, 13, P.wood2);
+  windowAt(p, 4, 14, 5, 5, lit);
+  // Antlers above the door
+  p.hline(12, 18, 12, '#d8c090');
+  p.vline(12, 9, 12, '#d8c090');
+  p.vline(18, 9, 12, '#d8c090');
+  p.px(14, 11, '#d8c090');
+  p.px(16, 11, '#d8c090');
+  // Pelt rack
+  p.vline(22, 14, 29, P.wood0);
+  p.vline(29, 14, 29, P.wood0);
+  p.hline(22, 29, 14, P.wood2);
+  p.rect(23, 15, 3, 6, '#9a6a44');
+  p.rect(26, 15, 3, 5, '#b8835a');
+  // Bow leaning by the door
+  for (let i = 0; i < 9; i++) p.px(9 + Math.round(Math.sin((i / 8) * Math.PI) * 2), 20 + i, P.wood3);
+};
+
+/** Fisher's hut: a small hut, a jetty and nets drying. */
+const fisherHut: Draw = (p, lit) => {
+  p.rect(2, 8, 20, 18, P.wall2);
+  for (const x of [2, 11, 21]) p.vline(x, 8, 25, P.wood1);
+  shingles(p, 0, 23, -4, 10, ROOF, 3);
+  p.rect(9, 16, 6, 10, P.wood0);
+  p.rect(10, 17, 4, 9, P.wood2);
+  windowAt(p, 4, 13, 4, 4, lit);
+  // Jetty to the side
+  p.rect(22, 20, 10, 4, P.wood2);
+  for (let x = 23; x < 32; x += 3) p.vline(x, 20, 23, P.wood1);
+  p.vline(24, 24, 29, P.wood0);
+  p.vline(30, 24, 29, P.wood0);
+  // Net on poles
+  p.vline(24, 8, 19, P.wood0);
+  p.vline(30, 8, 19, P.wood0);
+  for (let y = 9; y < 18; y += 2) p.hline(25, 29, y, '#c8c0a8');
+  for (let x = 25; x < 30; x += 2) p.vline(x, 9, 17, '#c8c0a8');
+  // A fish on the jetty
+  p.hline(26, 28, 21, '#8fb0c8');
+  p.px(29, 21, '#6f90a8');
+};
+
+/** Well: a stone ring with a little roof, rope and bucket. */
+const well: Draw = (p) => {
+  p.ellipse(8, 11, 7, 4, P.stone2);
+  p.ellipse(8, 10, 5, 2.5, '#2a4a6a');
+  p.hline(3, 13, 14, P.stone1);
+  p.vline(2, -4, 10, P.wood1);
+  p.vline(14, -4, 10, P.wood1);
+  for (let y = 0; y < 7; y++) p.hline(7 - y, 8 + y, -10 + y, y > 4 ? P.roof1 : P.roof2);
+  p.hline(3, 13, -2, P.wood2);
+  p.vline(8, -2, 6, '#c8b890');
+  p.rect(7, 6, 3, 3, P.wood2);
+};
+
+/** Granary: a timber store raised on stone staddles, safe from damp and mice. */
+const granary: Draw = (p, lit) => {
+  for (const x of [4, 14, 24, 40]) {
+    p.rect(x, 24, 3, 6, P.stone1);
+    p.rect(x - 1, 23, 5, 2, P.stone2);
+  }
+  p.rect(1, 6, 46, 17, P.wood2);
+  for (let x = 3; x < 46; x += 4) p.vline(x, 6, 22, P.wood1);
+  p.hline(1, 46, 22, P.wood0);
+  shingles(p, -1, 48, -8, 8, ROOF, 3);
+  p.rect(20, 11, 8, 11, P.wood0);
+  p.rect(21, 12, 6, 10, P.wood3);
+  p.hline(20, 27, 16, P.wood0);
+  windowAt(p, 34, 11, 4, 4, lit);
+  // Sacks and a wheat sheaf by the steps
+  p.rect(30, 26, 4, 4, P.wall2);
+  p.rect(35, 27, 3, 3, P.wall1);
+  p.vline(8, 25, 30, P.wood1);
+  p.hline(18, 24, 30, P.wood1);
+};
+
+/** Tannery: an open shed, vats and hides stretched on frames. */
+const tannery: Draw = (p, lit) => {
+  p.rect(1, 8, 28, 22, P.wall1);
+  for (const x of [1, 14, 28]) p.vline(x, 8, 29, P.wood1);
+  shingles(p, -1, 30, -4, 10, SLATE, 3);
+  p.rect(10, 18, 7, 12, P.wood0);
+  p.rect(11, 19, 5, 11, P.wood2);
+  windowAt(p, 4, 14, 4, 4, lit);
+  // Vats
+  for (const x of [33, 41]) {
+    p.ellipse(x, 26, 3.5, 2, P.wood1);
+    p.ellipse(x, 25.5, 2.5, 1.2, '#5a4030');
+    p.rect(x - 3, 26, 7, 3, P.wood2);
+  }
+  // Hide frames
+  for (const x of [31, 40]) {
+    p.vline(x, 6, 20, P.wood0);
+    p.vline(x + 6, 6, 20, P.wood0);
+    p.hline(x, x + 6, 6, P.wood0);
+    p.rect(x + 1, 7, 5, 8, x === 31 ? '#b8835a' : '#9a6a44');
+  }
+};
+
+/** Weaver's cottage: a small cottage with blue cloth hanging from a line. */
+const weaver: Draw = (p, lit) => {
+  p.rect(1, 8, 30, 22, P.wall2);
+  for (const x of [1, 15, 30]) p.vline(x, 8, 29, P.wood1);
+  p.hline(1, 30, 18, P.wood1);
+  shingles(p, -1, 32, -6, 10, ROOF, 3);
+  p.rect(12, 20, 7, 10, P.wood0);
+  p.rect(13, 21, 5, 9, P.wood2);
+  windowAt(p, 4, 12, 5, 5, lit);
+  windowAt(p, 22, 12, 5, 5, lit);
+  // Cloth on the line
+  p.hline(0, 31, 5, '#c8b890');
+  p.rect(3, 6, 5, 7, '#3a6ea8');
+  p.rect(11, 6, 4, 6, '#b0453a');
+  p.rect(20, 6, 5, 8, '#d8c060');
+  p.hline(3, 7, 12, '#2e5a8c');
+};
+
+/** Watchtower: a tall timber lookout with a railed platform and a lantern. */
+const watchtower: Draw = (p, lit) => {
+  p.vline(2, -18, 15, P.wood1);
+  p.vline(13, -18, 15, P.wood1);
+  for (let y = -14; y < 14; y += 7) {
+    for (let i = 0; i < 7; i++) {
+      p.px(3 + Math.round(i * 1.5), y + i, P.wood0);
+      p.px(12 - Math.round(i * 1.5), y + i, P.wood0);
+    }
+  }
+  p.rect(0, -24, 16, 6, P.wood2);
+  for (let x = 1; x < 16; x += 3) p.vline(x, -28, -24, P.wood1);
+  p.hline(0, 15, -28, P.wood1);
+  for (let y = 0; y < 8; y++) p.hline(7 - y, 8 + y, -36 + y, y > 5 ? P.roof1 : P.roof2);
+  p.rect(6, -27, 3, 3, lit ? P.fire2 : P.stone0);
+};
+
+/** Pens: the yard floor, fence and shed (drawn under the animals) and the front rail (drawn over them). */
+export interface PenSprites {
+  back: Sprite;
+  front: Sprite;
+}
+
+interface PenLook {
+  floor: string;
+  speck: string;
+  shed: (p: Painter, w: number, h: number) => void;
+}
+
+function penSprites(tw: number, th: number, look: PenLook): PenSprites {
+  const W = tw * 16;
+  const H = th * 16;
+  const back = new Painter(W + 4, H + 30, 2, 26);
+  back.rect(1, 1, W - 2, H - 2, look.floor);
+  for (let i = 0; i < (W * H) / 30; i++) {
+    const x = 2 + ((i * 37) % (W - 4));
+    const y = 2 + ((i * 53) % (H - 4));
+    back.px(x, y, look.speck);
+  }
+  // Back and side fences
+  back.hline(0, W - 1, 1, P.wood2);
+  back.hline(0, W - 1, 4, P.wood2);
+  for (let x = 0; x < W; x += 5) back.vline(x, -1, 5, P.wood1);
+  for (const x of [0, W - 1]) {
+    back.vline(x, 0, H - 1, P.wood2);
+    for (let y = 0; y < H; y += 5) back.rect(x - 1, y, 3, 2, P.wood1);
+  }
+  look.shed(back, W, H);
+  back.outline();
+  const front = new Painter(W + 4, 12, 2, 8);
+  front.hline(0, W - 1, 0, P.wood2);
+  front.hline(0, W - 1, -3, P.wood2);
+  for (let x = 0; x < W; x += 5) front.vline(x, -5, 1, P.wood1);
+  // A gate in the middle
+  const gx = Math.floor(W / 2) - 3;
+  front.rect(gx, -4, 6, 5, P.wood3);
+  front.hline(gx, gx + 5, -2, P.wood1);
+  front.outline();
+  return { back: back.sprite(2, 26), front: front.sprite(2, 8) };
+}
+
+function shedAt(p: Painter, x: number, w: number, roof: readonly string[], wall: string): void {
+  p.rect(x, -8, w, 12, wall);
+  for (let i = x; i < x + w; i += 4) p.vline(i, -8, 3, P.wood1);
+  shingles(p, x - 1, x + w, -16, -6, roof, 2);
+  p.rect(x + Math.floor(w / 2) - 2, -3, 4, 7, P.wood0);
+}
+
+export function makePenSprites(): Record<'chickenCoop' | 'pigsty' | 'sheepPen' | 'goatPen' | 'cattlePasture' | 'horsePaddock', PenSprites> {
+  return {
+    chickenCoop: penSprites(2, 2, { floor: '#c8b070', speck: '#a89050', shed: (p) => shedAt(p, 3, 12, ROOF, P.wall2) }),
+    pigsty: penSprites(3, 2, { floor: '#7a5a3a', speck: '#5a4028', shed: (p) => shedAt(p, 3, 16, [P.wood0, P.wood1, P.wood2, P.wood3], P.wood2) }),
+    sheepPen: penSprites(3, 3, { floor: '#7ab050', speck: '#5a9040', shed: (p) => shedAt(p, 4, 18, ROOF, P.wall2) }),
+    goatPen: penSprites(3, 2, { floor: '#9a9a80', speck: '#7a7a68', shed: (p) => shedAt(p, 4, 14, SLATE, P.wall1) }),
+    cattlePasture: penSprites(4, 3, { floor: '#6aa048', speck: '#4f8a3c', shed: (p) => shedAt(p, 6, 26, ROOF, P.wall2) }),
+    horsePaddock: penSprites(4, 3, { floor: '#a88a5a', speck: '#8a6e44', shed: (p) => shedAt(p, 6, 24, SLATE, P.wood2) }),
+  };
+}
+
+/** Stone walls joined to their neighbours, like fences (mask: 1 up, 2 right, 4 down, 8 left). */
+export function makeStoneWallSprites(): Sprite[] {
+  const out: Sprite[] = [];
+  for (let mask = 0; mask < 16; mask++) {
+    const p = new Painter(20, 34, 2, 14);
+    const x0 = mask & 8 ? 0 : 2;
+    const x1 = mask & 2 ? 15 : 13;
+    const y1 = mask & 4 ? 17 : 13;
+    p.rect(x0, -8, x1 - x0 + 1, y1 + 8, P.stone2);
+    for (let y = -4; y < y1; y += 4) p.hline(x0, x1, y, P.stone1);
+    for (let y = -8; y < y1; y += 8) for (let x = x0 + 3; x < x1; x += 6) p.vline(x, y, y + 3, P.stone1);
+    p.hline(x0, x1, -8, P.stone3);
+    for (let x = x0; x <= x1; x += 4) p.rect(x, -11, 2, 3, P.stone2);
+    p.hline(x0, x1, y1 - 1, P.stone0);
+    p.outline();
+    out.push(p.sprite(2, 14));
+  }
+  return out;
+}
+
 export function makeVillageHall(): BuildingSprites {
   return make(52, 58, 2, 28, villageHall);
 }
@@ -1019,6 +1244,13 @@ export function makeBuildingSprites(): Partial<Record<BuildingId, BuildingSprite
     forge: make(54, 46, 3, 12, forge),
     camp: make(52, 46, 2, 12, camp),
     travelCamp: make(52, 46, 2, 12, camp),
+    hunterLodge: make(36, 46, 2, 12, hunterLodge),
+    fisherHut: make(36, 44, 2, 10, fisherHut),
+    well: make(20, 30, 2, 12, well),
+    granary: make(52, 46, 2, 12, granary),
+    tannery: make(52, 44, 2, 10, tannery),
+    weaver: make(36, 46, 2, 12, weaver),
+    watchtower: make(20, 58, 2, 40, watchtower),
     house: make(36, 50, 2, 17, house),
     storehouse: make(54, 46, 3, 13, storehouse),
     workshop: make(54, 52, 3, 19, workshop),

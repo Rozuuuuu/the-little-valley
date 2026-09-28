@@ -26,6 +26,10 @@ export const RESOURCES = {
   armor: { id: 'armor', name: 'Armour', description: 'Forged from iron. Knights need a suit.' },
   horses: { id: 'horses', name: 'Horses', description: 'Bought from merchants. Kept only in stable stalls, where each eats 1 food a day. Knights need one.' },
   apples: { id: 'apples', name: 'Apples', description: 'Picked in orchards. A workshop dries them into food, and merchants buy them.' },
+  hides: { id: 'hides', name: 'Hides', description: 'From hunted game and culled livestock. A tannery turns them into leather.' },
+  wool: { id: 'wool', name: 'Wool', description: 'Shorn from sheep in their pen. A weaver spins it into cloth.' },
+  leather: { id: 'leather', name: 'Leather', description: 'Tanned hides. Used for saddles, armour straps and finer buildings.' },
+  cloth: { id: 'cloth', name: 'Cloth', description: 'Woven wool. Banners, sails, bedding and the grandest halls need it.' },
 } as const satisfies Record<string, ResourceDef>;
 
 export type ResourceId = keyof typeof RESOURCES;

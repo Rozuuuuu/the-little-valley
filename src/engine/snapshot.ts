@@ -6,7 +6,7 @@ import { CROPS, CROP_IDS, type CropId } from '../game/data/crops';
 import type { JobId, WorkKind } from '../game/data/jobs';
 import { MILESTONES, type MilestoneId } from '../game/data/progression';
 import { RECIPES, type RecipeId } from '../game/data/recipes';
-import { RESOURCE_IDS, type Inventory, type ResourceId } from '../game/data/resources';
+import { RESOURCE_IDS, RESOURCES, type Inventory, type ResourceId } from '../game/data/resources';
 import {
   bedsOf, costOf, cropUnlocked, housingCapacity, isPermanentHome, isUnlocked, maxWorkers, unlockName, workOf,
 } from '../game/sim/buildings';
@@ -27,6 +27,8 @@ import { OBJECTS, TERRAIN } from '../game/world/tiles';
 import type { Overview } from './overview';
 import type { GrowthInfo } from './growthInfo';
 import { gameTime } from './growthInfo';
+import { SPECIES } from '../game/data/animals';
+import { huntRadiusOf, penAnimals, penCapacity, penStatus, preyNear } from '../game/sim/animals';
 import { levelName, levelOf, nextLevel, upgradeProblem } from '../game/sim/levels';
 import { innInfo, type InnInfo, type LogisticsInfo } from './tradeInfo';
 import type { DiplomacyInfo, KingdomInfo, NewsItem, WarCouncilInfo, WarInfo } from './kingdomSnapshot';
@@ -97,6 +99,10 @@ export interface BuildingInfo {
   span?: { length: number };
   canRemove: boolean;
   permanent: boolean;
+  /** Pens and pastures. */
+  pen?: { species: string; count: number; capacity: number; status: string; ready: number; product: string | null };
+  /** Hunter's lodges. */
+  hunting?: { prey: number; radius: number; kinds: string };
   /** Upgrade levels, for buildings that have them. */
   level?: {
     level: number;
@@ -311,6 +317,20 @@ export function buildingInfo(sim: Simulation, list: Building[]): BuildingInfo | 
     };
   }
   if (def.lodging && b.built) info.inn = innInfo(sim, b);
+  if (def.pen && b.built) {
+    const sp = SPECIES[def.pen.species];
+    info.pen = {
+      species: sp.plural, count: penAnimals(sim, b).length, capacity: penCapacity(b), status: penStatus(sim, b),
+      ready: Math.floor(b.pen?.ready ?? 0), product: def.pen.product ? RESOURCES[def.pen.product.res].name : null,
+    };
+    info.status = info.pen.status;
+  }
+  if (def.hunting && b.built) {
+    const prey = preyNear(sim, b);
+    const kinds = [...new Set(prey.map((a) => SPECIES[a.species].plural))];
+    info.hunting = { prey: prey.length, radius: huntRadiusOf(b), kinds: kinds.join(', ') || 'none' };
+    info.status = prey.length ? `${prey.length} game animals within ${huntRadiusOf(b)} tiles: ${kinds.join(', ')}` : 'No game nearby — wild animals roam back in time';
+  }
   if (def.training && b.built) info.training = trainingInfo(sim, b);
   if (def.extraction && b.built) {
     const d = mineDeposit(sim, b);
@@ -355,6 +375,7 @@ export function buildingInfo(sim: Simulation, list: Building[]): BuildingInfo | 
     info.workers = { people: b.workers.map((id) => ({ id, name: sim.settler(id)?.name ?? '?' })), max: maxWorkers(b) };
     info.status = ws.status;
   }
+  if ((def.pen || def.hunting) && b.built) info.workers = { people: b.workers.map((id) => ({ id, name: sim.settler(id)?.name ?? '?' })), max: maxWorkers(b) };
   return info;
 }
 
@@ -413,6 +434,14 @@ export function hoverText(sim: Simulation, wx: number, wy: number, claimMode = f
     return `Sector ${sec.x},${sec.y} · held by ${owner}${o?.protectedHomeland ? ' (protected homeland)' : ''} · ${p.supplied ? 'supplied' : 'not supplied'} · ${p.problem ?? `claim for ${p.cost} coins`}`;
   }
   if (!sim.world.explored(x, y)) return 'Unexplored — send a settler to look';
+  // Animals under the pointer (they are small: within half a tile or so).
+  const fx = wx / TILE;
+  const fy = wy / TILE;
+  const a = sim.animals.find((an) => Math.abs(an.x - fx) < 0.7 && an.y - fy > -0.9 && an.y - fy < 0.4);
+  if (a) {
+    const sp = SPECIES[a.species];
+    return `${sp.name} · ${a.penId !== null ? 'livestock' : sp.hunt ? 'wild game' : 'wild'} · ${sp.note}`;
+  }
   const known = surveyedCell(sim, x, y);
   const geo = known ? ` · surveyed: ${describeCell(known)}` : '';
   const b = sim.buildingAt(x, y);

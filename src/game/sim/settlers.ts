@@ -24,7 +24,15 @@ import { seasonOf } from './seasons';
 import { awayPenalty } from './settlements';
 import type { Simulation } from './Simulation';
 import type { Building, OrchardAction, Settler, Task, ToolKind, WorkArea } from './types';
-import { speedOf } from './levels';
+import { speedOf, workersOf } from './levels';
+import { huntRadiusOf, penAnimals, penCapacity, preyNear, removeAnimal } from './animals';
+import { SPECIES } from '../data/animals';
+import type { Animal } from './types';
+
+/** Hunters shoot from this far (tiles). */
+const HUNT_RANGE = 4;
+/** Herder work per visit (ticks). */
+const HERD_WORK = 40;
 
 export const BASE_SPEED = 0.24;
 export const HUNGER_DECAY = 100 / (DAY_TICKS * 1.2);
@@ -214,6 +222,15 @@ function releaseTask(sim: Simulation, s: Settler): void {
     case 'craft':
       sim.release(`craft:${t.ws}`, s.id);
       break;
+    case 'hunt': {
+      sim.release(`hunt:${t.animal}`, s.id);
+      const a = sim.animals.find((x) => x.id === t.animal);
+      if (a && a.huntedBy === s.id) a.huntedBy = null;
+      break;
+    }
+    case 'herd':
+      sim.release(`herd:${t.pen}`, s.id);
+      break;
     case 'haul': {
       const src = sim.buildings.get(t.src);
       const dst = sim.buildings.get(t.dst);
@@ -257,6 +274,10 @@ export function taskKeys(s: Settler): string[] {
       return [`extract:${t.site}:${t.slot}`];
     case 'craft':
       return [`craft:${t.ws}`];
+    case 'hunt':
+      return [`hunt:${t.animal}`];
+    case 'herd':
+      return [`herd:${t.pen}`];
     default:
       return [];
   }
@@ -631,13 +652,91 @@ function findCraftOrDig(sim: Simulation, s: Settler): Task | string | null {
   return dig ?? craft ?? (anyShop ? null : 'No workshop, mill, bakery, quarry or mine built yet');
 }
 
+/** Assigned hunters and herders go to their own work first; others fall back to it. */
+function assignedTo(sim: Simulation, s: Settler, pred: (b: Building) => boolean): boolean {
+  const b = sim.workIndex().assigned.get(s.id);
+  return !!b && pred(b);
+}
+
 const FINDERS: Record<WorkKind, Finder> = {
   build: (sim, s) => findBuild(sim, s),
   haul: (sim, s) => findHaul(sim, s),
-  farm: (sim, s) => findFarm(sim, s),
-  gather: findGather,
+  farm: (sim, s) => {
+    if (sim.workIndex().pens.length === 0) return findFarm(sim, s);
+    if (assignedTo(sim, s, (b) => !!BUILDINGS[b.type].pen)) {
+      const h = findHerd(sim, s);
+      if (h && typeof h === 'object') return h;
+    }
+    const f = findFarm(sim, s);
+    if (f && typeof f === 'object') return f;
+    const h = findHerd(sim, s);
+    return h && typeof h === 'object' ? h : (f ?? h);
+  },
+  gather: (sim, s) => {
+    if (sim.workIndex().lodges.length === 0) return findGather(sim, s);
+    if (assignedTo(sim, s, (b) => !!BUILDINGS[b.type].hunting)) {
+      const h = findHunt(sim, s);
+      if (h && typeof h === 'object') return h;
+    }
+    const g = findGather(sim, s);
+    if (g && typeof g === 'object') return g;
+    const h = findHunt(sim, s);
+    return h && typeof h === 'object' ? h : (g ?? h);
+  },
   craft: findCraftOrDig,
 };
+
+/** Wild game for a hunter from a lodge they may work at. */
+function findHunt(sim: Simulation, s: Settler): Task | string | null {
+  let reason: string | null = null;
+  let best: { b: Building; a: Animal; d: number } | null = null;
+  for (const b of sim.workIndex().lodges) {
+    if (!mayWorkAt(b, s.id)) continue;
+    const busy = sim.settlers.filter((o) => o !== s && o.task?.kind === 'hunt' && o.task.lodge === b.id).length;
+    if (busy >= Math.max(1, workersOf(b))) continue;
+    const prey = preyNear(sim, b).filter((a) => a.huntedBy === null);
+    if (prey.length === 0) {
+      reason ??= 'No game within reach of the lodge — animals roam back in time';
+      continue;
+    }
+    for (const a of prey) {
+      const d = dist(s, a.x, a.y) - (b.workers.includes(s.id) ? 1000 : 0);
+      if (!best || d < best.d) best = { b, a, d };
+    }
+  }
+  if (!best) return reason;
+  if (!sim.nearestStorageWithSpace(s.x, s.y, 'food')) return 'Storage is full — nowhere to put the meat';
+  best.a.huntedBy = s.id;
+  sim.reserve(`hunt:${best.a.id}`, s.id);
+  return { kind: 'hunt', lodge: best.b.id, animal: best.a.id, stage: 'stalk', timer: 0, tx: Math.floor(best.a.x), ty: Math.floor(best.a.y) };
+}
+
+/** A pen with eggs, milk, wool or a foal to collect, or full and due a cull. */
+function findHerd(sim: Simulation, s: Settler): Task | string | null {
+  let best: { b: Building; d: number } | null = null;
+  let reason: string | null = null;
+  for (const b of sim.workIndex().pens) {
+    const def = BUILDINGS[b.type].pen;
+    if (!def || !b.pen || !mayWorkAt(b, s.id)) continue;
+    if (sim.isReserved(`herd:${b.id}`, s.id) || sim.isUnreachable(s.id, `b${b.id}`, s.x, s.y)) continue;
+    const ready = b.pen.ready >= 1;
+    const full = !!def.cull && penAnimals(sim, b).length >= penCapacity(b);
+    if (!ready && !full) {
+      reason ??= 'The animals have nothing to collect yet';
+      continue;
+    }
+    const res = ready ? def.product!.res : 'food';
+    if (!sim.nearestStorageWithSpace(b.x, b.y, res)) {
+      reason ??= res === 'horses' ? 'The stable is full — build or upgrade a stable for new horses' : 'Storage is full — nowhere to put what the animals give';
+      continue;
+    }
+    const d = dist(s, b.x + b.w / 2, b.y + b.h / 2) - (b.workers.includes(s.id) ? 1000 : 0);
+    if (!best || d < best.d) best = { b, d };
+  }
+  if (!best) return reason;
+  sim.reserve(`herd:${best.b.id}`, s.id);
+  return { kind: 'herd', pen: best.b.id, stage: 'walk', timer: 0 };
+}
 
 function findFocus(sim: Simulation, s: Settler): Task | null {
   const f = s.focus!;
@@ -1010,12 +1109,12 @@ function runSurvey(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'survey
 const CRAFT_TOOL: Record<RecipeId, ToolKind> = {
   planks: 'saw', tools: 'hammer', flour: 'hand', bread: 'hand', driedApples: 'hand',
   charcoal: 'hand', smeltCopper: 'hammer', smeltIron: 'hammer', forgeCopperTools: 'hammer', forgeIronTools: 'hammer',
-  forgeSwords: 'hammer', forgeArmor: 'hammer', makeBows: 'saw',
+  forgeSwords: 'hammer', forgeArmor: 'hammer', makeBows: 'saw', tanLeather: 'hand', weaveCloth: 'hand',
 };
 const CRAFT_SFX: Record<RecipeId, 'saw' | 'hammer' | 'mill' | 'bake'> = {
   planks: 'saw', tools: 'hammer', flour: 'mill', bread: 'bake', driedApples: 'bake',
   charcoal: 'bake', smeltCopper: 'bake', smeltIron: 'bake', forgeCopperTools: 'hammer', forgeIronTools: 'hammer',
-  forgeSwords: 'hammer', forgeArmor: 'hammer', makeBows: 'saw',
+  forgeSwords: 'hammer', forgeArmor: 'hammer', makeBows: 'saw', tanLeather: 'hammer', weaveCloth: 'saw',
 };
 
 function runExtract(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'extract' }>): void {
@@ -1030,11 +1129,11 @@ function runExtract(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'extra
   }
   faceRect(s, b.x, b.y, b.w, b.h);
   s.anim = 'work';
-  s.tool = 'pick';
-  t.timer += workSpeed(sim, s);
+  s.tool = kind === 'fish' ? 'hand' : 'pick';
+  t.timer += workSpeed(sim, s) * speedOf(b);
   if ((sim.tick + s.id) % 12 === 0) {
-    sim.emit({ type: 'sfx', name: 'mine', x: b.x + 1, y: b.y + 1 });
-    sim.emit({ type: 'fx', kind: 'stonechips', x: b.x + 1, y: b.y + 1 });
+    sim.emit({ type: 'sfx', name: kind === 'fish' ? 'water' : 'mine', x: b.x + 1, y: b.y + 1 });
+    sim.emit({ type: 'fx', kind: kind === 'fish' ? 'splash' : 'stonechips', x: b.x + 1, y: b.y + 1 });
   }
   if (t.timer < EXTRACT_WORK[kind]) return;
   const got = completeExtraction(sim, b, t.amount);
@@ -1044,6 +1143,85 @@ function runExtract(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'extra
   abortTask(sim, s);
 }
 
+
+/** Hunters close to bow range of their quarry, aim, and bring the meat home; hides go to the lodge. */
+function runHunt(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'hunt' }>): void {
+  const lodge = sim.buildings.get(t.lodge);
+  const a = sim.animals.find((x) => x.id === t.animal);
+  if (!lodge || !a || a.penId !== null || s.carrying) return abortTask(sim, s);
+  const d = Math.hypot(a.x - s.x, a.y - s.y);
+  if (d > huntRadiusOf(lodge) + 12) return abortTask(sim, s, 'The quarry got away');
+  if (t.stage === 'stalk') {
+    if (d <= HUNT_RANGE) {
+      t.stage = 'aim';
+      s.path = null;
+      return;
+    }
+    // Follow the animal: plan again only when it has moved away from where we were heading.
+    if (Math.hypot(a.x - (t.tx + 0.5), a.y - (t.ty + 0.5)) > 2.5) {
+      t.tx = Math.floor(a.x);
+      t.ty = Math.floor(a.y);
+    }
+    const r = goTo(sim, s, { x: t.tx - 1, y: t.ty - 1, w: 3, h: 3, adjacent: false }, 6000);
+    if (r === 'failed') return fail(sim, s, "Can't reach the game", `hunt${a.id}`);
+    if (r === 'arrived') t.stage = 'aim';
+    return;
+  }
+  if (d > HUNT_RANGE + 2) {
+    t.stage = 'stalk';
+    return;
+  }
+  face(s, a.x, a.y);
+  s.anim = 'work';
+  s.tool = 'hand';
+  t.timer += workSpeed(sim, s);
+  const hunt = SPECIES[a.species].hunt!;
+  if (t.timer < hunt.work) return;
+  removeAnimal(sim, a);
+  s.carrying = { res: 'food', amount: hunt.food };
+  sim.stats.foodGathered += hunt.food;
+  if (hunt.hides > 0) {
+    const left = hunt.hides - sim.deposit(lodge, 'hides', hunt.hides);
+    if (left > 0) sim.depositAnywhere('hides', left, lodge.x, lodge.y);
+  }
+  sim.emit({ type: 'sfx', name: 'harvest', x: a.x, y: a.y });
+  sim.emit({ type: 'fx', kind: 'leaves', x: a.x, y: a.y });
+  abortTask(sim, s);
+}
+
+/** Herders collect eggs, milk, wool or a foal, or take one animal from a full pen to the butcher. */
+function runHerd(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'herd' }>): void {
+  const b = sim.buildings.get(t.pen);
+  const def = b ? BUILDINGS[b.type].pen : undefined;
+  if (!b || !def || !b.pen || s.carrying) return abortTask(sim, s);
+  if (t.stage === 'walk') {
+    const r = goTo(sim, s, bGoal(b));
+    if (r === 'failed') return fail(sim, s, `Can't reach the ${BUILDINGS[b.type].name.toLowerCase()}`, `b${b.id}`);
+    if (r === 'arrived') t.stage = 'work';
+    return;
+  }
+  faceRect(s, b.x, b.y, b.w, b.h);
+  s.anim = 'work';
+  s.tool = 'hand';
+  t.timer += workSpeed(sim, s);
+  if (t.timer < HERD_WORK) return;
+  if (b.pen.ready >= 1 && def.product) {
+    const n = Math.min(10, Math.floor(b.pen.ready));
+    b.pen.ready -= n;
+    s.carrying = { res: def.product.res, amount: n };
+    if (def.product.res === 'food') sim.stats.foodGathered += n;
+  } else if (def.cull) {
+    const herd = penAnimals(sim, b);
+    if (herd.length >= penCapacity(b)) {
+      removeAnimal(sim, herd[herd.length - 1]);
+      s.carrying = { res: 'food', amount: def.cull.food };
+      sim.stats.foodGathered += def.cull.food;
+      if (def.cull.hides > 0) sim.depositAnywhere('hides', def.cull.hides, b.x, b.y);
+    }
+  }
+  sim.emit({ type: 'sfx', name: 'pick', x: b.x + 1, y: b.y + 1 });
+  abortTask(sim, s);
+}
 
 function runCraft(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'craft' }>): void {
   const b = sim.buildings.get(t.ws);
@@ -1208,6 +1386,10 @@ export function runTask(sim: Simulation, s: Settler): void {
       return runExtract(sim, s, t);
     case 'craft':
       return runCraft(sim, s, t);
+    case 'hunt':
+      return runHunt(sim, s, t);
+    case 'herd':
+      return runHerd(sim, s, t);
     case 'eat':
       return runEat(sim, s, t);
     case 'sleep':
@@ -1274,7 +1456,16 @@ export function describeTask(sim: Simulation, s: Settler): string {
       return s.military ? `Drilling as ${UNITS[s.military.unit].name.toLowerCase()} (${Math.floor((s.military.trained / UNITS[s.military.unit].trainTicks) * 100)}%)` : 'Drilling';
     case 'extract': {
       const b = sim.buildings.get(t.site);
-      return b?.quarry ? 'Cutting stone at the quarry' : 'Digging ore in the mine';
+      return b && BUILDINGS[b.type].extraction === 'fish' ? 'Fishing from the jetty' : b?.quarry ? 'Cutting stone at the quarry' : 'Digging ore in the mine';
+    }
+    case 'hunt': {
+      const a = sim.animals.find((x) => x.id === t.animal);
+      const name = a ? SPECIES[a.species].name.toLowerCase() : 'game';
+      return t.stage === 'aim' ? `Taking aim at a ${name}` : `Stalking a ${name}`;
+    }
+    case 'herd': {
+      const b = sim.buildings.get(t.pen);
+      return `Tending the animals at the ${b ? BUILDINGS[b.type].name.toLowerCase() : 'pen'}`;
     }
     case 'craft': {
       const b = sim.buildings.get(t.ws);

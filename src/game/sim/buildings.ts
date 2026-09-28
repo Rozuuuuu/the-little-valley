@@ -18,6 +18,7 @@ import { landProblem } from './territory';
 import type { Simulation } from './Simulation';
 import type { Building } from './types';
 import { housingOf, workersOf } from './levels';
+import { stockPen } from './animals';
 
 export interface PlacementCheck {
   ok: boolean;
@@ -232,6 +233,8 @@ export function completeBuilding(sim: Simulation, b: Building, silent = false): 
     b.workshop = { recipe: def.recipes[0], progress: 0, paused: false, status: '' };
   }
   if (b.type === 'orchard') initOrchard(sim, b);
+  if (def.pen && !b.pen) stockPen(sim, b);
+  sim.forgetWorkIndex();
   if (def.settlementCenter && b.type !== 'camp' && !sim.settlements.some((s) => s.id === b.id) && !silent) foundSettlement(sim, b);
   if (def.reveal) sim.world.reveal(cx, cy, def.reveal);
   if (def.housing) assignHomes(sim);

@@ -433,6 +433,42 @@ export function BuildingCard({ info }: { info: BuildingInfo }) {
         </>
       )}
       {info.inn && <InnPanel key={info.ids[0]} />}
+      {info.pen && (
+        <div className="residents">
+          <div className="row">
+            <span>
+              {info.pen.count}/{info.pen.capacity} {info.pen.species}
+            </span>
+            <Bar value={info.pen.count / Math.max(1, info.pen.capacity)} />
+          </div>
+          {info.pen.product && <div className="row muted">{info.pen.product} waiting: {info.pen.ready}</div>}
+          <div className="reason">{info.pen.status}</div>
+        </div>
+      )}
+      {info.hunting && (
+        <div className="residents">
+          <div className="row">
+            <span>Game within {info.hunting.radius} tiles</span>
+            <strong>{info.hunting.prey}</strong>
+          </div>
+          <div className="muted">{info.hunting.kinds}</div>
+        </div>
+      )}
+      {info.workers && !info.workshop && !info.extraction && (
+        <div className="row">
+          <span>
+            Workers {info.workers.people.length}/{info.workers.max}
+          </span>
+          <span style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {info.workers.people.map((p) => (
+              <button key={p.id} className="chip" onClick={() => game.dispatch({ type: 'unassignWorker', buildingId: info.ids[0], settlerId: p.id })} title="Unassign">
+                {p.name} ✕
+              </button>
+            ))}
+            {info.workers.people.length === 0 && <span className="muted">Select settlers and use Assign</span>}
+          </span>
+        </div>
+      )}
       {info.training && <TrainingPanel buildingId={info.ids[0]} />}
       {info.extraction && (
         <div className="residents">

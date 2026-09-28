@@ -1,5 +1,6 @@
 import type { BuildingId } from '../data/buildings';
 import type { HabitatId } from '../data/habitats';
+import type { SpeciesId } from '../data/animals';
 import type { CropId } from '../data/crops';
 import type { JobId, WorkKind } from '../data/jobs';
 import type { MilestoneId } from '../data/progression';
@@ -83,6 +84,8 @@ export interface SavedBuilding {
   level?: number;
   /** An upgrade already paid for, finishing on a timer (v12+). */
   upgrade?: { to: number; progress: number; paid: Inventory };
+  /** Pens (v12+). */
+  pen?: { breed: number; ready: number };
   placedTick: number;
   /** Only for span buildings, whose size varies. */
   w?: number;
@@ -90,6 +93,17 @@ export interface SavedBuilding {
   workers: number[];
   /** Storage stock targets. */
   wants: Inventory;
+}
+
+export interface SavedAnimal {
+  id: number;
+  species: SpeciesId;
+  x: number;
+  y: number;
+  homeX: number;
+  homeY: number;
+  penId: number | null;
+  facing: 2 | 3;
 }
 
 export interface SaveView {
@@ -219,6 +233,9 @@ export interface SaveFileV10 extends Omit<SaveFileV9, 'version' | 'sim'> {
     horseDay: number;
     /** v12+: when the ruler can Rally again. */
     rallyReadyAt?: number;
+    /** v12+: animals and their random stream. */
+    animals?: SavedAnimal[];
+    animalRng?: number;
   };
 }
 

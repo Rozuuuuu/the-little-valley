@@ -19,7 +19,7 @@ import { logisticsInfo } from '../src/engine/tradeInfo';
 import { settlerInfo } from '../src/engine/snapshot';
 import { serializeSim, deserializeSim } from '../src/game/save/serialize';
 import { migrate } from '../src/game/save/migrations';
-import { assignHomes, completeBuilding, costOf, placeBuilding } from '../src/game/sim/buildings';
+import { assignHomes, campOf, completeBuilding, costOf, placeBuilding } from '../src/game/sim/buildings';
 import { applyCommand } from '../src/game/sim/commands';
 import { updateConcern } from '../src/game/sim/concern';
 import { deployRival } from '../src/game/sim/combat';
@@ -31,7 +31,7 @@ import type { Simulation } from '../src/game/sim/Simulation';
 import { nearbyTowns } from '../src/game/world/regions';
 import { OBJECTS, T } from '../src/game/world/tiles';
 
-const sim = createNewGame(424242);
+const sim = createNewGame(424242, 3);
 sim.progression.reached.push('hamlet', 'village', 'town', 'region', 'civilization');
 sim.world.reveal(0, 0, 44);
 for (let x = 0; x >= -70; x -= 4) sim.world.reveal(x, 0, 12);
@@ -59,7 +59,7 @@ function instant(type: keyof typeof BUILDINGS, near: { x: number; y: number }) {
 }
 
 // Two towns: the camp and a waystation, with homes, stores, production and a route.
-const camp = [...sim.buildings.values()].find((b) => b.type === 'camp')!;
+const camp = campOf(sim)!;
 camp.inventory = { food: 240, wood: 60, stone: 40, swords: 40 };
 const hall = instant('waystation', { x: -44, y: 0 })!;
 for (let i = 0; i < 12; i++) instant('cottage', { x: -20 + (i % 6) * 6, y: i < 6 ? -14 : 16 });

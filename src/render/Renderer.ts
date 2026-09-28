@@ -5,6 +5,7 @@ import { hash01 } from '../game/core/rng';
 import { BUILDINGS, type BuildingId } from '../game/data/buildings';
 import { lightOf } from '../game/sim/levels';
 import { AURA_RADIUS } from '../game/data/kingdomBalance';
+import { SPECIES } from '../game/data/animals';
 import { CROPS } from '../game/data/crops';
 import { fieldStage, WATER_THRESHOLD } from '../game/sim/farming';
 import { costOf, isPermanentHome, materialsComplete, workOf } from '../game/sim/buildings';
@@ -21,7 +22,7 @@ import type { OrchardLook } from './sprites/buildings';
 import { invEntries } from '../game/sim/inventory';
 import type { AreaKind } from '../game/sim/types';
 import type { Simulation } from '../game/sim/Simulation';
-import type { Building, Settler } from '../game/sim/types';
+import type { Animal, Building, Settler } from '../game/sim/types';
 import type { Chunk } from '../game/world/Chunk';
 import { O, OBJECTS, T } from '../game/world/tiles';
 import { chunkKey } from '../game/world/World';
@@ -326,6 +327,11 @@ export class Renderer {
       else if (!b.built && (b.type === 'path' || b.type === 'bridge')) this.drawFlatSite(b, st.time);
       else if (b.type === 'stoneBridge') {
         if (!b.built) this.drawStoneBridgeSite(b, st.time);
+      } else if (b.built && this.sprites.pens[b.type]) {
+        // Pens: the yard lies under the animals; only the front rail sorts in front of them.
+        const pen = this.sprites.pens[b.type];
+        this.blit(pen.back, b.x * TILE, b.y * TILE);
+        drawables.push({ y: (b.y + b.h) * TILE, draw: () => this.blit(pen.front, b.x * TILE, (b.y + b.h) * TILE - 1) });
       } else drawables.push({ y: (b.y + b.h) * TILE, draw: () => this.drawBuilding(sim, b, st, night, occupied) });
     }
     // Merchants walking in or out, and caravans on the road.
@@ -369,6 +375,13 @@ export class Renderer {
       if (s.ruler && st.selected.has(s.id)) this.drawAura(x, y, st.time);
       if (st.selected.has(s.id) || st.hoverSettler === s.id) this.drawRing(x, y, st.selected.has(s.id));
       drawables.push({ y, draw: () => this.drawSettler(s, x, y, st.time) });
+    }
+    for (const a of sim.animals) {
+      const x = (a.px + (a.x - a.px) * st.alpha) * TILE;
+      const y = (a.py + (a.y - a.py) * st.alpha) * TILE;
+      if (x < tl.x - 32 || x > br.x + 32 || y < tl.y - 32 || y > br.y + 48) continue;
+      if (!sim.world.explored(Math.floor(a.x), Math.floor(a.y))) continue;
+      drawables.push({ y, draw: () => this.drawAnimal(a, x, y, st.time) });
     }
 
     // World objects
@@ -488,13 +501,14 @@ export class Renderer {
     if (b.progress > 0) this.drawBar(b.x * TILE + 2, b.y * TILE - 3, 12, b.progress / BUILDINGS[b.type].work, P.uiGood);
   }
 
-  private fenceMask(sim: Simulation, x: number, y: number): number {
-    const is = (tx: number, ty: number) => sim.buildingAt(tx, ty)?.type === 'fence';
+  private fenceMask(sim: Simulation, x: number, y: number, type: 'fence' | 'stoneWall' = 'fence'): number {
+    const is = (tx: number, ty: number) => sim.buildingAt(tx, ty)?.type === type;
     return (is(x, y - 1) ? 1 : 0) | (is(x + 1, y) ? 2 : 0) | (is(x, y + 1) ? 4 : 0) | (is(x - 1, y) ? 8 : 0);
   }
 
   private spriteFor(sim: Simulation, b: Building, night: boolean): Sprite | null {
     if (b.type === 'fence') return this.sprites.fence[this.fenceMask(sim, b.x, b.y)];
+    if (b.type === 'stoneWall') return this.sprites.stoneWall[this.fenceMask(sim, b.x, b.y, 'stoneWall')];
     if (b.type === 'orchard') return this.sprites.orchard[this.orchardLook(b)];
     if (b.type === 'quarry') return this.sprites.quarry[b.built ? quarryStage(b) : 0];
     if (b.type === 'mine') {
@@ -775,6 +789,19 @@ export class Renderer {
         this.blit(this.sprites.sapling, x, y - 2);
         return;
     }
+  }
+
+  private drawAnimal(a: Animal, x: number, y: number, time: number): void {
+    const frames = this.sprites.animals[a.species];
+    const f = a.moving ? Math.floor(time * (a.flee ? 12 : 6) + a.id * 0.37) % 2 : 0;
+    const sprite = frames[f];
+    if (!SPECIES[a.species].swims) {
+      this.ctx.globalAlpha = 0.25;
+      this.rectW(x - sprite.w / 4, y - 1, sprite.w / 2, 2, '#140e1c');
+      this.ctx.globalAlpha = 1;
+    }
+    if (a.facing === 3) this.blitMirror(sprite, x, y);
+    else this.blit(sprite, x, y);
   }
 
   /** The ruler's presence: a slowly turning dashed gold circle showing who works faster. */

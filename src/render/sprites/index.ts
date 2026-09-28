@@ -3,12 +3,14 @@ import type { CropId } from '../../game/data/crops';
 import type { ResourceId } from '../../game/data/resources';
 import type { Appearance, ToolKind } from '../../game/sim/types';
 import { makeCanvas, type Sprite } from '../pixel';
-import { makeBuildingSprites, makeCartSprite, makeFenceSprites, makeMillSails, makeMineSprites, makeOrchardSprites, makeQuarrySprites, makeTownHallSprites, makeVillageHall, type BuildingSprites, type OrchardLook } from './buildings';
+import { makeBuildingSprites, makeCartSprite, makeFenceSprites, makeMillSails, makeMineSprites, makeOrchardSprites, makePenSprites, makeQuarrySprites, makeStoneWallSprites, makeTownHallSprites, makeVillageHall, type PenSprites, type BuildingSprites, type OrchardLook } from './buildings';
 import { appearanceKey, makeSettlerSheet, type SettlerSheet } from './characters';
 import { makeCropSprites, makeSoil, type SoilState } from './crops';
 import { makeResourceIcons, makeToolSprites, makeUiIcons, type UiIconId } from './icons';
 import { makeBareOak, makeBerryBush, makeBoulder, makeOak, makePine, makeRock, makeSapling, makeStump, type TreeSprite } from './props';
 import { recolor } from '../pixel';
+import { makeAnimalSprites } from './animals';
+import type { SpeciesId } from '../../game/data/animals';
 import { P } from '../palette';
 
 /**
@@ -45,6 +47,11 @@ export class SpriteBank {
   readonly mine: BuildingSprites[] = makeMineSprites();
   readonly cart: Sprite = makeCartSprite();
   readonly villageHall: BuildingSprites = makeVillageHall();
+  /** Pen yards (under the animals) and front rails (over them). */
+  readonly pens: Record<string, PenSprites> = makePenSprites();
+  readonly stoneWall: Sprite[] = makeStoneWallSprites();
+  /** Two walking frames per animal species, facing left. */
+  readonly animals: Record<SpeciesId, Sprite[]> = makeAnimalSprites();
   /** Town Hall, Keep and Castle. */
   readonly townHall: BuildingSprites[] = makeTownHallSprites();
   readonly crops: Record<CropId, Sprite[]> = makeCropSprites();
@@ -119,6 +126,8 @@ export class SpriteBank {
     if (id === 'quarry') src = this.quarry[2].canvas;
     if (id === 'mine') src = this.mine[0].day.canvas;
     if (id === 'townHall') src = this.townHall[0].day.canvas;
+    if (this.pens[id]) src = this.penPreview(id);
+    if (id === 'stoneWall') src = this.stoneWall[2 | 8].canvas;
     if (id === 'path' || id === 'bridge') src = this.groundPreview(id);
     if (id === 'stoneBridge') src = this.stoneBridgePreview();
     if (src) {
@@ -133,6 +142,20 @@ export class SpriteBank {
   }
 
   private previewCache = new Map<string, string>();
+
+  /** A pen with two of its animals, for the build menu. */
+  private penPreview(id: string): HTMLCanvasElement {
+    const pen = this.pens[id];
+    const c = makeCanvas(pen.back.w, pen.back.h);
+    const ctx = c.getContext('2d')!;
+    ctx.drawImage(pen.back.canvas, 0, 0);
+    const species = ({ chickenCoop: 'chicken', pigsty: 'pig', sheepPen: 'sheep', goatPen: 'goat', cattlePasture: 'cow', horsePaddock: 'horse' } as Record<string, SpeciesId>)[id];
+    const a = this.animals[species][0];
+    const baseY = pen.back.ay;
+    ctx.drawImage(a.canvas, Math.floor(c.width / 2 - a.ax), baseY + Math.floor(pen.back.h - baseY) / 2 - a.ay);
+    ctx.drawImage(pen.front.canvas, 0, c.height - pen.front.h);
+    return c;
+  }
 
   private cropPreview(): HTMLCanvasElement {
     const c = makeCanvas(16, 16);

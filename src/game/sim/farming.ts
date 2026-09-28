@@ -1,5 +1,7 @@
 import { DAY_TICKS } from '../core/constants';
 import { CROPS, type CropId } from '../data/crops';
+import { BUILDINGS } from '../data/buildings';
+import { wellRadiusOf } from './levels';
 import { seasonOf } from './seasons';
 import { TERRAIN } from '../world/tiles';
 import type { Simulation } from './Simulation';
@@ -52,11 +54,15 @@ export function updateFields(sim: Simulation, dt: number): void {
   const season = seasonOf(sim).def;
   // Snow in winter does not water anything (nothing grows); rain does.
   const raining = sim.weather.raining && season.growth > 0;
+  const wells: { x: number; y: number; r: number }[] = [];
+  for (const b of sim.buildings.values()) if (b.built && BUILDINGS[b.type].well) wells.push({ x: b.x + 0.5, y: b.y + 0.5, r: wellRadiusOf(b) });
   for (const b of sim.buildings.values()) {
     const f = b.field;
     if (!f) continue;
     if (raining) f.moisture = 1;
     else f.moisture = Math.max(0, f.moisture - DRYING_RATE * season.drying * dt);
+    // Fields a well reaches never dry below the point where they need watering.
+    if (wells.length && f.moisture < WATER_THRESHOLD && wells.some((w) => Math.hypot(w.x - b.x - 0.5, w.y - b.y - 0.5) <= w.r)) f.moisture = WATER_THRESHOLD;
     if (f.state !== 'growing' || !f.crop) continue;
     const rate = (f.moisture > DRY_LEVEL ? 1 : DRY_GROWTH) * fieldFertility(sim, b) * seasonalGrowth(sim, f.crop);
     f.growth += dt * rate;

@@ -5,7 +5,7 @@
  */
 import { DAY_TICKS } from '../src/game/core/constants';
 import { BUILDINGS } from '../src/game/data/buildings';
-import { assignHomes, costOf, completeBuilding, placeBuilding } from '../src/game/sim/buildings';
+import { assignHomes, campOf, costOf, completeBuilding, placeBuilding } from '../src/game/sim/buildings';
 import { applyCommand } from '../src/game/sim/commands';
 import { createNewGame } from '../src/game/sim/newGame';
 import type { Simulation } from '../src/game/sim/Simulation';
@@ -13,7 +13,8 @@ import { OBJECTS, T } from '../src/game/world/tiles';
 import { pathTotals } from '../src/game/sim/pathfinding';
 
 const N = Number(process.argv[2] ?? 100);
-const sim = createNewGame(777001);
+// Generator 3 land, as in the M0 baseline, so timings stay comparable.
+const sim = createNewGame(777001, 3);
 sim.progression.reached.push('hamlet', 'village');
 sim.world.reveal(0, 0, 40);
 
@@ -39,7 +40,7 @@ function instant(type: keyof typeof BUILDINGS, near: { x: number; y: number }) {
 }
 
 // A developed village: homes for most, storage, production, fields.
-const camp = [...sim.buildings.values()].find((b) => b.type === 'camp')!;
+const camp = campOf(sim)!;
 camp.inventory = { food: 200, wood: 30, stone: 20 };
 for (let i = 0; i < 16; i++) instant('cottage', { x: -20 + (i % 8) * 5, y: i < 8 ? -14 : 16 });
 for (let i = 0; i < 3; i++) instant('storehouse', { x: -12 + i * 12, y: -6 });

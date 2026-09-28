@@ -3,6 +3,7 @@ import type { RecipeId } from './recipes';
 import type { MilestoneId } from './progression';
 import type { ResourceId } from './resources';
 import type { UnitType } from './units';
+import { BREED_DAY, HUNT_RADIUS, type PenDef } from './animals';
 
 /** Build-menu groups; the command card shows one group at a time. */
 export type BuildingCategory = 'town' | 'food' | 'animals' | 'industry' | 'storage' | 'military' | 'roads' | 'realm';
@@ -21,7 +22,7 @@ export const CATEGORY_ORDER: BuildingCategory[] = ['town', 'food', 'animals', 'i
 /** Which terrain a footprint must sit on. */
 export type PlacementRule = 'land' | 'farmland' | 'water' | 'span';
 /** Extra site rules on top of the placement rule. */
-export type SiteRule = 'rock' | 'deposit';
+export type SiteRule = 'rock' | 'deposit' | 'shore';
 
 /**
  * One level of a building. Level 1 describes the building as first built (its cost is
@@ -40,6 +41,12 @@ export interface LevelDef {
   maxWorkers?: number;
   lodging?: number;
   trainingSlots?: number;
+  /** Pens: most animals kept. */
+  penCapacity?: number;
+  /** Hunter's lodges: how far hunters range. */
+  huntRadius?: number;
+  /** Wells: how far the water reaches. */
+  wellRadius?: number;
   /** Work speed multiplier for crafting and digging here. */
   speed?: number;
   light?: number;
@@ -85,8 +92,14 @@ export interface BuildingDef {
   lodging?: number;
   /** Caravans set off from here; its workers are teamsters. */
   depot?: boolean;
-  /** Workers dig here instead of crafting: a quarry cuts stone, a mine digs its deposit's ore. */
-  extraction?: 'quarry' | 'mine';
+  /** Workers dig here instead of crafting: a quarry cuts stone, a mine digs its deposit's ore, a fisher's hut lands fish. */
+  extraction?: 'quarry' | 'mine' | 'fish';
+  /** A pen or pasture for livestock. */
+  pen?: PenDef;
+  /** A hunter's lodge: its workers hunt wild game within this many tiles. */
+  hunting?: { radius: number };
+  /** A well: fields within this many tiles never dry out completely. */
+  well?: { radius: number };
   /** 'rock': half the footprint on rocky ground or hills; 'deposit': over a surveyed deposit with no mine yet. */
   site?: SiteRule;
   /** Founds a settlement when finished; must be this many tiles from any other settlement centre. */
@@ -109,7 +122,9 @@ export type BuildingId =
   | 'quarry' | 'mine' | 'charcoalKiln' | 'smelter' | 'forge'
   | 'inn' | 'depot' | 'crate' | 'royalHall'
   | 'barracks' | 'archeryRange' | 'armory' | 'stable' | 'councilHall'
-  | 'path' | 'bridge' | 'stoneBridge' | 'fence' | 'flowerbed' | 'lamp' | 'bench' | 'market' | 'waystation';
+  | 'path' | 'bridge' | 'stoneBridge' | 'fence' | 'flowerbed' | 'lamp' | 'bench' | 'market' | 'waystation'
+  | 'hunterLodge' | 'fisherHut' | 'chickenCoop' | 'pigsty' | 'sheepPen' | 'goatPen' | 'cattlePasture' | 'horsePaddock'
+  | 'well' | 'granary' | 'tannery' | 'weaver' | 'watchtower' | 'stoneWall';
 
 export const BUILDINGS: Record<BuildingId, BuildingDef> = {
   townHall: {
@@ -268,6 +283,89 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     size: { w: 3, h: 2 }, cost: { stone: 50, planks: 30, tools: 6 }, work: 700, placement: 'land', blocks: true, buildable: true,
     light: 4, reveal: 8, permanent: true, unlock: 'region',
   },
+  hunterLodge: {
+    id: 'hunterLodge', name: "Hunter's Lodge", category: 'food',
+    description: 'A timber lodge hung with bows and pelts. Its hunters stalk wild game nearby for meat, and bring back hides.',
+    size: { w: 2, h: 2 }, cost: { wood: 20, stone: 4 }, work: 180, placement: 'land', blocks: true, buildable: true,
+    hunting: { radius: HUNT_RADIUS }, maxWorkers: 2, storage: 30, accepts: ['hides'], reveal: 10,
+  },
+  fisherHut: {
+    id: 'fisherHut', name: "Fisher's Hut", category: 'food',
+    description: 'A hut and jetty on the shore. Its fishers land fish (food) from the water beside it, without end.',
+    size: { w: 2, h: 2 }, cost: { wood: 16 }, work: 160, placement: 'land', site: 'shore', blocks: true, buildable: true,
+    extraction: 'fish', maxWorkers: 2, reveal: 6,
+  },
+  chickenCoop: {
+    id: 'chickenCoop', name: 'Chicken Coop', category: 'animals',
+    description: 'A henhouse and yard with two hens to start. Chickens lay eggs (food) and breed up to 8. A herder collects the eggs.',
+    size: { w: 2, h: 2 }, cost: { wood: 15, food: 10 }, work: 140, placement: 'land', blocks: true, buildable: true, maxWorkers: 1,
+    pen: { species: 'chicken', capacity: 8, breedTicks: BREED_DAY, product: { res: 'food', amount: 1, everyTicks: BREED_DAY / 2 }, cull: { food: 2, hides: 0 } },
+  },
+  pigsty: {
+    id: 'pigsty', name: 'Pigsty', category: 'animals',
+    description: 'A sty with a breeding pair. Pigs grow fast; a full sty sends one to the butcher for plenty of meat.',
+    size: { w: 3, h: 2 }, cost: { wood: 20, food: 15 }, work: 200, placement: 'land', blocks: true, buildable: true, maxWorkers: 1, unlock: 'hamlet',
+    pen: { species: 'pig', capacity: 6, breedTicks: BREED_DAY, cull: { food: 12, hides: 1 } },
+  },
+  sheepPen: {
+    id: 'sheepPen', name: 'Sheep Pen', category: 'animals',
+    description: 'A fold for sheep. They give wool every day (a weaver makes cloth) and breed up to 8.',
+    size: { w: 3, h: 3 }, cost: { wood: 25, food: 15 }, work: 220, placement: 'land', blocks: true, buildable: true, maxWorkers: 1, unlock: 'hamlet',
+    pen: { species: 'sheep', capacity: 8, breedTicks: BREED_DAY * 1.5, product: { res: 'wool', amount: 1, everyTicks: BREED_DAY }, cull: { food: 8, hides: 1 } },
+  },
+  goatPen: {
+    id: 'goatPen', name: 'Goat Pen', category: 'animals',
+    description: 'Hardy goats give milk (food) twice a day and breed up to 6. Happy on hills.',
+    size: { w: 3, h: 2 }, cost: { wood: 20, food: 15 }, work: 200, placement: 'land', blocks: true, buildable: true, maxWorkers: 1, unlock: 'hamlet',
+    pen: { species: 'goat', capacity: 6, breedTicks: BREED_DAY, product: { res: 'food', amount: 1, everyTicks: BREED_DAY / 2 }, cull: { food: 6, hides: 1 } },
+  },
+  cattlePasture: {
+    id: 'cattlePasture', name: 'Cattle Pasture', category: 'animals',
+    description: 'A fenced pasture and byre. Cows give milk (food) and, culled, meat and hides. Breeds up to 6.',
+    size: { w: 4, h: 3 }, cost: { wood: 40, food: 30 }, work: 320, placement: 'land', blocks: true, buildable: true, maxWorkers: 1, unlock: 'village',
+    pen: { species: 'cow', capacity: 6, breedTicks: BREED_DAY * 2, product: { res: 'food', amount: 2, everyTicks: BREED_DAY }, cull: { food: 20, hides: 2 } },
+  },
+  horsePaddock: {
+    id: 'horsePaddock', name: 'Horse Paddock', category: 'animals',
+    description: 'A paddock for breeding horses. Now and then a trained horse goes to your stable, ready for knights.',
+    size: { w: 4, h: 3 }, cost: { wood: 40, planks: 10, food: 30 }, work: 360, placement: 'land', blocks: true, buildable: true, maxWorkers: 1, unlock: 'village',
+    pen: { species: 'horse', capacity: 4, breedTicks: BREED_DAY * 2, product: { res: 'horses', amount: 1, everyTicks: BREED_DAY * 4 } },
+  },
+  well: {
+    id: 'well', name: 'Well', category: 'food',
+    description: 'A stone well. Fields within 6 tiles never dry out completely, so crops keep growing in dry spells.',
+    size: { w: 1, h: 1 }, cost: { stone: 12, wood: 4 }, work: 140, placement: 'land', blocks: true, buildable: true,
+    well: { radius: 6 }, maxBuilders: 1,
+  },
+  granary: {
+    id: 'granary', name: 'Granary', category: 'storage',
+    description: 'A raised store for food, grain, flour and apples only (holds 500).',
+    size: { w: 3, h: 2 }, cost: { wood: 30, stone: 20 }, work: 300, placement: 'land', blocks: true, buildable: true, unlock: 'hamlet',
+    storage: 500, accepts: ['food', 'wheat', 'flour', 'apples'], reveal: 6,
+  },
+  tannery: {
+    id: 'tannery', name: 'Tannery', category: 'industry',
+    description: 'Vats and drying racks. Its tanner turns 2 hides into 1 leather.',
+    size: { w: 3, h: 2 }, cost: { wood: 20, stone: 15 }, work: 280, placement: 'land', blocks: true, buildable: true, unlock: 'hamlet',
+    recipes: ['tanLeather'], maxWorkers: 1, reveal: 5,
+  },
+  weaver: {
+    id: 'weaver', name: "Weaver's Cottage", category: 'industry',
+    description: 'A loom by the window. Its weaver spins 2 wool into 1 cloth.',
+    size: { w: 2, h: 2 }, cost: { wood: 25, planks: 5 }, work: 260, placement: 'land', blocks: true, buildable: true, unlock: 'hamlet',
+    recipes: ['weaveCloth'], maxWorkers: 1, light: 2, reveal: 5,
+  },
+  watchtower: {
+    id: 'watchtower', name: 'Watchtower', category: 'military',
+    description: 'A tall timber lookout. Reveals the land far around it and lights the night.',
+    size: { w: 1, h: 1 }, cost: { wood: 20, stone: 20 }, work: 260, placement: 'land', blocks: true, buildable: true, unlock: 'hamlet',
+    reveal: 22, light: 3, maxBuilders: 1,
+  },
+  stoneWall: {
+    id: 'stoneWall', name: 'Stone Wall', category: 'military',
+    description: 'A sturdy wall section. Drag to draw a line; leave gaps for gates and roads.',
+    size: { w: 1, h: 1 }, cost: { stone: 2 }, work: 30, placement: 'land', blocks: true, paint: true, buildable: true, maxBuilders: 1, unlock: 'village',
+  },
   crate: {
     id: 'crate', name: 'Crate', category: 'storage',
     description: 'Goods a caravan could not unload anywhere. Settlers fetch from it like a store; it disappears once empty.',
@@ -398,6 +496,58 @@ const LEVELS: Partial<Record<BuildingId, LevelDef[]>> = {
   archeryRange: [
     { name: 'Archery Range', cost: {}, time: 0, perks: [] },
     { name: "Marksmen's Range", cost: { wood: 30, planks: 20 }, time: 1200, perks: ['Trains 8 at a time'], trainingSlots: 8 },
+  ],
+  hunterLodge: [
+    { name: "Hunter's Lodge", cost: {}, time: 0, perks: [] },
+    { name: 'Hunting Hall', cost: { wood: 20, planks: 10, leather: 4 }, time: 900, perks: ['A third hunter', 'Hunts twice as far'], maxWorkers: 3, huntRadius: HUNT_RADIUS * 2 },
+  ],
+  fisherHut: [
+    { name: "Fisher's Hut", cost: {}, time: 0, perks: [] },
+    { name: 'Fishing Wharf', cost: { wood: 20, planks: 10 }, time: 900, perks: ['A third fisher', '30% faster'], maxWorkers: 3, speed: 1.3 },
+  ],
+  chickenCoop: [
+    { name: 'Chicken Coop', cost: {}, time: 0, perks: [] },
+    { name: 'Hen House', cost: { wood: 15, planks: 6 }, time: 720, perks: ['Room for 14 hens'], penCapacity: 14 },
+  ],
+  pigsty: [
+    { name: 'Pigsty', cost: {}, time: 0, perks: [] },
+    { name: 'Pig Farm', cost: { wood: 20, stone: 10 }, time: 900, perks: ['Room for 10 pigs'], penCapacity: 10 },
+  ],
+  sheepPen: [
+    { name: 'Sheep Pen', cost: {}, time: 0, perks: [] },
+    { name: 'Sheepfold', cost: { wood: 20, stone: 15 }, time: 900, perks: ['Room for 14 sheep'], penCapacity: 14 },
+  ],
+  goatPen: [
+    { name: 'Goat Pen', cost: {}, time: 0, perks: [] },
+    { name: 'Goat Farm', cost: { wood: 20, stone: 10 }, time: 900, perks: ['Room for 10 goats'], penCapacity: 10 },
+  ],
+  cattlePasture: [
+    { name: 'Cattle Pasture', cost: {}, time: 0, perks: [] },
+    { name: 'Dairy Farm', cost: { planks: 20, stone: 20, tools: 2 }, time: 1200, perks: ['Room for 10 cows'], penCapacity: 10, requires: 'town' },
+  ],
+  horsePaddock: [
+    { name: 'Horse Paddock', cost: {}, time: 0, perks: [] },
+    { name: 'Stud Farm', cost: { planks: 20, stone: 20, leather: 4 }, time: 1500, perks: ['Room for 8 horses'], penCapacity: 8, requires: 'town' },
+  ],
+  well: [
+    { name: 'Well', cost: {}, time: 0, perks: [] },
+    { name: 'Stone Cistern', cost: { stone: 20, planks: 4 }, time: 600, perks: ['Waters fields within 10 tiles'], wellRadius: 10 },
+  ],
+  granary: [
+    { name: 'Granary', cost: {}, time: 0, perks: [] },
+    { name: 'Great Granary', cost: { wood: 20, stone: 30, planks: 10 }, time: 1200, perks: ['Holds 800'], storage: 800, requires: 'village' },
+  ],
+  watchtower: [
+    { name: 'Watchtower', cost: {}, time: 0, perks: [] },
+    { name: 'Stone Tower', cost: { stone: 30, planks: 10 }, time: 1200, perks: ['Sees 32 tiles', 'A beacon at night'], reveal: 32, light: 6, requires: 'village' },
+  ],
+  tannery: [
+    { name: 'Tannery', cost: {}, time: 0, perks: [] },
+    { name: 'Great Tannery', cost: { stone: 20, planks: 10 }, time: 900, perks: ['A second tanner', '40% faster'], maxWorkers: 2, speed: 1.4 },
+  ],
+  weaver: [
+    { name: "Weaver's Cottage", cost: {}, time: 0, perks: [] },
+    { name: 'Weaving Hall', cost: { planks: 15, stone: 10 }, time: 900, perks: ['A second weaver', '40% faster'], maxWorkers: 2, speed: 1.4 },
   ],
   stable: [
     { name: 'Stable', cost: {}, time: 0, perks: [] },

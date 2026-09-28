@@ -107,7 +107,9 @@ export function completeSurvey(sim: Simulation, s: Settler, x: number, y: number
 export const MINE_YIELD = [0, 2, 3, 4] as const;
 /** Stone a quarry worker cuts per trip. */
 export const QUARRY_YIELD = 3;
-export const EXTRACT_WORK: Record<'quarry' | 'mine', number> = { quarry: 90, mine: 120 };
+export const EXTRACT_WORK: Record<'quarry' | 'mine' | 'fish', number> = { quarry: 90, mine: 120, fish: 100 };
+/** Fish a fisher lands per trip. */
+export const FISH_YIELD = 3;
 /** Materials to deepen a shaft to level 2 and 3, paid from storage at once. */
 export const MINE_UPGRADES: Record<2 | 3, Inventory> = {
   2: { planks: 10, stone: 10 },
@@ -144,6 +146,17 @@ export function siteProblem(sim: Simulation, type: BuildingId, x: number, y: num
     }
     return rocky * 2 >= def.size.w * def.size.h ? null : 'A quarry needs rocky ground or hill slopes under at least half of it';
   }
+  if (def.site === 'shore') {
+    // Some water must touch the footprint's edge.
+    for (let dy = -1; dy <= def.size.h; dy++) {
+      for (let dx = -1; dx <= def.size.w; dx++) {
+        if (dx >= 0 && dx < def.size.w && dy >= 0 && dy < def.size.h) continue;
+        const t = sim.world.terrain(x + dx, y + dy);
+        if (t === T.Water || t === T.DeepWater) return null;
+      }
+    }
+    return "A fisher's hut must stand on the shore, right beside water";
+  }
   if (def.site === 'deposit') {
     const d = depositUnder(sim, x, y, def.size.w, def.size.h);
     if (!d) return 'Build a mine over a surveyed deposit — send a settler to survey rocky ground or hill faces first';
@@ -168,6 +181,10 @@ export function mineDeposit(sim: Simulation, b: Building): KnownDeposit | null {
 
 /** What a finished trip yields; the ore leaves the deposit here and nowhere else. */
 export function completeExtraction(sim: Simulation, b: Building, amount: number): { res: ResourceId; amount: number } | null {
+  if (BUILDINGS[b.type].extraction === 'fish') {
+    sim.stats.foodGathered += amount;
+    return { res: 'food', amount };
+  }
   if (b.quarry) {
     b.quarry.extracted += amount;
     sim.stats.stoneQuarried += amount;
@@ -193,6 +210,11 @@ export function extractionStatus(sim: Simulation, b: Building): string {
   if (!b.built) return '';
   const name = BUILDINGS[b.type].name.toLowerCase();
   const digging = sim.settlers.filter((s) => s.task?.kind === 'extract' && s.task.site === b.id).length;
+  if (BUILDINGS[b.type].extraction === 'fish') {
+    if (digging) return `${digging} fishing from the jetty`;
+    if (!sim.nearestStorageWithSpace(b.x, b.y, 'food')) return 'Storage is full — nowhere to put the catch';
+    return b.workers.length > 0 || sim.settlers.some((s) => canDo(s, 'craft')) ? 'Waiting for a fisher' : `No worker — select a settler and right-click the ${name}`;
+  }
   if (b.mine) {
     const d = mineDeposit(sim, b);
     if (!d) return 'No deposit here';
@@ -227,7 +249,7 @@ export function findExtract(sim: Simulation, s: Settler): Task | string | null {
   if (!best) return reason;
   if (!sim.nearestStorageWithSpace(s.x, s.y)) return 'Storage is full — nowhere to put what I dig';
   const b = best.b;
-  let amount: number = QUARRY_YIELD;
+  let amount: number = BUILDINGS[b.type].extraction === 'fish' ? FISH_YIELD : QUARRY_YIELD;
   if (b.mine) {
     amount = Math.min(MINE_YIELD[b.mine.level] ?? 2, oreAvailable(sim, b));
     sim.oreReserved.set(b.mine.depositId, (sim.oreReserved.get(b.mine.depositId) ?? 0) + amount);
