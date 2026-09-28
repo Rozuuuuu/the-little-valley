@@ -159,6 +159,9 @@ function goals(sim: Simulation): OverviewItem[] {
   const campT = camp ? rectOf(camp) : null;
   const all = [...sim.buildings.values()];
   const byType = (t: string) => all.filter((b) => b.type === t);
+  // Older worlds: the player's ruler and the Town Hall.
+  if (!sim.ruler()) out.push({ text: 'Take the throne', detail: 'Name your ruler in the panel at the bottom: you walk the map, speed up work nearby and can Rally your people.', target: campT });
+  if (camp && camp.type === 'camp' && !camp.upgrade) out.push({ text: 'Raise a Town Hall', detail: 'Select the camp and choose Upgrade: it becomes a Town Hall with 10 bunks and room for 600 goods, then a Keep and a Castle.', target: campT });
   // Deliberate growth: a visitor who can be welcomed now, then the orchard that pays for them.
   const home = sim.settlements[0]?.id;
   if (sim.growthMode === 'deliberate' && sim.offer && home !== undefined && !recruitProblem(sim, home)) {

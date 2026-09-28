@@ -190,7 +190,7 @@ export function Celebration() {
           ))}
         </div>
         <h2>Your settlement is now a {c.name}</h2>
-        <p>The camp has become a village hall, and new building options are open:</p>
+        <p>New building options and upgrades are open:</p>
         <ul>
           {c.unlocks.map((u) => (
             <li key={u}>{u}</li>

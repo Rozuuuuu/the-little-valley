@@ -268,7 +268,15 @@ function nearRange4(seed: number, x: number, y: number, h: HabitatDef): boolean 
   return Math.abs(y - rangeY4(seed, x, h)) < rangeCore4(seed, x, h) + 10;
 }
 
+/** A small craggy peak in plain sight of the hall in every generator-4 world. */
+export const SENTINEL_PEAK = { x: 14, y: -6 } as const;
+const SENTINEL_CORE = 2.3;
+const SENTINEL_SLOPE = 4.4;
+
 function highGround4(seed: number, x: number, y: number, h: HabitatDef): TerrainId | null {
+  const sd = Math.hypot(x - SENTINEL_PEAK.x, y - SENTINEL_PEAK.y) - hash01(x, y, seed ^ 0x5e71) * 0.5;
+  if (sd < SENTINEL_CORE) return T.Mountain;
+  if (sd < SENTINEL_SLOPE) return T.Hill;
   const od = outcropDistance(x, y);
   if (od < OUTCROP_CORE) return T.Mountain;
   if (od < OUTCROP_SLOPE) return T.Hill;
@@ -297,7 +305,7 @@ function waterAt4(seed: number, x: number, y: number, h: HabitatDef): 0 | 1 | 2 
     const hw = riverHalfWidth(seed, y);
     if (d < hw) return d < hw - 1.6 ? 2 : 1;
   }
-  if (outcropDistance(x, y) < OUTCROP_SLOPE + 1.5 || nearRange4(seed, x, y, h)) return 0;
+  if (outcropDistance(x, y) < OUTCROP_SLOPE + 1.5 || nearRange4(seed, x, y, h) || Math.hypot(x - SENTINEL_PEAK.x, y - SENTINEL_PEAK.y) < SENTINEL_SLOPE + 1.5) return 0;
   const pond = Math.hypot(x - POND.x, y - POND.y) - hash01(x, y, seed ^ 0x77) * 0.6;
   if (pond < POND.r) return 1;
   const d = Math.hypot(x, y);

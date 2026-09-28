@@ -124,6 +124,27 @@ describe('supplied companies', () => {
     return { ...g, ids, company };
   }
 
+  it("a company passing a travellers' camp rests: it restocks two days of food and recovers its readiness, once a day", () => {
+    const { sim, company, ids } = readyCompany();
+    const camp = instant(sim, 'travelCamp', { x: 12, y: 12 });
+    const res = applyCommand(sim, { type: 'orderCompany', companyId: company.id, order: 'move', x: camp.x + 1, y: camp.y + 3, supplyDays: 1 });
+    expect(res.ok, res.message).toBe(true);
+    company.readiness = 40;
+    company.morale = 50;
+    const food0 = sim.storedTotal('food');
+    runUntil(sim, () => company.restedDay === sim.day, DAY_TICKS);
+    expect(company.readiness).toBe(100);
+    expect(company.morale).toBe(75);
+    expect(company.supplies).toBeGreaterThanOrEqual(ids.length * 2);
+    expect(sim.storedTotal('food')).toBeLessThan(food0);
+    const s = company.supplies;
+    company.readiness = 60;
+    run(sim, 200);
+    // Not twice on the same day.
+    expect(company.readiness).toBeLessThan(100);
+    expect(company.supplies).toBeLessThanOrEqual(s!);
+  });
+
   it('a patrol carries food from the stores; when it runs out readiness falls day by day and they come home — nobody is lost', () => {
     const { sim, company, ids } = readyCompany();
     const res = applyCommand(sim, { type: 'orderCompany', companyId: company.id, order: 'move', x: 14, y: 14, supplyDays: 1 });

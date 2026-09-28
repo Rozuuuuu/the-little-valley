@@ -316,6 +316,35 @@ function arrive(sim: Simulation, c: Company): void {
   sim.toast('A company has come home.', 'info');
 }
 
+/** How close a company must pass to a travellers' camp to rest there. */
+export const CAMP_REACH = 4;
+
+/**
+ * A company on the march that passes one of your travellers' camps rests there once a
+ * day: it restocks up to two days of rations from your stores, and recovers its
+ * readiness and some morale.
+ */
+export function restAtCamp(sim: Simulation, c: Company): boolean {
+  if (c.state !== 'deployed' || c.restedDay === sim.day) return false;
+  const x = c.x ?? 0;
+  const y = c.y ?? 0;
+  let camp: { x: number; y: number } | null = null;
+  for (const b of sim.buildings.values()) {
+    if (b.type !== 'travelCamp' || !b.built) continue;
+    if (Math.hypot(b.x + b.w / 2 - x, b.y + b.h / 2 - y) <= CAMP_REACH + 1.5) camp = b;
+  }
+  if (!camp) return false;
+  c.restedDay = sim.day;
+  const mouths = (c.members ?? []).filter((id) => sim.settler(id)?.military?.state === 'deployed').length;
+  const want = Math.max(0, mouths * RATION * 2 - (c.supplies ?? 0));
+  const got = want > 0 ? sim.withdrawUnreserved('food', want) : 0;
+  c.supplies = (c.supplies ?? 0) + got;
+  c.readiness = 100;
+  c.morale = Math.min(100, (c.morale ?? 100) + 25);
+  sim.toast(`A company rested at the travellers' camp${got ? ` and restocked ${got} food` : ''}.`, 'info');
+  return true;
+}
+
 /** Rations once a day; hunger costs readiness and brings them home — never lives. */
 function eat(sim: Simulation, c: Company): void {
   if (c.suppliesDay === sim.day) return;
@@ -449,6 +478,7 @@ export function updateMilitary(sim: Simulation): void {
     if (c.state === 'deployed' || c.state === 'returning') {
       eat(sim, c);
       march(sim, c);
+      if (sim.tick % 25 === 0) restAtCamp(sim, c);
     }
   }
   updateContingents(sim);

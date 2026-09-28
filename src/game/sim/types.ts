@@ -194,6 +194,8 @@ export interface Company {
   morale?: number;
   /** Can't attack again until this tick after breaking off. */
   regroupUntil?: number;
+  /** The day it last rested at a travellers' camp. */
+  restedDay?: number;
 }
 
 export type Stance = 'neutral' | 'trading' | 'ally' | 'enemy';

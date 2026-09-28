@@ -210,7 +210,11 @@ function BuildingInfoPanel({ b, onMore }: { b: BuildingInfo; onMore: () => void 
             {b.name}
             {b.ids.length > 1 ? ` ×${b.ids.length}` : ''}
           </strong>
-          {b.level && <span className="level-pip">{b.level.name}</span>}
+          {b.level && (
+            <span className="level-pip" title={b.level.next ? `Next: ${b.level.next.name}` : 'Highest level'}>
+              Level {b.level.level}/{b.level.max}
+            </span>
+          )}
         </div>
         <div className="con-task">{buildingHeadline(b)}</div>
         {!b.built && (

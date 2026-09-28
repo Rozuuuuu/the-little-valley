@@ -184,13 +184,21 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
         <span>Pan</span><span>{k('panUp')}, {k('panLeft')}, {k('panDown')}, {k('panRight')}</span>
         <span>Pause</span><span>{k('pause')}</span>
         <span>Speed</span><span>{k('speed1')} / {k('speed2')} / {k('speed3')}</span>
-        <span>Build menu</span><span>{k('build')}</span>
+        <span>Build menu (categories on the command card)</span><span>{k('build')}</span>
+        <span>Pick a category or building in the build menu</span><span>Q W E R / A S D F / Z X C V</span>
+        <span>Find yourself, the ruler</span><span>K</span>
+        <span>Rally the people (ruler selected)</span><span>R</span>
         <span>Mark / unmark for harvest</span><span>{k('harvest')} / {k('unmark')}</span>
         <span>Demolish selected building</span><span>{k('demolish')}</span>
         <span>Next idle settler</span><span>{k('nextIdle')}</span>
         <span>Select everyone</span><span>{k('selectAll')}</span>
         <span>Save</span><span>{k('save')} or Ctrl+S</span>
         <span>Cancel / menu</span><span>{k('cancel')}</span>
+        <h4>The screen</h4>
+        <span>Top: stores (Goods for the rest), windows, clock</span><span />
+        <span>Bottom left: the minimap</span><span />
+        <span>Bottom middle: what you selected — See more opens every detail</span><span />
+        <span>Bottom right: the command card; hover a button to read it</span><span />
       </div>
       <div className="buttons">
         <button className="btn primary" onClick={onClose} autoFocus>
