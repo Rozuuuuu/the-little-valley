@@ -5,6 +5,7 @@ import type { MilestoneId } from '../data/progression';
 import type { RecipeId } from '../data/recipes';
 import type { Inventory, ResourceId } from '../data/resources';
 import type {
+  CoalitionCommitment, ConcernState, Incident, NewsReport, Stance, TreatyOffer, WarPlan, Warning, WorldEvent,
   Appearance, BedClaim, ChronicleEntry, Facing, GrowthMode, Household, Kingdom, LifeStage, Manifest, OrchardState, Party, Recruitment, Route, SessionMark, Settlement, Stats, TravelerOffer, WorkArea,
 } from '../sim/types';
 
@@ -12,7 +13,7 @@ import type {
  * Save file format. Bump SAVE_VERSION whenever this shape changes and add a
  * migration in migrations.ts so older worlds keep loading.
  */
-export const SAVE_VERSION = 8;
+export const SAVE_VERSION = 9;
 
 export interface SaveMeta {
   name: string;
@@ -177,7 +178,29 @@ export interface SaveFileV8 extends Omit<SaveFileV7, 'version' | 'sim'> {
   };
 }
 
-export type SaveFile = SaveFileV8;
+export interface SaveFileV9 extends Omit<SaveFileV8, 'version' | 'sim'> {
+  version: 9;
+  sim: SaveFileV8['sim'] & {
+    diplomacy: {
+      worldEvents: WorldEvent[];
+      reports: NewsReport[];
+      newsSummaries: [number, number][];
+      stances: [string, Stance][];
+      trust: [string, number][];
+      wars: string[];
+      offers: TreatyOffer[];
+      incidents: Incident[];
+      warnings: Warning[];
+      concernStates: [string, ConcernState][];
+      warPlans: WarPlan[];
+      commitments: CoalitionCommitment[];
+      diplomacyDay: number;
+      lastProsperity: number;
+    };
+  };
+}
+
+export type SaveFile = SaveFileV9;
 
 export class SaveError extends Error {
   constructor(message: string) {

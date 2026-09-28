@@ -8,7 +8,8 @@ import { TERRAIN } from '../world/tiles';
 import { World } from '../world/World';
 import type { PathGrid } from './pathfinding';
 import type {
-  Appearance, BedClaim, Building, ChronicleEntry, GrowthMode, Household, Kingdom, Manifest, Party, Recruitment, Route, TerritoryClaim, TravelerOffer, ProgressionState, Regrowth, SessionMark, Settlement, Settler, SimEvent, Stats, WeatherState, WorkArea,
+  Appearance, BedClaim, Building, ChronicleEntry, CoalitionCommitment, ConcernState, GrowthMode, Household, Incident, Kingdom, Manifest, NewsReport, Party, Recruitment, Route, Stance,
+  TerritoryClaim, TravelerOffer, TreatyOffer, WarPlan, Warning, WorldEvent, ProgressionState, Regrowth, SessionMark, Settlement, Settler, SimEvent, Stats, WeatherState, WorkArea,
 } from './types';
 import { updateSettler } from './settlers';
 import { updateFields, updateWeather } from './farming';
@@ -21,6 +22,9 @@ import { surveyedCell, type SurveyedCell } from './mining';
 import { updateParties, updateTravelers } from './travelers';
 import { LOGISTICS_STEP, updateLogistics } from './logistics';
 import { newPlayerKingdom, updateKingdoms } from './kingdoms';
+import { activeTreaty, makeOffer, pairKey, refreshStance, setStanceDirect, stanceOf, updateDiplomacy } from './diplomacy';
+import { deliverReports } from './news';
+import { updateCampaigns } from './campaigns';
 import { GROWTH_STEP } from '../data/kingdomBalance';
 import { checkMilestones } from './progression';
 import { updateRegrowth, updateWorkshops } from './buildings';
@@ -111,6 +115,29 @@ export class Simulation implements PathGrid {
   kingdoms: Kingdom[] = [newPlayerKingdom('The Valley')];
   /** Frontier claims by sector key (the homeland and rival lands are derived). */
   claims = new Map<string, Omit<TerritoryClaim, 'sector'>>();
+  /** Internal truth: what really happened (bounded). */
+  worldEvents: WorldEvent[] = [];
+  /** Reports on their way and delivered, per recipient (bounded). */
+  reports: NewsReport[] = [];
+  /** Older reports summarised away, per recipient. */
+  newsSummaries = new Map<number, number>();
+  /** Recipients with news not yet shown (transient). */
+  readonly newsFlags = new Set<number>();
+  /** Pair key to stance (neutral is absent). */
+  stances = new Map<string, Stance>();
+  /** `${from}>${to}` → trust 0–100. */
+  trust = new Map<string, number>();
+  wars = new Set<string>();
+  offers: TreatyOffer[] = [];
+  incidents: Incident[] = [];
+  warnings: Warning[] = [];
+  concernStates = new Map<string, ConcernState>();
+  warPlans: WarPlan[] = [];
+  commitments: CoalitionCommitment[] = [];
+  /** Day diplomacy last took its daily turn. */
+  diplomacyDay = 0;
+  /** Adults when prosperity was last noticed. */
+  lastProsperity = 0;
   routes: Route[] = [];
   /** Caravans on the road (saved). */
   manifests: Manifest[] = [];
@@ -218,8 +245,26 @@ export class Simulation implements PathGrid {
     return this.war(a, b);
   }
   /** Replaced by the diplomacy and war systems. */
-  passage: (a: number, b: number) => boolean = () => false;
-  war: (a: number, b: number) => boolean = () => false;
+  passage: (a: number, b: number) => boolean = (a, b) => !!activeTreaty(this, a, b, 'passage');
+  war: (a: number, b: number) => boolean = (a, b) => this.wars.has(pairKey(a, b));
+
+  setStance(a: number, b: number, stance: Stance): void {
+    setStanceDirect(this, a, b, stance);
+  }
+  stanceOf(a: number, b: number): Stance {
+    return stanceOf(this, a, b);
+  }
+  setTrust(from: number, to: number, value: number): void {
+    this.trust.set(`${from}>${to}`, Math.max(0, Math.min(100, value)));
+  }
+  setWar(a: number, b: number, war: boolean): void {
+    if (war) this.wars.add(pairKey(a, b));
+    else this.wars.delete(pairKey(a, b));
+    refreshStance(this, a, b);
+  }
+  makeOffer(from: number, to: number, kind: TreatyOffer['kind'], terms: { durationDays: number; payment?: number }, expiresIn: number): TreatyOffer {
+    return makeOffer(this, from, to, kind, terms, expiresIn);
+  }
 
   /** What surveying found at (x, y), or null if nobody has surveyed there. */
   surveyedCell(x: number, y: number): SurveyedCell | null {
@@ -450,7 +495,12 @@ export class Simulation implements PathGrid {
     if (this.tick % 20 === 0) updateRegrowth(this);
     for (const s of this.settlers) updateSettler(this, s);
     updateParties(this);
-    if (this.tick % LOGISTICS_STEP === 0) updateLogistics(this);
+    if (this.tick % LOGISTICS_STEP === 0) {
+      updateLogistics(this);
+      updateDiplomacy(this);
+      updateCampaigns(this);
+    }
+    if (this.tick % 10 === 0) deliverReports(this);
     if (this.tick % 10 === 0) updateWorkshops(this);
     updateKingdoms(this);
     if (this.tick % GROWTH_STEP === 0) {

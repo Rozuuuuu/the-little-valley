@@ -4,6 +4,7 @@ import {
 import { regionById } from '../world/regions';
 import { isChild } from './households';
 import { homelandPreview } from './territory';
+import { rivalCompanies } from './diplomacy';
 import type { Simulation } from './Simulation';
 import type { CommandResult, Kingdom, Settler } from './types';
 
@@ -19,7 +20,7 @@ export function newPlayerKingdom(name: string): Kingdom {
     treasury: 0, taxCollected: 0, policy: 'none', trust: START_TRUST, trustDay: 0,
     council: { steward: null, envoy: null, marshal: null },
     homeland: null, conflictMode: 'protected-frontier', modeLocked: false, frontierActive: false,
-    capitalRegion: null, capital: { x: 0, y: 0 },
+    capitalRegion: null, capital: { x: 0, y: 0 }, personality: 'cautious', companies: [],
   };
 }
 
@@ -53,6 +54,7 @@ export function knowKingdomOf(sim: Simulation, regionId: number): Kingdom {
     council: { steward: null, envoy: null, marshal: null },
     homeland: null, conflictMode: 'protected-frontier', modeLocked: true, frontierActive: false,
     capitalRegion: regionId, capital: { x: town.x, y: town.y },
+    personality: (['cautious', 'mercantile', 'proud'] as const)[regionId % 3], companies: rivalCompanies(regionId),
   };
   sim.kingdoms.push(k);
   return k;

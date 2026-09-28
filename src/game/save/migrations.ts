@@ -7,6 +7,7 @@ import { isMilestoneId } from '../data/progression';
 import { isResourceId } from '../data/resources';
 import { emptyStats } from '../sim/Simulation';
 import { newPlayerKingdom } from '../sim/kingdoms';
+import { rivalCompanies } from '../sim/diplomacy';
 import { SAVE_VERSION, SaveError, type SaveFile } from './format';
 
 type AnyRecord = Record<string, unknown>;
@@ -187,6 +188,32 @@ export const MIGRATIONS: Record<number, (save: AnyRecord) => AnyRecord> = {
       },
     };
   },
+
+  /**
+   * v8 was the crown. v9 adds diplomacy and news: kingdoms gain a temperament
+   * and (for rivals) their companies at home; nothing has been reported,
+   * proposed or planned yet, and no kingdom is at war or allied.
+   */
+  8: (v8) => {
+    const sim = v8.sim as AnyRecord;
+    const kingdoms = ((sim.kingdoms as AnyRecord[] | undefined) ?? []).map((k) => ({
+      ...k,
+      personality: k.player ? 'cautious' : (['cautious', 'mercantile', 'proud'] as const)[(k.id as number) % 3],
+      companies: k.player ? [] : rivalCompanies(k.id as number),
+    }));
+    return {
+      ...v8,
+      version: 9,
+      sim: {
+        ...sim,
+        kingdoms,
+        diplomacy: {
+          worldEvents: [], reports: [], newsSummaries: [], stances: [], trust: [], wars: [], offers: [], incidents: [], warnings: [],
+          concernStates: [], warPlans: [], commitments: [], diplomacyDay: 0, lastProsperity: 0,
+        },
+      },
+    };
+  },
 };
 
 export function migrate(raw: unknown): SaveFile {
@@ -320,6 +347,12 @@ export function validateSave(save: AnyRecord): void {
     check(['none', 'modest', 'high'].includes(k.policy as string) && ['protected-frontier', 'full-conquest'].includes(k.conflictMode as string), `kingdom ${String(k.id)} settings`);
     check(k.homeland === null || (Array.isArray(k.homeland) && (k.homeland as AnyRecord[]).every((q) => isInt(q.x) && isInt(q.y))), `kingdom ${String(k.id)} homeland`);
   }
+  const dip = sim.diplomacy as AnyRecord | undefined;
+  check(dip && typeof dip === 'object', 'diplomacy');
+  for (const k of ['worldEvents', 'reports', 'newsSummaries', 'stances', 'trust', 'wars', 'offers', 'incidents', 'warnings', 'concernStates', 'warPlans', 'commitments']) check(Array.isArray(dip[k]), `diplomacy ${k}`);
+  for (const o of dip.offers as AnyRecord[]) check(isInt(o.id) && isNum(o.escrow) && (o.escrow as number) >= 0 && typeof o.state === 'string', 'treaty offer');
+  for (const c of dip.commitments as AnyRecord[]) check(isInt(c.id) && isNum(c.escrow) && (c.escrow as number) >= 0 && Array.isArray((c.terms as AnyRecord)?.companies), 'coalition commitment');
+  for (const k of sim.kingdoms as AnyRecord[]) check(Array.isArray(k.companies), `kingdom ${String(k.id)} companies`);
   check(Array.isArray(sim.claims) && (sim.claims as unknown[][]).every((c) => Array.isArray(c) && isInt(c[0]) && isInt(c[1]) && isInt(c[2])), 'claims');
   check(Array.isArray(sim.recruits), 'recruits');
   for (const r of sim.recruits as AnyRecord[]) {

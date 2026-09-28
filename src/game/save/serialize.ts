@@ -115,6 +115,23 @@ export function serializeSim(sim: Simulation, extras: SerializeExtras): SaveFile
       manifests: sim.manifests.map((m) => ({ ...m, cargo: { ...m.cargo }, from: { ...m.from }, to: { ...m.to } })),
       parties: sim.parties.map((p) => ({ id: p.id, name: p.name, appearance: { ...p.appearance }, homeRegion: p.homeRegion, stock: { ...p.stock }, state: p.state, innId: p.innId, arriveTick: p.arriveTick, leaveTick: p.leaveTick, x: p.x, y: p.y, edge: { ...p.edge }, coins: p.coins })),
       kingdoms: sim.kingdoms.map((k) => JSON.parse(JSON.stringify(k)) as Kingdom),
+      diplomacy: JSON.parse(JSON.stringify({
+        worldEvents: sim.worldEvents,
+        // Infinity (never warned) is saved as a large negative number.
+        reports: sim.reports,
+        newsSummaries: [...sim.newsSummaries],
+        stances: [...sim.stances],
+        trust: [...sim.trust],
+        wars: [...sim.wars],
+        offers: sim.offers,
+        incidents: sim.incidents,
+        warnings: sim.warnings,
+        concernStates: [...sim.concernStates].map(([k, v]) => [k, { ...v, lastWarnTick: Number.isFinite(v.lastWarnTick) ? v.lastWarnTick : -1e9 }]),
+        warPlans: sim.warPlans,
+        commitments: sim.commitments,
+        diplomacyDay: sim.diplomacyDay,
+        lastProsperity: sim.lastProsperity,
+      })),
       claims: [...sim.claims].map(([key, c]) => {
         const [x, y] = key.split(',').map(Number);
         return [x, y, c.legalOwner, c.occupyingKingdom] as [number, number, number, number | null];
@@ -161,6 +178,21 @@ export function deserializeSim(save: SaveFile): Simulation {
   sim.knownRegions = new Set(d.knownRegions);
   sim.nextMerchant = d.nextMerchant;
   sim.kingdoms = d.kingdoms.map((k) => JSON.parse(JSON.stringify(k)) as Kingdom);
+  const dip = JSON.parse(JSON.stringify(d.diplomacy)) as SaveFile['sim']['diplomacy'];
+  sim.worldEvents = dip.worldEvents;
+  sim.reports = dip.reports;
+  sim.newsSummaries = new Map(dip.newsSummaries);
+  sim.stances = new Map(dip.stances);
+  sim.trust = new Map(dip.trust);
+  sim.wars = new Set(dip.wars);
+  sim.offers = dip.offers;
+  sim.incidents = dip.incidents;
+  sim.warnings = dip.warnings;
+  sim.concernStates = new Map(dip.concernStates);
+  sim.warPlans = dip.warPlans;
+  sim.commitments = dip.commitments;
+  sim.diplomacyDay = dip.diplomacyDay;
+  sim.lastProsperity = dip.lastProsperity;
   for (const [x, y, legalOwner, occupyingKingdom] of d.claims) sim.claims.set(`${x},${y}`, { legalOwner, occupyingKingdom, protectedHomeland: false });
 
   for (const sc of save.world.chunks) {

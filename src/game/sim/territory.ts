@@ -3,6 +3,7 @@ import { CLAIM_COST, HOMELAND_CHUNKS, RIVAL_LAND, SECTOR } from '../data/kingdom
 import { BUILDINGS } from '../data/buildings';
 import { kingdomById, playerKingdom, PLAYER_KINGDOM } from './kingdoms';
 import { settlementOfBuilding } from './settlements';
+import { reportClaim } from './diplomacy';
 import type { Simulation } from './Simulation';
 import type { ClaimSector, CommandResult, TerritoryClaim } from './types';
 
@@ -54,9 +55,9 @@ export function ownerOf(sim: Simulation, sector: ClaimSector): TerritoryClaim | 
   for (const r of sim.kingdoms) {
     if (r.player || !r.capital) continue;
     const c = sectorOf(r.capital.x, r.capital.y);
-    if (Math.max(Math.abs(c.x - sector.x), Math.abs(c.y - sector.y)) <= RIVAL_LAND) {
-      return { sector, legalOwner: r.id, occupyingKingdom: null, protectedHomeland: !conquest };
-    }
+    const d = Math.max(Math.abs(c.x - sector.x), Math.abs(c.y - sector.y));
+    // The town and the ring around it are its protected core; beyond that is its frontier.
+    if (d <= RIVAL_LAND) return { sector, legalOwner: r.id, occupyingKingdom: null, protectedHomeland: d <= 1 && !conquest };
   }
   return null;
 }
@@ -125,6 +126,7 @@ export function claimFrontier(sim: Simulation, sector: unknown): CommandResult {
   me.treasury -= p.cost;
   me.modeLocked = true;
   sim.claims.set(sectorKey(s), { legalOwner: me.id, occupyingKingdom: null, protectedHomeland: false });
+  reportClaim(sim, { x: s.x, y: s.y });
   sim.record('settlement', `${me.name} claimed new frontier land`);
   sim.emit({ type: 'important' });
   return { ok: true, message: `Claimed for ${p.cost} coins. Frontier land is not protected like the homeland.` };

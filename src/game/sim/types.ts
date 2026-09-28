@@ -124,6 +124,155 @@ export interface TerritoryClaim {
 
 export type ConflictMode = 'protected-frontier' | 'full-conquest';
 
+/** A company of soldiers (rivals' are abstract; the player's have members once trained). */
+export interface Company {
+  id: number;
+  kind: 'infantry' | 'archer' | 'knight';
+  strength: number;
+  /** The coalition commitment it is pledged to, if any. */
+  pledgedTo: number | null;
+  owner: number;
+}
+
+export type Stance = 'neutral' | 'trading' | 'ally' | 'enemy';
+export type Certainty = 'rumor' | 'observed' | 'confirmed';
+export type WorldEventKind = 'military-buildup' | 'border-forces' | 'claim' | 'conquest' | 'treaty-broken' | 'prosperity' | 'war-declared' | 'alliance';
+
+/** Something that really happened (the internal truth). Kingdoms act only on reports of it. */
+export interface WorldEvent {
+  id: number;
+  kind: WorldEventKind;
+  subject: number;
+  magnitude: number;
+  location: ClaimSector | null;
+  tick: number;
+}
+
+export interface NewsReport {
+  id: number;
+  eventId: number;
+  kind: WorldEventKind;
+  /** The kingdom that passed it on (null when seen first-hand). */
+  sourceKingdomId: number | null;
+  /** How it was learned: scout, border, envoy, merchant, ally… */
+  sourceKind: string;
+  subjectKingdomId: number;
+  recipientKingdomId: number;
+  certainty: Certainty;
+  observedTick: number;
+  /** When it arrives (null: waiting for a merchant to carry it). */
+  arrivalTick: number | null;
+  /** The earlier report on the same thing that this one corrects. */
+  supersedes: number | null;
+  superseded: boolean;
+  delivered: boolean;
+  magnitude: number;
+  /** Only when the source knew where. */
+  location: ClaimSector | null;
+  /** Kingdoms that passed it along, in order. */
+  relayedBy: number[];
+  /** When the thing itself happened. */
+  eventTick: number;
+}
+
+export interface TreatyOffer {
+  id: number;
+  kind: 'trade' | 'passage' | 'nonAggression' | 'defensiveAlliance' | 'truce' | 'peace';
+  proposer: number;
+  recipient: number;
+  terms: { durationDays: number; payment: number };
+  /** Coins held until the answer. */
+  escrow: number;
+  state: 'proposed' | 'accepted' | 'active' | 'fulfilled' | 'expired' | 'rejected' | 'breached';
+  /** The other side's reasons (for AI answers). */
+  reasons: string[];
+  createdTick: number;
+  expiresTick: number;
+  /** When an AI recipient decides (the letter's arrival); null for offers to the player. */
+  decideTick: number | null;
+  activatedTick: number | null;
+  endsTick: number | null;
+}
+
+export interface Incident {
+  id: number;
+  kind: 'civilianPassage' | 'armedPassage' | 'hostileAttack';
+  from: number;
+  to: number;
+  sector: ClaimSector;
+  tick: number;
+  state: 'open' | 'allowed' | 'withdrawn' | 'standoff' | 'refused';
+}
+
+export type ConcernBand = 'calm' | 'watchful' | 'concerned' | 'alarmed';
+
+export interface ConcernState {
+  band: ConcernBand;
+  score: number;
+  lastWarnTick: number;
+  lastWarnBand: ConcernBand;
+  reassuredTick: number | null;
+  reassuredEvidence: number;
+  lastEvidence: number;
+}
+
+export interface Warning {
+  id: number;
+  from: number;
+  to: number;
+  band: ConcernBand;
+  reasons: string[];
+  actions: string[];
+  tick: number;
+  state: 'open' | 'answered';
+  response: string | null;
+}
+
+export interface WarPlan {
+  id: number;
+  target: number;
+  objective: 'raid' | 'capture' | 'defend';
+  createdTick: number;
+  state: 'drafting' | 'mobilizing' | 'launched' | 'cancelled' | 'concluded';
+  staging: ClaimSector | null;
+}
+
+export type SupportState =
+  | 'proposed' | 'countered' | 'accepted' | 'assembling'
+  | 'enRoute' | 'arrived' | 'active' | 'returning'
+  | 'fulfilled' | 'refused' | 'expired' | 'breached' | 'cancelled';
+
+export interface CampaignSupportTerms {
+  /** Allied-owned companies; never copied into the player's population. */
+  companies: number[];
+  coinFee: number;
+  supplyPayer: 'requester' | 'contributor' | 'shared';
+  /** 0..1; 0.5 for shared. */
+  requesterSupplyShare: number;
+  serviceDays: number;
+  commandRights: 'coordinated' | 'delegated';
+  rewardSectors: ClaimSector[];
+  reciprocalDefenseDays: number;
+}
+
+export interface CoalitionCommitment {
+  id: number;
+  campaignId: number;
+  contributor: number;
+  beneficiary: number;
+  state: SupportState;
+  /** What the player asked for (count-based), used to spot identical requests. */
+  requested: { companies: number; coinFee: number; supplyPayer: CampaignSupportTerms['supplyPayer']; serviceDays: number; commandRights: CampaignSupportTerms['commandRights']; rewardSectors: ClaimSector[]; reciprocalDefenseDays: number; unit?: Company['kind'] };
+  terms: CampaignSupportTerms;
+  /** Offer/muster deadline; service timing is tracked separately. */
+  expiresTick: number;
+  activatedTick: number | null;
+  escrow: number;
+  reasons: string[];
+  decideTick: number;
+  unit: Company['kind'] | null;
+}
+
 export interface Kingdom {
   /** 0 for the player; a rival's id is its home region's id. */
   id: number;
@@ -149,6 +298,8 @@ export interface Kingdom {
   frontierActive: boolean;
   capitalRegion: number | null;
   capital: { x: number; y: number } | null;
+  personality: 'cautious' | 'mercantile' | 'proud';
+  companies: Company[];
 }
 
 /** A standing order to keep a store in another settlement stocked, served by caravans. */

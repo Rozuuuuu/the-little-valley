@@ -13,6 +13,9 @@ import { acceptRecruit, barter, cancelRecruit } from './travelers';
 import { cancelRoute, createRoute, setRouteTarget } from './logistics';
 import { appointCouncil, coronate, setPolicy } from './kingdoms';
 import { activateFrontier, claimFrontier, setConflictMode } from './territory';
+import { cancelTreaty, proposeTreaty, respondToIncident, respondToOffer } from './diplomacy';
+import { respondToWarning } from './concern';
+import { acceptCampaignOffer, cancelWarPlan, counterCampaignOffer, createWarPlan, mobilizeCampaign, requestCampaignSupport, type SupportRequest } from './campaigns';
 import { surveyDeposit, upgradeMine } from './mining';
 import { adoptDeliberateGrowth, cancelChildRequest, formHousehold, isChild, requestChild } from './households';
 import { fieldAction } from './farming';
@@ -60,7 +63,18 @@ export type Command =
   | { type: 'appointCouncil'; post: string; settlerId: number | null }
   | { type: 'claimFrontier'; sector: { x: number; y: number } }
   | { type: 'setConflictMode'; mode: string }
-  | { type: 'activateFrontier' };
+  | { type: 'activateFrontier' }
+  | { type: 'proposeTreaty'; kind: string; to: number; terms: { durationDays: number; payment?: number } }
+  | { type: 'respondToOffer'; offerId: number; accept: boolean }
+  | { type: 'cancelTreaty'; offerId: number }
+  | { type: 'respondToIncident'; incidentId: number; response: string }
+  | { type: 'respondToWarning'; warningId: number; action: string }
+  | { type: 'createWarPlan'; target: number; objective: string }
+  | { type: 'requestCampaignSupport'; planId: number; ally: number; terms: SupportRequest }
+  | { type: 'counterCampaignOffer'; commitmentId: number; terms: SupportRequest }
+  | { type: 'acceptCampaignOffer'; commitmentId: number }
+  | { type: 'cancelWarPlan'; planId: number }
+  | { type: 'mobilizeCampaign'; planId: number };
 
 const MAX_AREA = 40 * 40;
 /** Most settlers one work area can take. */
@@ -579,6 +593,28 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
       return setConflictMode(sim, cmd.mode);
     case 'activateFrontier':
       return activateFrontier(sim);
+    case 'proposeTreaty':
+      return proposeTreaty(sim, cmd.kind, cmd.to, cmd.terms);
+    case 'respondToOffer':
+      return respondToOffer(sim, cmd.offerId, cmd.accept);
+    case 'cancelTreaty':
+      return cancelTreaty(sim, cmd.offerId);
+    case 'respondToIncident':
+      return respondToIncident(sim, cmd.incidentId, cmd.response);
+    case 'respondToWarning':
+      return respondToWarning(sim, cmd.warningId, cmd.action);
+    case 'createWarPlan':
+      return createWarPlan(sim, cmd.target, cmd.objective);
+    case 'requestCampaignSupport':
+      return requestCampaignSupport(sim, cmd.planId, cmd.ally, cmd.terms);
+    case 'counterCampaignOffer':
+      return counterCampaignOffer(sim, cmd.commitmentId, cmd.terms);
+    case 'acceptCampaignOffer':
+      return acceptCampaignOffer(sim, cmd.commitmentId);
+    case 'cancelWarPlan':
+      return cancelWarPlan(sim, cmd.planId);
+    case 'mobilizeCampaign':
+      return mobilizeCampaign(sim, cmd.planId);
 
     case 'unassignWorker': {
       const b = sim.buildings.get(cmd.buildingId);

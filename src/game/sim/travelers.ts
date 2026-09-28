@@ -17,6 +17,7 @@ import { isResourceId, RESOURCES, type Inventory } from '../data/resources';
 import { buyPrice, MERCHANT_GOODS, MERCHANT_ORES, sellPrice } from '../data/trade';
 import { direction, nearbyTowns, regionById, ROAD_SPEED } from '../world/regions';
 import { knowKingdomOf, playerKingdom } from './kingdoms';
+import { merchantBringsNews, merchantCarriesNews } from './diplomacy';
 import { MERCHANT_PURSE, POLICIES, TRUST_MIN_RECRUIT } from '../data/kingdoms';
 
 const ok = (message?: string, id?: number): CommandResult => ({ ok: true, message, id });
@@ -294,6 +295,7 @@ function updateParty(sim: Simulation, p: Party): void {
       if (!walk(sim, p, { x: inn.x, y: inn.y, w: inn.w, h: inn.h, adjacent: true })) return;
       p.state = 'lodging';
       p.leaveTick = sim.tick + MERCHANT_STAY;
+      merchantBringsNews(sim, p.homeRegion);
       p.path = null;
       sim.stats.merchantVisits++;
       sim.toast(`${p.name} has taken a room at the inn. Open the inn to barter.`, 'good');
@@ -312,6 +314,7 @@ function updateParty(sim: Simulation, p: Party): void {
     }
     case 'leaving': {
       if (!walk(sim, p, { x: p.edge.x, y: p.edge.y, w: 1, h: 1, adjacent: false })) return;
+      merchantCarriesNews(sim, p.homeRegion);
       sim.parties = sim.parties.filter((x) => x !== p);
     }
   }
