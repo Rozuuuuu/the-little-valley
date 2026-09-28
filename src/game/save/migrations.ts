@@ -355,7 +355,9 @@ export function validateSave(save: AnyRecord): void {
   check(Array.isArray(sim.reached) && (sim.reached as unknown[]).every(isMilestoneId), 'progression');
   check(Array.isArray(sim.workAreas), 'work areas');
   for (const a of sim.workAreas as AnyRecord[]) {
-    check(isInt(a.id) && typeof a.name === 'string' && ['farm', 'wood', 'stone', 'build'].includes(a.kind as string), 'work area');
+    check(isInt(a.id) && typeof a.name === 'string' && ['farm', 'wood', 'stone', 'build', 'hunt', 'forage'].includes(a.kind as string), 'work area');
+    check(a.wanted === undefined || (isInt(a.wanted) && (a.wanted as number) >= 0), 'work area staffing');
+    check(a.crop === undefined || a.crop === null || isCropId(a.crop), 'work area crop');
     check([a.x0, a.y0, a.x1, a.y1].every(isInt), 'work area bounds');
   }
   check(Array.isArray(sim.chronicle), 'chronicle');

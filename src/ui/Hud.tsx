@@ -609,11 +609,11 @@ function AreasTab() {
   const [editing, setEditing] = useState<number | null>(null);
   const [name, setName] = useState('');
   const selected = s.selection.map((x) => x.id);
-  const kinds: AreaKind[] = ['farm', 'wood', 'stone', 'build'];
+  const kinds: AreaKind[] = ['farm', 'wood', 'stone', 'forage', 'hunt', 'build'];
   return (
     <>
       <p className="muted" style={{ marginTop: 0 }}>
-        Draw an area, then assign settlers. They do the area's work first and fall back to their work order.
+        Draw an area and it staffs itself with free settlers (or assign your selection). They do the area's work first, then their usual work. Woodlots replant, farm areas lay out their own fields, hunting grounds bring in meat.
       </p>
       <div className="area-new">
         {kinds.map((k) => (
@@ -641,6 +641,31 @@ function AreasTab() {
                 {a.kindName} · {a.size} tiles · {a.does}.
               </div>
               <div className={a.status.includes('No') || a.status.includes('nobody') ? 'reason' : 'muted'}>{a.status}</div>
+              <div className="row">
+                <span>Workers wanted</span>
+                <span className="stepper">
+                  <button className="btn small" onClick={() => game.dispatch({ type: 'updateArea', areaId: a.id, wanted: Math.max(0, (a.wanted ?? a.workers.length) - 1) })} aria-label="Fewer workers">
+                    −
+                  </button>
+                  <strong>{a.wanted ?? 'by hand'}</strong>
+                  <button className="btn small" onClick={() => game.dispatch({ type: 'updateArea', areaId: a.id, wanted: Math.min(a.max, (a.wanted ?? a.workers.length) + 1) })} aria-label="More workers">
+                    +
+                  </button>
+                </span>
+              </div>
+              {a.kind === 'farm' && (
+                <div className="row">
+                  <span>Crop to plant</span>
+                  <select value={a.crop ?? ''} onChange={(e) => game.dispatch({ type: 'updateArea', areaId: a.id, crop: (e.target.value || null) as CropId | null })} aria-label="Crop for this farm area">
+                    <option value="">Only fields I place</option>
+                    {s.unlocked.crops.map((c) => (
+                      <option key={c} value={c}>
+                        {CROPS[c].name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="muted">Workers: {a.workers.map((w) => w.name).join(', ') || 'none'}</div>
               {editing === a.id ? (
                 <form

@@ -74,9 +74,9 @@ export interface RenderState {
   highlight: { x: number; y: number; w: number; h: number; t0: number } | null;
 }
 
-export const AREA_COLORS: Record<AreaKind, string> = { farm: '#e9c65a', wood: '#8ee07a', stone: '#d6dadc', build: '#8fc9e0' };
+export const AREA_COLORS: Record<AreaKind, string> = { farm: '#e9c65a', wood: '#8ee07a', stone: '#d6dadc', build: '#8fc9e0', hunt: '#e0845a', forage: '#e07ab8' };
 /** A letter per area kind so areas never rely on colour alone. */
-export const AREA_SYMBOL: Record<AreaKind, string> = { farm: 'F', wood: 'W', stone: 'Q', build: 'B' };
+export const AREA_SYMBOL: Record<AreaKind, string> = { farm: 'F', wood: 'W', stone: 'Q', build: 'B', hunt: 'H', forage: 'G' };
 
 interface Drawable {
   y: number;
@@ -669,6 +669,8 @@ export class Renderer {
     const ctx = this.ctx;
     const cam = this.camera;
     const sc = cam.scale;
+    const crews = new Map<number, number>();
+    if (st.sim.workAreas.length) for (const s of st.sim.settlers) if (s.areaId !== null) crews.set(s.areaId, (crews.get(s.areaId) ?? 0) + 1);
     for (const a of st.sim.workAreas) {
       const selected = st.selectedArea === a.id;
       const strong = selected || st.areaMode;
@@ -686,7 +688,8 @@ export class Renderer {
       ctx.strokeRect(p0.x + 0.5, p0.y + 0.5, p1.x - p0.x - 1, p1.y - p0.y - 1);
       ctx.setLineDash([]);
       if (strong || sc >= 3) {
-        const label = `${AREA_SYMBOL[a.kind]} ${a.name}`;
+        const crew = crews.get(a.id) ?? 0;
+        const label = `${AREA_SYMBOL[a.kind]} ${a.name} · ${crew}${a.wanted !== undefined ? `/${a.wanted}` : ''} ☺`;
         ctx.font = `700 ${Math.max(11, Math.round(sc * 3.6))}px "Atkinson Hyperlegible", sans-serif`;
         const w = ctx.measureText(label).width;
         ctx.globalAlpha = 0.85;

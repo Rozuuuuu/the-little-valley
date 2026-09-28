@@ -21,6 +21,7 @@ import { updateHouseholds } from './households';
 import { updateOrchards } from './orchards';
 import { storageOf, updateUpgrades } from './levels';
 import { updateAnimals } from './animals';
+import { AREA_STEP, updateAreas } from './areas';
 import { surveyedCell, type SurveyedCell } from './mining';
 import { updateParties, updateTravelers } from './travelers';
 import { LOGISTICS_STEP, updateLogistics } from './logistics';
@@ -585,6 +586,7 @@ export class Simulation implements PathGrid {
     updateKingdoms(this);
     if (this.upgrading.size) updateUpgrades(this);
     updateAnimals(this);
+    if (this.tick % AREA_STEP === 0) updateAreas(this);
     if (this.tick % GROWTH_STEP === 0) {
       updateHouseholds(this);
       updateTravelers(this);

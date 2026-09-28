@@ -578,6 +578,9 @@ export class GameController {
 
   // ---- work areas --------------------------------------------------------------
 
+  /** New areas staff themselves with this many workers; farm areas lay out this crop. */
+  areaDefaults: { wanted: number; crop: CropId } = { wanted: 2, crop: 'turnip' };
+
   startArea(areaKind: AreaKind, editId: number | null = null): void {
     this.setMode({ kind: 'area', areaKind, editId });
   }
@@ -589,7 +592,7 @@ export class GameController {
     const rect = { x0: from.x, y0: from.y, x1: t.x, y1: t.y };
     const res = this.mode.editId !== null
       ? this.dispatch({ type: 'updateArea', areaId: this.mode.editId, rect })
-      : this.dispatch({ type: 'createArea', kind: this.mode.areaKind, ...rect });
+      : this.dispatch({ type: 'createArea', kind: this.mode.areaKind, ...rect, wanted: this.selected.size ? undefined : this.areaDefaults.wanted, crop: this.areaDefaults.crop });
     if (!res.ok) return;
     this.audio.play('complete');
     this.selectedArea = this.mode.kind === 'area' && this.mode.editId !== null ? this.mode.editId : res.id ?? null;

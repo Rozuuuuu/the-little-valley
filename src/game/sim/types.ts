@@ -48,7 +48,7 @@ export type Task =
   | { kind: 'train'; site: number; stage: 'walk' | 'drill' }
   | { kind: 'extract'; site: number; slot: number; amount: number; stage: 'walk' | 'work'; timer: number }
   | { kind: 'craft'; ws: number; stage: 'walk' | 'work' }
-  | { kind: 'hunt'; lodge: number; animal: number; stage: 'stalk' | 'aim'; timer: number; tx: number; ty: number }
+  | { kind: 'hunt'; lodge: number | null; area?: number; animal: number; stage: 'stalk' | 'aim'; timer: number; tx: number; ty: number }
   | { kind: 'herd'; pen: number; stage: 'walk' | 'work'; timer: number }
   | { kind: 'eat'; src: number }
   | { kind: 'sleep'; home: number | null; stage: 'walk' | 'sleep' };
@@ -511,7 +511,7 @@ export interface Settlement {
   name: string;
 }
 
-export type AreaKind = 'farm' | 'wood' | 'stone' | 'build';
+export type AreaKind = 'farm' | 'wood' | 'stone' | 'build' | 'hunt' | 'forage';
 
 /** A player-drawn rectangle whose assigned settlers do one kind of work inside it first. */
 export interface WorkArea {
@@ -522,6 +522,10 @@ export interface WorkArea {
   y0: number;
   x1: number;
   y1: number;
+  /** Workers the area staffs itself with from free adults (absent: the player assigns by hand). */
+  wanted?: number;
+  /** Farm areas: the crop they lay out their own fields with. */
+  crop?: CropId | null;
 }
 
 /** Notable things that happened, kept for the Valley today summary. */

@@ -124,6 +124,9 @@ export interface AreaInfo {
   size: string;
   /** Work available inside right now, in plain words. */
   status: string;
+  /** Workers it staffs itself with (null: assigned by hand). */
+  wanted: number | null;
+  crop: CropId | null;
 }
 
 export interface Toast {
@@ -389,27 +392,33 @@ export function areaInfo(sim: Simulation): AreaInfo[] {
       for (let x = a.x0; x <= a.x1; x++) {
         if (!sim.world.explored(x, y)) continue;
         explored++;
-        if (a.kind === 'wood' || a.kind === 'stone') {
+        if (a.kind === 'wood' || a.kind === 'stone' || a.kind === 'forage') {
           const d = OBJECTS[sim.world.obj(x, y)];
-          if (d.resource === a.kind && sim.world.amount(x, y) > 0) count++;
+          if (d.resource === (a.kind === 'forage' ? 'food' : a.kind) && sim.world.amount(x, y) > 0) count++;
         }
       }
     }
     let status = '';
     if (explored === 0) status = 'Unexplored — send someone to look';
-    else if (a.kind === 'wood') status = count ? `${count} tree${count === 1 ? '' : 's'} to chop` : 'No trees left — saplings regrow in time';
+    else if (a.kind === 'wood') status = count ? `${count} tree${count === 1 ? '' : 's'} to chop · replanted as they fall` : 'No trees left — the saplings grow back within a day';
+    else if (a.kind === 'forage') status = count ? `${count} berry bush${count === 1 ? '' : 'es'} to pick` : 'No berries now — the bushes fruit again';
+    else if (a.kind === 'hunt') {
+      const game = sim.animals.filter((an) => an.penId === null && SPECIES[an.species].hunt && an.x >= a.x0 && an.x <= a.x1 + 1 && an.y >= a.y0 && an.y <= a.y1 + 1).length;
+      status = game ? `${game} game animal${game === 1 ? '' : 's'} inside` : 'No game inside right now — animals roam back';
+    }
     else if (a.kind === 'stone') status = count ? `${count} rock${count === 1 ? '' : 's'} to mine` : 'No rocks left — redraw it somewhere stony';
     else if (a.kind === 'farm') {
       const fields = [...sim.buildings.values()].filter((b) => b.field && b.x >= a.x0 && b.x <= a.x1 && b.y >= a.y0 && b.y <= a.y1);
-      status = fields.length ? `${fields.length} field${fields.length === 1 ? '' : 's'} (${fields.filter((f) => f.field!.state === 'ripe').length} ripe)` : 'No fields inside — place some here';
+      status = fields.length ? `${fields.length} field${fields.length === 1 ? '' : 's'} (${fields.filter((f) => f.field!.state === 'ripe').length} ripe)` : a.crop ? 'Laying out fields…' : 'No fields inside — choose a crop and it lays them out';
     } else {
       const sites = [...sim.buildings.values()].filter((b) => !b.built && !b.field && b.x <= a.x1 && b.x + b.w - 1 >= a.x0 && b.y <= a.y1 && b.y + b.h - 1 >= a.y0);
       status = sites.length ? `${sites.length} site${sites.length === 1 ? '' : 's'} to build` : 'No construction inside';
     }
-    if (workers.length === 0) status += ' · nobody assigned';
+    if (workers.length === 0) status += a.wanted ? ' · looking for free settlers' : ' · nobody assigned';
     return {
       id: a.id, name: a.name, kind: a.kind, kindName: AREA_LABELS[a.kind].name, does: AREA_LABELS[a.kind].does,
       workers, max: AREA_MAX_WORKERS, size: `${a.x1 - a.x0 + 1}×${a.y1 - a.y0 + 1}`, status,
+      wanted: a.wanted ?? null, crop: a.crop ?? null,
     };
   });
 }

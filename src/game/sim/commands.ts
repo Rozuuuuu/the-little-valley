@@ -20,12 +20,13 @@ import { cancelTraining, demobilize, enlist, mobilizeCampaign, orderCompany } fr
 import { declareWar, evacuate, launchCampaign } from './combat';
 import { surveyDeposit, upgradeMine } from './mining';
 import { cancelUpgrade, startUpgrade } from './levels';
+import { layOutFields } from './areas';
 import { rally, takeThrone } from './ruler';
 import { adoptDeliberateGrowth, cancelChildRequest, formHousehold, isChild, requestChild } from './households';
 import { fieldAction } from './farming';
 import { abortTask, findHaulFor } from './settlers';
 import type { Simulation } from './Simulation';
-import type { AreaKind, CommandResult, Settler } from './types';
+import type { AreaKind, CommandResult, Settler, WorkArea } from './types';
 
 export type Command =
   | { type: 'move'; ids: number[]; x: number; y: number }
@@ -40,8 +41,8 @@ export type Command =
   | { type: 'setRecipe'; buildingId: number; recipe: RecipeId | null }
   | { type: 'toggleWorkshop'; buildingId: number }
   | { type: 'placeSpan'; building: BuildingId; x0: number; y0: number; x1: number; y1: number }
-  | { type: 'createArea'; kind: AreaKind; x0: number; y0: number; x1: number; y1: number; name?: string }
-  | { type: 'updateArea'; areaId: number; name?: string; kind?: AreaKind; rect?: { x0: number; y0: number; x1: number; y1: number } }
+  | { type: 'createArea'; kind: AreaKind; x0: number; y0: number; x1: number; y1: number; name?: string; wanted?: number; crop?: CropId | null }
+  | { type: 'updateArea'; areaId: number; name?: string; kind?: AreaKind; rect?: { x0: number; y0: number; x1: number; y1: number }; wanted?: number | null; crop?: CropId | null }
   | { type: 'deleteArea'; areaId: number }
   | { type: 'assignArea'; ids: number[]; areaId: number | null }
   | { type: 'setPriorities'; ids: number[]; priorities: WorkKind[] | null }
@@ -94,12 +95,14 @@ export type Command =
 const MAX_AREA = 40 * 40;
 /** Most settlers one work area can take. */
 export const AREA_MAX_WORKERS = 12;
-const AREA_KINDS: AreaKind[] = ['farm', 'wood', 'stone', 'build'];
+const AREA_KINDS: AreaKind[] = ['farm', 'wood', 'stone', 'build', 'hunt', 'forage'];
 export const AREA_LABELS: Record<AreaKind, { name: string; noun: string; does: string }> = {
   farm: { name: 'Farm area', noun: 'Farm', does: 'Till, plant, water and harvest the fields inside' },
-  wood: { name: 'Woodlot', noun: 'Woodlot', does: 'Chop every tree inside (no harvest marks needed)' },
+  wood: { name: 'Woodlot', noun: 'Woodlot', does: 'Chop every tree inside (no marks needed) and replant a sapling in its place' },
   stone: { name: 'Quarry', noun: 'Quarry', does: 'Mine every rock and boulder inside' },
   build: { name: 'Building area', noun: 'Works', does: 'Build and supply construction sites inside' },
+  hunt: { name: 'Hunting ground', noun: 'Hunting ground', does: 'Hunt the wild game inside for meat and hides' },
+  forage: { name: 'Forage area', noun: 'Forage', does: 'Pick every berry bush inside' },
 };
 
 /**
@@ -431,12 +434,19 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
       const n = sim.workAreas.filter((a) => a.kind === cmd.kind).length + 1;
       const name = (typeof cmd.name === 'string' && cmd.name.trim().slice(0, 30)) || `${AREA_LABELS[cmd.kind].noun} ${n}`;
       const id = sim.allocId();
-      sim.workAreas.push({
+      const area: WorkArea = {
         id, name, kind: cmd.kind,
         x0: Math.min(cmd.x0, cmd.x1), y0: Math.min(cmd.y0, cmd.y1), x1: Math.max(cmd.x0, cmd.x1), y1: Math.max(cmd.y0, cmd.y1),
-      });
+      };
+      if (isInt(cmd.wanted) && cmd.wanted > 0) area.wanted = Math.min(AREA_MAX_WORKERS, cmd.wanted);
+      if (cmd.kind === 'farm' && isCropId(cmd.crop) && cropUnlocked(sim, cmd.crop)) area.crop = cmd.crop;
+      sim.workAreas.push(area);
+      if (area.crop) layOutFields(sim, area);
       sim.emit({ type: 'important' });
-      return { ok: true, id, message: `Created ${name}. Assign settlers to it from the Areas tab.` };
+      return {
+        ok: true, id,
+        message: area.wanted ? `Created ${name}. ${area.wanted} free settlers will head there on their own.` : `Created ${name}. Assign settlers to it from the Areas window.`,
+      };
     }
 
     case 'updateArea': {
@@ -451,6 +461,11 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
         a.y1 = Math.max(cmd.rect.y0, cmd.rect.y1);
       }
       if (cmd.kind && AREA_KINDS.includes(cmd.kind)) a.kind = cmd.kind;
+      if (cmd.wanted === null || cmd.wanted === 0) delete a.wanted;
+      else if (isInt(cmd.wanted) && cmd.wanted > 0) a.wanted = Math.min(AREA_MAX_WORKERS, cmd.wanted);
+      if (cmd.crop === null) a.crop = null;
+      else if (isCropId(cmd.crop) && cropUnlocked(sim, cmd.crop)) a.crop = cmd.crop;
+      if (a.kind === 'farm' && a.crop) layOutFields(sim, a);
       if (typeof cmd.name === 'string' && cmd.name.trim()) a.name = cmd.name.trim().slice(0, 30);
       for (const s of sim.settlers) if (s.areaId === a.id) replan(sim, s);
       return ok();

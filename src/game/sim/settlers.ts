@@ -29,6 +29,8 @@ import { huntRadiusOf, penAnimals, penCapacity, preyNear, removeAnimal } from '.
 import { SPECIES } from '../data/animals';
 import type { Animal } from './types';
 
+/** A woodlot sapling grows into a tree this fast. */
+const REPLANT_TICKS = Math.round(DAY_TICKS * 0.75);
 /** Hunters shoot from this far (tiles). */
 const HUNT_RANGE = 4;
 /** Herder work per visit (ticks). */
@@ -560,7 +562,7 @@ function findGather(sim: Simulation, s: Settler): Task | string | null {
 }
 
 /** Wood or stone inside a woodlot or quarry area. Areas harvest without needing marks. */
-function findAreaGather(sim: Simulation, s: Settler, area: WorkArea, res: 'wood' | 'stone'): Task | string {
+function findAreaGather(sim: Simulation, s: Settler, area: WorkArea, res: 'wood' | 'stone' | 'food'): Task | string {
   if (!sim.nearestStorageWithSpace(s.x, s.y)) return 'Storage is full — build a storehouse';
   let best: { x: number; y: number } | null = null;
   let bestD = Infinity;
@@ -584,10 +586,10 @@ function findAreaGather(sim: Simulation, s: Settler, area: WorkArea, res: 'wood'
     }
   }
   if (best) return objectTask(sim, s, best.x, best.y);
-  const noun = res === 'wood' ? 'trees' : 'rocks';
-  if (any === 0) return `No ${noun} left in ${area.name} — ${res === 'wood' ? 'saplings will regrow, or ' : ''}redraw the area`;
+  const noun = res === 'wood' ? 'trees' : res === 'food' ? 'berries' : 'rocks';
+  if (any === 0) return `No ${noun} left in ${area.name} — ${res === 'wood' ? 'the saplings are growing back, or ' : res === 'food' ? 'the bushes will fruit again, or ' : ''}redraw the area`;
   if (unreachable === any) return `Can't reach the ${noun} in ${area.name} — a path may be blocked`;
-  return `Every ${res === 'wood' ? 'tree' : 'rock'} in ${area.name} already has a worker`;
+  return `Every ${res === 'wood' ? 'tree' : res === 'food' ? 'bush' : 'rock'} in ${area.name} already has a worker`;
 }
 
 /** Work inside the settler's assigned area, or a reason why there is none. */
@@ -598,6 +600,10 @@ function findAreaWork(sim: Simulation, s: Settler, area: WorkArea, handsFull: bo
     case 'wood':
     case 'stone':
       return handsFull ? null : findAreaGather(sim, s, area, area.kind);
+    case 'forage':
+      return handsFull ? null : findAreaGather(sim, s, area, 'food');
+    case 'hunt':
+      return handsFull ? null : findHuntInArea(sim, s, area);
     case 'build': {
       const b = findBuild(sim, s, area);
       if (b && typeof b === 'object') return b;
@@ -709,6 +715,28 @@ function findHunt(sim: Simulation, s: Settler): Task | string | null {
   best.a.huntedBy = s.id;
   sim.reserve(`hunt:${best.a.id}`, s.id);
   return { kind: 'hunt', lodge: best.b.id, animal: best.a.id, stage: 'stalk', timer: 0, tx: Math.floor(best.a.x), ty: Math.floor(best.a.y) };
+}
+
+/** Game inside a hunting ground. */
+function findHuntInArea(sim: Simulation, s: Settler, area: WorkArea): Task | string {
+  let best: Animal | null = null;
+  let bestD = Infinity;
+  let any = false;
+  for (const a of sim.animals) {
+    if (a.penId !== null || !SPECIES[a.species].hunt || a.x < area.x0 || a.x > area.x1 + 1 || a.y < area.y0 || a.y > area.y1 + 1) continue;
+    any = true;
+    if (a.huntedBy !== null) continue;
+    const d = dist(s, a.x, a.y);
+    if (d < bestD) {
+      bestD = d;
+      best = a;
+    }
+  }
+  if (!best) return any ? `Every animal in ${area.name} is already being stalked` : `No game in ${area.name} right now — animals roam back in time`;
+  if (!sim.nearestStorageWithSpace(s.x, s.y, 'food')) return 'Storage is full — nowhere to put the meat';
+  best.huntedBy = s.id;
+  sim.reserve(`hunt:${best.id}`, s.id);
+  return { kind: 'hunt', lodge: null, area: area.id, animal: best.id, stage: 'stalk', timer: 0, tx: Math.floor(best.x), ty: Math.floor(best.y) };
 }
 
 /** A pen with eggs, milk, wool or a foal to collect, or full and due a cull. */
@@ -942,7 +970,11 @@ function runGather(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'gather
   if (left - 1 <= 0) {
     sim.world.setObj(t.x, t.y, def.depletesTo);
     sim.designations.delete(tileKey(t.x, t.y));
-    scheduleRegrowth(sim, t.x, t.y);
+    // Woodlots are replanted at once: a sapling that grows back within a day.
+    if (def.depletesTo === O.Stump && sim.workAreas.some((a) => a.kind === 'wood' && t.x >= a.x0 && t.x <= a.x1 && t.y >= a.y0 && t.y <= a.y1)) {
+      sim.world.setObj(t.x, t.y, O.Sapling);
+      sim.regrowth.set(tileKey(t.x, t.y), { to: O.Oak, at: sim.tick + REPLANT_TICKS });
+    } else scheduleRegrowth(sim, t.x, t.y);
     if (def.depletesTo === O.Stump) sim.emit({ type: 'fx', kind: 'leaves', x: t.x + 0.5, y: t.y });
     abortTask(sim, s);
     return;
@@ -1146,11 +1178,13 @@ function runExtract(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'extra
 
 /** Hunters close to bow range of their quarry, aim, and bring the meat home; hides go to the lodge. */
 function runHunt(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'hunt' }>): void {
-  const lodge = sim.buildings.get(t.lodge);
+  const lodge = t.lodge !== null ? sim.buildings.get(t.lodge) : undefined;
+  const ground = t.area !== undefined ? sim.area(t.area) : undefined;
   const a = sim.animals.find((x) => x.id === t.animal);
-  if (!lodge || !a || a.penId !== null || s.carrying) return abortTask(sim, s);
+  if ((!lodge && !ground) || !a || a.penId !== null || s.carrying) return abortTask(sim, s);
   const d = Math.hypot(a.x - s.x, a.y - s.y);
-  if (d > huntRadiusOf(lodge) + 12) return abortTask(sim, s, 'The quarry got away');
+  const reach = lodge ? huntRadiusOf(lodge) + 12 : ground ? Math.max(ground.x1 - ground.x0, ground.y1 - ground.y0) + 12 : 0;
+  if (d > reach) return abortTask(sim, s, 'The quarry got away');
   if (t.stage === 'stalk') {
     if (d <= HUNT_RANGE) {
       t.stage = 'aim';
@@ -1181,8 +1215,8 @@ function runHunt(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'hunt' }>
   s.carrying = { res: 'food', amount: hunt.food };
   sim.stats.foodGathered += hunt.food;
   if (hunt.hides > 0) {
-    const left = hunt.hides - sim.deposit(lodge, 'hides', hunt.hides);
-    if (left > 0) sim.depositAnywhere('hides', left, lodge.x, lodge.y);
+    const left = lodge ? hunt.hides - sim.deposit(lodge, 'hides', hunt.hides) : hunt.hides;
+    if (left > 0) sim.depositAnywhere('hides', left, lodge ? lodge.x : s.x, lodge ? lodge.y : s.y);
   }
   sim.emit({ type: 'sfx', name: 'harvest', x: a.x, y: a.y });
   sim.emit({ type: 'fx', kind: 'leaves', x: a.x, y: a.y });
