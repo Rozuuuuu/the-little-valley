@@ -19,6 +19,7 @@ import { acceptCampaignOffer, cancelWarPlan, counterCampaignOffer, createWarPlan
 import { cancelTraining, demobilize, enlist, mobilizeCampaign, orderCompany } from './military';
 import { declareWar, evacuate, launchCampaign } from './combat';
 import { surveyDeposit, upgradeMine } from './mining';
+import { cancelUpgrade, startUpgrade } from './levels';
 import { adoptDeliberateGrowth, cancelChildRequest, formHousehold, isChild, requestChild } from './households';
 import { fieldAction } from './farming';
 import { abortTask, findHaulFor } from './settlers';
@@ -56,6 +57,8 @@ export type Command =
   | { type: 'cancelRecruit'; recruitId: number }
   | { type: 'surveyDeposit'; settlerId: number; x: number; y: number }
   | { type: 'upgradeMine'; buildingId: number }
+  | { type: 'upgradeBuilding'; buildingId: number }
+  | { type: 'cancelUpgrade'; buildingId: number }
   | { type: 'createRoute'; sourceId: number; destinationId: number; resource: ResourceId; target: number }
   | { type: 'setRouteTarget'; routeId: number; target: number }
   | { type: 'cancelRoute'; routeId: number }
@@ -583,6 +586,12 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
       return surveyDeposit(sim, cmd.settlerId, cmd.x, cmd.y);
     case 'upgradeMine':
       return upgradeMine(sim, cmd.buildingId);
+    case 'upgradeBuilding':
+    case 'cancelUpgrade': {
+      const b = sim.buildings.get(cmd.buildingId as number);
+      if (!b) return err('That building is gone');
+      return cmd.type === 'upgradeBuilding' ? startUpgrade(sim, b) : cancelUpgrade(sim, b);
+    }
     case 'createRoute':
       return createRoute(sim, cmd.sourceId, cmd.destinationId, cmd.resource, cmd.target);
     case 'setRouteTarget':

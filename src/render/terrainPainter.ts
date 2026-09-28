@@ -104,7 +104,7 @@ export function terrainGrid(world: World, chunk: Chunk): Uint8Array {
       if (inside) terr[gy * G + gx] = chunk.terrain[(gy - 1) * CHUNK + gx - 1];
       else {
         const n = world.peekChunk(x >> 5, y >> 5);
-        terr[gy * G + gx] = n ? n.terrain[(y & 31) * CHUNK + (x & 31)] : terrainAt(world.seed, x, y, world.genVersion);
+        terr[gy * G + gx] = n ? n.terrain[(y & 31) * CHUNK + (x & 31)] : terrainAt(world.seed, x, y, world.genVersion, undefined, world.habitat);
       }
     }
   }

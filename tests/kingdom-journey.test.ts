@@ -44,7 +44,7 @@ function uniqueIds(sim: Simulation): void {
 
 describe('kingdom journey', () => {
   it('growth → ore and tools → supplied towns → crown → contact and news → soldiers → allies against a stronger kingdom → launch → frontier → peace → save and resume', () => {
-    let sim = createNewGame(SEED);
+    let sim = createNewGame(SEED, 3) // generator-3 land: the stages below place buildings by coordinates;
     const camp = campOf(sim)!;
     camp.inventory = { food: 120, wood: 90, stone: 45, planks: 30 };
 

@@ -3,7 +3,7 @@ import type { CropId } from '../../game/data/crops';
 import type { ResourceId } from '../../game/data/resources';
 import type { Appearance, ToolKind } from '../../game/sim/types';
 import { makeCanvas, type Sprite } from '../pixel';
-import { makeBuildingSprites, makeCartSprite, makeFenceSprites, makeMillSails, makeMineSprites, makeOrchardSprites, makeQuarrySprites, makeVillageHall, type BuildingSprites, type OrchardLook } from './buildings';
+import { makeBuildingSprites, makeCartSprite, makeFenceSprites, makeMillSails, makeMineSprites, makeOrchardSprites, makeQuarrySprites, makeTownHallSprites, makeVillageHall, type BuildingSprites, type OrchardLook } from './buildings';
 import { appearanceKey, makeSettlerSheet, type SettlerSheet } from './characters';
 import { makeCropSprites, makeSoil, type SoilState } from './crops';
 import { makeResourceIcons, makeToolSprites, makeUiIcons, type UiIconId } from './icons';
@@ -45,6 +45,8 @@ export class SpriteBank {
   readonly mine: BuildingSprites[] = makeMineSprites();
   readonly cart: Sprite = makeCartSprite();
   readonly villageHall: BuildingSprites = makeVillageHall();
+  /** Town Hall, Keep and Castle. */
+  readonly townHall: BuildingSprites[] = makeTownHallSprites();
   readonly crops: Record<CropId, Sprite[]> = makeCropSprites();
   readonly soil: Record<SoilState, Sprite> = { wild: makeSoil('wild'), tilled: makeSoil('tilled'), wet: makeSoil('wet') };
   readonly resources: Record<ResourceId, Sprite> = makeResourceIcons();
@@ -73,6 +75,21 @@ export class SpriteBank {
     return u;
   }
 
+  /** A head-and-shoulders portrait (front-facing idle frame) for the selection panel. */
+  portrait(a: Appearance): string {
+    const key = `portrait:${appearanceKey(a)}`;
+    const cached = this.previewCache.get(key);
+    if (cached) return cached;
+    const frame = this.settler(a)[0][0].canvas;
+    const c = makeCanvas(18, 16);
+    const ctx = c.getContext('2d')!;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(frame, 0, 0, 18, 16, 0, 0, 18, 16);
+    const url = c.toDataURL();
+    this.previewCache.set(key, url);
+    return url;
+  }
+
   /** A square preview of a building for the build menu. */
   buildingPreview(id: BuildingId): string {
     const key = `preview:${id}`;
@@ -88,6 +105,7 @@ export class SpriteBank {
     if (id === 'orchard') src = this.orchard.fruit2.canvas;
     if (id === 'quarry') src = this.quarry[2].canvas;
     if (id === 'mine') src = this.mine[0].day.canvas;
+    if (id === 'townHall') src = this.townHall[0].day.canvas;
     if (id === 'path' || id === 'bridge') src = this.groundPreview(id);
     if (id === 'stoneBridge') src = this.stoneBridgePreview();
     if (src) {

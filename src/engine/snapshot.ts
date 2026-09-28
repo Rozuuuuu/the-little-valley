@@ -6,7 +6,7 @@ import { CROPS, CROP_IDS, type CropId } from '../game/data/crops';
 import type { JobId, WorkKind } from '../game/data/jobs';
 import { MILESTONES, type MilestoneId } from '../game/data/progression';
 import { RECIPES, type RecipeId } from '../game/data/recipes';
-import { RESOURCE_IDS, type ResourceId } from '../game/data/resources';
+import { RESOURCE_IDS, type Inventory, type ResourceId } from '../game/data/resources';
 import {
   bedsOf, costOf, cropUnlocked, housingCapacity, isPermanentHome, isUnlocked, maxWorkers, unlockName, workOf,
 } from '../game/sim/buildings';
@@ -17,7 +17,7 @@ import { effectivePriorities } from '../game/sim/priorities';
 import { currentMilestone, nextMilestone, requirementProgress, type RequirementProgress } from '../game/sim/progression';
 import { describeTask } from '../game/sim/settlers';
 import type { Simulation } from '../game/sim/Simulation';
-import type { AreaKind, BedClaim, Building, Settler } from '../game/sim/types';
+import type { Appearance, AreaKind, BedClaim, Building, Settler } from '../game/sim/types';
 import { daysToAdult, householdOf } from '../game/sim/households';
 import { orchardStatus } from '../game/sim/orchards';
 import { describeCell, extractionStatus, MINE_UPGRADES, MINE_YIELD, mineDeposit, quarryStage, surveyedCell } from '../game/sim/mining';
@@ -26,6 +26,8 @@ import { formatInv } from '../game/sim/inventory';
 import { OBJECTS, TERRAIN } from '../game/world/tiles';
 import type { Overview } from './overview';
 import type { GrowthInfo } from './growthInfo';
+import { gameTime } from './growthInfo';
+import { levelName, levelOf, nextLevel, upgradeProblem } from '../game/sim/levels';
 import { innInfo, type InnInfo, type LogisticsInfo } from './tradeInfo';
 import type { DiplomacyInfo, KingdomInfo, NewsItem, WarCouncilInfo, WarInfo } from './kingdomSnapshot';
 import { trainingInfo, type ArmyInfo } from './militaryInfo';
@@ -45,6 +47,8 @@ export type Mode =
 export interface SettlerInfo {
   id: number;
   name: string;
+  /** For portraits. */
+  appearance: Appearance;
   job: JobId;
   task: string;
   idleReason: string;
@@ -91,6 +95,14 @@ export interface BuildingInfo {
   span?: { length: number };
   canRemove: boolean;
   permanent: boolean;
+  /** Upgrade levels, for buildings that have them. */
+  level?: {
+    level: number;
+    max: number;
+    name: string;
+    next: { name: string; perks: string[]; cost: Inventory; time: string; blocked: string | null } | null;
+    upgrading: { progress: number; to: string } | null;
+  };
 }
 
 export interface AreaInfo {
@@ -211,11 +223,11 @@ export function settlerInfo(sim: Simulation, s: Settler): SettlerInfo {
   const workplace = [...sim.buildings.values()].find((b) => b.workers.includes(s.id));
   let bedNote = '';
   if (!home) bedNote = 'No free bed anywhere — rests by the campfire. Build a house.';
-  else if (!isPermanentHome(home)) bedNote = 'Sleeps in a camp bedroll until a house bed is free.';
+  else if (!isPermanentHome(home)) bedNote = home.type === 'townHall' ? 'Sleeps in a Town Hall bunk until a house bed is free.' : 'Sleeps in a camp bedroll until a house bed is free.';
   return {
-    id: s.id, name: s.name, job: s.job, task: describeTask(sim, s), idleReason: s.idleReason, idle,
+    id: s.id, name: s.name, appearance: s.appearance, job: s.job, task: describeTask(sim, s), idleReason: s.idleReason, idle,
     carrying: s.carrying ? { ...s.carrying } : null, hunger: Math.round(s.hunger), energy: Math.round(s.energy),
-    home: home ? (isPermanentHome(home) ? `${BUILDINGS[home.type].name}` : 'Camp bedroll') : 'No bed',
+    home: home ? (isPermanentHome(home) ? `${BUILDINGS[home.type].name}` : home.type === 'townHall' ? 'Town Hall bunk' : 'Camp bedroll') : 'No bed',
     homeId: home?.id ?? null, bedNote,
     areaId: area?.id ?? null, areaName: area?.name ?? '',
     priorities: [...effectivePriorities(s)], customOrder: s.priorities !== null,
@@ -261,6 +273,16 @@ export function buildingInfo(sim: Simulation, list: Building[]): BuildingInfo | 
     status: '', canRemove: b.type !== 'camp' && !(b.built && def.permanent), permanent: !!def.permanent,
   };
   if (def.span) info.span = { length: Math.max(b.w, b.h) };
+  if (def.levels && list.length === 1) {
+    const next = nextLevel(b);
+    const up = b.upgrade ? def.levels[b.upgrade.to - 1] : null;
+    info.name = levelName(b);
+    info.level = {
+      level: levelOf(b), max: def.levels.length, name: levelName(b),
+      next: next ? { name: next.name, perks: next.perks, cost: next.cost, time: gameTime(next.time), blocked: b.upgrade ? null : upgradeProblem(sim, b) } : null,
+      upgrading: b.upgrade && up ? { progress: Math.min(1, b.upgrade.progress / Math.max(1, up.time)), to: up.name } : null,
+    };
+  }
   if (!b.built && sim.unreachableForAll(`b${b.id}`)) {
     info.status = 'Settlers can’t reach this site — clear a way to it or build a bridge';
   } else if (!b.built) {

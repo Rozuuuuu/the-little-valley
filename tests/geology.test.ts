@@ -25,8 +25,8 @@ function reload(sim: Simulation): Simulation {
 }
 
 describe('generators', () => {
-  it('generators 1 and 2 still produce exactly their fingerprinted chunks', () => {
-    for (const gen of [1, 2]) {
+  it('generators 1, 2 and 3 still produce exactly their fingerprinted chunks', () => {
+    for (const gen of [1, 2, 3]) {
       const file = `tests/fixtures/gen-v${gen}-fingerprint.json`;
       expect(existsSync(file)).toBe(true);
       const fp = JSON.parse(readFileSync(file, 'utf8')) as Record<string, [number, number]>;
@@ -74,7 +74,7 @@ describe('generators', () => {
   });
 
   it('the northern ridge can be crossed through a pass, and paths route around cliff faces', () => {
-    const sim = createNewGame(424242);
+    const sim = createNewGame(424242, 3);
     expect(sim.world.genVersion).toBe(3);
     // Find a column where the ridge has a cliff, and walk from south of it to north of it.
     let col: number | null = null;

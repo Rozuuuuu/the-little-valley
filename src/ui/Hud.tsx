@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
-import { BUILDINGS, type BuildingCategory, type BuildingId } from '../game/data/buildings';
 import { CROPS, type CropId } from '../game/data/crops';
 import { JOBS, JOB_IDS, type JobId } from '../game/data/jobs';
 import { RECIPES } from '../game/data/recipes';
-import { RESOURCES, type ResourceId } from '../game/data/resources';
+import { RESOURCE_IDS, RESOURCES, type ResourceId } from '../game/data/resources';
 import { invEntries } from '../game/sim/inventory';
 import { SPEEDS, TUTORIAL_OUTRO } from '../engine/GameController';
 import type { BuildingInfo, SettlerInfo } from '../engine/snapshot';
@@ -13,7 +12,6 @@ import { AREA_LABELS } from '../game/sim/commands';
 import type { AreaKind } from '../game/sim/types';
 import { AREA_COLORS, AREA_SYMBOL } from '../render/Renderer';
 import type { WorkKind } from '../game/data/jobs';
-import { keyLabel } from '../input/bindings';
 import { useGame, useSnapshot } from './context';
 import { ResIcon, UiIcon } from './Icon';
 import { Households } from './Households';
@@ -25,46 +23,90 @@ import { KingdomNews } from './KingdomNews';
 import { WarCouncil } from './WarCouncil';
 import { Military, TrainingPanel } from './Military';
 import { War } from './War';
+import type { WindowTab } from './Console';
 
-const MAIN_RES: ResourceId[] = ['food', 'wood', 'stone'];
-const CRAFTED: ResourceId[] = [
-  'apples', 'wheat', 'flour', 'planks', 'tools', 'coal', 'charcoal', 'copperOre', 'ironOre', 'copperIngot', 'ironIngot', 'silverOre', 'goldOre', 'diamonds',
+/** Always on the bar; everything else lives in the Goods drawer. */
+const MAIN_RES: ResourceId[] = ['food', 'wood', 'stone', 'planks', 'tools'];
+
+const WINDOWS: { id: WindowTab; label: string; title: string }[] = [
+  { id: 'people', label: 'People', title: 'Everyone in the valley' },
+  { id: 'areas', label: 'Areas', title: 'Work areas' },
+  { id: 'towns', label: 'Towns', title: 'Settlements, seasons and supply routes' },
+  { id: 'families', label: 'Families', title: 'Households, children and visitors' },
+  { id: 'realm', label: 'Realm', title: 'Crown, diplomacy, news and war' },
+  { id: 'goals', label: 'Goals', title: 'Milestones and what they unlock' },
 ];
 
-export function TopBar({ onMenu }: { onMenu: () => void }) {
+function GoodsDrawer({ onClose }: { onClose: () => void }) {
+  const s = useSnapshot();
+  const all = RESOURCE_IDS.filter((r) => !MAIN_RES.includes(r));
+  const have = all.filter((r) => s.resources[r] > 0);
+  const none = all.filter((r) => s.resources[r] <= 0);
+  return (
+    <div className="panel goods-drawer" role="dialog" aria-label="All goods">
+      <div className="vt-head">
+        <h3>All goods</h3>
+        <button className="btn small" onClick={onClose} aria-label="Close goods">✕</button>
+      </div>
+      <div className="goods-grid">
+        {have.map((r) => (
+          <div key={r} className="good" title={RESOURCES[r].description}>
+            <ResIcon res={r} size={20} />
+            <span>{RESOURCES[r].name}</span>
+            <strong>{s.resources[r]}</strong>
+          </div>
+        ))}
+      </div>
+      {none.length > 0 && <p className="muted">None yet: {none.map((r) => RESOURCES[r].name).join(', ')}</p>}
+    </div>
+  );
+}
+
+export function TopBar({ onMenu, win, setWin }: { onMenu: () => void; win: WindowTab | null; setWin: (w: WindowTab | null) => void }) {
   const { game } = useGame();
   const s = useSnapshot();
+  const [goods, setGoods] = useState(false);
   const full = s.storage.capacity > 0 && s.storage.used >= s.storage.capacity;
+  const otherGoods = RESOURCE_IDS.filter((r) => !MAIN_RES.includes(r) && s.resources[r] > 0).length;
+  const alerts = s.diplomacy.warnings.length + s.diplomacy.incidents.length + s.diplomacy.offersToYou.length;
+  const badge = (id: WindowTab): string | number | null =>
+    id === 'people' && s.idleCount > 0 ? s.idleCount : id === 'families' && s.growth.visitor ? '!' : id === 'realm' && alerts ? alerts : null;
   return (
     <div className="hud-top">
       <div className="panel resources" role="status" aria-label="Stores">
         {MAIN_RES.map((r) => (
-          <div key={r} className={`res${r === 'food' && s.resources.food < 5 ? ' warn' : ''}`} title={RESOURCES[r].description}>
-            <ResIcon res={r} />
+          <div key={r} className={`res${r === 'food' && s.resources.food < 5 ? ' warn' : ''}`} title={`${RESOURCES[r].name}: ${RESOURCES[r].description}`}>
+            <ResIcon res={r} size={20} />
             {s.resources[r]}
           </div>
         ))}
-        {CRAFTED.map((r, i) => (
-          <div key={r} className={`res${i === 0 ? ' sep' : ''}`} title={RESOURCES[r].description}>
-            <ResIcon res={r} />
-            {s.resources[r]}
-          </div>
-        ))}
+        <button className={`res goods-btn${goods ? ' on' : ''}`} onClick={() => setGoods(!goods)} aria-expanded={goods} title="Every other good in your stores">
+          Goods <small>{otherGoods}</small> ▾
+        </button>
         <div className="res sep" title={s.populationStatus || 'Settlers / beds'}>
-          <UiIcon id="people" />
+          <UiIcon id="people" size={20} />
           {s.population}
           <small>/ {s.housing}</small>
         </div>
-        <div className={`res sep${full ? ' warn' : ''}`} title={full ? 'Storage is full. Build a storehouse.' : 'Goods stored / capacity'}>
-          <UiIcon id="storage" />
+        <div className={`res${full ? ' warn' : ''}`} title={full ? 'Storage is full. Build a storehouse.' : 'Goods stored / capacity'}>
+          <UiIcon id="storage" size={20} />
           <small>
             {s.storage.used}/{s.storage.capacity}
           </small>
         </div>
       </div>
+      {goods && <GoodsDrawer onClose={() => setGoods(false)} />}
       <div className="spacer" />
+      <div className="panel win-tabs" role="toolbar" aria-label="Windows">
+        {WINDOWS.map((w) => (
+          <button key={w.id} className={`win-btn${win === w.id ? ' on' : ''}`} onClick={() => setWin(win === w.id ? null : w.id)} title={w.title} aria-pressed={win === w.id}>
+            {w.label}
+            {badge(w.id) !== null && <span className="badge">{badge(w.id)}</span>}
+          </button>
+        ))}
+      </div>
       <div className="panel clock">
-        <UiIcon id={s.raining ? 'rain' : s.isNight ? 'moon' : 'sun'} />
+        <UiIcon id={s.raining ? 'rain' : s.isNight ? 'moon' : 'sun'} size={20} />
         <div>
           <div className="time">
             {s.region.calendar} · {s.clock}
@@ -146,136 +188,6 @@ export function Tutorial() {
         <button className="btn small" onClick={() => game.skipTutorial()}>
           Skip introduction
         </button>
-      </div>
-    </div>
-  );
-}
-
-// ---- build dock --------------------------------------------------------------
-
-const CATEGORIES: { id: BuildingCategory | 'all'; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'housing', label: 'Homes' },
-  { id: 'farming', label: 'Farming' },
-  { id: 'storage', label: 'Storage' },
-  { id: 'production', label: 'Production' },
-  { id: 'infrastructure', label: 'Paths' },
-  { id: 'decor', label: 'Decor' },
-  { id: 'project', label: 'Projects' },
-];
-
-function Cost({ id }: { id: BuildingId }) {
-  const s = useSnapshot();
-  const entries = invEntries(BUILDINGS[id].cost);
-  if (entries.length === 0) return <div className="cost muted">Free</div>;
-  return (
-    <div className="cost">
-      {entries.map(([r, n]) => (
-        <span key={r} className={s.resources[r] < n ? 'short' : ''} title={`${n} ${RESOURCES[r].name}`}>
-          <ResIcon res={r} size={14} />
-          {n}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-export function BuildDock({ open, setOpen }: { open: boolean; setOpen: (v: boolean) => void }) {
-  const { game, sprites } = useGame();
-  const s = useSnapshot();
-  const [cat, setCat] = useState<BuildingCategory | 'all'>('all');
-  const [hover, setHover] = useState<BuildingId | null>(null);
-  const mode = s.mode;
-  const placing = mode.kind === 'place' ? mode.building : null;
-  const b = game.settings.bindings;
-  const items = [...s.unlocked.buildings.map((id) => ({ id, locked: null as string | null })), ...s.unlocked.locked.map((l) => ({ id: l.id, locked: l.at }))].filter(
-    (i) => cat === 'all' || BUILDINGS[i.id].category === cat,
-  );
-  const shown = hover ?? placing;
-  return (
-    <div className="build-dock">
-      {open && (
-        <div className="panel build-menu" role="dialog" aria-label="Build menu">
-          <div className="build-tabs">
-            {CATEGORIES.map((c) => (
-              <button key={c.id} className={`chip${cat === c.id ? ' on' : ''}`} onClick={() => setCat(c.id)}>
-                {c.label}
-              </button>
-            ))}
-          </div>
-          <div className="build-grid">
-            {items.map(({ id, locked }) => (
-              <button
-                key={id}
-                className={`build-item${placing === id ? ' on' : ''}${locked ? ' locked' : ''}`}
-                onMouseEnter={() => setHover(id)}
-                onMouseLeave={() => setHover(null)}
-                onFocus={() => setHover(id)}
-                onBlur={() => setHover(null)}
-                onClick={() => {
-                  if (locked) {
-                    game.toast(`${BUILDINGS[id].name} unlocks at ${locked}.`, 'info');
-                    return;
-                  }
-                  game.startPlacing(id, mode.kind === 'place' ? mode.crop : 'turnip');
-                  setOpen(false);
-                }}
-                aria-disabled={!!locked}
-              >
-                <img className="px" src={sprites.buildingPreview(id)} alt="" />
-                <span className="name">{BUILDINGS[id].name}</span>
-                {locked ? <span className="muted">At {locked}</span> : <Cost id={id} />}
-              </button>
-            ))}
-          </div>
-          <div className="build-desc">
-            {shown
-              ? `${BUILDINGS[shown].description}${BUILDINGS[shown].paint ? ' Drag to place many.' : ' Shift-click to place several.'}`
-              : 'Choose something to build. Construction waits until haulers bring the materials.'}
-          </div>
-        </div>
-      )}
-      {!open && mode.kind === 'place' && (
-        <div className="panel toolbar placing">
-          <img className="px" src={sprites.buildingPreview(mode.building)} width={28} height={28} alt="" />
-          <span>
-            <strong>{BUILDINGS[mode.building].name}</strong>{' '}
-            <span className="muted">{BUILDINGS[mode.building].paint ? 'Drag to place. Right-click or Esc when done.' : 'Click to place. Shift-click for more. Right-click cancels.'}</span>
-          </span>
-          {mode.building === 'field' && (
-            <span className="crop-pick" style={{ marginTop: 0 }}>
-              {s.unlocked.crops.map((c) => (
-                <button key={c} className={`chip${mode.crop === c ? ' on' : ''}`} onClick={() => game.startPlacing('field', c)}>
-                  {CROPS[c].name}
-                </button>
-              ))}
-            </span>
-          )}
-        </div>
-      )}
-      <div className="panel toolbar">
-        <button className={`btn tool${open ? ' on' : ''}`} onClick={() => setOpen(!open)} aria-expanded={open}>
-          Build <kbd>{keyLabel(b.build[0])}</kbd>
-        </button>
-        <button className={`btn tool${mode.kind === 'mark' ? ' on' : ''}`} onClick={() => game.setMode(mode.kind === 'mark' ? { kind: 'select' } : { kind: 'mark' })} title="Drag over trees, rocks and bushes to mark them for harvest">
-          Harvest <kbd>{keyLabel(b.harvest[0])}</kbd>
-        </button>
-        <button className={`btn tool${mode.kind === 'unmark' ? ' on' : ''}`} onClick={() => game.setMode(mode.kind === 'unmark' ? { kind: 'select' } : { kind: 'unmark' })} title="Drag to remove harvest marks">
-          Unmark <kbd>{keyLabel(b.unmark[0])}</kbd>
-        </button>
-        <button
-          className={`btn tool${mode.kind === 'survey' ? ' on' : ''}`}
-          onClick={() => game.setMode(mode.kind === 'survey' ? { kind: 'select' } : { kind: 'survey' })}
-          title="Select an adult, then click rocky ground or a hill face: they survey the 16×16 area around it for ore"
-        >
-          Survey
-        </button>
-        {mode.kind === 'survey' && <span className="hint">Click a spot to survey (an adult must be selected)</span>}
-        {mode.kind !== 'select' && (
-          <button className="btn tool" onClick={() => game.setMode({ kind: 'select' })}>
-            Done <kbd>Esc</kbd>
-          </button>
-        )}
       </div>
     </div>
   );
@@ -373,7 +285,7 @@ function AreaSelect({ ids, value }: { ids: number[]; value: number | null | '' }
   );
 }
 
-function SettlerCard({ s }: { s: SettlerInfo }) {
+export function SettlerCard({ s }: { s: SettlerInfo }) {
   const { game } = useGame();
   return (
     <>
@@ -419,7 +331,7 @@ function SettlerCard({ s }: { s: SettlerInfo }) {
   );
 }
 
-function GroupCard({ list }: { list: SettlerInfo[] }) {
+export function GroupCard({ list }: { list: SettlerInfo[] }) {
   const { game } = useGame();
   const job = list.every((s) => s.job === list[0].job) ? list[0].job : '';
   const area = list.every((s) => s.areaId === list[0].areaId) ? list[0].areaId : '';
@@ -447,7 +359,7 @@ function GroupCard({ list }: { list: SettlerInfo[] }) {
   );
 }
 
-function BuildingCard({ info }: { info: BuildingInfo }) {
+export function BuildingCard({ info }: { info: BuildingInfo }) {
   const { game } = useGame();
   const s = useSnapshot();
   return (
@@ -627,18 +539,6 @@ function BuildingCard({ info }: { info: BuildingInfo }) {
   );
 }
 
-export function Inspector() {
-  const s = useSnapshot();
-  let body: React.ReactNode = null;
-  if (s.selection.length === 1) body = <SettlerCard s={s.selection[0]} />;
-  else if (s.selection.length > 1) body = <GroupCard list={s.selection} />;
-  else if (s.building) body = <BuildingCard info={s.building} />;
-  if (!body) return null;
-  // Keep the map clear while placing buildings or drawing areas.
-  if (s.mode.kind === 'place' || s.mode.kind === 'area') return null;
-  return <div className="panel inspector">{body}</div>;
-}
-
 // ---- side drawer -------------------------------------------------------------
 
 function RequirementRow({ r }: { r: RequirementProgress }) {
@@ -782,44 +682,25 @@ function RealmTabs() {
   );
 }
 
-export function SidePanel() {
+const WINDOW_TITLES: Record<WindowTab, string> = {
+  people: 'People', areas: 'Work areas', towns: 'Towns and routes', families: 'Families and visitors', realm: 'The realm', goals: 'Goals',
+};
+
+/** The open window from the top bar: one at a time, sized to fit between the top bar and the console. */
+export function SidePanel({ tab, setTab }: { tab: WindowTab | null; setTab: (t: WindowTab | null) => void }) {
   const { game } = useGame();
   const s = useSnapshot();
-  const [tab, setTab] = useState<'people' | 'areas' | 'towns' | 'families' | 'realm' | 'goals' | null>('goals');
   useEffect(() => {
     game.areasTabOpen = tab === 'areas';
   }, [tab, game]);
-  if (!tab) {
-    return (
-      <div className="side-toggle">
-        <button className="btn" onClick={() => setTab('people')}>
-          Settlers {s.idleCount > 0 && `(${s.idleCount} idle)`}
-        </button>
-      </div>
-    );
-  }
+  if (!tab) return null;
   const selected = new Set(s.selection.map((x) => x.id));
   const next = s.milestone.next;
   return (
-    <div className="panel side">
-      <div className="side-tabs" role="tablist">
-        <button role="tab" aria-selected={tab === 'people'} className={tab === 'people' ? 'on' : ''} onClick={() => setTab('people')}>
-          Settlers{s.idleCount > 0 && <span className="badge" title={`${s.idleCount} idle`}>{s.idleCount}</span>}
-        </button>
-        <button role="tab" aria-selected={tab === 'areas'} className={tab === 'areas' ? 'on' : ''} onClick={() => setTab('areas')}>
-          Areas
-        </button>
-        <button role="tab" aria-selected={tab === 'towns'} className={tab === 'towns' ? 'on' : ''} onClick={() => setTab('towns')}>Towns</button>
-        <button role="tab" aria-selected={tab === 'families'} className={tab === 'families' ? 'on' : ''} onClick={() => setTab('families')}>
-          Families{s.growth.visitor && <span className="badge" title={`${s.growth.visitor.name} is visiting`}>!</span>}
-        </button>
-        <button role="tab" aria-selected={tab === 'realm'} className={tab === 'realm' ? 'on' : ''} onClick={() => setTab('realm')}>
-          Realm
-        </button>
-        <button role="tab" aria-selected={tab === 'goals'} className={tab === 'goals' ? 'on' : ''} onClick={() => setTab('goals')}>
-          Goals
-        </button>
-        <button onClick={() => setTab(null)} aria-label="Hide panel" style={{ flex: '0 0 34px' }}>
+    <div className="panel side" role="dialog" aria-label={WINDOW_TITLES[tab]}>
+      <div className="side-head">
+        <h3>{WINDOW_TITLES[tab]}</h3>
+        <button className="btn small" onClick={() => setTab(null)} aria-label="Close window">
           ✕
         </button>
       </div>

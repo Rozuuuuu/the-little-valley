@@ -1,6 +1,7 @@
 import { BUILDINGS, type BuildingId } from '../src/game/data/buildings';
 import { RECIPES } from '../src/game/data/recipes';
-import { completeBuilding, costOf, placeBuilding } from '../src/game/sim/buildings';
+import { campOf, completeBuilding, costOf, placeBuilding } from '../src/game/sim/buildings';
+import { createNewGame } from '../src/game/sim/newGame';
 import { taskKeys } from '../src/game/sim/settlers';
 import { RESOURCE_IDS, type ResourceId } from '../src/game/data/resources';
 import { OBJECTS, T } from '../src/game/world/tiles';
@@ -52,7 +53,7 @@ export function accountedFor(sim: Simulation, res: ResourceId): number {
 /** Resource consumed by completed buildings (including ones converted to terrain). */
 export function consumedByConstruction(sim: Simulation, res: ResourceId, convertedCounts: Record<string, number> = {}): number {
   let n = 0;
-  for (const b of sim.buildings.values()) if (b.built && b.type !== 'camp') n += costOf(b)[res] ?? 0;
+  for (const b of sim.buildings.values()) if (b.built && b.type !== 'camp' && b.type !== 'townHall') n += costOf(b)[res] ?? 0;
   for (const [type, count] of Object.entries(convertedCounts)) n += (BUILDINGS[type as keyof typeof BUILDINGS].cost[res] ?? 0) * count;
   return n;
 }
@@ -146,4 +147,26 @@ export function instant(sim: Simulation, type: BuildingId, near: { x: number; y:
   b.delivered = { ...costOf(b) };
   completeBuilding(sim, b);
   return b;
+}
+
+/**
+ * A new valley laid out the way worlds were before the Town Hall: a founding camp
+ * with five bedrolls at (-1,-1). For tests about older worlds' camp behaviour.
+ */
+export function legacyCampWorld(seed: number): Simulation {
+  const sim = createNewGame(seed);
+  const hall = campOf(sim)!;
+  const goods = { ...hall.inventory };
+  sim.buildings.delete(hall.id);
+  for (const [k, id] of [...sim.occupancy]) if (id === hall.id) sim.occupancy.delete(k);
+  const camp = placeBuilding(sim, 'camp', -1, -1);
+  completeBuilding(sim, camp, true);
+  camp.inventory = goods;
+  sim.settlements = [{ id: camp.id, name: sim.settlements[0]?.name ?? 'Home' }];
+  for (const s of sim.settlers) {
+    s.homeId = camp.id;
+    s.settlementId = camp.id;
+  }
+  sim.mapChanged();
+  return sim;
 }

@@ -174,13 +174,14 @@ async function main(): Promise<void> {
     const cy0 = Number(process.argv[7] ?? -3);
     const n = Number(process.argv[8] ?? 3);
     const season = (process.argv[9] ?? 'spring') as 'spring';
+    const habitat = (process.argv[10] ?? 'valley') as 'valley';
     const S = 512;
     const img = new Uint8ClampedArray(S * n * S * n * 4);
     for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
       const cx = cx0 + i;
       const cy = cy0 + j;
       const terr = new Uint8Array(34 * 34);
-      for (let gy = 0; gy < 34; gy++) for (let gx = 0; gx < 34; gx++) terr[gy * 34 + gx] = terrainAt(seed, cx * 32 + gx - 1, cy * 32 + gy - 1, gen);
+      for (let gy = 0; gy < 34; gy++) for (let gx = 0; gx < 34; gx++) terr[gy * 34 + gx] = terrainAt(seed, cx * 32 + gx - 1, cy * 32 + gy - 1, gen, undefined, habitat);
       const px = computePixels(seed, cx, cy, terr, season);
       const bytes = new Uint8Array(px.buffer);
       for (let y = 0; y < S; y++) img.set(bytes.subarray(y * S * 4, (y + 1) * S * 4), (((j * S + y) * S * n) + i * S) * 4);
@@ -199,18 +200,29 @@ async function main(): Promise<void> {
   const list: { canvas: FakeCanvas }[] = [];
   const add = (s: { canvas: unknown } | undefined) => s && list.push(s as { canvas: FakeCanvas });
   const extra = (process.argv[4] ?? '').split(',').filter(Boolean);
+  const extras = bank as unknown as Record<string, unknown>;
   for (const id of extra.length ? extra : ['familyHome', 'charcoalKiln', 'smelter', 'forge']) {
-    const set = bank.buildings[id as 'forge'];
-    add(set?.day);
-    add(set?.night);
+    // A named bank field (e.g. townHall, animals) or a building id.
+    const field = extras[id];
+    const sets = Array.isArray(field) ? field : field && typeof field === 'object' && !('day' in field) && !('canvas' in field) ? Object.values(field) : [field ?? bank.buildings[id as 'forge']];
+    for (const set of sets as ({ day?: unknown; night?: unknown; canvas?: unknown } | Record<string, unknown>)[]) {
+      if (!set) continue;
+      if ('canvas' in set) add(set as { canvas: unknown });
+      else if ('day' in set) {
+        add(set.day as { canvas: unknown });
+        add(set.night as { canvas: unknown });
+      } else for (const v of Object.values(set)) if (v && typeof v === 'object' && 'canvas' in v) add(v as { canvas: unknown });
+    }
   }
-  for (const s of Object.values(bank.orchard)) add(s);
-  for (const s of bank.quarry) add(s);
-  for (const m of bank.mine) {
-    add(m.day);
-    add(m.night);
+  if (!extra.length) {
+    for (const s of Object.values(bank.orchard)) add(s);
+    for (const s of bank.quarry) add(s);
+    for (const m of bank.mine) {
+      add(m.day);
+      add(m.night);
+    }
+    for (const s of Object.values(bank.resources)) add(s);
   }
-  for (const s of Object.values(bank.resources)) add(s);
   // Wrap into rows so the sheet stays viewable.
   const pad = 4;
   const W = 360;

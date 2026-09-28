@@ -11,6 +11,7 @@ import { currentMilestone } from '../sim/progression';
 import { Simulation } from '../sim/Simulation';
 import type { Building, Kingdom, Settler } from '../sim/types';
 import { SAVE_VERSION, type SaveFile, type SaveView, type SavedBuilding, type SavedChunk, type SavedSettler } from './format';
+import { workersOf } from '../sim/levels';
 
 export function bytesToB64(bytes: Uint8Array): string {
   let s = '';
@@ -85,6 +86,8 @@ export function serializeSim(sim: Simulation, extras: SerializeExtras): SaveFile
     if (b.orchard) sb.orchard = { ...b.orchard };
     if (b.mine) sb.mine = { ...b.mine };
     if (b.quarry) sb.quarry = { ...b.quarry };
+    if (b.level && b.level > 1) sb.level = b.level;
+    if (b.upgrade) sb.upgrade = { to: b.upgrade.to, progress: b.upgrade.progress, paid: { ...b.upgrade.paid } };
     if (b.workshop) sb.workshop = { recipe: b.workshop.recipe, progress: b.workshop.progress, paused: b.workshop.paused };
     return sb;
   });
@@ -145,7 +148,7 @@ export function serializeSim(sim: Simulation, extras: SerializeExtras): SaveFile
       nextMerchant: sim.nextMerchant,
       geology: { version: GEOLOGY_VERSION, cells: [...sim.geology].map(([id, c]) => [id, c.remaining] as [number, number | null]) },
     },
-    world: { genVersion: sim.world.genVersion, chunks },
+    world: { genVersion: sim.world.genVersion, habitat: sim.world.habitat, chunks },
     view: extras.view,
     tutorial: extras.tutorial,
   };
@@ -158,7 +161,7 @@ export function serializeSim(sim: Simulation, extras: SerializeExtras): SaveFile
  */
 export function deserializeSim(save: SaveFile): Simulation {
   const d = save.sim;
-  const sim = new Simulation(save.meta.seed, d.rngState, save.world.genVersion);
+  const sim = new Simulation(save.meta.seed, d.rngState, save.world.genVersion, save.world.habitat ?? 'valley');
   sim.tick = d.tick;
   sim.nextId = d.nextId;
   sim.lastArrival = d.lastArrival;
@@ -205,7 +208,7 @@ export function deserializeSim(save: SaveFile): Simulation {
   for (const [x, y, legalOwner, occupyingKingdom] of d.claims) sim.claims.set(`${x},${y}`, { legalOwner, occupyingKingdom, protectedHomeland: false });
 
   for (const sc of save.world.chunks) {
-    const c = generateChunk(sim.seed, sc.cx, sc.cy, save.world.genVersion);
+    const c = generateChunk(sim.seed, sc.cx, sc.cy, save.world.genVersion, sim.world.habitat);
     c.exploredCount = unpackBits(b64ToBytes(sc.explored), c.explored);
     if (sc.terrain && sc.obj && sc.amt) {
       const t = b64ToBytes(sc.terrain);
@@ -233,6 +236,11 @@ export function deserializeSim(save: SaveFile): Simulation {
     if (sb.orchard) b.orchard = { ...sb.orchard };
     if (sb.mine) b.mine = { ...sb.mine };
     if (sb.quarry) b.quarry = { ...sb.quarry };
+    if (sb.level) b.level = sb.level;
+    if (sb.upgrade) {
+      b.upgrade = { to: sb.upgrade.to, progress: sb.upgrade.progress, paid: { ...sb.upgrade.paid } };
+      sim.upgrading.add(b.id);
+    }
     if (sb.workshop) b.workshop = { ...sb.workshop, status: '' };
     sim.buildings.set(b.id, b);
     for (let dy = 0; dy < b.h; dy++) for (let dx = 0; dx < b.w; dx++) sim.occupancy.set(tileKey(b.x + dx, b.y + dy), b.id);
@@ -262,7 +270,7 @@ export function deserializeSim(save: SaveFile): Simulation {
   for (const [x, y, to, at] of d.regrowth) sim.regrowth.set(tileKey(x, y), { to: to as ObjectId, at });
   // Drop references to anything that no longer exists.
   const ids = new Set(sim.settlers.map((s) => s.id));
-  for (const b of sim.buildings.values()) b.workers = b.workers.filter((id) => ids.has(id)).slice(0, BUILDINGS[b.type].maxWorkers ?? 0);
+  for (const b of sim.buildings.values()) b.workers = b.workers.filter((id) => ids.has(id)).slice(0, workersOf(b));
   for (const s of sim.settlers) if (s.areaId !== null && !sim.area(s.areaId)) s.areaId = null;
   sim.settlements = sim.settlements.filter((st) => sim.buildings.has(st.id));
   for (const s of sim.settlers) if (s.settlementId !== null && !sim.settlements.some((st) => st.id === s.settlementId)) s.settlementId = sim.settlements[0]?.id ?? null;

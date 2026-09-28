@@ -6,6 +6,7 @@ import { SaveManager } from '../src/game/save/SaveManager';
 import { deserializeSim, serializeSim } from '../src/game/save/serialize';
 import { MemoryStore } from '../src/game/save/storage';
 import { applyCommand } from '../src/game/sim/commands';
+import { campOf } from '../src/game/sim/buildings';
 import { createNewGame } from '../src/game/sim/newGame';
 import type { Simulation } from '../src/game/sim/Simulation';
 import { O } from '../src/game/world/tiles';
@@ -15,7 +16,7 @@ const extras = { name: 'Test Valley', createdAt: 1000 };
 
 function playedSim(): Simulation {
   const sim = createNewGame(31337);
-  const camp = [...sim.buildings.values()].find((b) => b.type === 'camp')!;
+  const camp = campOf(sim)!;
   camp.inventory = { food: 50, wood: 50, stone: 30 };
   applyCommand(sim, { type: 'placeArea', building: 'field', x0: -8, y0: 4, x1: -7, y1: 5, crop: 'wheat' });
   applyCommand(sim, { type: 'place', building: 'house', x: 3, y: -4 });

@@ -15,9 +15,11 @@ import { updateSettler } from './settlers';
 import { updateFields, updateWeather } from './farming';
 import { updateSeason } from './seasons';
 import type { SeasonId } from '../data/seasons';
+import type { HabitatId } from '../data/habitats';
 import { updatePopulation } from './population';
 import { updateHouseholds } from './households';
 import { updateOrchards } from './orchards';
+import { storageOf, updateUpgrades } from './levels';
 import { surveyedCell, type SurveyedCell } from './mining';
 import { updateParties, updateTravelers } from './travelers';
 import { LOGISTICS_STEP, updateLogistics } from './logistics';
@@ -167,9 +169,11 @@ export class Simulation implements PathGrid {
   readonly oreReserved = new Map<number, number>();
   /** Last season announced (transient; seasons follow the calendar). */
   lastSeason: SeasonId | null = null;
+  /** Buildings with an upgrade under way (rebuilt from buildings on load). */
+  readonly upgrading = new Set<number>();
 
-  constructor(seed: number, rngState = seed ^ 0x5bd1e995, genVersion = 1) {
-    this.world = new World(seed, genVersion);
+  constructor(seed: number, rngState = seed ^ 0x5bd1e995, genVersion = 1, habitat: HabitatId = 'valley') {
+    this.world = new World(seed, genVersion, habitat);
     this.rng = new Rng(rngState);
   }
 
@@ -402,7 +406,7 @@ export class Simulation implements PathGrid {
   }
 
   storageCapacity(b: Building): number {
-    return BUILDINGS[b.type].storage ?? 0;
+    return storageOf(b);
   }
 
   available(b: Building, res: ResourceId): number {
@@ -530,6 +534,7 @@ export class Simulation implements PathGrid {
     if (this.tick % 10 === 0) deliverReports(this);
     if (this.tick % 10 === 0) updateWorkshops(this);
     updateKingdoms(this);
+    if (this.upgrading.size) updateUpgrades(this);
     if (this.tick % GROWTH_STEP === 0) {
       updateHouseholds(this);
       updateTravelers(this);

@@ -2,6 +2,7 @@ import { hash01 } from '../core/rng';
 import { MINERALS, MINERAL_IDS, type MineralId } from '../data/minerals';
 import { O, T } from './tiles';
 import { objectAt, STARTER_OUTCROPS, terrainAt } from './worldgen';
+import type { HabitatId } from '../data/habitats';
 
 /**
  * Where ore lies. Geology is a sparse layer beside the terrain, versioned on its
@@ -41,22 +42,22 @@ export function cellFromId(id: number): { cx: number; cy: number } {
 }
 
 /** A tile where ore can be worked, read straight from the generator. */
-export function qualifyingSite(seed: number, gen: number, x: number, y: number): boolean {
-  const t = terrainAt(seed, x, y, gen);
+export function qualifyingSite(seed: number, gen: number, x: number, y: number, habitat: HabitatId = 'valley'): boolean {
+  const t = terrainAt(seed, x, y, gen, undefined, habitat);
   if (t === T.Rocky) return true;
   if (gen >= 3 && t === T.Hill) {
-    for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) if (terrainAt(seed, x + dx, y + dy, gen) === T.Mountain) return true;
+    for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) if (terrainAt(seed, x + dx, y + dy, gen, undefined, habitat) === T.Mountain) return true;
   }
   if (t === T.Water || t === T.DeepWater || t === T.Mountain) return false;
-  const o = objectAt(seed, x, y, t, gen);
+  const o = objectAt(seed, x, y, t, gen, habitat);
   return o === O.Rock || o === O.Boulder;
 }
 
 const siteCache = new Map<string, { x: number; y: number } | null>();
 
 /** The cell's deposit site: the first qualifying tile in a seeded scan order, or null. */
-export function cellSite(seed: number, gen: number, cx: number, cy: number): { x: number; y: number } | null {
-  const k = `${seed}:${gen}:${cx}:${cy}`;
+export function cellSite(seed: number, gen: number, cx: number, cy: number, habitat: HabitatId = 'valley'): { x: number; y: number } | null {
+  const k = `${seed}:${gen}:${habitat}:${cx}:${cy}`;
   const hit = siteCache.get(k);
   if (hit !== undefined) return hit;
   const start = Math.floor(hash01(cx, cy, seed ^ 0x51e7) * 256);
@@ -66,7 +67,7 @@ export function cellSite(seed: number, gen: number, cx: number, cy: number): { x
     const j = (start + i * 97) % 256;
     const x = cx * CELL + (j % CELL);
     const y = cy * CELL + Math.floor(j / CELL);
-    if (qualifyingSite(seed, gen, x, y)) site = { x, y };
+    if (qualifyingSite(seed, gen, x, y, habitat)) site = { x, y };
   }
   if (siteCache.size > 20000) siteCache.clear();
   siteCache.set(k, site);
@@ -95,8 +96,8 @@ const starterCache = new Map<string, { copper: Deposit | null; iron: Deposit | n
  * below each mountain core. Older worlds use the two nearest cells that have
  * any qualifying site (the rocks around the camp always qualify).
  */
-export function starterDeposits(seed: number, gen: number): { copper: Deposit | null; iron: Deposit | null } {
-  const k = `${seed}:${gen}`;
+export function starterDeposits(seed: number, gen: number, habitat: HabitatId = 'valley'): { copper: Deposit | null; iron: Deposit | null } {
+  const k = `${seed}:${gen}:${habitat}`;
   const hit = starterCache.get(k);
   if (hit) return hit;
   const out: { copper: Deposit | null; iron: Deposit | null } = { copper: null, iron: null };
@@ -112,7 +113,7 @@ export function starterDeposits(seed: number, gen: number): { copper: Deposit | 
     cells.sort((a, b) => a.d - b.d);
     for (const c of cells) {
       if (out.copper && out.iron) break;
-      const site = cellSite(seed, gen, c.cx, c.cy);
+      const site = cellSite(seed, gen, c.cx, c.cy, habitat);
       if (!site) continue;
       if (!out.copper) out.copper = make('copper', site.x, site.y);
       else out.iron = make('iron', site.x, site.y);
@@ -123,12 +124,12 @@ export function starterDeposits(seed: number, gen: number): { copper: Deposit | 
 }
 
 /** The deposit in a cell as the world was generated (before any mining), or null. */
-export function depositInCell(seed: number, gen: number, cx: number, cy: number): Deposit | null {
+export function depositInCell(seed: number, gen: number, cx: number, cy: number, habitat: HabitatId = 'valley'): Deposit | null {
   const id = cellId(cx, cy);
-  const st = starterDeposits(seed, gen);
+  const st = starterDeposits(seed, gen, habitat);
   if (st.copper?.id === id) return st.copper;
   if (st.iron?.id === id) return st.iron;
-  const site = cellSite(seed, gen, cx, cy);
+  const site = cellSite(seed, gen, cx, cy, habitat);
   if (!site || hash01(cx, cy, seed ^ 0x6e0) >= DEPOSIT_CHANCE) return null;
   const mineral = pickMineral(seed, cx, cy);
   return { id, mineral, x: site.x, y: site.y, initial: amountFor(seed, cx, cy, mineral) };

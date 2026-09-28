@@ -205,7 +205,7 @@ export function requestChild(sim: Simulation, householdId: unknown): CommandResu
       const h = s.homeId !== null ? sim.buildings.get(s.homeId) : undefined;
       return !h || !isPermanentHome(h);
     }).length;
-    const first = campers > 0 ? ` (${campers} settler${campers === 1 ? '' : 's'} still sleep in camp bedrolls and will take new beds first)` : '';
+    const first = campers > 0 ? ` (${campers} settler${campers === 1 ? '' : 's'} still sleep in hall bunks or camp bedrolls and will take new beds first)` : '';
     return err(`No free bed for a child — build a family home or house in ${settlementName(sim, a.settlementId)}${first}`);
   }
   h.pending = { requestedTick: sim.tick, stableTicks: 0, claimId: claim.id, blocked: '' };

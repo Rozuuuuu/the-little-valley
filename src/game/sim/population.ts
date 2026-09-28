@@ -7,6 +7,7 @@ import { settlementAt } from './settlements';
 import { committedPopulation } from './households';
 import { recruitNeeds } from './travelers';
 import { RECRUIT_FOOD } from '../data/kingdomBalance';
+import { housingOf } from './levels';
 
 /** Food that must be in storage before a newcomer will settle. */
 export const ARRIVAL_FOOD = 20;
@@ -49,7 +50,7 @@ export function bedSummary(sim: Simulation): string {
   for (const s of sim.settlers) if (s.homeId !== null) counts.set(s.homeId, (counts.get(s.homeId) ?? 0) + 1);
   for (const b of sim.buildings.values()) {
     if (!b.built || !BUILDINGS[b.type].housing) continue;
-    const beds = BUILDINGS[b.type].housing ?? 0;
+    const beds = housingOf(b);
     if (isPermanentHome(b)) {
       houseBeds += beds;
       houseUsed += counts.get(b.id) ?? 0;
@@ -58,7 +59,7 @@ export function bedSummary(sim: Simulation): string {
       campUsed += counts.get(b.id) ?? 0;
     }
   }
-  return `Home beds ${houseUsed}/${houseBeds} · camp bedrolls ${campUsed}/${campBeds}`;
+  return `Home beds ${houseUsed}/${houseBeds} · hall bunks and bedrolls ${campUsed}/${campBeds}`;
 }
 
 /**

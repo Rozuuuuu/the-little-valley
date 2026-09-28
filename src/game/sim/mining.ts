@@ -10,6 +10,7 @@ import { isChild } from './households';
 import { abortTask } from './settlers';
 import type { Simulation } from './Simulation';
 import type { Building, CommandResult, Settler, Task } from './types';
+import { workersOf } from './levels';
 
 /** Work ticks for one survey at the spot. */
 export const SURVEY_WORK = 60;
@@ -36,7 +37,7 @@ export function surveyedCell(sim: Simulation, x: number, y: number): SurveyedCel
 export function knownCell(sim: Simulation, cx: number, cy: number): SurveyedCell | null {
   const state = sim.geology.get(cellId(cx, cy));
   if (state === undefined) return null;
-  const d = depositInCell(sim.seed, sim.world.genVersion, cx, cy);
+  const d = depositInCell(sim.seed, sim.world.genVersion, cx, cy, sim.world.habitat);
   return { cx, cy, deposit: d ? { ...d, remaining: state.remaining ?? d.initial } : null };
 }
 
@@ -82,7 +83,7 @@ export function completeSurvey(sim: Simulation, s: Settler, x: number, y: number
   const { cx, cy } = cellOf(x, y);
   const id = cellId(cx, cy);
   if (!sim.geology.has(id)) {
-    const d = depositInCell(sim.seed, sim.world.genVersion, cx, cy);
+    const d = depositInCell(sim.seed, sim.world.genVersion, cx, cy, sim.world.habitat);
     sim.geology.set(id, { remaining: d ? d.initial : null });
     sim.stats.surveys++;
   }
@@ -218,7 +219,7 @@ export function findExtract(sim: Simulation, s: Settler): Task | string | null {
       continue;
     }
     let slot = -1;
-    for (let i = 0; i < (def.maxWorkers ?? 1) && slot < 0; i++) if (!sim.isReserved(`extract:${b.id}:${i}`, s.id)) slot = i;
+    for (let i = 0; i < Math.max(1, workersOf(b)) && slot < 0; i++) if (!sim.isReserved(`extract:${b.id}:${i}`, s.id)) slot = i;
     if (slot < 0) continue;
     const d = Math.hypot(b.x - s.x, b.y - s.y) - (b.workers.includes(s.id) ? 1000 : 0);
     if (!best || d < best.d) best = { b, slot, d };

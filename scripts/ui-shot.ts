@@ -1,8 +1,10 @@
-// Screenshots the running game (npm run build && npx vite preview) in headless Chrome, for layout checks.
+// Screenshots the built game (npm run build) in headless Chrome, for layout checks. The files in
+// dist/ are answered straight from disk by request interception, so no server has to run.
 // Usage: npx tsx scripts/ui-shot.ts <outPrefix> [width] [height] [stepsFile]
 // A steps file is a JS module exporting `default async (page, shot) => {}`; without one,
 // the script starts a new valley and screenshots it.
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { extname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import puppeteer, { type Page } from 'puppeteer-core';
 
@@ -12,7 +14,8 @@ const CHROMES = [
   '/usr/bin/google-chrome',
 ];
 const [out = 'shot', w = '1366', h = '768', steps] = process.argv.slice(2);
-const url = process.env.URL ?? 'http://localhost:4789/';
+const url = process.env.URL ?? 'http://little-valley.test/';
+const TYPES: Record<string, string> = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.woff': 'font/woff', '.webmanifest': 'application/manifest+json', '.png': 'image/png' };
 
 export async function clickText(page: Page, text: string): Promise<void> {
   const ok = await page.evaluate((t) => {
@@ -30,6 +33,16 @@ const browser = await puppeteer.launch({
 });
 try {
   const page = await browser.newPage();
+  if (!process.env.URL) {
+    await page.setRequestInterception(true);
+    page.on('request', (req) => {
+      const u = new URL(req.url());
+      if (u.host !== 'little-valley.test') return void req.abort();
+      const file = join('dist', u.pathname === '/' ? 'index.html' : decodeURIComponent(u.pathname));
+      if (!existsSync(file)) return void req.respond({ status: 404, body: '' });
+      void req.respond({ status: 200, contentType: TYPES[extname(file)] ?? 'application/octet-stream', body: readFileSync(file) });
+    });
+  }
   await page.setViewport({ width: Number(w), height: Number(h) });
   page.on('console', (m) => {
     if (m.type() === 'error' || m.type() === 'warn') console.log(`[${m.type()}] ${m.text()}`);

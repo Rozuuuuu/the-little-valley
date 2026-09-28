@@ -24,6 +24,7 @@ import { seasonOf } from './seasons';
 import { awayPenalty } from './settlements';
 import type { Simulation } from './Simulation';
 import type { Building, OrchardAction, Settler, Task, ToolKind, WorkArea } from './types';
+import { speedOf } from './levels';
 
 export const BASE_SPEED = 0.24;
 export const HUNGER_DECAY = 100 / (DAY_TICKS * 1.2);
@@ -74,11 +75,17 @@ function centre(b: Building): { x: number; y: number } {
   return { x: b.x + b.w / 2, y: b.y + b.h / 2 };
 }
 
+/** Work speed in a town whose hall is a Castle. */
+export const CASTLE_SPEED = 1.1;
+
 export function workSpeed(sim: Simulation, s: Settler): number {
   let v = 1;
   if (s.hunger < 15) v *= 0.7;
   if (s.energy < 15) v *= 0.8;
   if (sim.wellEquipped()) v *= 1.25;
+  // A castle's royal presence speeds up its whole town.
+  const hall = s.settlementId !== null ? sim.buildings.get(s.settlementId) : undefined;
+  if (hall && hall.type === 'townHall' && (hall.level ?? 1) >= 3) v *= CASTLE_SPEED;
   return v;
 }
 
@@ -1031,7 +1038,7 @@ function runCraft(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'craft' 
   faceRect(s, b.x, b.y, b.w, b.h);
   s.anim = 'work';
   s.tool = CRAFT_TOOL[ws.recipe];
-  ws.progress += workSpeed(sim, s);
+  ws.progress += workSpeed(sim, s) * speedOf(b);
   if ((sim.tick + s.id) % 10 === 0) sim.emit({ type: 'sfx', name: CRAFT_SFX[ws.recipe], x: b.x + b.w / 2, y: b.y + b.h / 2 });
   if (ws.progress < recipe.work) return;
   ws.progress = 0;
@@ -1114,7 +1121,7 @@ function runSleep(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'sleep' 
         s.hidden = true;
         s.insideId = home.id;
         s.restNote = `Asleep at home in the ${name}`;
-      } else if (s.homeId === home.id) s.restNote = 'Asleep in a camp bedroll';
+      } else if (s.homeId === home.id) s.restNote = home.type === 'townHall' ? 'Asleep in a Town Hall bunk' : 'Asleep in a camp bedroll';
       else s.restNote = 'No free bed — resting by the campfire';
     }
     return;

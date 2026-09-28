@@ -567,6 +567,10 @@ export interface Building {
   reservedOut: Inventory;
   field?: FieldState;
   orchard?: OrchardState;
+  /** Upgrade level (absent means 1). */
+  level?: number;
+  /** An upgrade in progress: already paid for, finishing on a timer. */
+  upgrade?: { to: number; progress: number; paid: Inventory };
   /** Mines: the deposit worked (its cell id) and the shaft level (1–3). */
   mine?: { depositId: number; level: number };
   /** Quarries: stone cut so far (drives the visible excavation stage). */

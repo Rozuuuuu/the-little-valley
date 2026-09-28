@@ -13,8 +13,9 @@ import { Camera } from '../render/Camera';
 import { Renderer } from '../render/Renderer';
 import { SpriteBank } from '../render/sprites';
 import { GameContext, useGame, type GameContextValue } from './context';
-import { BuildDock, HoverInfo, Inspector, PausedBanner, SidePanel, Toasts, TopBar, Tutorial } from './Hud';
-import { Celebration, MinimapPanel, ValleyToday } from './Village';
+import { HoverInfo, PausedBanner, SidePanel, Toasts, TopBar, Tutorial } from './Hud';
+import { Celebration, ValleyToday } from './Village';
+import { BottomConsole, type CardMenu, type WindowTab } from './Console';
 import { HelpModal, LoadModal, NewWorldModal, PauseMenu, SettingsModal } from './Modals';
 
 const ATTRACT_SEED = 20260927;
@@ -46,7 +47,8 @@ export function App() {
   const [ctx, setCtx] = useState<GameContextValue | null>(null);
   const [screen, setScreen] = useState<'title' | 'game'>('title');
   const [overlay, setOverlay] = useState<Overlay>(null);
-  const [buildOpen, setBuildOpen] = useState(false);
+  const [cardMenu, setCardMenu] = useState<CardMenu>(null);
+  const [win, setWin] = useState<WindowTab | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [lastSlot, setLastSlot] = useState<string | null>(null);
@@ -154,7 +156,8 @@ export function App() {
     if (!game) return;
     await game.save(false);
     setOverlay(null);
-    setBuildOpen(false);
+    setCardMenu(null);
+    setWin(null);
     setScreen('title');
     startAttract(game);
     void game.saves.list().then((l) => setLastSlot(l[0]?.slot ?? null));
@@ -169,21 +172,19 @@ export function App() {
             screen={screen}
             overlay={overlay}
             setOverlay={setOverlay}
-            buildOpen={buildOpen}
-            setBuildOpen={setBuildOpen}
+            buildOpen={cardMenu !== null}
+            setBuildOpen={(o) => setCardMenu(o ? 'build' : null)}
           />
           {screen === 'title' && !overlay && <Title hasSave={!!lastSlot} onContinue={() => lastSlot && load(lastSlot)} onNew={() => setOverlay('new')} onLoad={() => setOverlay('load')} onSettings={() => setOverlay('settings')} />}
           {screen === 'game' && (
             <>
-              <TopBar onMenu={() => setOverlay('pause')} />
+              <TopBar onMenu={() => setOverlay('pause')} win={win} setWin={setWin} />
               <Toasts />
               <PausedBanner />
               <Tutorial />
-              <SidePanel />
-              <Inspector />
-              <BuildDock open={buildOpen} setOpen={setBuildOpen} />
+              <SidePanel tab={win} setTab={setWin} />
               <HoverInfo />
-              <MinimapPanel />
+              <BottomConsole menu={cardMenu} setMenu={setCardMenu} openWindow={setWin} />
               <ValleyToday />
               <Celebration />
             </>

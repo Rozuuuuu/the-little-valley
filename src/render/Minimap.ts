@@ -116,7 +116,7 @@ export class Minimap {
         if (b.field) color = P.soil2;
         else if (b.type === 'stoneBridge') color = b.built ? P.stone3 : (Math.floor(time * 2) % 2 ? P.uiWarn : P.stone2);
         else if (!b.built) color = Math.floor(time * 2) % 2 ? P.uiWarn : P.wood3;
-        else if (def.housing) color = b.type === 'camp' ? P.fire2 : P.roof3;
+        else if (def.housing) color = b.type === 'camp' || b.type === 'townHall' ? P.fire2 : P.roof3;
         else if (def.storage) color = P.slate3;
         else if (def.recipes) color = P.fire1;
         else color = P.wall1;

@@ -17,6 +17,7 @@ import { depositUnder, siteProblem } from './mining';
 import { landProblem } from './territory';
 import type { Simulation } from './Simulation';
 import type { Building } from './types';
+import { housingOf, workersOf } from './levels';
 
 export interface PlacementCheck {
   ok: boolean;
@@ -265,6 +266,12 @@ export function removeBuilding(sim: Simulation, b: Building): string {
 
   let lost = 0;
   const refund = { ...b.delivered };
+  // An upgrade under way is refunded in full, like a cancel.
+  if (b.upgrade) {
+    for (const [r, n] of invEntries(b.upgrade.paid)) addInv(refund, r, n);
+    b.upgrade = undefined;
+    sim.upgrading.delete(b.id);
+  }
   if (b.built) for (const [r, n] of invEntries(costOf(b))) addInv(refund, r, Math.floor(n / 2));
   for (const [r, n] of invEntries(refund)) lost += sim.depositAnywhere(r, n, cx, cy);
   for (const [r, n] of invEntries(b.inventory)) lost += sim.depositAnywhere(r, n, cx, cy);
@@ -301,7 +308,7 @@ export function removeBuilding(sim: Simulation, b: Building): string {
 
 /** Beds a building provides; unfinished buildings provide none. */
 export function bedsOf(b: Building): number {
-  return b.built ? BUILDINGS[b.type].housing ?? 0 : 0;
+  return b.built ? housingOf(b) : 0;
 }
 
 export function isPermanentHome(b: Building): boolean {
@@ -349,9 +356,51 @@ export function builtCount(sim: Simulation, type: BuildingId): number {
   return n;
 }
 
+/** The first settlement's hall: a Town Hall, or the founding camp of an older world. */
 export function campOf(sim: Simulation): Building | undefined {
-  for (const b of sim.buildings.values()) if (b.type === 'camp') return b;
+  const first = sim.settlements[0] ? sim.buildings.get(sim.settlements[0].id) : undefined;
+  if (first && (first.type === 'townHall' || first.type === 'camp')) return first;
+  for (const b of sim.buildings.values()) if (b.type === 'townHall' || b.type === 'camp') return b;
   return undefined;
+}
+
+/** Where a building rebuilt in place as a bigger one would stand: it grows up and to the right. */
+export function grownRect(b: Building, type: BuildingId): { x: number; y: number; w: number; h: number } {
+  const size = BUILDINGS[type].size;
+  return { x: b.x, y: b.y - Math.max(0, size.h - b.h), w: size.w, h: size.h };
+}
+
+/** Why a building can't grow into a bigger one in place, or null. */
+export function roomToGrow(sim: Simulation, b: Building, type: BuildingId): string | null {
+  const r = grownRect(b, type);
+  for (let y = r.y; y < r.y + r.h; y++) {
+    for (let x = r.x; x < r.x + r.w; x++) {
+      const other = sim.occupancy.get(tileKey(x, y));
+      if (other === b.id) continue;
+      const name = BUILDINGS[type].name;
+      if (other !== undefined) return `No room to raise the ${name}: clear the ${BUILDINGS[sim.buildings.get(other)!.type].name.toLowerCase()} beside it first`;
+      const p = tileProblem(sim, type, x, y);
+      if (p) return `No room to raise the ${name} beside it: ${p.charAt(0).toLowerCase()}${p.slice(1)}`;
+    }
+  }
+  return null;
+}
+
+/** Rebuilds a building in place as another type (same id, so settlements, homes and routes stay). */
+export function rebuildAs(sim: Simulation, b: Building, type: BuildingId): void {
+  const r = grownRect(b, type);
+  for (let dy = 0; dy < b.h; dy++) for (let dx = 0; dx < b.w; dx++) sim.occupancy.delete(tileKey(b.x + dx, b.y + dy));
+  b.type = type;
+  b.x = r.x;
+  b.y = r.y;
+  b.w = r.w;
+  b.h = r.h;
+  b.level = undefined;
+  for (let dy = 0; dy < b.h; dy++) for (let dx = 0; dx < b.w; dx++) sim.occupancy.set(tileKey(b.x + dx, b.y + dy), b.id);
+  const def = BUILDINGS[type];
+  if (def.reveal) sim.world.reveal(b.x + b.w / 2, b.y + b.h / 2, def.reveal);
+  sim.mapChanged();
+  if (def.housing) assignHomes(sim);
 }
 
 /** The tile in front of the door, where residents enter. */
@@ -467,7 +516,7 @@ export function cropUnlocked(sim: Simulation, crop: CropId): boolean {
 // ---- production -----------------------------------------------------------------------
 
 export function maxWorkers(b: Building): number {
-  return BUILDINGS[b.type].maxWorkers ?? 0;
+  return workersOf(b);
 }
 
 /** Fuel (coal and charcoal) on hand in an inventory. */

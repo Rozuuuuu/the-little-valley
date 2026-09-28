@@ -3,6 +3,7 @@ import type { SeasonId } from '../game/data/seasons';
 import { CHUNK, DUSK, MORNING, NIGHT_START, TILE, tileKey, keyX, keyY } from '../game/core/constants';
 import { hash01 } from '../game/core/rng';
 import { BUILDINGS, type BuildingId } from '../game/data/buildings';
+import { lightOf } from '../game/sim/levels';
 import { CROPS } from '../game/data/crops';
 import { fieldStage, WATER_THRESHOLD } from '../game/sim/farming';
 import { costOf, isPermanentHome, materialsComplete, workOf } from '../game/sim/buildings';
@@ -394,7 +395,7 @@ export class Renderer {
         if (b.type === 'workshop') this.particles.fx('smoke', b.x + 35.5 / 16, b.y - 16 / 16, this.sprites.ui);
         if (b.type === 'bakery') this.particles.fx('smoke', b.x + 38 / 16, b.y - 16 / 16, this.sprites.ui);
         if (b.type === 'cottage') this.particles.fx('smoke', b.x + 38.5 / 16, b.y - 14 / 16, this.sprites.ui);
-        if (b.type === 'camp') this.particles.fx('spark', b.x + 1.5, b.y + 1.6, this.sprites.ui);
+        if (b.type === 'camp' || b.type === 'travelCamp') this.particles.fx('spark', b.x + 1.5, b.y + 1.6, this.sprites.ui);
       }
     }
     this.particles.update(dt);
@@ -498,7 +499,9 @@ export class Renderer {
       const set = this.sprites.mine[Math.max(0, (b.mine?.level ?? 1) - 1)];
       return night ? set.night : set.day;
     }
-    const set = b.type === 'camp' && sim.progression.reached.includes('village') ? this.sprites.villageHall : this.sprites.buildings[b.type];
+    const set = b.type === 'townHall'
+      ? this.sprites.townHall[Math.min(this.sprites.townHall.length, b.level ?? 1) - 1]
+      : b.type === 'camp' && sim.progression.reached.includes('village') ? this.sprites.villageHall : this.sprites.buildings[b.type];
     if (!set) return null;
     return night ? set.night : set.day;
   }
@@ -530,7 +533,7 @@ export class Renderer {
     if (b.built) {
       if (sprite) this.blit(sprite, wx, wy);
       else this.drawPlaceholder(wx, wy, w, h);
-      if (b.type === 'camp') this.drawCampfire(wx + 24, wy + 28, st.time);
+      if (b.type === 'camp' || b.type === 'travelCamp') this.drawCampfire(wx + 24, wy + 28, st.time);
       if (b.type === 'market') this.drawFountain(wx + 40, wy + 36, st.time);
       if (b.type === 'mill') {
         // Sails turn faster while the miller is grinding.
@@ -1052,23 +1055,23 @@ export class Renderer {
     const br = cam.screenToWorld(cam.width, cam.height);
     for (const b of sim.buildings.values()) {
       if (!b.built) continue;
-      const def = BUILDINGS[b.type];
-      if (!def.light) continue;
+      const light = lightOf(b);
+      if (!light) continue;
       // Homes glow only when someone sleeps inside; skip lights that can't touch the view.
       if (isPermanentHome(b) && !occupied.has(b.id)) continue;
-      const reach = def.light * TILE;
+      const reach = light * TILE;
       if ((b.x + b.w) * TILE < tl.x - reach || b.x * TILE > br.x + reach || (b.y + b.h) * TILE < tl.y - reach || b.y * TILE > br.y + reach) continue;
       let lx = (b.x + b.w / 2) * TILE;
       let ly = (b.y + b.h * 0.7) * TILE;
-      let r = def.light * TILE;
-      if (b.type === 'camp') {
+      let r = light * TILE;
+      if (b.type === 'camp' || b.type === 'travelCamp') {
         lx = b.x * TILE + 24;
         ly = b.y * TILE + 26;
         r *= flick;
       }
       if (b.type === 'lamp') ly = b.y * TILE - 10;
       // Only open flames get the full-resolution warm bloom; windows just lift the darkness.
-      glows.push({ x: lx, y: ly, r, warm: b.type === 'camp' ? 0.22 : b.type === 'lamp' || b.type === 'market' ? 0.12 : 0 });
+      glows.push({ x: lx, y: ly, r, warm: b.type === 'camp' || b.type === 'travelCamp' ? 0.22 : b.type === 'lamp' || b.type === 'market' ? 0.12 : 0 });
     }
     for (const g of glows) {
       const p = cam.worldToScreen(g.x, g.y);

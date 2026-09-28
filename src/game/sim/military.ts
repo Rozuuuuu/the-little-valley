@@ -16,6 +16,7 @@ import type { Simulation } from './Simulation';
 import type { Building, CommandResult, Company, Settler } from './types';
 import { deployedSoldiers } from './combat';
 import { ACTIVE_BUDGET } from '../data/war';
+import { trainingSlotsOf } from './levels';
 
 /**
  * The realm's soldiers. Recruits are real adults: their gear leaves the stores
@@ -105,8 +106,8 @@ export function enlist(sim: Simulation, ids: unknown, unit: unknown, buildingId:
   const kid = people.find((s) => isChild(s));
   if (kid) return err(`${kid.name} is a child — only adults can enlist`);
   const counts = sim.settlers.filter((s) => s.military?.state === 'training' && s.military.buildingId === b.id).length;
-  let slots = def.training.slots - counts;
-  if (slots <= 0) return err(`The ${def.name.toLowerCase()} is full (${def.training.slots} in training)`);
+  let slots = trainingSlotsOf(b) - counts;
+  if (slots <= 0) return err(`The ${def.name.toLowerCase()} is full (${trainingSlotsOf(b)} in training)`);
   const done: string[] = [];
   let problem = '';
   for (const s of people) {

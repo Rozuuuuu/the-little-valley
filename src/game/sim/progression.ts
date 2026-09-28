@@ -43,7 +43,7 @@ export function requirementProgress(sim: Simulation, req: Requirement): Requirem
       break;
     case 'beds':
       current = permanentBeds(sim);
-      label = `Have ${req.count} beds in real homes (not camp bedrolls)`;
+      label = `Have ${req.count} beds in real homes (not hall bunks or bedrolls)`;
       break;
     case 'staffedAreas':
       current = staffedAreaCount(sim);

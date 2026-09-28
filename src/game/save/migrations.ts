@@ -1,4 +1,5 @@
 import { BUILDINGS, isBuildingId } from '../data/buildings';
+import { isHabitatId } from '../data/habitats';
 import { isCropId } from '../data/crops';
 import { isJobId } from '../data/jobs';
 import { WORK_KINDS } from '../sim/priorities';
@@ -250,6 +251,12 @@ export const MIGRATIONS: Record<number, (save: AnyRecord) => AnyRecord> = {
       },
     };
   },
+
+  /**
+   * v11 was war. v12 adds building levels, town halls, habitats, the ruler and
+   * animals; every building of an older world is at level 1 and nothing is upgrading.
+   */
+  11: (v11) => ({ ...v11, version: 12 }),
 };
 
 export function migrate(raw: unknown): SaveFile {
@@ -328,6 +335,12 @@ export function validateSave(save: AnyRecord): void {
     check(Array.isArray(b.workers) && (b.workers as unknown[]).every(isInt), `building ${b.id} workers`);
     checkInventory(b.wants, `building ${b.id} stock targets`);
     if (b.mine !== undefined) check(isInt((b.mine as AnyRecord).depositId) && [1, 2, 3].includes((b.mine as AnyRecord).level as number), `building ${b.id} mine`);
+    if (b.level !== undefined) check(isInt(b.level) && (b.level as number) >= 1 && (b.level as number) <= (BUILDINGS[b.type as keyof typeof BUILDINGS].levels?.length ?? 1), `building ${b.id} level`);
+    if (b.upgrade !== undefined) {
+      const u = b.upgrade as AnyRecord;
+      check(u && isInt(u.to) && isInt(u.progress) && (u.progress as number) >= 0 && (u.to as number) <= (BUILDINGS[b.type as keyof typeof BUILDINGS].levels?.length ?? 1), `building ${b.id} upgrade`);
+      checkInventory(u.paid, `building ${b.id} upgrade payment`);
+    }
     if (b.quarry !== undefined) check(isInt((b.quarry as AnyRecord).extracted) && ((b.quarry as AnyRecord).extracted as number) >= 0, `building ${b.id} quarry`);
     if (BUILDINGS[b.type as keyof typeof BUILDINGS].span) check(isInt(b.w) && isInt(b.h) && (b.w as number) >= 1 && (b.h as number) >= 1, `building ${b.id} size`);
     if (b.field) {
@@ -409,6 +422,7 @@ export function validateSave(save: AnyRecord): void {
   const world = save.world as AnyRecord;
   check(world && Array.isArray(world.chunks), 'world');
   check(SUPPORTED_GENS.includes(world.genVersion as number), `world generator version ${String(world.genVersion)} is not supported by this game version`);
+  check(world.habitat === undefined || isHabitatId(world.habitat), `world habitat ${String(world.habitat)}`);
   for (const c of world.chunks as AnyRecord[]) {
     check(isInt(c.cx) && isInt(c.cy) && typeof c.explored === 'string', 'chunk header');
   }

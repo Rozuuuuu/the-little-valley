@@ -1,6 +1,7 @@
 import { CHUNK, CHUNK_MASK, CHUNK_SHIFT } from '../core/constants';
 import { Chunk } from './Chunk';
 import { generateChunk } from './worldgen';
+import type { HabitatId } from '../data/habitats';
 import { OBJECTS, TERRAIN, type ObjectId, type TerrainId } from './tiles';
 
 export function chunkKey(cx: number, cy: number): number {
@@ -19,13 +20,15 @@ export class World {
   constructor(
     readonly seed: number,
     readonly genVersion = 1,
+    /** The habitat chosen for a generator-4 world (ignored by older generators). */
+    readonly habitat: HabitatId = 'valley',
   ) {}
 
   chunk(cx: number, cy: number): Chunk {
     const k = chunkKey(cx, cy);
     let c = this.chunks.get(k);
     if (!c) {
-      c = generateChunk(this.seed, cx, cy, this.genVersion);
+      c = generateChunk(this.seed, cx, cy, this.genVersion, this.habitat);
       this.chunks.set(k, c);
     }
     return c;

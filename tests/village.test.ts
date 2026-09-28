@@ -21,7 +21,7 @@ import type { Building } from '../src/game/sim/types';
 import { O, OBJECTS, T } from '../src/game/world/tiles';
 import { CURRENT_GEN, riverCenter } from '../src/game/world/worldgen';
 import {
-  accountedFor, assertNoNegativeReservations, assertReservationsConsistent, consumedByConstruction, consumedByCrafting, run, runUntil,
+  accountedFor, assertNoNegativeReservations, assertReservationsConsistent, consumedByConstruction, consumedByCrafting, legacyCampWorld, run, runUntil,
 } from './helpers';
 
 const extras = { name: 'Village Test', createdAt: 1 };
@@ -343,8 +343,11 @@ describe('village progression', () => {
     expect(applyCommand(sim, { type: 'place', building: 'cottage', x: p.x, y: p.y }).ok).toBe(true);
   });
 
-  it('a camp-only settlement cannot count bedrolls as village beds', () => {
-    const sim = createNewGame(1313);
+  it('hall bunks and camp bedrolls never count as village beds', () => {
+    const hall = createNewGame(1313);
+    expect(housingCapacity(hall)).toBe(10);
+    expect(permanentBeds(hall)).toBe(0);
+    const sim = legacyCampWorld(1313);
     expect(housingCapacity(sim)).toBe(5);
     expect(permanentBeds(sim)).toBe(0);
     expect(requirementProgress(sim, { kind: 'beds', count: 8 }).current).toBe(0);
@@ -371,7 +374,7 @@ describe('housing and routines', () => {
   });
 
   it('2: two newcomers competing for one free bed produce only one arrival', () => {
-    const sim = createNewGame(2222);
+    const sim = legacyCampWorld(2222);
     camp(sim).inventory = { food: 200 };
     const p = clearSpot(sim, 2, 2);
     instant(sim, 'house', p.x, p.y); // 5 bedrolls + 2 beds = 7, 5 settlers
@@ -398,7 +401,7 @@ describe('housing and routines', () => {
   });
 
   it('4: removing an occupied house rehouses its residents where possible and reports the shortage', () => {
-    const sim = createNewGame(2424);
+    const sim = legacyCampWorld(2424);
     for (let i = 0; i < 3; i++) sim.addSettler(0, 3, 'laborer'); // 8 settlers
     const p1 = clearSpot(sim, 2, 2, { x: -4, y: -7 });
     const h1 = instant(sim, 'house', p1.x, p1.y);

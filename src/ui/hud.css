@@ -1,0 +1,144 @@
+/* =====================================================================================
+   Command HUD: a top bar plus a bottom console with the minimap, the selection and a
+   command card. Warcraft-like in layout, but a carved-oak frame with brass rivets on
+   green felt. Everything fits between the bar and the console; windows scroll inside.
+   ===================================================================================== */
+:root {
+  --top-h: 50px;
+  --console-h: 186px;
+  --oak-0: #2a1c12;
+  --oak-1: #3d2a1b;
+  --oak-2: #5a3f28;
+  --oak-3: #7a5636;
+  --brass: #c9a24a;
+  --brass-hi: #ecd27e;
+  --felt: #1d2a22;
+  --felt-2: #24352b;
+}
+
+/* Top bar: one row that always fits; the clock never falls off the right edge. */
+.hud-top { top: 6px; left: 6px; right: 6px; gap: 6px; align-items: stretch; height: calc(var(--top-h) - 8px); flex-wrap: nowrap; z-index: 4; }
+.hud-top .panel { display: flex; align-items: center; }
+.resources { gap: 0; padding: 2px 4px; flex: 0 1 auto; min-width: 0; overflow: hidden; }
+.res { min-width: 0; padding: 2px 7px; font-size: 15px; gap: 4px; white-space: nowrap; }
+.res img { width: 20px; height: 20px; }
+.goods-btn { background: none; border: none; border-left: 2px solid var(--moss-3); cursor: pointer; font-family: var(--pixel); font-weight: 600; font-size: 13px; color: var(--straw); }
+.goods-btn:hover, .goods-btn.on { color: var(--wheat); }
+.goods-drawer { position: fixed; top: var(--top-h); left: 6px; width: min(460px, calc(100vw - 12px)); max-height: calc(100vh - var(--top-h) - var(--console-h) - 16px); overflow: auto; padding: 8px 10px; z-index: 6; }
+.goods-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 4px; margin: 6px 0; }
+.good { display: grid; grid-template-columns: 20px 1fr auto; gap: 6px; align-items: center; font-size: 13px; padding: 2px 4px; background: var(--moss-2); }
+.win-tabs { gap: 2px; padding: 2px 3px; flex: 0 0 auto; }
+.win-btn { background: var(--moss-2); border: 2px solid var(--moss-3); border-radius: 2px; color: var(--straw); font-family: var(--pixel); font-size: 13px; padding: 3px 7px; cursor: pointer; white-space: nowrap; }
+.win-btn:hover { border-color: var(--edge-hi); }
+.win-btn.on { border-color: var(--wheat); color: var(--wheat); background: #3a3a22; }
+.clock { padding: 2px 6px; gap: 6px; flex: 0 0 auto; }
+.clock .time { font-size: 14px; white-space: nowrap; }
+.clock .sub { font-size: 11px; white-space: nowrap; }
+.speed { margin-left: 4px; }
+.speed .btn { padding: 2px 6px; min-width: 28px; font-size: 13px; }
+
+/* Windows opened from the top bar sit on the right, between the bar and the console. */
+.side { top: var(--top-h); right: 6px; width: min(340px, calc(100vw - 12px)); max-height: calc(100vh - var(--top-h) - var(--console-h) - 16px); min-height: 0; z-index: 5; }
+.side-head { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px 4px 10px; border-bottom: 2px solid var(--moss-3); }
+.side-body { flex: 1; min-height: 0; }
+.tutorial { top: var(--top-h); left: 6px; width: min(330px, calc(100vw - 12px)); z-index: 3; }
+.toasts { top: calc(var(--top-h) + 4px); z-index: 7; }
+.paused-banner { top: calc(var(--top-h) + 44px); }
+.valley-today { top: var(--top-h); left: 6px; max-height: calc(100vh - var(--top-h) - var(--console-h) - 16px); }
+.hover-info { right: auto; left: 6px; bottom: calc(var(--console-h) + 8px); z-index: 3; }
+
+/* ---- the console ---- */
+.console {
+  position: fixed; left: 0; right: 0; bottom: 0; height: var(--console-h); z-index: 4;
+  display: grid; grid-template-columns: 236px minmax(0, 1fr) 272px; gap: 6px; padding: 8px 8px 6px;
+  background:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.08) 0 2px, transparent 2px 9px),
+    linear-gradient(180deg, var(--oak-3) 0 3px, var(--oak-2) 3px 7px, var(--oak-1) 7px 100%);
+  border-top: 3px solid var(--oak-0);
+  box-shadow: 0 -3px 0 var(--brass), 0 -6px 0 var(--oak-0);
+}
+.console::before, .console::after {
+  content: ""; position: absolute; top: -5px; width: 10px; height: 10px; background: var(--brass-hi);
+  border: 2px solid var(--oak-0); border-radius: 50%;
+}
+.console::before { left: 10px; }
+.console::after { right: 10px; }
+.con-map, .con-info, .con-card {
+  background: var(--felt); border: 3px solid var(--oak-0); box-shadow: inset 0 0 0 2px var(--oak-3), inset 0 3px 0 2px rgba(0, 0, 0, 0.25);
+  min-height: 0; position: relative;
+}
+.con-map { padding: 5px; display: flex; flex-direction: column; gap: 4px; }
+.con-map .minimap-canvas { width: 100%; height: auto; aspect-ratio: 212 / 120; min-height: 0; flex: 1; object-fit: contain; }
+.con-map .mm-row { flex-wrap: nowrap; gap: 2px; }
+.con-map .mm-row .chip { font-size: 11px; padding: 0 5px; flex: 1; }
+
+.con-info { padding: 8px 10px; overflow: hidden; }
+.con-info-row { display: flex; gap: 10px; height: 100%; align-items: stretch; min-width: 0; }
+.con-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
+.con-title { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.con-title strong { font-family: var(--pixel); font-size: 18px; color: var(--wheat); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.con-title .muted { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.con-task { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.con-info .reason { color: var(--wheat); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.con-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px; }
+.con-bars { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 4px 8px; align-items: center; font-size: 12px; color: var(--straw-dim); max-width: 520px; }
+.con-reqs { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+.con-reqs .req { margin: 1px 0; }
+.portrait { flex: none; width: 86px; height: 86px; background: radial-gradient(circle at 50% 40%, #3a5a45, #16211b 75%); border: 3px solid var(--brass); box-shadow: inset 0 0 0 2px var(--oak-0), 0 0 0 2px var(--oak-0); display: grid; place-items: center; overflow: hidden; }
+.portrait img { width: 76px; height: 76px; object-fit: contain; image-rendering: pixelated; }
+.portrait.big { width: 112px; height: 112px; align-self: center; }
+.portrait.big img { width: 100px; height: 100px; }
+.see-more { align-self: flex-end; flex: none; white-space: nowrap; }
+.level-pip { font-family: var(--pixel); font-size: 12px; color: var(--oak-0); background: var(--brass-hi); padding: 0 6px; border-radius: 2px; white-space: nowrap; }
+.group-grid { display: flex; flex-wrap: wrap; gap: 3px; max-height: 110px; overflow: auto; }
+.group-cell { width: 34px; height: 34px; padding: 0; background: var(--felt-2); border: 2px solid var(--oak-3); position: relative; cursor: pointer; }
+.group-cell.idle { border-color: var(--wheat); }
+.group-cell img { width: 30px; height: 26px; image-rendering: pixelated; }
+.group-cell i { position: absolute; left: 1px; bottom: 1px; height: 3px; background: #e58a5a; }
+
+/* ---- command card ---- */
+.con-card { padding: 3px 5px 5px; display: flex; flex-direction: column; }
+.card-head { font-family: var(--pixel); font-size: 11px; line-height: 13px; color: var(--brass-hi); letter-spacing: 0.06em; text-transform: uppercase; margin: 0 0 2px 2px; }
+.card-grid { display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(3, 1fr); gap: 4px; flex: 1; min-height: 0; }
+.card-btn {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 1px 2px;
+  background: linear-gradient(180deg, #33493b, #22332a); border: 2px solid var(--oak-3); border-radius: 3px; cursor: pointer; color: var(--straw);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 2px 0 var(--oak-0); min-width: 0; overflow: hidden;
+}
+.card-btn:hover, .card-btn:focus-visible { border-color: var(--brass-hi); outline: none; }
+.card-btn:active { transform: translateY(1px); box-shadow: none; }
+.card-btn.on { border-color: var(--wheat); background: linear-gradient(180deg, #6d5a22, #4a3d18); }
+.card-btn.off { opacity: 0.42; cursor: not-allowed; filter: grayscale(0.6); }
+.card-btn.empty { background: rgba(0, 0, 0, 0.18); border: 2px dashed rgba(122, 86, 54, 0.35); box-shadow: none; cursor: default; }
+.card-btn img { width: 22px; height: 22px; image-rendering: pixelated; flex: none; }
+.card-btn .glyph { font-size: 16px; line-height: 20px; height: 20px; flex: none; }
+.card-label { font-family: var(--pixel); font-size: 10px; line-height: 12px; height: 12px; flex: none; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.card-btn kbd { position: absolute; top: 1px; left: 2px; font-family: var(--body); font-weight: 700; font-size: 9px; color: var(--brass-hi); background: none; padding: 0; }
+.card-btn .badge { position: absolute; top: 1px; right: 1px; margin: 0; font-size: 9px; line-height: 13px; min-width: 13px; padding: 0 3px; }
+.cmd-tip { position: absolute; bottom: calc(100% + 10px); right: -3px; width: 280px; padding: 8px 10px; z-index: 8; pointer-events: none; }
+.cmd-tip p { margin: 4px 0 0; font-size: 13px; }
+.tip-title { font-family: var(--pixel); font-size: 15px; color: var(--wheat); display: flex; justify-content: space-between; gap: 8px; }
+.tip-title kbd { font-family: var(--body); font-size: 11px; background: var(--ink); color: var(--straw-dim); padding: 0 4px; border-radius: 2px; }
+.cmd-tip .cost { justify-content: flex-start; margin-top: 4px; }
+
+/* "See more": the full details window, above the selection panel. */
+.details-window { position: fixed; left: 250px; bottom: calc(var(--console-h) + 8px); width: min(380px, calc(100vw - 260px)); max-height: calc(100vh - var(--top-h) - var(--console-h) - 16px); overflow: auto; padding: 10px 12px; z-index: 5; }
+.details-window .close-x { position: sticky; top: 0; float: right; margin-left: 6px; z-index: 1; }
+
+/* Smaller screens: narrower columns, fewer words. */
+@media (max-width: 1280px) {
+  .console { grid-template-columns: 196px minmax(0, 1fr) 248px; }
+  .portrait.big { width: 92px; height: 92px; }
+  .portrait.big img { width: 82px; height: 82px; }
+  .clock .sub { display: none; }
+  .win-btn { padding: 3px 5px; font-size: 12px; }
+  .details-window { left: 210px; }
+}
+@media (max-width: 1100px) {
+  .res { font-size: 14px; padding: 2px 5px; }
+}
+@media (max-height: 700px) {
+  :root { --console-h: 164px; }
+  .portrait.big { width: 80px; height: 80px; }
+  .portrait.big img { width: 70px; height: 70px; }
+}

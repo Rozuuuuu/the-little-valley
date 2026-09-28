@@ -1,4 +1,5 @@
 import type { BuildingId } from '../data/buildings';
+import type { HabitatId } from '../data/habitats';
 import type { CropId } from '../data/crops';
 import type { JobId, WorkKind } from '../data/jobs';
 import type { MilestoneId } from '../data/progression';
@@ -13,7 +14,7 @@ import type {
  * Save file format. Bump SAVE_VERSION whenever this shape changes and add a
  * migration in migrations.ts so older worlds keep loading.
  */
-export const SAVE_VERSION = 11;
+export const SAVE_VERSION = 12;
 
 export interface SaveMeta {
   name: string;
@@ -75,6 +76,10 @@ export interface SavedBuilding {
   orchard?: OrchardState;
   mine?: { depositId: number; level: number };
   quarry?: { extracted: number };
+  /** Upgrade level above 1 (v12+). */
+  level?: number;
+  /** An upgrade already paid for, finishing on a timer (v12+). */
+  upgrade?: { to: number; progress: number; paid: Inventory };
   placedTick: number;
   /** Only for span buildings, whose size varies. */
   w?: number;
@@ -123,6 +128,8 @@ export interface SaveFileV3 {
   world: {
     /** World generator version (see worldgen.ts). Old worlds keep generating with their version. */
     genVersion: number;
+    /** Generator 4+: the habitat the player chose (v12+; absent means the default valley). */
+    habitat?: HabitatId;
     chunks: SavedChunk[];
   };
   view?: SaveView;
@@ -221,7 +228,15 @@ export interface SaveFileV11 extends Omit<SaveFileV10, 'version' | 'sim'> {
   };
 }
 
-export type SaveFile = SaveFileV11;
+/**
+ * v12 (town halls, levels, habitats, the ruler, animals). Every addition is optional
+ * or has a default, so v11 worlds load unchanged.
+ */
+export interface SaveFileV12 extends Omit<SaveFileV11, 'version'> {
+  version: 12;
+}
+
+export type SaveFile = SaveFileV12;
 
 export class SaveError extends Error {
   constructor(message: string) {

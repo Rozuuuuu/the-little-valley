@@ -4,6 +4,7 @@ import { playerCompanies } from '../game/sim/military';
 import { companyWhere } from '../game/sim/military';
 import type { Simulation } from '../game/sim/Simulation';
 import type { Building } from '../game/sim/types';
+import { trainingSlotsOf } from '../game/sim/levels';
 
 export interface ArmyInfo {
   companies: {
@@ -53,7 +54,7 @@ export function trainingInfo(sim: Simulation, b: Building): { units: { id: strin
   if (!def.training || !b.built) return undefined;
   return {
     units: def.training.units.map((u) => ({ id: u, name: UNITS[u].name, gear: Object.entries(UNITS[u].gear).map(([r, n]) => `${n} ${r}`).join(', ') })),
-    slots: def.training.slots,
+    slots: trainingSlotsOf(b),
     used: sim.settlers.filter((s) => s.military?.state === 'training' && s.military.buildingId === b.id).length,
   };
 }

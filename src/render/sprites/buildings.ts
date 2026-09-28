@@ -856,6 +856,144 @@ export function makeMillSails(): Sprite[] {
   return frames;
 }
 
+
+/** Crenellations along a wall top: merlons 2px wide every 4px. */
+function merlons(p: Painter, x0: number, x1: number, y: number, c: string): void {
+  for (let x = x0; x <= x1 - 1; x += 4) p.rect(x, y - 3, 2, 3, c);
+}
+
+/** Town Hall, level 1: a long timber hall with a bell tower, double doors and banners. */
+const townHall1: Draw = (p, lit) => {
+  p.rect(2, 10, 60, 34, P.wall2);
+  for (const x of [2, 12, 22, 42, 52, 61]) p.vline(x, 10, 43, P.wood1);
+  p.hline(2, 61, 24, P.wood1);
+  for (let i = 0; i < 8; i++) {
+    p.px(3 + i, 11 + i, P.wood1);
+    p.px(60 - i, 11 + i, P.wood1);
+  }
+  p.rect(2, 42, 60, 4, P.stone1);
+  p.hline(2, 61, 45, P.stone0);
+  shingles(p, -1, 64, -10, 11, ROOF, 4);
+  // Bell tower
+  p.rect(26, -30, 12, 22, P.wood2);
+  p.rect(26, -30, 2, 20, P.wood3);
+  p.rect(28, -27, 8, 8, P.wood0);
+  p.ellipse(32, -22, 2.5, 3, P.fire2);
+  p.px(32, -25, '#fff3a8');
+  for (let y = 0; y < 8; y++) p.hline(31 - y, 32 + y, -38 + y, y > 5 ? P.roof1 : P.roof2);
+  p.vline(32, -46, -39, P.wood1);
+  p.rect(33, -46, 5, 3, P.flowerR);
+  // Double doors under a porch
+  p.rect(25, 26, 14, 20, P.wood0);
+  p.rect(26, 27, 12, 19, P.wood2);
+  p.vline(32, 27, 45, P.wood0);
+  p.px(30, 36, P.stone3);
+  p.px(34, 36, P.stone3);
+  p.hline(23, 41, 25, P.roof1);
+  for (const x of [6, 15, 45, 54]) windowAt(p, x, 28, 5, 7, lit);
+  windowAt(p, 6, 13, 5, 6, lit);
+  windowAt(p, 53, 13, 5, 6, lit);
+  // Banners either side of the door
+  for (const x of [19, 43]) {
+    p.rect(x, 12, 3, 10, P.flowerR);
+    p.px(x + 1, 22, P.flowerR);
+    p.px(x + 1, 14, P.flowerY);
+  }
+  // Notice board and a water trough
+  p.rect(46, 38, 8, 5, P.wood3);
+  p.rect(47, 39, 6, 3, P.canvas2);
+  p.rect(8, 40, 10, 4, P.wood1);
+  p.hline(9, 16, 41, P.water2);
+};
+
+/** Keep, level 2: stone lower walls, a crenellated central tower and slate-roofed wings. */
+const townHall2: Draw = (p, lit) => {
+  // Wings
+  p.rect(0, 12, 64, 34, P.stone2);
+  p.rect(0, 12, 3, 32, P.stone3);
+  for (let y = 16; y < 44; y += 5) p.hline(0, 63, y, P.stone1);
+  for (let y = 16; y < 44; y += 10) for (let x = 6; x < 64; x += 9) p.vline(x, y, y + 4, P.stone1);
+  p.rect(0, 43, 64, 4, P.stone0);
+  shingles(p, -2, 22, -2, 13, SLATE, 3);
+  shingles(p, 42, 66, -2, 13, SLATE, 3);
+  // Central keep tower
+  p.rect(20, -34, 24, 48, P.stone2);
+  p.rect(20, -34, 3, 46, P.stone3);
+  for (let y = -30; y < 12; y += 5) p.hline(20, 43, y, P.stone1);
+  merlons(p, 20, 44, -34, P.stone2);
+  p.hline(20, 43, -34, P.stone3);
+  windowAt(p, 29, -26, 6, 9, lit);
+  windowAt(p, 29, -8, 6, 8, lit);
+  // Flag
+  p.vline(32, -52, -38, P.wood1);
+  p.rect(33, -52, 9, 6, P.flowerR);
+  p.hline(33, 41, -49, P.flowerY);
+  // Gate
+  p.rect(25, 24, 14, 22, P.stone0);
+  p.rect(26, 22, 12, 2, P.stone0);
+  p.rect(27, 25, 10, 21, P.wood1);
+  for (let x = 28; x < 37; x += 3) p.vline(x, 25, 45, P.wood0);
+  for (const x of [5, 13, 48, 56]) windowAt(p, x, 22, 4, 7, lit);
+  // Torches by the gate
+  for (const x of [22, 41]) {
+    p.rect(x, 30, 1, 6, P.wood0);
+    p.rect(x - 1, 28, 3, 2, lit ? P.fire2 : P.stone0);
+  }
+};
+
+/** Castle, level 3: a curtain wall with a gate, two towers with red cones and a tall keep. */
+const townHall3: Draw = (p, lit) => {
+  // The keep behind the wall
+  p.rect(18, -46, 28, 60, P.stone2);
+  p.rect(18, -46, 3, 58, P.stone3);
+  for (let y = -42; y < 14; y += 5) p.hline(18, 45, y, P.stone1);
+  merlons(p, 18, 46, -46, P.stone2);
+  p.hline(18, 45, -46, P.stone3);
+  windowAt(p, 29, -38, 6, 9, lit);
+  windowAt(p, 22, -20, 4, 7, lit);
+  windowAt(p, 38, -20, 4, 7, lit);
+  p.vline(32, -66, -50, P.wood1);
+  p.rect(33, -66, 11, 7, P.flowerR);
+  p.rect(36, -64, 4, 3, P.flowerY);
+  // Curtain wall
+  p.rect(0, 16, 64, 31, P.stone2);
+  for (let y = 20; y < 44; y += 5) p.hline(0, 63, y, P.stone1);
+  for (let y = 20; y < 44; y += 10) for (let x = 4; x < 64; x += 8) p.vline(x, y, y + 4, P.stone1);
+  merlons(p, 0, 64, 16, P.stone2);
+  p.hline(0, 63, 16, P.stone3);
+  p.rect(0, 44, 64, 3, P.stone0);
+  // Corner towers with conical roofs
+  for (const x0 of [0, 50]) {
+    p.rect(x0, -8, 14, 55, P.stone2);
+    p.rect(x0, -8, 3, 53, P.stone3);
+    for (let y = -4; y < 44; y += 5) p.hline(x0, x0 + 13, y, P.stone1);
+    for (let y = 0; y < 13; y++) {
+      const inset = 6 - Math.floor(y / 2);
+      p.hline(x0 + inset, x0 + 13 - inset, -21 + y, y > 10 ? P.roof1 : P.roof2);
+    }
+    p.vline(x0 + 6, -25, -22, P.wood1);
+    windowAt(p, x0 + 5, 4, 4, 6, lit);
+    windowAt(p, x0 + 5, 24, 4, 6, lit);
+  }
+  // Gatehouse with portcullis
+  p.rect(24, 22, 16, 25, P.stone0);
+  p.rect(25, 20, 14, 2, P.stone0);
+  p.rect(26, 24, 12, 23, lit ? '#5a3a1a' : P.wood0);
+  for (let x = 27; x < 38; x += 2) p.vline(x, 24, 46, P.stone1);
+  for (let y = 27; y < 46; y += 3) p.hline(26, 37, y, P.stone1);
+  merlons(p, 22, 42, 20, P.stone3);
+  // Pennants on the wall
+  for (const x of [16, 46]) {
+    p.vline(x, 4, 16, P.wood1);
+    p.rect(x + 1, 4, 4, 3, P.flowerR);
+  }
+};
+
+/** The Town Hall at each level: hall, keep, castle. */
+export function makeTownHallSprites(): BuildingSprites[] {
+  return [make(68, 94, 2, 46, townHall1), make(68, 104, 2, 56, townHall2), make(68, 118, 2, 70, townHall3)];
+}
+
 export function makeVillageHall(): BuildingSprites {
   return make(52, 58, 2, 28, villageHall);
 }
@@ -880,6 +1018,7 @@ export function makeBuildingSprites(): Partial<Record<BuildingId, BuildingSprite
     smelter: make(36, 58, 2, 24, smelter),
     forge: make(54, 46, 3, 12, forge),
     camp: make(52, 46, 2, 12, camp),
+    travelCamp: make(52, 46, 2, 12, camp),
     house: make(36, 50, 2, 17, house),
     storehouse: make(54, 46, 3, 13, storehouse),
     workshop: make(54, 52, 3, 19, workshop),

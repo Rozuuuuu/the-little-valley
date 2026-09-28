@@ -13,7 +13,7 @@ import { createNewGame } from '../src/game/sim/newGame';
 import { seasonOf } from '../src/game/sim/seasons';
 import type { Simulation } from '../src/game/sim/Simulation';
 import type { Building } from '../src/game/sim/types';
-import { accountedFor, assertNoNegativeReservations, assertReservationsConsistent, clearSpot, instant, run, runUntil } from './helpers';
+import { accountedFor, assertNoNegativeReservations, assertReservationsConsistent, clearSpot, instant, legacyCampWorld, run, runUntil } from './helpers';
 
 const extras = { name: 'Recruits', createdAt: 1 };
 
@@ -41,8 +41,8 @@ function emptyHome(sim: Simulation, home: Building): Building {
 }
 
 /** A new valley with an empty family home, a visitor waiting and the given food in the hall. */
-function visitorWorld(food: number, seed = 5150) {
-  const sim = createNewGame(seed);
+function visitorWorld(food: number, seed = 5150, legacy = false) {
+  const sim = legacy ? legacyCampWorld(seed) : createNewGame(seed);
   campOf(sim)!.inventory = { food: 120, wood: 40, stone: 20 };
   const home = emptyHome(sim, instant(sim, 'familyHome', { x: 4, y: -5 }));
   runUntil(sim, () => sim.offer !== null, FIRST_VISITOR_TICK + 100);
@@ -79,6 +79,15 @@ describe('visitors', () => {
 });
 
 describe('recruitment', () => {
+  it("a new valley's Town Hall has bunks for travellers before any house is built", () => {
+    const sim = createNewGame(5152);
+    campOf(sim)!.inventory = { food: 200 };
+    runUntil(sim, () => sim.offer !== null, FIRST_VISITOR_TICK + 100);
+    const res = accept(sim, sim.offer!.id);
+    expect(res.ok, res.message).toBe(true);
+    expect(sim.bedClaims[0].homeId).toBe(campOf(sim)!.id);
+  });
+
   it('one food short of the welcome plus the reserve is refused; nothing is charged', () => {
     const { sim, offer } = visitorWorld(ENOUGH - 1);
     const before = sim.storedTotal('food');
@@ -122,10 +131,11 @@ describe('recruitment', () => {
   });
 
   it('needs a free bed (real homes first, bedrolls will do), food in store, and one settled traveller per two days', () => {
-    const sim = createNewGame(5151);
+    // An older world whose five camp bedrolls are all taken.
+    const sim = legacyCampWorld(5151);
     campOf(sim)!.inventory = { food: 200 };
     runUntil(sim, () => sim.offer !== null, FIRST_VISITOR_TICK + 100);
-    // Every bed in the hall is taken and there is no home yet.
+    // Every bedroll is taken and there is no home yet.
     feedEveryone(sim);
     const food = sim.storedTotal('food');
     expect(accept(sim, sim.offer!.id).message).toMatch(/bed/);
@@ -165,7 +175,7 @@ describe('recruitment', () => {
   });
 
   it('a traveller whose bed is demolished waits for another, and never arrives without one', () => {
-    const { sim, offer, home } = visitorWorld(ENOUGH);
+    const { sim, offer, home } = visitorWorld(ENOUGH, 5150, true);
     expect(accept(sim, offer.id).ok).toBe(true);
     expect(applyCommand(sim, { type: 'remove', buildingId: home.id }).ok).toBe(true);
     expect(sim.bedClaims).toHaveLength(0);

@@ -8,6 +8,7 @@ import '@fontsource/pixelify-sans/latin-600.css';
 import '@fontsource/pixelify-sans/latin-700.css';
 import { App } from './ui/App';
 import './ui/styles.css';
+import './ui/hud.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -3,16 +3,16 @@ import { DAY_TICKS } from '../src/game/core/constants';
 import { applyCommand } from '../src/game/sim/commands';
 import { fieldStage } from '../src/game/sim/farming';
 import { createNewGame, STARTING_GOODS } from '../src/game/sim/newGame';
-import { housingCapacity } from '../src/game/sim/buildings';
+import { campOf, housingCapacity } from '../src/game/sim/buildings';
 import type { Simulation } from '../src/game/sim/Simulation';
 import { O } from '../src/game/world/tiles';
 import type { BuildingId } from '../src/game/data/buildings';
 import {
-  accountedFor, assertNoNegativeReservations, consumedByConstruction, consumedByCrafting, nearestResource, run, runUntil,
+  accountedFor, assertNoNegativeReservations, consumedByConstruction, consumedByCrafting, legacyCampWorld, nearestResource, run, runUntil,
 } from './helpers';
 
 function camp(sim: Simulation) {
-  return [...sim.buildings.values()].find((b) => b.type === 'camp')!;
+  return campOf(sim)!;
 }
 
 /** Finds a clear, explored tile rectangle for a building near the camp. */
@@ -29,16 +29,16 @@ function findSpot(sim: Simulation, type: BuildingId) {
 }
 
 describe('new game', () => {
-  it('starts with five settlers, a camp and starting goods', () => {
+  it('starts with five settlers, a Town Hall and starting goods', () => {
     const sim = createNewGame(101);
     expect(sim.settlers).toHaveLength(5);
     expect(camp(sim).built).toBe(true);
     expect(sim.totals().food).toBe(STARTING_GOODS.food);
-    expect(housingCapacity(sim)).toBe(5);
+    expect(housingCapacity(sim)).toBe(10);
     expect(new Set(sim.settlers.map((s) => s.name)).size).toBe(5);
   });
 
-  it('keeps the camp from being demolished', () => {
+  it('keeps the Town Hall from being demolished', () => {
     const sim = createNewGame(101);
     expect(applyCommand(sim, { type: 'remove', buildingId: camp(sim).id }).ok).toBe(false);
   });
@@ -85,7 +85,7 @@ describe('construction', () => {
     // Gatherers may add more, but the 20 wood and 6 stone must have left storage.
     expect(accountedFor(sim, 'wood') + consumedByConstruction(sim, 'wood')).toBe(40 + sim.stats.woodGathered);
     expect(accountedFor(sim, 'stone') + consumedByConstruction(sim, 'stone')).toBe(20 + sim.stats.stoneGathered);
-    expect(housingCapacity(sim)).toBe(7);
+    expect(housingCapacity(sim)).toBe(12);
     assertNoNegativeReservations(sim);
   });
 
@@ -197,7 +197,7 @@ describe('needs and population', () => {
   });
 
   it('welcomes a newcomer when there is a free bed and food', () => {
-    const sim = createNewGame(1010);
+    const sim = legacyCampWorld(1010);
     sim.growthMode = 'legacy'; // worlds from before deliberate growth keep automatic arrivals
     camp(sim).inventory = { wood: 40, stone: 20, food: 80 };
     findSpot(sim, 'house');
@@ -210,7 +210,7 @@ describe('needs and population', () => {
   });
 
   it('does not grow without housing', () => {
-    const sim = createNewGame(1111);
+    const sim = legacyCampWorld(1111);
     camp(sim).inventory = { food: 120 };
     run(sim, 1500);
     expect(sim.settlers).toHaveLength(5);

@@ -93,7 +93,7 @@ export function acceptRecruit(sim: Simulation, offerId: unknown, settlementId: u
   sim.offer = null;
   sim.nextVisitor = sim.tick + visitorInterval(sim);
   const home = sim.buildings.get(claim.homeId)!;
-  const bed = isPermanentHome(home) ? `a bed in the ${BUILDINGS[home.type].name.toLowerCase()}` : 'a camp bedroll';
+  const bed = isPermanentHome(home) ? `a bed in the ${BUILDINGS[home.type].name.toLowerCase()}` : home.type === 'townHall' ? 'a Town Hall bunk' : 'a camp bedroll';
   sim.emit({ type: 'important' });
   return ok(`${r.name} accepted ${RECRUIT_FOOD} food and is fetching their things. They will settle in ${st.name} shortly, in ${bed}.`, id);
 }
@@ -187,8 +187,15 @@ export function updateTravelers(sim: Simulation): void {
 
 /** How often would-be settlers come by: twice as often once an inn stands. */
 export function visitorInterval(sim: Simulation): number {
-  const inn = [...sim.buildings.values()].some((b) => b.built && BUILDINGS[b.type].lodging);
-  return inn ? VISITOR_INTERVAL / 2 : VISITOR_INTERVAL;
+  let inn = false;
+  let camp = false;
+  for (const b of sim.buildings.values()) {
+    if (!b.built) continue;
+    if (BUILDINGS[b.type].lodging) inn = true;
+    if (b.type === 'travelCamp') camp = true;
+  }
+  // An inn doubles the visitors; a travellers' camp by the road adds half as many again.
+  return Math.round(VISITOR_INTERVAL / ((inn ? 2 : 1) * (camp ? 1.5 : 1)));
 }
 
 /** Merchants set off this often while an inn stands. */
