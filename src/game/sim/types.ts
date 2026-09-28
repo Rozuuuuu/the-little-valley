@@ -102,6 +102,64 @@ export interface Settler {
   /** Game ticks lived as a child (0 for adults). */
   ageTicks: number;
   householdId: number | null;
+  /** Away on a caravan (the manifest's id): not in the valley and not simulated until it returns. */
+  awayOn: number | null;
+}
+
+/** A standing order to keep a store in another settlement stocked, served by caravans. */
+export interface Route {
+  id: number;
+  sourceId: number;
+  destId: number;
+  res: ResourceId;
+  /** Keep the destination at this amount. */
+  target: number;
+  /** Why no cart is on the road right now ('' when one is). Transient. */
+  status: string;
+}
+
+/**
+ * Goods on the road. They left the source when the cart set off and belong to
+ * the manifest alone until they are unloaded, so nothing is ever counted at
+ * both ends. The teamster is away with it.
+ */
+export interface Manifest {
+  id: number;
+  routeId: number | null;
+  crewId: number;
+  sourceId: number;
+  destId: number;
+  cargo: Inventory;
+  state: 'outbound' | 'returning';
+  departTick: number;
+  arriveTick: number;
+  legTicks: number;
+  /** Where the cart set off and where it is heading (for drawing and for dropping a crate). */
+  from: { x: number; y: number };
+  to: { x: number; y: number };
+}
+
+/**
+ * A travelling merchant. Exactly one stage owns them at a time: on the road
+ * between regions ('travelling', abstract), walking in ('arriving', on the
+ * map), at the inn ('lodging'), walking out ('leaving'). Gone means removed.
+ */
+export interface Party {
+  id: number;
+  name: string;
+  appearance: Appearance;
+  homeRegion: number;
+  stock: Inventory;
+  state: 'travelling' | 'arriving' | 'lodging' | 'leaving';
+  innId: number;
+  arriveTick: number;
+  leaveTick: number;
+  x: number;
+  y: number;
+  /** Walking path (transient; rebuilt after loading). */
+  path: { x: number; y: number }[] | null;
+  /** Where they entered the map, and leave it again. */
+  edge: { x: number; y: number };
 }
 
 export type LifeStage = 'child' | 'adult';

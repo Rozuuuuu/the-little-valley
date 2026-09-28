@@ -10,7 +10,12 @@ import { claimBed, committedPopulation, releaseClaim } from './households';
 import { arrivalSpot } from './population';
 import { localAvailable, localStores, settlementName, settlementOfBuilding } from './settlements';
 import { MAX_POPULATION, type Simulation } from './Simulation';
-import type { CommandResult, Recruitment } from './types';
+import type { Building, CommandResult, Party, Recruitment } from './types';
+import { entranceOf } from './buildings';
+import { findPath } from './pathfinding';
+import { isResourceId, RESOURCES, type Inventory } from '../data/resources';
+import { buyPrice, MERCHANT_GOODS, MERCHANT_ORES, sellPrice } from '../data/trade';
+import { direction, nearbyTowns, regionById, ROAD_SPEED } from '../world/regions';
 
 const ok = (message?: string, id?: number): CommandResult => ({ ok: true, message, id });
 const err = (message: string): CommandResult => ({ ok: false, message });
@@ -81,7 +86,7 @@ export function acceptRecruit(sim: Simulation, offerId: unknown, settlementId: u
   };
   sim.recruits.push(r);
   sim.offer = null;
-  sim.nextVisitor = sim.tick + VISITOR_INTERVAL;
+  sim.nextVisitor = sim.tick + visitorInterval(sim);
   const home = sim.buildings.get(claim.homeId)!;
   const bed = isPermanentHome(home) ? `a bed in the ${BUILDINGS[home.type].name.toLowerCase()}` : 'a camp bedroll';
   sim.emit({ type: 'important' });
@@ -168,7 +173,207 @@ export function updateTravelers(sim: Simulation): void {
   if (sim.offer && sim.tick >= sim.offer.expiresTick) {
     sim.toast(`${sim.offer.name} could not stay any longer and moved on.`, 'info');
     sim.offer = null;
-    sim.nextVisitor = sim.tick + VISITOR_INTERVAL;
+    sim.nextVisitor = sim.tick + visitorInterval(sim);
   }
   if (!sim.offer && sim.tick >= sim.nextVisitor && committedPopulation(sim) < MAX_POPULATION) newVisitor(sim);
+}
+
+// ---- merchants -----------------------------------------------------------------------
+
+/** How often would-be settlers come by: twice as often once an inn stands. */
+export function visitorInterval(sim: Simulation): number {
+  const inn = [...sim.buildings.values()].some((b) => b.built && BUILDINGS[b.type].lodging);
+  return inn ? VISITOR_INTERVAL / 2 : VISITOR_INTERVAL;
+}
+
+/** Merchants set off this often while an inn stands. */
+export const MERCHANT_INTERVAL = 2 * DAY_TICKS;
+/** A merchant lodges this long. */
+export const MERCHANT_STAY = DAY_TICKS;
+/** Walking speed on the map (tiles per tick). */
+const WALK = 0.18;
+
+function innOf(sim: Simulation, id?: number): Building | undefined {
+  if (id !== undefined) {
+    const b = sim.buildings.get(id);
+    if (b && b.built && BUILDINGS[b.type].lodging) return b;
+  }
+  return [...sim.buildings.values()].find((b) => b.built && BUILDINGS[b.type].lodging);
+}
+
+function spawnMerchant(sim: Simulation, inn: Building): void {
+  const towns = nearbyTowns(sim.seed);
+  const home = towns[Math.floor(sim.rng.next() * Math.min(3, towns.length))];
+  sim.knownRegions.add(home.id);
+  const stock: Inventory = {};
+  const ore = MERCHANT_ORES[sim.rng.int(MERCHANT_ORES.length)];
+  stock[ore] = 10 + sim.rng.int(11);
+  const extras = [...MERCHANT_GOODS].sort(() => sim.rng.next() - 0.5).slice(0, 3);
+  for (const g of extras) stock[g.res] = g.min + sim.rng.int(g.max - g.min + 1);
+  const dist = Math.hypot(home.x, home.y);
+  const p: Party = {
+    id: sim.allocId(), name: sim.pickName(), appearance: sim.randomAppearance(), homeRegion: home.id, stock,
+    state: 'travelling', innId: inn.id, arriveTick: sim.tick + Math.round(dist / ROAD_SPEED), leaveTick: 0,
+    x: inn.x, y: inn.y, path: null, edge: { x: inn.x, y: inn.y },
+  };
+  sim.parties.push(p);
+  sim.nextMerchant = sim.tick + MERCHANT_INTERVAL;
+  sim.toast(`A merchant, ${p.name}, has set off from ${home.name} (${direction(home.x, home.y)}) to trade at your inn.`, 'info');
+  sim.emit({ type: 'important' });
+}
+
+/** An explored, walkable spot about 14 tiles from the inn, towards the merchant's home. */
+function edgeSpot(sim: Simulation, inn: Building, home: { x: number; y: number }): { x: number; y: number } {
+  const a = Math.atan2(home.y - inn.y, home.x - inn.x);
+  for (let r = 14; r >= 3; r--) {
+    for (const da of [0, 0.3, -0.3, 0.6, -0.6, 1, -1]) {
+      const x = Math.round(inn.x + Math.cos(a + da) * r);
+      const y = Math.round(inn.y + Math.sin(a + da) * r);
+      if (sim.world.explored(x, y) && sim.walkable(x, y)) return { x, y };
+    }
+  }
+  return entranceOf(inn);
+}
+
+function walk(sim: Simulation, p: Party, goal: { x: number; y: number; w: number; h: number; adjacent: boolean }): boolean {
+  if (!p.path) {
+    p.path = findPath(sim, Math.floor(p.x), Math.floor(p.y), goal, 20000) ?? [];
+    if (p.path.length === 0 && !(Math.floor(p.x) >= goal.x - 1 && Math.floor(p.x) <= goal.x + goal.w && Math.floor(p.y) >= goal.y - 1 && Math.floor(p.y) <= goal.y + goal.h)) {
+      // No path: step straight to the goal rather than getting stuck on the way.
+      p.x = goal.x + 0.5;
+      p.y = goal.y + goal.h + 0.5;
+      return true;
+    }
+  }
+  const next = p.path[0];
+  if (!next) return true;
+  const dx = next.x + 0.5 - p.x;
+  const dy = next.y + 0.5 - p.y;
+  const d = Math.hypot(dx, dy);
+  if (d <= WALK) {
+    p.x = next.x + 0.5;
+    p.y = next.y + 0.5;
+    p.path.shift();
+    return p.path.length === 0;
+  }
+  p.x += (dx / d) * WALK;
+  p.y += (dy / d) * WALK;
+  return false;
+}
+
+function updateParty(sim: Simulation, p: Party): void {
+  const inn = innOf(sim, p.innId);
+  switch (p.state) {
+    case 'travelling': {
+      if (sim.tick < p.arriveTick) return;
+      if (!inn) {
+        // The inn is gone: they turn back without ever entering the valley.
+        sim.parties = sim.parties.filter((x) => x !== p);
+        return;
+      }
+      p.innId = inn.id;
+      const home = regionById(sim.seed, p.homeRegion);
+      p.edge = edgeSpot(sim, inn, home);
+      p.x = p.edge.x + 0.5;
+      p.y = p.edge.y + 0.5;
+      p.path = null;
+      p.state = 'arriving';
+      return;
+    }
+    case 'arriving': {
+      if (!inn) {
+        p.state = 'leaving';
+        p.path = null;
+        return;
+      }
+      if (!walk(sim, p, { x: inn.x, y: inn.y, w: inn.w, h: inn.h, adjacent: true })) return;
+      p.state = 'lodging';
+      p.leaveTick = sim.tick + MERCHANT_STAY;
+      p.path = null;
+      sim.stats.merchantVisits++;
+      sim.toast(`${p.name} has taken a room at the inn. Open the inn to barter.`, 'good');
+      sim.record('arrival', `${p.name} came to trade from ${regionById(sim.seed, p.homeRegion).name}`, inn.x, inn.y);
+      sim.emit({ type: 'important' });
+      return;
+    }
+    case 'lodging': {
+      if (inn && sim.tick < p.leaveTick) return;
+      const e = inn ? entranceOf(inn) : { x: Math.floor(p.x), y: Math.floor(p.y) };
+      p.x = e.x + 0.5;
+      p.y = e.y + 0.5;
+      p.state = 'leaving';
+      p.path = null;
+      return;
+    }
+    case 'leaving': {
+      if (!walk(sim, p, { x: p.edge.x, y: p.edge.y, w: 1, h: 1, adjacent: false })) return;
+      sim.parties = sim.parties.filter((x) => x !== p);
+    }
+  }
+}
+
+export function updateParties(sim: Simulation): void {
+  for (const p of [...sim.parties]) updateParty(sim, p);
+  if (sim.tick % 50 !== 0) return;
+  const inn = innOf(sim);
+  if (!inn) return;
+  if (sim.nextMerchant === 0) sim.nextMerchant = sim.tick + DAY_TICKS / 4;
+  if (sim.tick >= sim.nextMerchant && sim.parties.length === 0) spawnMerchant(sim, inn);
+}
+
+function cleanInv(v: unknown): Inventory | null {
+  if (!v || typeof v !== 'object') return null;
+  const out: Inventory = {};
+  for (const [k, n] of Object.entries(v as Record<string, unknown>)) {
+    if (!isResourceId(k) || typeof n !== 'number' || !Number.isInteger(n) || n < 0) return null;
+    if (n > 0) out[k] = n;
+  }
+  return out;
+}
+
+/**
+ * Barter with a lodging merchant. What you give must be worth at least what
+ * you take at their prices; everything moves at once or nothing does.
+ */
+export function barter(sim: Simulation, partyId: unknown, giveRaw: unknown, takeRaw: unknown): CommandResult {
+  const p = sim.parties.find((x) => x.id === partyId);
+  if (!p || p.state !== 'lodging') return err('That merchant is not at the inn');
+  const give = cleanInv(giveRaw);
+  const take = cleanInv(takeRaw);
+  if (!give || !take) return err('Invalid trade');
+  if (invEntries(give).length === 0 && invEntries(take).length === 0) return err('Choose what to trade');
+  const inn = innOf(sim, p.innId);
+  if (!inn) return err('The inn is gone');
+  for (const [r, n] of invEntries(take)) if ((p.stock[r] ?? 0) < n) return err(`${p.name} only has ${p.stock[r] ?? 0} ${RESOURCES[r].name.toLowerCase()}`);
+  const settlement = settlementOfBuilding(sim, inn)?.id ?? null;
+  for (const [r, n] of invEntries(give)) {
+    const have = localAvailable(sim, settlement, r);
+    if (have < n) return err(`Your stores near the inn have only ${have} ${RESOURCES[r].name.toLowerCase()} to spare`);
+  }
+  const offered = invEntries(give).reduce((a, [r, n]) => a + buyPrice(r) * n, 0);
+  const asked = invEntries(take).reduce((a, [r, n]) => a + sellPrice(r) * n, 0);
+  if (offered < asked) return err(`${p.name} wants goods worth ${asked} for that; you offer ${offered}`);
+  const stores = localStores(sim, settlement);
+  const free = stores.reduce((a, b) => a + sim.storageCapacity(b) - sim.storageUsed(b), 0);
+  const takeTotal = invEntries(take).reduce((a, [, n]) => a + n, 0);
+  const giveTotal = invEntries(give).reduce((a, [, n]) => a + n, 0);
+  if (free + giveTotal < takeTotal) return err('Not enough room in your stores for what you would take');
+  // All checks passed: move everything.
+  for (const [r, n] of invEntries(give)) {
+    let left = n;
+    for (const b of stores) {
+      const k = Math.min(left, Math.max(0, sim.available(b, r)));
+      addInv(b.inventory, r, -k);
+      left -= k;
+    }
+    addInv(p.stock, r, n);
+  }
+  for (const [r, n] of invEntries(take)) {
+    addInv(p.stock, r, -n);
+    let left = n;
+    for (const b of stores) left -= sim.deposit(b, r, left);
+  }
+  sim.stats.trades++;
+  sim.emit({ type: 'sfx', name: 'complete', x: inn.x + 1, y: inn.y + 1 });
+  return ok(`Traded with ${p.name}.`);
 }

@@ -35,6 +35,10 @@ export interface BuildingDef {
   span?: { min: number; max: number; costPerTile: Inventory; workPerTile: number };
   /** Finished buildings of this type can't be demolished. */
   permanent?: boolean;
+  /** Guest rooms for travelling merchants. */
+  lodging?: number;
+  /** Caravans set off from here; its workers are teamsters. */
+  depot?: boolean;
   /** Workers dig here instead of crafting: a quarry cuts stone, a mine digs its deposit's ore. */
   extraction?: 'quarry' | 'mine';
   /** 'rock': half the footprint on rocky ground or hills; 'deposit': over a surveyed deposit with no mine yet. */
@@ -55,6 +59,7 @@ export interface BuildingDef {
 export type BuildingId =
   | 'camp' | 'house' | 'familyHome' | 'cottage' | 'field' | 'orchard' | 'storehouse' | 'workshop' | 'mill' | 'bakery'
   | 'quarry' | 'mine' | 'charcoalKiln' | 'smelter' | 'forge'
+  | 'inn' | 'depot' | 'crate'
   | 'path' | 'bridge' | 'stoneBridge' | 'fence' | 'flowerbed' | 'lamp' | 'bench' | 'market' | 'waystation';
 
 export const BUILDINGS: Record<BuildingId, BuildingDef> = {
@@ -153,6 +158,23 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     description: 'Hammers an ingot and a plank into tools: 1 from copper, 2 from iron.',
     size: { w: 3, h: 2 }, cost: { stone: 30, planks: 15 }, work: 360, placement: 'land', blocks: true, buildable: true,
     recipes: ['forgeCopperTools', 'forgeIronTools'], maxWorkers: 1, light: 3, reveal: 5, unlock: 'hamlet',
+  },
+  inn: {
+    id: 'inn', name: 'Inn', category: 'project',
+    description: 'Rooms for travellers. Merchants from distant towns stop here to barter, and would-be settlers come by twice as often.',
+    size: { w: 3, h: 2 }, cost: { wood: 40, stone: 20, planks: 20 }, work: 420, placement: 'land', blocks: true, buildable: true,
+    lodging: 2, light: 4, reveal: 6, unlock: 'village',
+  },
+  depot: {
+    id: 'depot', name: 'Caravan Depot', category: 'infrastructure',
+    description: 'Carts and a stable yard. Its workers drive caravans along supply routes to your other settlements. Needs a road or bridge between them.',
+    size: { w: 3, h: 2 }, cost: { wood: 30, stone: 10, planks: 10 }, work: 360, placement: 'land', blocks: true, buildable: true,
+    storage: 100, maxWorkers: 2, depot: true, reveal: 6, unlock: 'village',
+  },
+  crate: {
+    id: 'crate', name: 'Crate', category: 'storage',
+    description: 'Goods a caravan could not unload anywhere. Settlers fetch from it like a store; it disappears once empty.',
+    size: { w: 1, h: 1 }, cost: {}, work: 0, placement: 'land', blocks: false, buildable: false, storage: 500,
   },
   stoneBridge: {
     id: 'stoneBridge', name: 'Stone Bridge', category: 'project',

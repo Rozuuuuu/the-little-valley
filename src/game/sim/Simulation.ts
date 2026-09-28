@@ -8,7 +8,7 @@ import { TERRAIN } from '../world/tiles';
 import { World } from '../world/World';
 import type { PathGrid } from './pathfinding';
 import type {
-  Appearance, BedClaim, Building, ChronicleEntry, GrowthMode, Household, Recruitment, TravelerOffer, ProgressionState, Regrowth, SessionMark, Settlement, Settler, SimEvent, Stats, WeatherState, WorkArea,
+  Appearance, BedClaim, Building, ChronicleEntry, GrowthMode, Household, Manifest, Party, Recruitment, Route, TravelerOffer, ProgressionState, Regrowth, SessionMark, Settlement, Settler, SimEvent, Stats, WeatherState, WorkArea,
 } from './types';
 import { updateSettler } from './settlers';
 import { updateFields, updateWeather } from './farming';
@@ -18,7 +18,8 @@ import { updatePopulation } from './population';
 import { updateHouseholds } from './households';
 import { updateOrchards } from './orchards';
 import { surveyedCell, type SurveyedCell } from './mining';
-import { updateTravelers } from './travelers';
+import { updateParties, updateTravelers } from './travelers';
+import { LOGISTICS_STEP, updateLogistics } from './logistics';
 import { GROWTH_STEP } from '../data/kingdomBalance';
 import { checkMilestones } from './progression';
 import { updateRegrowth, updateWorkshops } from './buildings';
@@ -45,6 +46,7 @@ export function emptyStats(): Stats {
     woodGathered: 0, stoneGathered: 0, foodGathered: 0, harvested: 0, planksCrafted: 0, toolsCrafted: 0, arrivals: 0,
     wheatHarvested: 0, flourMilled: 0, bakedFood: 0, pathsBuilt: 0, births: 0, applesPicked: 0, driedApples: 0,
     surveys: 0, oreMined: 0, stoneQuarried: 0, charcoalMade: 0, coalBurned: 0, charcoalBurned: 0, copperSmelted: 0, ironSmelted: 0, copperToolsForged: 0, ironToolsForged: 0,
+    caravanTrips: 0, caravanDeliveries: 0, provisions: 0, merchantVisits: 0, trades: 0,
   };
 }
 
@@ -104,6 +106,17 @@ export class Simulation implements PathGrid {
   recruits: Recruitment[] = [];
   /** Tick the last recruited traveller settled (for the once-per-two-days limit). */
   lastRecruit = -Infinity;
+  routes: Route[] = [];
+  /** Caravans on the road (saved). */
+  manifests: Manifest[] = [];
+  /** Merchants on their way, at the inn or leaving (saved). */
+  parties: Party[] = [];
+  /** Distant towns someone has heard of (region ids). */
+  knownRegions = new Set<number>();
+  /** When the next merchant sets off (0 until an inn stands). */
+  nextMerchant = 0;
+  /** Cached caravan legs, `${from}:${to}` → travel ticks and path (transient; cleared when the map changes). */
+  readonly legCache = new Map<string, { ticks: number; path: { x: number; y: number }[] } | null>();
   /** Surveyed geology cells (saved): cell id to ore left (null when the cell holds no deposit). */
   geology = new Map<number, { remaining: number | null }>();
   /** Ore units promised to miners on their way (transient, rebuilt from tasks). */
@@ -231,7 +244,7 @@ export class Simulation implements PathGrid {
       task: null, focus: null, idleReason: '', hidden: false, path: null, pathIndex: 0,
       goalKey: null, repaths: 0, lastNotice: -9999, arrivedTick: this.tick,
       areaId: null, priorities: null, insideId: null, restNote: '', nextThink: 0, settlementId,
-      lifeStage: 'adult', ageTicks: 0, householdId: null,
+      lifeStage: 'adult', ageTicks: 0, householdId: null, awayOn: null,
     };
     this.settlers.push(s);
     return s;
@@ -270,6 +283,7 @@ export class Simulation implements PathGrid {
     this.sharedUnreachable.clear();
     this.unreachableCount.clear();
     this.roadCache.clear();
+    this.legCache.clear();
     this.wakeIdle();
   }
   /** Whether a settler (standing at x, y) should skip a target for now. */
@@ -418,6 +432,8 @@ export class Simulation implements PathGrid {
     }
     if (this.tick % 20 === 0) updateRegrowth(this);
     for (const s of this.settlers) updateSettler(this, s);
+    updateParties(this);
+    if (this.tick % LOGISTICS_STEP === 0) updateLogistics(this);
     if (this.tick % 10 === 0) updateWorkshops(this);
     if (this.tick % GROWTH_STEP === 0) {
       updateHouseholds(this);

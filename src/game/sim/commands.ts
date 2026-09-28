@@ -2,14 +2,15 @@ import { DAY_TICKS, tileKey } from '../core/constants';
 import { BUILDINGS, isBuildingId, type BuildingId } from '../data/buildings';
 import { isCropId, type CropId } from '../data/crops';
 import { isJobId, JOBS, type JobId, type WorkKind } from '../data/jobs';
-import { isResourceId, type ResourceId } from '../data/resources';
+import { isResourceId, type Inventory, type ResourceId } from '../data/resources';
 import { isRecipeId, type RecipeId } from '../data/recipes';
 import { OBJECTS } from '../world/tiles';
 import {
   assignHomes, bedsOf, checkPlacement, checkSpan, cropUnlocked, materialsComplete, maxWorkers, placeBuilding, removeBuilding, setFieldCrop, shortfall,
 } from './buildings';
 import { cleanPriorities } from './priorities';
-import { acceptRecruit, cancelRecruit } from './travelers';
+import { acceptRecruit, barter, cancelRecruit } from './travelers';
+import { cancelRoute, createRoute, setRouteTarget } from './logistics';
 import { surveyDeposit, upgradeMine } from './mining';
 import { adoptDeliberateGrowth, cancelChildRequest, formHousehold, isChild, requestChild } from './households';
 import { fieldAction } from './farming';
@@ -47,7 +48,11 @@ export type Command =
   | { type: 'acceptRecruit'; offerId: number; settlementId: number }
   | { type: 'cancelRecruit'; recruitId: number }
   | { type: 'surveyDeposit'; settlerId: number; x: number; y: number }
-  | { type: 'upgradeMine'; buildingId: number };
+  | { type: 'upgradeMine'; buildingId: number }
+  | { type: 'createRoute'; sourceId: number; destinationId: number; resource: ResourceId; target: number }
+  | { type: 'setRouteTarget'; routeId: number; target: number }
+  | { type: 'cancelRoute'; routeId: number }
+  | { type: 'barter'; partyId: number; give: Inventory; take: Inventory };
 
 const MAX_AREA = 40 * 40;
 /** Most settlers one work area can take. */
@@ -93,7 +98,8 @@ export function isInt(n: unknown): n is number {
 
 function pickSettlers(sim: Simulation, ids: unknown): Settler[] {
   if (!Array.isArray(ids)) return [];
-  return ids.map((id) => sim.settler(id as number)).filter((s): s is Settler => !!s);
+  // Settlers away with a caravan can't take orders until they are back.
+  return ids.map((id) => sim.settler(id as number)).filter((s): s is Settler => !!s && s.awayOn === null);
 }
 
 /**
@@ -226,7 +232,7 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
         s.task = { kind: 'farm', field: b.id, action, stage: 'walk', timer: 0 };
         return ok();
       }
-      if (b.workshop || def.extraction) return applyCommand(sim, { type: 'assignWorker', buildingId: b.id, ids: list.map((s) => s.id) });
+      if (b.workshop || def.extraction || def.depot) return applyCommand(sim, { type: 'assignWorker', buildingId: b.id, ids: list.map((s) => s.id) });
       if (def.storage) {
         for (const s of list) {
           takeOrder(sim, s);
@@ -464,7 +470,7 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
 
     case 'assignWorker': {
       const b = sim.buildings.get(cmd.buildingId);
-      if (!b || !(b.workshop || BUILDINGS[b.type].extraction) || !b.built) return err('Workers can only be assigned to finished workshops, mills, bakeries, quarries, mines, kilns, smelters and forges');
+      if (!b || !(b.workshop || BUILDINGS[b.type].extraction || BUILDINGS[b.type].depot) || !b.built) return err('Workers can only be assigned to finished workshops, mills, bakeries, quarries, mines, kilns, smelters, forges and caravan depots');
       const list = pickWorkers(sim, cmd.ids, 'work at a workshop');
       if (typeof list === 'string') return err(list);
       const max = maxWorkers(b);
@@ -476,8 +482,10 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
         for (const other of sim.buildings.values()) if (other !== b) other.workers = other.workers.filter((id) => id !== s.id);
         b.workers.push(s.id);
         takeOrder(sim, s);
-        // Make sure crafting is in their work order, and first.
-        if (s.priorities === null && s.job !== 'crafter') s.job = 'crafter';
+        // Make sure crafting is in their work order, and first (teamsters keep their usual work between trips).
+        if (BUILDINGS[b.type].depot) {
+          // nothing to change
+        } else if (s.priorities === null && s.job !== 'crafter') s.job = 'crafter';
         else if (s.priorities) s.priorities = ['craft', ...s.priorities.filter((k) => k !== 'craft')];
         added.push(s.name);
       }
@@ -543,6 +551,14 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
       return surveyDeposit(sim, cmd.settlerId, cmd.x, cmd.y);
     case 'upgradeMine':
       return upgradeMine(sim, cmd.buildingId);
+    case 'createRoute':
+      return createRoute(sim, cmd.sourceId, cmd.destinationId, cmd.resource, cmd.target);
+    case 'setRouteTarget':
+      return setRouteTarget(sim, cmd.routeId, cmd.target);
+    case 'cancelRoute':
+      return cancelRoute(sim, cmd.routeId);
+    case 'barter':
+      return barter(sim, cmd.partyId, cmd.give, cmd.take);
 
     case 'unassignWorker': {
       const b = sim.buildings.get(cmd.buildingId);

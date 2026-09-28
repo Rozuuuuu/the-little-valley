@@ -5,14 +5,14 @@ import type { MilestoneId } from '../data/progression';
 import type { RecipeId } from '../data/recipes';
 import type { Inventory, ResourceId } from '../data/resources';
 import type {
-  Appearance, BedClaim, ChronicleEntry, Facing, GrowthMode, Household, LifeStage, OrchardState, Recruitment, SessionMark, Settlement, Stats, TravelerOffer, WorkArea,
+  Appearance, BedClaim, ChronicleEntry, Facing, GrowthMode, Household, LifeStage, Manifest, OrchardState, Party, Recruitment, Route, SessionMark, Settlement, Stats, TravelerOffer, WorkArea,
 } from '../sim/types';
 
 /**
  * Save file format. Bump SAVE_VERSION whenever this shape changes and add a
  * migration in migrations.ts so older worlds keep loading.
  */
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 
 export interface SaveMeta {
   name: string;
@@ -54,6 +54,7 @@ export interface SavedSettler {
   lifeStage: LifeStage;
   ageTicks: number;
   householdId: number | null;
+  awayOn: number | null;
 }
 
 export interface SavedBuilding {
@@ -153,7 +154,19 @@ export interface SaveFileV6 extends Omit<SaveFileV5, 'version' | 'sim'> {
   };
 }
 
-export type SaveFile = SaveFileV6;
+export interface SaveFileV7 extends Omit<SaveFileV6, 'version' | 'sim'> {
+  version: 7;
+  sim: SaveFileV6['sim'] & {
+    routes: Omit<Route, 'status'>[];
+    manifests: Manifest[];
+    /** Merchants; walking paths are rebuilt after loading. */
+    parties: Omit<Party, 'path'>[];
+    knownRegions: number[];
+    nextMerchant: number;
+  };
+}
+
+export type SaveFile = SaveFileV7;
 
 export class SaveError extends Error {
   constructor(message: string) {

@@ -144,6 +144,25 @@ export const MIGRATIONS: Record<number, (save: AnyRecord) => AnyRecord> = {
       sim: { ...sim, stats: { ...emptyStats(), ...(sim.stats as AnyRecord | undefined) }, geology: { version: 1, cells: [] } },
     };
   },
+
+  /**
+   * v6 was Mountains and mining. v7 adds supply routes, caravans on the road,
+   * travelling merchants and known distant towns: none exist yet in an older
+   * save, and nobody is away.
+   */
+  6: (v6) => {
+    const sim = v6.sim as AnyRecord;
+    return {
+      ...v6,
+      version: 7,
+      sim: {
+        ...sim,
+        settlers: ((sim.settlers as AnyRecord[] | undefined) ?? []).map((s) => ({ ...s, awayOn: null })),
+        stats: { ...emptyStats(), ...(sim.stats as AnyRecord | undefined) },
+        routes: [], manifests: [], parties: [], knownRegions: [], nextMerchant: 0,
+      },
+    };
+  },
 };
 
 export function migrate(raw: unknown): SaveFile {
@@ -203,6 +222,7 @@ export function validateSave(save: AnyRecord): void {
     check(s.settlementId === null || isInt(s.settlementId), `settler ${s.id} settlement`);
     check((s.lifeStage === 'adult' || s.lifeStage === 'child') && isInt(s.ageTicks) && (s.ageTicks as number) >= 0, `settler ${s.id} age`);
     check(s.householdId === null || isInt(s.householdId), `settler ${s.id} household`);
+    check(s.awayOn === null || isInt(s.awayOn), `settler ${s.id} caravan`);
   }
   check(Array.isArray(sim.buildings), 'building list');
   for (const b of sim.buildings as AnyRecord[]) {
@@ -257,6 +277,18 @@ export function validateSave(save: AnyRecord): void {
   for (const c of geo.cells as unknown[]) {
     check(Array.isArray(c) && c.length === 2 && isInt(c[0]) && (c[1] === null || (isInt(c[1]) && (c[1] as number) >= 0)), 'geology cell');
   }
+  check(Array.isArray(sim.routes) && (sim.routes as AnyRecord[]).every((r) => isInt(r.id) && isInt(r.sourceId) && isInt(r.destId) && isResourceId(r.res) && isInt(r.target)), 'routes');
+  check(Array.isArray(sim.manifests), 'caravans');
+  for (const m of sim.manifests as AnyRecord[]) {
+    check(isInt(m.id) && isInt(m.crewId) && isInt(m.sourceId) && isInt(m.destId) && ['outbound', 'returning'].includes(m.state as string) && isNum(m.arriveTick) && isNum(m.legTicks), 'caravan');
+    checkInventory(m.cargo, `caravan ${m.id} cargo`);
+  }
+  check(Array.isArray(sim.parties), 'merchants');
+  for (const p of sim.parties as AnyRecord[]) {
+    check(isInt(p.id) && ['travelling', 'arriving', 'lodging', 'leaving'].includes(p.state as string) && isNum(p.x) && isNum(p.y), 'merchant');
+    checkInventory(p.stock, `merchant ${p.id} stock`);
+  }
+  check(Array.isArray(sim.knownRegions) && (sim.knownRegions as unknown[]).every(isInt) && isNum(sim.nextMerchant), 'regions');
   check(Array.isArray(sim.recruits), 'recruits');
   for (const r of sim.recruits as AnyRecord[]) {
     check(isInt(r.id) && isInt(r.settlementId) && (r.state === 'travelling' || r.state === 'refunding') && isNum(r.arrivesTick), 'recruit');

@@ -68,7 +68,7 @@ export function serializeSim(sim: Simulation, extras: SerializeExtras): SaveFile
     hunger: s.hunger, energy: s.energy, homeId: s.homeId, appearance: { ...s.appearance },
     focus: s.focus ? { res: s.focus.res, x: s.focus.x, y: s.focus.y, until: s.focus.until } : null,
     areaId: s.areaId, priorities: s.priorities ? [...s.priorities] : null, settlementId: s.settlementId,
-    lifeStage: s.lifeStage, ageTicks: s.ageTicks, householdId: s.householdId,
+    lifeStage: s.lifeStage, ageTicks: s.ageTicks, householdId: s.householdId, awayOn: s.awayOn,
   }));
   const buildings: SavedBuilding[] = [...sim.buildings.values()].map((b) => {
     const sb: SavedBuilding = {
@@ -111,6 +111,11 @@ export function serializeSim(sim: Simulation, extras: SerializeExtras): SaveFile
       nextVisitor: sim.nextVisitor,
       recruits: sim.recruits.map((r) => ({ ...r, appearance: { ...r.appearance }, escrow: { ...r.escrow } })),
       lastRecruit: Number.isFinite(sim.lastRecruit) ? sim.lastRecruit : null,
+      routes: sim.routes.map((r) => ({ id: r.id, sourceId: r.sourceId, destId: r.destId, res: r.res, target: r.target })),
+      manifests: sim.manifests.map((m) => ({ ...m, cargo: { ...m.cargo }, from: { ...m.from }, to: { ...m.to } })),
+      parties: sim.parties.map((p) => ({ id: p.id, name: p.name, appearance: { ...p.appearance }, homeRegion: p.homeRegion, stock: { ...p.stock }, state: p.state, innId: p.innId, arriveTick: p.arriveTick, leaveTick: p.leaveTick, x: p.x, y: p.y, edge: { ...p.edge } })),
+      knownRegions: [...sim.knownRegions],
+      nextMerchant: sim.nextMerchant,
       geology: { version: GEOLOGY_VERSION, cells: [...sim.geology].map(([id, c]) => [id, c.remaining] as [number, number | null]) },
     },
     world: { genVersion: sim.world.genVersion, chunks },
@@ -145,6 +150,11 @@ export function deserializeSim(save: SaveFile): Simulation {
   sim.recruits = d.recruits.map((r) => ({ ...r, appearance: { ...r.appearance }, escrow: { ...r.escrow } }));
   sim.lastRecruit = d.lastRecruit ?? -Infinity;
   for (const [id, remaining] of d.geology.cells) sim.geology.set(id, { remaining });
+  sim.routes = d.routes.map((r) => ({ ...r, status: '' }));
+  sim.manifests = d.manifests.map((m) => ({ ...m, cargo: { ...m.cargo }, from: { ...m.from }, to: { ...m.to } }));
+  sim.parties = d.parties.map((p) => ({ ...p, appearance: { ...p.appearance }, stock: { ...p.stock }, edge: { ...p.edge }, path: null }));
+  sim.knownRegions = new Set(d.knownRegions);
+  sim.nextMerchant = d.nextMerchant;
 
   for (const sc of save.world.chunks) {
     const c = generateChunk(sim.seed, sc.cx, sc.cy, save.world.genVersion);
@@ -188,8 +198,10 @@ export function deserializeSim(save: SaveFile): Simulation {
       task: null, focus: ss.focus ? { kind: 'gather', ...ss.focus } : null, idleReason: '', hidden: false,
       path: null, pathIndex: 0, goalKey: null, repaths: 0, lastNotice: -9999, arrivedTick: 0,
       areaId: ss.areaId, priorities: ss.priorities ? [...ss.priorities] : null, insideId: null, restNote: '', nextThink: 0, settlementId: ss.settlementId,
-      lifeStage: ss.lifeStage, ageTicks: ss.ageTicks, householdId: ss.householdId,
+      lifeStage: ss.lifeStage, ageTicks: ss.ageTicks, householdId: ss.householdId, awayOn: ss.awayOn,
     };
+    // Away with a caravan: out of sight until the cart returns.
+    if (s.awayOn !== null) s.hidden = true;
     sim.settlers.push(s);
   }
   for (const [x, y] of d.designations) sim.designations.add(tileKey(x, y));
@@ -205,6 +217,11 @@ export function deserializeSim(save: SaveFile): Simulation {
   sim.households = sim.households.filter((h) => h.adults.every((id) => ids.has(id)));
   const households = new Set(sim.households.map((h) => h.id));
   for (const s of sim.settlers) if (s.householdId !== null && !households.has(s.householdId)) s.householdId = null;
+  // A settler away on a caravan that no longer exists comes home.
+  for (const s of sim.settlers) if (s.awayOn !== null && !sim.manifests.some((m) => m.id === s.awayOn)) {
+    s.awayOn = null;
+    s.hidden = false;
+  }
   validateClaims(sim);
   assignHomes(sim);
   return sim;

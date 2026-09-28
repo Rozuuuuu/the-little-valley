@@ -1131,6 +1131,8 @@ export function runTask(sim: Simulation, s: Settler): void {
 }
 
 export function updateSettler(sim: Simulation, s: Settler): void {
+  // Away with a caravan: the manifest owns them until they come back.
+  if (s.awayOn !== null) return;
   s.hunger = Math.max(0, s.hunger - HUNGER_DECAY);
   const sleeping = s.task?.kind === 'sleep' && s.task.stage === 'sleep';
   if (!sleeping) s.energy = Math.max(0, s.energy - ENERGY_DECAY);
@@ -1152,6 +1154,7 @@ export function updateSettler(sim: Simulation, s: Settler): void {
 
 /** Short description of what a settler is doing, for the UI. */
 export function describeTask(sim: Simulation, s: Settler): string {
+  if (s.awayOn !== null) return 'Away with a caravan';
   const t = s.task;
   if (!t) return s.idleReason ? 'Idle' : 'Looking for work';
   const bname = (id: number) => {
