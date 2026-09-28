@@ -59,6 +59,19 @@ A day is 2880 ticks (4.8 minutes at 1×). Night runs from 0.87 to 0.21 of the da
   near open water see much farther (12 tiles), so a scout on a riverbank can survey
   the far side before a bridge is planned. Building needs explored ground.
 
+- **Generator 3** adds hills (walkable, 1.45× move cost, buildable) and mountain faces
+  (impassable), keeping the spawn open and the ridge crossable through regular passes.
+- **Geology** (`world/geology.ts`) sits beside the terrain: each 16×16 cell may hold one
+  deposit at a qualifying site (rocky ground, a generated rock or boulder, or a hill tile
+  at the foot of a mountain face). It reads the generator directly, so asking about ore
+  never creates chunks. Copper and iron are guaranteed near every camp.
+- **Mining** (`sim/mining.ts`): `surveyDeposit` sends an adult to reveal a cell (saved;
+  never re-rolled). Quarries and mines are *extraction* buildings worked through the
+  Craft work kind with an `extract` task; each trip reserves its ore
+  (`sim.oreReserved`) so two miners can't take the last unit. Shaft upgrades pay from
+  storage all at once. Recipes may take `fuel` (coal first, then charcoal), which the
+  haul planner requests as whichever fuel is in stock.
+
 > Old worlds keep their generator forever. See "World generator versions" in
 > [SAVE_FORMAT.md](SAVE_FORMAT.md). Never change an existing generator: add a new one.
 

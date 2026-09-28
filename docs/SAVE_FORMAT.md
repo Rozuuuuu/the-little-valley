@@ -1,7 +1,7 @@
 # Save format
 
 Saves are JSON documents described by `src/game/save/format.ts`. The current version
-is **5** (`SAVE_VERSION`).
+is **6** (`SAVE_VERSION`).
 
 ## Version history
 
@@ -11,6 +11,7 @@ is **5** (`SAVE_VERSION`).
 | 2 | Milestone 1 | `meta` / `sim` / `world` sections, crafting stats, weather. |
 | 3 | Milestone 2 (Village) | World generator version, work areas, personal work orders, production workers, span building sizes, the chronicle and session marks, new stats. |
 | 4 | Seasons and settlements | `settlements`, settler `settlementId`, storage `wants` (stock targets). |
+| 6 | Mountains and mining | `geology` (surveyed cells and ore left), building `mine` (deposit, shaft level) and `quarry` (stone cut), mining and smelting stats. New worlds use generator 3. |
 | 5 | Families and orchards | `growthMode`, settler `lifeStage` / `ageTicks` / `householdId`, `households`, `bedClaims`, visitor `offer`, `nextVisitor`, `recruits` (with apple escrow), `lastRecruit`, building `orchard`, stats `births` / `applesPicked` / `driedApples`. |
 
 ## Version 3 layout (v4 and v5 add to it, see below)
@@ -71,11 +72,27 @@ is **5** (`SAVE_VERSION`).
   and `npx tsx scripts/check-gen-fingerprint.ts` plus the test suite confirm old worlds
   still generate identical land.
 - Generator **2** adds the great river east of the spawn (a deep channel with no fords)
-  and the fertile, stony riverlands beyond it.
+  and the fertile, stony riverlands beyond it. Fingerprinted in
+  `tests/fixtures/gen-v2-fingerprint.json` (27 chunks, 3 seeds) before generator 3 was written.
+- Generator **3** adds hills (new tile id 10) and mountain faces (id 11): a northern
+  ridge with a pass every 48 tiles, lone massifs more than 40 tiles from the camp,
+  and two starter outcrops. Existing tile ids are unchanged.
 
 Every v2 save migrates to `genVersion: 1`. New worlds use `CURRENT_GEN`. To change
-generation later, add generator 3 alongside the others (never edit an old one), bump
-`CURRENT_GEN`, add it to `SUPPORTED_GENS`, and fingerprint it.
+generation later, add generator 4 alongside the others (never edit an old one), bump
+`CURRENT_GEN`, add it to `SUPPORTED_GENS`, and fingerprint it with
+`npx tsx scripts/make-gen-fingerprint.ts 4` **before** the next change (the script
+refuses to overwrite an existing fingerprint).
+
+## Geology (v6)
+
+`world/geology.ts` is a separate, versioned layer (`GEOLOGY_VERSION`). Deposits are
+pure functions of (seed, generator, 16×16 cell). Only cells a settler has surveyed
+are saved: `"geology": { "version": 1, "cells": [[cellId, oreLeft | null], ...] }`
+(`null` = surveyed, nothing there). The v5 → v6 migration starts with no surveyed
+cells, so an old world's ore is discovered by surveying its existing rocky ground;
+its land is never regenerated. Ore promised to miners on their way
+(`sim.oreReserved`) is transient: tasks aren't saved, so nothing is promised after a load.
 
 ## Where saves live
 

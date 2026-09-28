@@ -1,5 +1,43 @@
 # Milestone reports
 
+## Mountains and mining (plan M2)
+
+**Playable:** new valleys (generator 3) have hills, a northern mountain ridge with a pass
+every 48 tiles, far massifs and two starter outcrops. **Survey** mode sends an adult to
+reveal a 16×16 area's ore; found deposits show an ore icon on the map. **Quarries**
+cut stone forever and their pit deepens in 4 visible stages. **Mines** dig a surveyed
+deposit until it runs out; the shaft deepens to level 3 for 2 → 3 → 4 ore per trip.
+The **charcoal kiln**, **smelter** (coal or charcoal) and **forge** turn ore into
+tools. Copper and iron are guaranteed near every camp, including old worlds (from the
+rocks around their camp). Silver, gold and diamonds gate nothing.
+
+**Journey (headless):** survey → mine and kiln, smelter and forge built by settlers →
+miner, charcoal burner, smelter and smith assigned → copper ingots → save and resume →
+forged tools (`tests/mining.test.ts`).
+
+**Tests:** 144 passing. `geology.test.ts` covers the gen-1/gen-2 fingerprints, gen-3
+terrain, spawn safety, order-independent chunks with negative coordinates, a path over the
+ridge that never touches a cliff, deposit stability and weights, starter guarantees for
+generators 1–3, no chunk creation from geology queries, and surveys (saved, not
+re-rolled, children refused, empty cells). `mining.test.ts` covers placement rules, ore
+conservation across a reload, two miners racing for the last unit, shaft upgrades that
+charge nothing when short, quarry stages, full storage, fuel substitution and
+ore→ingot→tool conservation.
+
+**Save:** v5 → v6 adds an empty geology list; tile ids and generators 1/2 unchanged
+(fingerprints checked by script and test).
+
+**Art check:** `scripts/render-preview.ts` renders the sprites and terrain to PNG without
+a browser; the new buildings, orchard looks, family home, ore icons and generator-3
+terrain were looked at that way. It is not a browser check: animation, lighting and UI
+layout remain unverified in a browser.
+
+**Performance:** village profile p95 1.62 ms (unchanged from M1 across two clean runs;
+one noisy run at 4.0 ms).
+
+**Limitations:** mines have abstract shafts (no underground map); precious ores have
+no use until trade (M3); surveying reveals a cell at a time with no prospecting hints.
+
 ## Families and orchards (plan M0 + M1)
 
 First slice of `docs/superpowers/plans/2026-09-28-families-to-kingdoms.md`: the plan

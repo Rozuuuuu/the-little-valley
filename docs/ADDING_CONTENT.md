@@ -111,6 +111,17 @@ alongside `tests/fixtures/gen-v1-fingerprint.json`. See
 [SAVE_FORMAT.md](SAVE_FORMAT.md).
 
 
+## Minerals, extraction and fuel
+
+Minerals live in `data/minerals.ts` (weight, typical amount, the resource a mine
+produces). Adding one needs a resource and an icon. Weights only affect cells that
+haven't been surveyed yet in existing worlds. Buildings with
+`extraction: 'quarry' | 'mine'` and a `site` rule (`'rock'` or `'deposit'`) become
+dig sites; yields and upgrade costs are in `sim/mining.ts`. A recipe with `fuel: n`
+burns n coal or charcoal per batch; add new fuels to `FUELS` in `data/recipes.ts`.
+For conservation tests, record each recipe's batches in a stat and extend
+`consumedByCrafting` in `tests/helpers.ts`.
+
 ## Growth, families and orchards
 
 Timings and thresholds for deliberate growth live in `data/kingdomBalance.ts` (days to

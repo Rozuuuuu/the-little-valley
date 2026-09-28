@@ -82,6 +82,14 @@ in `localStorage`.
    - **Great river:** new valleys have a deep river east of the camp. Walk a settler
      to the bank to see the far side, then drag a **stone bridge** across it to reach
      fertile, stony riverlands.
+   - **Mountains and ore:** new valleys have hills and mountains to the north and two
+     small rocky outcrops near camp. Select an adult, press **Survey** and click rocky
+     ground or a hill at a cliff's foot: they survey the 16×16 area for coal, copper,
+     iron, silver, gold or diamonds. Build a **Mine** over a found deposit, a **Quarry**
+     on rocky ground for endless stone, a **Charcoal Kiln**, a **Smelter** (ore + coal or
+     charcoal → ingot) and a **Forge** (ingot + plank → tools; iron makes two).
+     Right-click these with settlers to make them their workers. Deepen a mine's shaft
+     from its inspector for bigger loads.
    - **Village** needs 10 adults, 8 beds in real homes, and any **2** of:
      bake 30 food, run 2 staffed work areas, finish a stone bridge, lay 25 path tiles.
 8. **Beds:** houses have 2, family homes 3, cottages 4, and the camp has 5 temporary
