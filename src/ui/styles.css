@@ -286,3 +286,8 @@ select, input[type='text'] {
 .route-form select, .residents select { font: inherit; background: var(--ink); color: var(--straw); border: 1px solid var(--moss-3); max-width: 100%; }
 
 .banner-chip { display: inline-block; width: 10px; height: 14px; border: 1px solid var(--edge-hi); vertical-align: middle; }
+
+.sub-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.warn-card { border-left: 3px solid var(--wheat); padding-left: 6px; }
+.row.wrap { flex-wrap: wrap; gap: 4px; }
+.news-rumor { opacity: 0.85; font-style: italic; }

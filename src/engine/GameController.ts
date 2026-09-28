@@ -1,7 +1,7 @@
 import { regionalInfo } from './snapshot';
 import { growthInfo } from './growthInfo';
 import { logisticsInfo } from './tradeInfo';
-import { kingdomInfo } from './kingdomSnapshot';
+import { diplomacyInfo, kingdomInfo, newsInfo, warCouncilInfo } from './kingdomSnapshot';
 import { sectorOf } from '../game/sim/territory';
 import { AudioEngine, type SoundName } from '../audio/AudioEngine';
 import { TICK_MS, TILE } from '../game/core/constants';
@@ -895,6 +895,9 @@ export class GameController {
       growth: growthInfo(sim),
       logistics: logisticsInfo(sim),
       kingdom: kingdomInfo(sim),
+      diplomacy: diplomacyInfo(sim),
+      news: newsInfo(sim),
+      warCouncil: warCouncilInfo(sim),
       running: true,
       paused: this.paused,
       speed: this.speed,

@@ -20,6 +20,9 @@ import { Households } from './Households';
 import { Travelers } from './Travelers';
 import { InnPanel, Routes } from './Logistics';
 import { KingdomPanel } from './Kingdom';
+import { Diplomacy } from './Diplomacy';
+import { KingdomNews } from './KingdomNews';
+import { WarCouncil } from './WarCouncil';
 
 const MAIN_RES: ResourceId[] = ['food', 'wood', 'stone'];
 const CRAFTED: ResourceId[] = [
@@ -753,6 +756,27 @@ function AreasTab() {
   );
 }
 
+function RealmTabs() {
+  const s = useSnapshot();
+  const [sub, setSub] = useState<'crown' | 'diplomacy' | 'news' | 'war'>('crown');
+  const alerts = s.diplomacy.warnings.length + s.diplomacy.incidents.length + s.diplomacy.offersToYou.length;
+  return (
+    <>
+      <div className="sub-tabs" role="tablist">
+        {(['crown', 'diplomacy', 'news', 'war'] as const).map((k) => (
+          <button key={k} role="tab" aria-selected={sub === k} className={`btn small${sub === k ? ' on' : ''}`} onClick={() => setSub(k)}>
+            {k === 'crown' ? 'Crown' : k === 'diplomacy' ? `Diplomacy${alerts ? ` (${alerts})` : ''}` : k === 'news' ? 'News' : 'War council'}
+          </button>
+        ))}
+      </div>
+      {sub === 'crown' && <KingdomPanel />}
+      {sub === 'diplomacy' && <Diplomacy />}
+      {sub === 'news' && <KingdomNews />}
+      {sub === 'war' && <WarCouncil />}
+    </>
+  );
+}
+
 export function SidePanel() {
   const { game } = useGame();
   const s = useSnapshot();
@@ -809,7 +833,7 @@ export function SidePanel() {
           </>
         )}
         {tab === 'areas' && <AreasTab />}
-        {tab === 'realm' && <KingdomPanel />}
+        {tab === 'realm' && <RealmTabs />}
         {tab === 'families' && (
           <>
             <Travelers />

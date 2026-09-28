@@ -102,6 +102,12 @@ in `localStorage`.
      goods to merchants for coins; taxes take a share of each trade but cost public
      trust. Appoint a Steward, Envoy and Marshal from your adults. **Claim land** mode
      shows each sector's owner and cost before you click.
+   - **Diplomacy** (Realm → Diplomacy/News/War council): with an Envoy, propose trade,
+     passage, non-aggression or alliance treaties; neighbours answer when the letter
+     arrives, with their reasons. News arrives as rumours (merchants), sightings
+     (borders, allies) or confirmations (your envoy) and says who told you and how old
+     it is. Worried neighbours send warnings you can answer. The war council drafts
+     private plans and negotiates allied support.
    - **Village** needs 10 adults, 8 beds in real homes, and any **2** of:
      bake 30 food, run 2 staffed work areas, finish a stone bridge, lay 25 path tiles.
 8. **Beds:** houses have 2, family homes 3, cottages 4, and the camp has 5 temporary

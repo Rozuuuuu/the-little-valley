@@ -1,5 +1,29 @@
 # Milestone reports
 
+## Diplomacy, concern and news (plan M5)
+
+**Playable:** Realm → Diplomacy (warnings with six answers, incidents with three,
+offers to sign or decline with benefits/obligations/breach shown, known kingdoms with
+their stance and a rough impression, treaty proposals by envoy), News (source,
+certainty, age, place only when known, corrections), War council (private plans,
+strength estimate from reports, support requests and counter-offers, shelving).
+
+**Tests:** 205 passing. `news.test.ts` (delivery timing, late and duplicate reports,
+corrections, relays without false corroboration, merchant-carried news, reload before
+arrival, bounded inboxes, no fog reveal, panel filtering), `concern.test.ts` (unseen
+forces, prosperity cap, rumours can't prove aggression, one warning per rise,
+hysteresis, broken reassurance, allies, AI-to-AI concern), `diplomacy.test.ts` (envoy
+and escrow, duplicates and expiry, refusal isn't hostility, incompatible alliances,
+passage through frontier not core, breach heard by others, expiry across reload,
+incident kinds), `coalition.test.ts` (privacy, reasoned answers, no re-roll, escrow and
+exclusive company reservation with a reserve, unaffordable fees, cancellation refunds,
+land reward validation, assessment from reports only, the two-allies scenario).
+
+**Save:** v8 → v9.
+
+**Limits:** mustering and launching wait for M6/M7; rival kingdoms are abstract (towns,
+companies, temperament) rather than simulated tile by tile.
+
 ## Crown, government and land (plan M4)
 
 **Playable:** the Realm tab (coronation with ruler name, kingdom name and banner;

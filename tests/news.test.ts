@@ -95,3 +95,23 @@ describe('source-aware news', () => {
     expect(knowledgeOf(sim, me.id).some((r) => r.location === null)).toBe(true);
   });
 });
+
+describe('realm panels show only what the player knows', () => {
+  it('news items name source, certainty and age; strangers never reveal how many soldiers they could spare', async () => {
+    const { newsInfo, warCouncilInfo, diplomacyInfo } = await import('../src/engine/kingdomSnapshot');
+    const { sim, me, a, b } = realm();
+    const ev = recordEvent(sim, 'military-buildup', a.id, 5, null);
+    recordObservation(sim, me.id, a.id, 'military-buildup', null, { eventId: ev.id, certainty: 'rumor', source: 'merchant', delay: 0 });
+    deliverReports(sim);
+    const n = newsInfo(sim);
+    expect(n.items[0].text).toMatch(new RegExp(`${a.name} raised soldiers`));
+    expect(n.items[0].certainty).toBe('rumor');
+    expect(n.items[0].where).toBe('place unknown');
+    expect(warCouncilInfo(sim).allies).toEqual([]);
+    sim.setStance(me.id, b.id, 'ally');
+    expect(warCouncilInfo(sim).allies.map((x) => x.id)).toEqual([b.id]);
+    const d = diplomacyInfo(sim);
+    expect(d.kingdoms.find((k) => k.id === b.id)!.stance).toBe('ally');
+    expect(JSON.stringify(d)).not.toMatch(/companies/);
+  });
+});

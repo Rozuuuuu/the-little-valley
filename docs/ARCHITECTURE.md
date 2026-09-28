@@ -104,6 +104,30 @@ A day is 2880 ticks (4.8 minutes at 1×). Night runs from 0.87 to 0.21 of the da
   entry needs ownership, a passage agreement or war, never into a protected homeland
   (`canEnterTerritory`).
 
+- **News** (`sim/news.ts`): `worldEvents` are the truth; each kingdom knows only its
+  delivered `reports`. Reports carry source, certainty (rumour/observed/confirmed),
+  when seen and when arrived; a surer report supersedes a rumour; relaying keeps the
+  event id and relayer chain, so passing news around is not corroboration. Merchant
+  news waits for a merchant. Inboxes are bounded (oldest summarised).
+- **Concern** (`sim/concern.ts`): scored from delivered reports only (border troops,
+  build-ups tempered by distance, claims, conquests and broken promises — the last two
+  never from rumours — and prosperity, which alone caps at watchful), tempered by trust
+  and treaties; an ally's strength reassures. Bands enter at 25/50/75 and fall only 10
+  below entry. A rising band gives the player one warning (repeat only for new evidence,
+  after a day) with six answers; a reassurance contradicted within 4 days costs trust.
+- **Diplomacy** (`sim/diplomacy.ts`): treaties with typed terms, escrowed payments,
+  expiry, activation, fulfilment and breach; the AI decides when the envoy's letter
+  arrives and gives reasons; refusals never create enemies; incompatible promises are
+  refused. Incidents distinguish civilian passage, armed passage and (only in war)
+  attacks. Rivals take a daily turn: worried kingdoms raise companies (neighbours
+  notice), friendly ones propose trade, alarmed ones may patrol an opened frontier.
+- **War council** (`sim/campaigns.ts`): private plans; allies answer support requests
+  deterministically (accept, counter, refuse, with reasons); acceptance escrows the fee
+  and reserves specific allied companies, never the same twice and never the last one;
+  land rewards must be the target's unprotected frontier and exclusive. The assessment
+  uses only reports (a strength range widening with uncertainty and age) and counts only
+  arrived allies.
+
 > Old worlds keep their generator forever. See "World generator versions" in
 > [SAVE_FORMAT.md](SAVE_FORMAT.md). Never change an existing generator: add a new one.
 
