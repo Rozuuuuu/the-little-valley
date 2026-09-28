@@ -452,6 +452,139 @@ const familyHome: Draw = (p, lit) => {
   p.hline(40, 46, 16, P.wood0);
 };
 
+/** A domed stone kiln with a glowing stoke hole and stacked logs. */
+const charcoalKiln: Draw = (p, lit) => {
+  p.ellipse(15, 18, 14, 12, P.stone1);
+  p.ellipse(13, 15, 11, 9, P.stone2);
+  p.ellipse(11, 12, 5, 4, P.stone3);
+  for (let y = 8; y < 30; y += 4) p.hline(3, 27, y, P.stone0);
+  p.rect(12, -2, 6, 6, P.stone1);
+  p.hline(12, 17, -2, P.stone0);
+  // Stoke hole
+  p.rect(11, 20, 8, 9, P.cliff0);
+  p.rect(12, 22, 6, 7, lit ? P.fire2 : P.fire0);
+  p.rect(13, 24, 4, 5, lit ? '#fff3a8' : P.fire1);
+  // Logs waiting to burn
+  for (let i = 0; i < 3; i++) {
+    p.rect(22, 24 - i * 3, 9, 3, P.wood2);
+    p.px(30, 25 - i * 3, P.wood4);
+  }
+};
+
+/** A stone furnace tower with a chimney, bellows and a glowing mouth. */
+const smelter: Draw = (p, lit) => {
+  p.rect(4, 2, 22, 30, P.stone1);
+  p.rect(4, 2, 4, 28, P.stone2);
+  for (let y = 6; y < 30; y += 5) p.hline(4, 25, y, P.stone0);
+  for (let y = 6; y < 30; y += 10) for (let x = 9; x < 26; x += 8) p.vline(x, y, y + 4, P.stone0);
+  p.rect(9, -18, 10, 20, P.stone2);
+  p.rect(9, -18, 2, 20, P.stone3);
+  p.hline(8, 19, -19, P.stone0);
+  // Mouth
+  p.rect(10, 20, 10, 12, P.cliff0);
+  p.rect(11, 22, 8, 10, lit ? P.fire2 : P.fire0);
+  p.rect(12, 25, 6, 7, P.fire1);
+  p.px(14, 26, '#fff3a8');
+  // Bellows and an ingot mould
+  p.rect(27, 20, 5, 7, P.wood1);
+  p.rect(27, 18, 5, 2, P.wood3);
+  p.rect(0, 27, 4, 4, P.stone0);
+  p.hline(0, 3, 27, '#b8622e');
+};
+
+/** An open timber smithy: hearth, anvil, a rack of tools. */
+const forge: Draw = (p, lit) => {
+  shingles(p, -1, 48, -6, 9, SLATE, 3);
+  for (const x of [1, 46]) p.rect(x, 9, 2, 22, P.wood1);
+  p.rect(3, 10, 42, 20, '#3f3444');
+  // Hearth with glowing coals
+  p.rect(4, 18, 14, 13, P.stone1);
+  p.rect(6, 20, 10, 5, lit ? P.fire2 : P.fire0);
+  p.hline(6, 15, 20, P.fire1);
+  p.rect(8, -2, 5, 16, P.stone2);
+  // Anvil on a stump
+  p.rect(24, 26, 6, 5, P.wood2);
+  p.rect(21, 22, 12, 4, P.stone0);
+  p.rect(19, 22, 3, 2, P.stone0);
+  p.hline(22, 32, 22, P.stone2);
+  // Tool rack
+  p.hline(34, 44, 13, P.wood2);
+  for (const x of [36, 39, 42]) {
+    p.vline(x, 13, 20, P.wood1);
+    p.rect(x - 1, 20, 3, 2, P.stone2);
+  }
+  p.rect(34, 26, 10, 5, P.wood2);
+  p.hline(34, 43, 26, P.wood3);
+};
+
+/** Quarry pits: each stage cuts one more step into the rock. */
+export function makeQuarrySprites(): Sprite[] {
+  const out: Sprite[] = [];
+  for (let stage = 0; stage < 4; stage++) {
+    const p = new Painter(36, 40, 2, 6);
+    p.rect(0, 0, 32, 32, P.rock1);
+    for (let x = 0; x < 32; x += 3) p.px(x, (x * 7) % 32, P.rock2);
+    // Terraced steps down into the pit
+    for (let s = 0; s <= stage; s++) {
+      const inset = 3 + s * 3;
+      p.rect(inset, inset, 32 - inset * 2, 32 - inset * 2, [P.rock0, P.rock3, P.cliff1, P.cliff0][s]);
+      p.hline(inset, 31 - inset, inset, P.rock2);
+    }
+    // Cut blocks and a lifting pole
+    for (const [x, y] of [[24, 25], [27, 22], [22, 28]]) {
+      p.rect(x, y, 4, 3, P.stone2);
+      p.hline(x, x + 3, y, P.stone3);
+    }
+    p.vline(3, -4, 26, P.wood1);
+    p.hline(3, 12, -4, P.wood1);
+    p.vline(12, -4, 4 + stage * 3, '#c9b48a');
+    p.outline();
+    out.push(p.sprite(2, 6));
+  }
+  return out;
+}
+
+/** Mine entrances: a timber portal, then a winch (level 2), then a headframe with a lantern (level 3). */
+export function makeMineSprites(): BuildingSprites[] {
+  return [1, 2, 3].map((level) =>
+    make(38, 56, 3, 24, (p, lit) => {
+      // Spoil heap and rock around the portal
+      p.ellipse(16, 24, 16, 9, P.rock1);
+      p.ellipse(26, 27, 7, 4, P.rock3);
+      for (let x = 2; x < 30; x += 4) p.px(x, 22 + (x % 5), P.rock2);
+      // Dark opening framed in timber
+      p.rect(8, 8, 16, 22, P.cliff0);
+      p.rect(10, 11, 12, 19, '#171219');
+      p.rect(8, 8, 3, 22, P.wood1);
+      p.rect(21, 8, 3, 22, P.wood1);
+      p.rect(6, 5, 20, 4, P.wood2);
+      p.hline(6, 25, 5, P.wood3);
+      // Rails and a cart
+      p.vline(13, 22, 31, P.stone0);
+      p.vline(18, 22, 31, P.stone0);
+      p.rect(11, 25, 10, 5, P.wood2);
+      p.hline(11, 20, 25, P.wood3);
+      p.px(14, 24, '#b8622e');
+      p.px(17, 24, P.stone2);
+      if (level >= 2) {
+        // Winch drum on a frame
+        p.rect(26, 2, 2, 20, P.wood1);
+        p.rect(24, 8, 8, 5, P.wood2);
+        p.hline(24, 31, 10, '#c9b48a');
+      }
+      if (level >= 3) {
+        // Headframe with a sheave wheel and lantern
+        p.vline(4, -20, 6, P.wood1);
+        p.vline(28, -20, 2, P.wood1);
+        p.hline(4, 28, -20, P.wood2);
+        p.ellipse(16, -20, 4, 4, P.stone0);
+        p.ellipse(16, -20, 2, 2, P.wood2);
+        p.rect(5, 12, 3, 4, lit ? P.fire2 : P.wood0);
+      }
+    }),
+  );
+}
+
 /** The camp after reaching Village: a timber hall with a bell cupola and bunting. */
 const villageHall: Draw = (p, lit) => {
   p.rect(3, 4, 42, 18, P.wall2);
@@ -534,6 +667,9 @@ export function makeBuildingSprites(): Partial<Record<BuildingId, BuildingSprite
     bakery: make(54, 52, 3, 20, bakery),
     cottage: make(54, 50, 3, 17, cottage),
     familyHome: make(54, 50, 3, 17, familyHome),
+    charcoalKiln: make(36, 50, 2, 16, charcoalKiln),
+    smelter: make(36, 58, 2, 24, smelter),
+    forge: make(54, 46, 3, 12, forge),
     camp: make(52, 46, 2, 12, camp),
     house: make(36, 50, 2, 17, house),
     storehouse: make(54, 46, 3, 13, storehouse),

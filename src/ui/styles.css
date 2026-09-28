@@ -24,7 +24,7 @@ button, select, input { font: inherit; color: inherit; }
 img.px, canvas { image-rendering: pixelated; }
 
 .game-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; outline: none; cursor: default; }
-.game-canvas.mode-place, .game-canvas.mode-mark, .game-canvas.mode-unmark { cursor: crosshair; }
+.game-canvas.mode-place, .game-canvas.mode-mark, .game-canvas.mode-unmark, .game-canvas.mode-survey { cursor: crosshair; }
 
 /* ---- panels: hard pixel-stepped frame, no blur ---- */
 .panel {
@@ -278,3 +278,5 @@ select, input[type='text'] {
 .family-card h3 { font-size: 15px; }
 .family-card .needs { margin: 0; padding-left: 16px; font-size: 13px; color: var(--straw-dim); }
 .family-card select { font: inherit; background: var(--ink); color: var(--straw); border: 1px solid var(--moss-3); }
+
+.toolbar .hint { font-size: 13px; color: var(--wheat); align-self: center; }

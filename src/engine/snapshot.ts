@@ -20,6 +20,9 @@ import type { Simulation } from '../game/sim/Simulation';
 import type { AreaKind, BedClaim, Building, Settler } from '../game/sim/types';
 import { daysToAdult, householdOf } from '../game/sim/households';
 import { orchardStatus } from '../game/sim/orchards';
+import { describeCell, extractionStatus, MINE_UPGRADES, MINE_YIELD, mineDeposit, quarryStage, surveyedCell } from '../game/sim/mining';
+import { MINERALS } from '../game/data/minerals';
+import { formatInv } from '../game/sim/inventory';
 import { OBJECTS, TERRAIN } from '../game/world/tiles';
 import type { Overview } from './overview';
 import type { GrowthInfo } from './growthInfo';
@@ -29,7 +32,8 @@ export type Mode =
   | { kind: 'place'; building: BuildingId; crop: CropId | null }
   | { kind: 'mark' }
   | { kind: 'unmark' }
-  | { kind: 'area'; areaKind: AreaKind; editId: number | null };
+  | { kind: 'area'; areaKind: AreaKind; editId: number | null }
+  | { kind: 'survey' };
 
 export interface SettlerInfo {
   id: number;
@@ -68,6 +72,8 @@ export interface BuildingInfo {
   status: string;
   /** Orchard state in plain words. */
   orchard?: string;
+  /** Quarries and mines. */
+  extraction?: { status: string; level: number | null; maxLevel: number; upgrade: string | null; deposit: string | null };
   storage?: { entries: [ResourceId, number][]; used: number; capacity: number };
   residents?: { people: { id: number; name: string; asleep: boolean }[]; capacity: number; temporary: boolean; held: string[] };
   field?: { crop: CropId | null; state: string; stage: number; stages: number; growth: number; moisture: number; ripeIn: string };
@@ -251,6 +257,19 @@ export function buildingInfo(sim: Simulation, list: Building[]): BuildingInfo | 
       held: sim.bedClaims.filter((c) => c.homeId === b.id).map((c) => heldFor(sim, c)),
     };
   }
+  if (def.extraction && b.built) {
+    const d = mineDeposit(sim, b);
+    const next = b.mine && b.mine.level < 3 ? MINE_UPGRADES[(b.mine.level + 1) as 2 | 3] : null;
+    info.extraction = {
+      status: extractionStatus(sim, b),
+      level: b.mine?.level ?? null,
+      maxLevel: 3,
+      upgrade: next ? formatInv(next) : null,
+      deposit: d ? `${MINERALS[d.mineral].name}: ${d.remaining}/${d.initial} left · ${MINE_YIELD[b.mine!.level]} per trip` : b.quarry ? `Pit stage ${quarryStage(b) + 1}/4 · ${b.quarry.extracted} stone cut` : null,
+    };
+    info.status = info.extraction.status;
+    info.workers = { people: b.workers.map((id) => ({ id, name: sim.settler(id)?.name ?? '?' })), max: maxWorkers(b) };
+  }
   if (b.type === 'orchard') {
     info.orchard = orchardStatus(sim, b);
     if (b.built) info.status = info.orchard;
@@ -332,6 +351,8 @@ export function hoverText(sim: Simulation, wx: number, wy: number): string | nul
   const x = Math.floor(wx / TILE);
   const y = Math.floor(wy / TILE);
   if (!sim.world.explored(x, y)) return 'Unexplored — send a settler to look';
+  const known = surveyedCell(sim, x, y);
+  const geo = known ? ` · surveyed: ${describeCell(known)}` : '';
   const b = sim.buildingAt(x, y);
   if (b) {
     const def = BUILDINGS[b.type];
@@ -339,14 +360,14 @@ export function hoverText(sim: Simulation, wx: number, wy: number): string | nul
       const f = b.field;
       return `Field${f.crop ? ` · ${CROPS[f.crop].name}` : ''} · ${f.state}`;
     }
-    return b.built ? def.name : `${def.name} (under construction)`;
+    return (b.built ? def.name : `${def.name} (under construction)`) + geo;
   }
   const o = sim.world.obj(x, y);
   const od = OBJECTS[o];
   const terrain = TERRAIN[sim.world.terrain(x, y)].name;
-  if (od.resource) return `${od.name} · ${sim.world.amount(x, y)} ${od.resource} · ${terrain}${sim.designations.has(tileKey(x, y)) ? ' · marked' : ''}`;
-  if (o !== 0) return `${od.name} · ${terrain}`;
-  return terrain;
+  if (od.resource) return `${od.name} · ${sim.world.amount(x, y)} ${od.resource} · ${terrain}${sim.designations.has(tileKey(x, y)) ? ' · marked' : ''}${geo}`;
+  if (o !== 0) return `${od.name} · ${terrain}${geo}`;
+  return terrain + geo;
 }
 
 export function unlockedSets(sim: Simulation) {

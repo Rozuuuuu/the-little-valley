@@ -530,6 +530,23 @@ export class GameController {
     this.updatePlacement(sx, sy, null);
   }
 
+  /** Survey mode: the first selected adult goes to survey the clicked spot. */
+  surveyAt(sx: number, sy: number): void {
+    const t = this.worldTile(sx, sy);
+    const who = [...this.selected].map((id) => this.sim.settler(id)).find((s) => s && s.lifeStage === 'adult');
+    if (!who) {
+      this.dispatch({ type: 'surveyDeposit', settlerId: -1, x: t.x, y: t.y });
+      this.marker(t.x, t.y, 'bad');
+      return;
+    }
+    const res = this.dispatch({ type: 'surveyDeposit', settlerId: who.id, x: t.x, y: t.y });
+    this.marker(t.x, t.y, res.ok ? 'work' : 'bad');
+    if (res.ok) {
+      this.audio.play('command');
+      this.setMode({ kind: 'select' });
+    }
+  }
+
   markArea(from: { x: number; y: number }, sx: number, sy: number): void {
     const t = this.worldTile(sx, sy);
     const on = this.mode.kind === 'mark';

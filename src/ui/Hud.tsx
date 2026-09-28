@@ -20,7 +20,9 @@ import { Households } from './Households';
 import { Travelers } from './Travelers';
 
 const MAIN_RES: ResourceId[] = ['food', 'wood', 'stone'];
-const CRAFTED: ResourceId[] = ['apples', 'wheat', 'flour', 'planks', 'tools'];
+const CRAFTED: ResourceId[] = [
+  'apples', 'wheat', 'flour', 'planks', 'tools', 'coal', 'charcoal', 'copperOre', 'ironOre', 'copperIngot', 'ironIngot', 'silverOre', 'goldOre', 'diamonds',
+];
 
 export function TopBar({ onMenu }: { onMenu: () => void }) {
   const { game } = useGame();
@@ -254,6 +256,14 @@ export function BuildDock({ open, setOpen }: { open: boolean; setOpen: (v: boole
         <button className={`btn tool${mode.kind === 'unmark' ? ' on' : ''}`} onClick={() => game.setMode(mode.kind === 'unmark' ? { kind: 'select' } : { kind: 'unmark' })} title="Drag to remove harvest marks">
           Unmark <kbd>{keyLabel(b.unmark[0])}</kbd>
         </button>
+        <button
+          className={`btn tool${mode.kind === 'survey' ? ' on' : ''}`}
+          onClick={() => game.setMode(mode.kind === 'survey' ? { kind: 'select' } : { kind: 'survey' })}
+          title="Select an adult, then click rocky ground or a hill face: they survey the 16×16 area around it for ore"
+        >
+          Survey
+        </button>
+        {mode.kind === 'survey' && <span className="hint">Click a spot to survey (an adult must be selected)</span>}
         {mode.kind !== 'select' && (
           <button className="btn tool" onClick={() => game.setMode({ kind: 'select' })}>
             Done <kbd>Esc</kbd>
@@ -502,6 +512,26 @@ function BuildingCard({ info }: { info: BuildingInfo }) {
             ))}
           </div>
         </>
+      )}
+      {info.extraction && (
+        <div className="residents">
+          {info.extraction.deposit && <div>{info.extraction.deposit}</div>}
+          {info.extraction.level !== null && (
+            <div className="row">
+              <span>Shaft level {info.extraction.level}/{info.extraction.maxLevel}</span>
+              {info.extraction.upgrade && (
+                <button className="btn small" title={`Costs ${info.extraction.upgrade}`} onClick={() => game.dispatch({ type: 'upgradeMine', buildingId: info.ids[0] })}>
+                  Deepen ({info.extraction.upgrade})
+                </button>
+              )}
+            </div>
+          )}
+          {info.workers && (
+            <div className="muted">
+              Workers {info.workers.people.length}/{info.workers.max}: {info.workers.people.map((p) => p.name).join(', ') || 'anyone with Craft in their work order'}. Right-click it with settlers selected to assign them.
+            </div>
+          )}
+        </div>
       )}
       {info.residents && (
         <div className="residents">

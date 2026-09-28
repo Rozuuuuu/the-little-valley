@@ -109,6 +109,10 @@ export class InputController {
       g.commitPlacement(d.tile, sx, sy, e.shiftKey);
       return;
     }
+    if (mode.kind === 'survey') {
+      g.surveyAt(sx, sy);
+      return;
+    }
     if (mode.kind === 'mark' || mode.kind === 'unmark') {
       g.markArea(d.tile, sx, sy);
       g.areaBox = null;

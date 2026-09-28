@@ -7,6 +7,8 @@ import { CROPS } from '../game/data/crops';
 import { fieldStage, WATER_THRESHOLD } from '../game/sim/farming';
 import { costOf, isPermanentHome, materialsComplete, workOf } from '../game/sim/buildings';
 import { orchardEstablished } from '../game/sim/orchards';
+import { knownDeposits, quarryStage } from '../game/sim/mining';
+import { MINERALS } from '../game/data/minerals';
 import type { OrchardLook } from './sprites/buildings';
 import { invEntries } from '../game/sim/inventory';
 import type { AreaKind } from '../game/sim/types';
@@ -450,6 +452,11 @@ export class Renderer {
   private spriteFor(sim: Simulation, b: Building, night: boolean): Sprite | null {
     if (b.type === 'fence') return this.sprites.fence[this.fenceMask(sim, b.x, b.y)];
     if (b.type === 'orchard') return this.sprites.orchard[this.orchardLook(b)];
+    if (b.type === 'quarry') return this.sprites.quarry[b.built ? quarryStage(b) : 0];
+    if (b.type === 'mine') {
+      const set = this.sprites.mine[Math.max(0, (b.mine?.level ?? 1) - 1)];
+      return night ? set.night : set.day;
+    }
     const set = b.type === 'camp' && sim.progression.reached.includes('village') ? this.sprites.villageHall : this.sprites.buildings[b.type];
     if (!set) return null;
     return night ? set.night : set.day;
@@ -814,6 +821,13 @@ export class Renderer {
       const icon = res === 'wood' ? this.sprites.ui.axe : res === 'stone' ? this.sprites.ui.pick : this.sprites.ui.basket;
       const reserved = sim.reservations.has(`obj:${tileKey(x, y)}`);
       this.blit(icon, x * TILE + 8, y * TILE - 2 + (reserved ? Math.round(Math.sin(st.time * 5)) : 0), 0.9);
+    }
+    // Deposits found by surveying (hidden once a mine stands on them)
+    if (st.showMarks) {
+      for (const d of knownDeposits(sim)) {
+        if (d.x < tx0 || d.x > tx1 || d.y < ty0 || d.y > ty1 || d.remaining <= 0 || sim.buildingAt(d.x, d.y)) continue;
+        this.blit(this.sprites.resources[MINERALS[d.mineral].resource], d.x * TILE + 8, d.y * TILE + 2 + Math.round(Math.sin(st.time * 2 + d.x)), 0.95);
+      }
     }
     // Field and workshop hints
     for (const b of sim.buildings.values()) {
