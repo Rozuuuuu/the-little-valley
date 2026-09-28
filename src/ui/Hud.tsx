@@ -39,6 +39,16 @@ const WINDOWS: { id: WindowTab; label: string; title: string }[] = [
 
 function GoodsDrawer({ onClose }: { onClose: () => void }) {
   const s = useSnapshot();
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== 'Escape') return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      onClose();
+    };
+    window.addEventListener('keydown', onKey, { capture: true });
+    return () => window.removeEventListener('keydown', onKey, { capture: true });
+  }, [onClose]);
   const all = RESOURCE_IDS.filter((r) => !MAIN_RES.includes(r));
   const have = all.filter((r) => s.resources[r] > 0);
   const none = all.filter((r) => s.resources[r] <= 0);

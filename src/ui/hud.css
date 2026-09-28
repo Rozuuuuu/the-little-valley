@@ -105,7 +105,8 @@
   background: linear-gradient(180deg, #33493b, #22332a); border: 2px solid var(--oak-3); border-radius: 3px; cursor: pointer; color: var(--straw);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 2px 0 var(--oak-0); min-width: 0; overflow: hidden;
 }
-.card-btn:hover, .card-btn:focus-visible { border-color: var(--brass-hi); outline: none; }
+.card-btn:hover { border-color: var(--brass-hi); }
+.card-btn:focus-visible { border-color: var(--brass-hi); outline: 2px solid var(--wheat); outline-offset: 1px; }
 .card-btn:active { transform: translateY(1px); box-shadow: none; }
 .card-btn.on { border-color: var(--wheat); background: linear-gradient(180deg, #6d5a22, #4a3d18); }
 .card-btn.off { opacity: 0.42; cursor: not-allowed; filter: grayscale(0.6); }
@@ -161,3 +162,9 @@
 
 .stepper { display: inline-flex; gap: 6px; align-items: center; }
 .stepper strong { min-width: 52px; text-align: center; font-family: var(--pixel); }
+
+/* One clear focus ring everywhere in the HUD. */
+.win-btn:focus-visible, .goods-btn:focus-visible, .group-cell:focus-visible, .habitat-card:focus-within { outline: 2px solid var(--wheat); outline-offset: 2px; }
+
+/* Shortfalls stay red but readable (5.8:1 on the panels). */
+.cost .short { color: #ff7b6b; }

@@ -574,6 +574,19 @@ function CommandTip({ c }: { c: Cmd }) {
 
 function DetailsWindow({ onClose }: { onClose: () => void }) {
   const s = useSnapshot();
+  // Esc closes the details before it deselects anything.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== 'Escape') return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      onClose();
+    };
+    window.addEventListener('keydown', onKey, { capture: true });
+    return () => window.removeEventListener('keydown', onKey, { capture: true });
+  }, [onClose]);
   let body: React.ReactNode = null;
   if (s.selection.length === 1) body = <SettlerCard s={s.selection[0]} />;
   else if (s.selection.length > 1) body = <GroupCard list={s.selection} />;

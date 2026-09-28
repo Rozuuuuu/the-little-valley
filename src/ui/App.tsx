@@ -180,6 +180,8 @@ export function App() {
             setOverlay={setOverlay}
             buildOpen={cardMenu !== null}
             setBuildOpen={(o) => setCardMenu(o ? 'build' : null)}
+            win={win}
+            setWin={setWin}
           />
           {screen === 'title' && !overlay && <Title hasSave={!!lastSlot} onContinue={() => lastSlot && load(lastSlot)} onNew={() => setOverlay('new')} onLoad={() => setOverlay('load')} onSettings={() => setOverlay('settings')} />}
           {screen === 'game' && (
@@ -235,7 +237,7 @@ export function App() {
 }
 
 /** Wires keys that open React UI (build menu, help, Esc menu) into the input layer. */
-function InputBridge({ screen, overlay, setOverlay, buildOpen, setBuildOpen }: { screen: string; overlay: Overlay; setOverlay: (o: Overlay) => void; buildOpen: boolean; setBuildOpen: (b: boolean) => void }) {
+function InputBridge({ screen, overlay, setOverlay, buildOpen, setBuildOpen, win, setWin }: { screen: string; overlay: Overlay; setOverlay: (o: Overlay) => void; buildOpen: boolean; setBuildOpen: (b: boolean) => void; win: WindowTab | null; setWin: (w: WindowTab | null) => void }) {
   const ctx = useGame();
   const snap = useStore(ctx.game.ui);
   useEffect(() => {
@@ -254,13 +256,15 @@ function InputBridge({ screen, overlay, setOverlay, buildOpen, setBuildOpen }: {
         setOverlay('help');
       } else if (b.cancel.includes(e.code)) {
         if (game.mode.kind !== 'select' || game.selected.size || game.selectedBuildings.size) return;
+        // Esc closes the innermost thing first: the build menu, then an open window, then opens the menu.
         if (buildOpen) setBuildOpen(false);
+        else if (win) setWin(null);
         else setOverlay('pause');
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [ctx, screen, overlay, buildOpen, setBuildOpen, setOverlay]);
+  }, [ctx, screen, overlay, buildOpen, setBuildOpen, setOverlay, win, setWin]);
   const canvas = document.querySelector('.game-canvas');
   if (canvas) canvas.className = `game-canvas mode-${snap.mode.kind}`;
   return null;
