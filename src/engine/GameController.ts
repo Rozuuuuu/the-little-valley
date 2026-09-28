@@ -232,7 +232,11 @@ export class GameController {
     if (this.pressed.has('panRight')) dx += 1;
     if (this.pressed.has('panUp')) dy -= 1;
     if (this.pressed.has('panDown')) dy += 1;
-    if (this.edge.x || this.edge.y) {
+    const held = this.paused || this.menuOpen;
+    const flag = held ? '1' : '';
+    if (typeof document !== 'undefined' && document.body.dataset.paused !== flag) document.body.dataset.paused = flag;
+    // Edge scrolling pauses with the game (keys and middle-drag still move the view).
+    if ((this.edge.x || this.edge.y) && !this.paused && !this.menuOpen) {
       dx += this.edge.x * this.settings.edgeSpeed;
       dy += this.edge.y * this.settings.edgeSpeed;
     }

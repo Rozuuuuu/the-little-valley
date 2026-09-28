@@ -44,7 +44,8 @@ export function loadSettings(): Settings {
       musicVolume: num(s.musicVolume, d.musicVolume),
       sfxVolume: num(s.sfxVolume, d.sfxVolume),
       muted: typeof s.muted === 'boolean' ? s.muted : d.muted,
-      edgePan: typeof s.edgePan === 'boolean' ? s.edgePan : d.edgePan,
+      // Settings saved before Warcraft-style scrolling (no edgeSpeed) had it off by default: turn it on.
+      edgePan: typeof s.edgePan === 'boolean' && typeof s.edgeSpeed === 'number' ? s.edgePan : d.edgePan,
       edgeSpeed: typeof s.edgeSpeed === 'number' && Number.isFinite(s.edgeSpeed) ? Math.max(0.5, Math.min(2, s.edgeSpeed)) : d.edgeSpeed,
       healthBars: s.healthBars === 'hurt' || s.healthBars === 'always' ? s.healthBars : d.healthBars,
       detailsInHud: typeof s.detailsInHud === 'boolean' ? s.detailsInHud : d.detailsInHud,

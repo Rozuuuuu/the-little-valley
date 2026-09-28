@@ -37,7 +37,9 @@ export class InputController {
    */
   private edgeMove = (e: MouseEvent): void => {
     const g = this.game;
-    if (!g.settings.edgePan || g.menuOpen || g.attract) return this.setEdge(0, 0, 1);
+    // The edge is tracked even while paused, so a pointer resting at the edge scrolls again as
+    // soon as play resumes; the camera itself holds still while paused (see updateCamera).
+    if (!g.settings.edgePan || g.attract) return this.setEdge(0, 0, 1);
     const m = EDGE_MARGIN;
     const w = window.innerWidth;
     const h = window.innerHeight;
