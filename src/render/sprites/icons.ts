@@ -103,6 +103,37 @@ export const RESOURCE_ICON_DRAW: Record<ResourceId, (p: Painter) => void> = {
     for (let i = 0; i < 4; i++) p.hline(1 + i, 7 - i, 7 + i, '#4fb4d8');
     p.px(3, 5, '#ffffff');
   },
+  swords: (p) => {
+    for (let i = 0; i < 7; i++) p.px(2 + i, 8 - i, P.stone3);
+    for (let i = 0; i < 6; i++) p.px(3 + i, 8 - i, P.stone1);
+    p.hline(1, 4, 8, P.wood1);
+    p.px(2, 9, P.wood2);
+    p.px(1, 10, P.fire2);
+  },
+  bows: (p) => {
+    for (let i = 0; i < 9; i++) p.px(3 + Math.round(Math.sin((i / 8) * Math.PI) * 3), 1 + i, P.wood2);
+    p.vline(3, 1, 9, '#e8dcc0');
+    p.hline(1, 8, 5, P.wood1);
+    p.px(9, 5, P.stone2);
+  },
+  armor: (p) => {
+    p.rect(2, 2, 7, 7, P.stone2);
+    p.rect(1, 2, 2, 3, P.stone1);
+    p.rect(8, 2, 2, 3, P.stone1);
+    p.hline(3, 7, 5, P.stone0);
+    p.vline(5, 3, 8, P.stone3);
+    p.px(4, 1, P.stone1);
+    p.px(6, 1, P.stone1);
+  },
+  horses: (p) => {
+    p.rect(1, 4, 7, 4, '#8a5a3a');
+    p.rect(7, 1, 3, 4, '#8a5a3a');
+    p.px(9, 2, P.outline);
+    p.vline(2, 8, 10, '#6b4428');
+    p.vline(6, 8, 10, '#6b4428');
+    p.hline(7, 9, 1, '#3a2a20');
+    p.px(0, 5, '#3a2a20');
+  },
   apples: (p) => {
     p.ellipse(3.5, 6.5, 3, 2.8, '#c8423a');
     p.ellipse(7, 6, 2.6, 2.6, '#d9573f');

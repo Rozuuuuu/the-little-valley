@@ -5,6 +5,7 @@ import { evaluateConcern } from './concern';
 import { letterTicks, pairKey, stanceOf, trustOf } from './diplomacy';
 import { kingdomById, playerKingdom, PLAYER_KINGDOM } from './kingdoms';
 import { latestAbout } from './news';
+import { readyCompanies } from './military';
 import { ownerOf, sectorKey } from './territory';
 import type { Simulation } from './Simulation';
 import type { CampaignSupportTerms, ClaimSector, CoalitionCommitment, CommandResult, Company, WarPlan } from './types';
@@ -243,7 +244,7 @@ export function assessCampaign(sim: Simulation, planId: number): CampaignAssessm
   const range: [number, number] | null = report && strength !== null ? [Math.max(0, Math.floor(strength * (1 - spread))), Math.ceil(strength * (1 + spread))] : null;
   const count = (states: string[]) =>
     sim.commitments.filter((c) => c.campaignId === plan.id && states.includes(c.state)).reduce((n, c) => n + (c.terms.companies.length || c.requested.companies), 0);
-  const own = playerKingdom(sim).companies.length;
+  const own = readyCompanies(sim).length;
   const blockers: string[] = [];
   if (own === 0) blockers.push('No army yet: build barracks and train soldiers');
   if (!report) blockers.push(`No report on ${target.name}'s strength — send your envoy or wait for news`);
@@ -280,8 +281,3 @@ export function updateCampaigns(sim: Simulation): void {
   }
 }
 
-export function mobilizeCampaign(sim: Simulation, planId: unknown): CommandResult {
-  void sim;
-  void planId;
-  return err('Mustering needs an army: build barracks and train soldiers first');
-}

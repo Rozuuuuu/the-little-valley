@@ -6,6 +6,8 @@ import { RECIPES, type RecipeId } from '../data/recipes';
 import { CHILD_ADULT_TICKS } from '../data/kingdomBalance';
 import { COUNCIL_POSTS } from '../data/kingdoms';
 import { councilPostOf } from './kingdoms';
+import { UNITS } from '../data/units';
+import { drill, storesResource } from './military';
 import { RESOURCES, type ResourceId } from '../data/resources';
 import { O, OBJECTS, T, TERRAIN, type ObjectId } from '../world/tiles';
 import {
@@ -642,6 +644,41 @@ function homeFor(sim: Simulation, s: Settler): Building | null {
   return (own && own.built ? own : campOf(sim)) ?? null;
 }
 
+/** Recruits drill at their training ground; ready soldiers wait on duty near it. */
+function soldierRoutine(sim: Simulation, s: Settler): void {
+  const m = s.military!;
+  const b = sim.buildings.get(m.buildingId);
+  if (m.state === 'training' && b) {
+    s.task = { kind: 'train', site: b.id, stage: 'walk' };
+    s.idleReason = '';
+    return;
+  }
+  s.idleReason = `On duty as ${UNITS[m.unit].name.toLowerCase()} — give orders from Realm → Army`;
+  s.nextThink = sim.tick + IDLE_BACKOFF * 3;
+  if (b && !s.task && sim.rng.chance(0.3)) {
+    const e = entranceOf(b);
+    const x = e.x + sim.rng.int(5) - 2;
+    const y = e.y + sim.rng.int(3);
+    if (sim.walkable(x, y)) s.task = { kind: 'wander', x, y };
+  }
+}
+
+function runTrain(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'train' }>): void {
+  const b = sim.buildings.get(t.site);
+  if (!b || s.military?.state !== 'training') return abortTask(sim, s);
+  if (t.stage === 'walk') {
+    const r = goTo(sim, s, bGoal(b));
+    if (r === 'failed') return fail(sim, s, "Can't reach the training ground", `b${b.id}`);
+    if (r === 'arrived') t.stage = 'drill';
+    return;
+  }
+  faceRect(s, b.x, b.y, b.w, b.h);
+  s.anim = 'work';
+  s.tool = s.military.unit === 'archer' ? 'hand' : 'hammer';
+  drill(sim, s, workSpeed(sim, s));
+  if (s.military.trained >= UNITS[s.military.unit].trainTicks) abortTask(sim, s);
+}
+
 /** Children play within a few tiles of home (or their settlement hall) until they grow up. */
 function playNearHome(sim: Simulation, s: Settler): void {
   const days = Math.max(1, Math.ceil((CHILD_ADULT_TICKS - s.ageTicks) / DAY_TICKS));
@@ -670,7 +707,7 @@ export function assignTask(sim: Simulation, s: Settler): void {
   // With full hands a settler can still till, plant, water and build, but not fetch or harvest.
   let handsFull = false;
   if (s.carrying) {
-    if (sim.nearestStorageWithSpace(s.x, s.y)) {
+    if (sim.nearestStorageWithSpace(s.x, s.y, s.carrying.res)) {
       set({ kind: 'deliver', target: null });
       return;
     }
@@ -691,6 +728,10 @@ export function assignTask(sim: Simulation, s: Settler): void {
   }
   if (s.lifeStage === 'child') {
     playNearHome(sim, s);
+    return;
+  }
+  if (s.military) {
+    soldierRoutine(sim, s);
     return;
   }
   const post = councilPostOf(sim, s);
@@ -784,8 +825,8 @@ function runGather(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'gather
 function runDeliver(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'deliver' }>): void {
   if (!s.carrying) return abortTask(sim, s);
   let target = t.target !== null ? sim.buildings.get(t.target) : undefined;
-  if (!target || !target.built || sim.storageUsed(target) >= sim.storageCapacity(target)) {
-    target = sim.nearestStorageWithSpace(s.x, s.y) ?? undefined;
+  if (!target || !target.built || sim.storageUsed(target) >= sim.storageCapacity(target) || !storesResource(target, s.carrying.res)) {
+    target = sim.nearestStorageWithSpace(s.x, s.y, s.carrying.res) ?? undefined;
     if (!target) {
       abortTask(sim, s, 'Storage is full — build a storehouse');
       return;
@@ -940,10 +981,12 @@ function runSurvey(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'survey
 const CRAFT_TOOL: Record<RecipeId, ToolKind> = {
   planks: 'saw', tools: 'hammer', flour: 'hand', bread: 'hand', driedApples: 'hand',
   charcoal: 'hand', smeltCopper: 'hammer', smeltIron: 'hammer', forgeCopperTools: 'hammer', forgeIronTools: 'hammer',
+  forgeSwords: 'hammer', forgeArmor: 'hammer', makeBows: 'saw',
 };
 const CRAFT_SFX: Record<RecipeId, 'saw' | 'hammer' | 'mill' | 'bake'> = {
   planks: 'saw', tools: 'hammer', flour: 'mill', bread: 'bake', driedApples: 'bake',
   charcoal: 'bake', smeltCopper: 'bake', smeltIron: 'bake', forgeCopperTools: 'hammer', forgeIronTools: 'hammer',
+  forgeSwords: 'hammer', forgeArmor: 'hammer', makeBows: 'saw',
 };
 
 function runExtract(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'extract' }>): void {
@@ -1006,6 +1049,9 @@ function runCraft(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'craft' 
   if (ws.recipe === 'smeltIron') sim.stats.ironSmelted += n;
   if (ws.recipe === 'forgeCopperTools') sim.stats.copperToolsForged += n;
   if (ws.recipe === 'forgeIronTools') sim.stats.ironToolsForged += n;
+  if (ws.recipe === 'forgeSwords') sim.stats.swordsMade += n;
+  if (ws.recipe === 'forgeArmor') sim.stats.armorMade += n;
+  if (ws.recipe === 'makeBows') sim.stats.bowsMade += n;
   sim.emit({ type: 'fx', kind: 'sparkle', x: b.x + b.w / 2, y: b.y + b.h / 2 });
   abortTask(sim, s);
 }
@@ -1127,6 +1173,8 @@ export function runTask(sim: Simulation, s: Settler): void {
       return runOrchard(sim, s, t);
     case 'survey':
       return runSurvey(sim, s, t);
+    case 'train':
+      return runTrain(sim, s, t);
     case 'extract':
       return runExtract(sim, s, t);
     case 'craft':
@@ -1139,8 +1187,8 @@ export function runTask(sim: Simulation, s: Settler): void {
 }
 
 export function updateSettler(sim: Simulation, s: Settler): void {
-  // Away with a caravan: the manifest owns them until they come back.
-  if (s.awayOn !== null) return;
+  // Away with a caravan or marching with a company: not simulated here until they are back.
+  if (s.awayOn !== null || s.military?.state === 'deployed') return;
   s.hunger = Math.max(0, s.hunger - HUNGER_DECAY);
   const sleeping = s.task?.kind === 'sleep' && s.task.stage === 'sleep';
   if (!sleeping) s.energy = Math.max(0, s.energy - ENERGY_DECAY);
@@ -1191,6 +1239,8 @@ export function describeTask(sim: Simulation, s: Settler): string {
       return t.action === 'pick' ? 'Picking apples' : 'Tending the orchard';
     case 'survey':
       return 'Surveying for ore';
+    case 'train':
+      return s.military ? `Drilling as ${UNITS[s.military.unit].name.toLowerCase()} (${Math.floor((s.military.trained / UNITS[s.military.unit].trainTicks) * 100)}%)` : 'Drilling';
     case 'extract': {
       const b = sim.buildings.get(t.site);
       return b?.quarry ? 'Cutting stone at the quarry' : 'Digging ore in the mine';

@@ -235,7 +235,7 @@ function dispatch(sim: Simulation, r: Route): void {
 }
 
 /** Leaves goods in a crate near a spot (a store settlers can draw from). Returns what could not be placed. */
-function dropCrate(sim: Simulation, at: { x: number; y: number }, cargo: Inventory): void {
+export function dropCrate(sim: Simulation, at: { x: number; y: number }, cargo: Inventory): void {
   if (invEntries(cargo).length === 0) return;
   const cx = Math.round(at.x);
   const cy = Math.round(at.y);

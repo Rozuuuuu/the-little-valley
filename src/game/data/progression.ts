@@ -4,6 +4,7 @@ export type StatId =
   | 'woodGathered' | 'stoneGathered' | 'foodGathered' | 'harvested' | 'planksCrafted' | 'toolsCrafted' | 'arrivals' | 'births' | 'applesPicked' | 'driedApples'
   | 'surveys' | 'oreMined' | 'stoneQuarried' | 'charcoalMade' | 'coalBurned' | 'charcoalBurned' | 'copperSmelted' | 'ironSmelted' | 'copperToolsForged' | 'ironToolsForged'
   | 'caravanTrips' | 'caravanDeliveries' | 'provisions' | 'merchantVisits' | 'trades'
+  | 'swordsMade' | 'bowsMade' | 'armorMade' | 'horseFeed' | 'soldiersTrained'
   | 'wheatHarvested' | 'flourMilled' | 'bakedFood' | 'pathsBuilt';
 
 export type Requirement =
@@ -18,6 +19,10 @@ export type Requirement =
   | { kind: 'staffedAreas'; count: number }
   /** Settlements with at least `minResidents` settlers belonging to them. */
   | { kind: 'settlements'; count: number; minResidents: number }
+  /** The ruler has been crowned. */
+  | { kind: 'crowned' }
+  /** An active treaty of this kind with any kingdom. */
+  | { kind: 'treaty'; treaty: 'trade' | 'passage' | 'nonAggression' | 'defensiveAlliance'; label: string }
   /** Two settlements joined by an unbroken road (paths and bridges). */
   | { kind: 'roadLink' }
   /** Any `count` of the options: lets players choose their own path. */
@@ -107,9 +112,21 @@ export const MILESTONES: Record<MilestoneId, MilestoneDef> = {
     unlocks: ['Coronation (Kingdom panel)', 'Frontier land claims', 'Taxes on trade and public trust'],
   },
   civilization: {
-    id: 'civilization', name: 'Civilization', tier: 5, future: true,
-    description: 'Great works, settlement identities, policies and your own goals.',
-    requirements: [], unlocks: ['Planned for a future update'],
+    id: 'civilization', name: 'Civilization', tier: 5,
+    description: 'A crowned realm with working supply lines, then any 2 of: 20 pieces of equipment, a trade treaty, or a council hall. War is never required.',
+    requirements: [
+      { kind: 'crowned' },
+      { kind: 'stat', stat: 'caravanDeliveries', count: 5, label: 'Make 5 caravan deliveries' },
+      {
+        kind: 'anyOf', count: 2, label: 'Finish 2 of these',
+        options: [
+          { kind: 'statSum', stats: ['swordsMade', 'bowsMade', 'armorMade'], count: 20, label: 'Make 20 pieces of equipment' },
+          { kind: 'treaty', treaty: 'trade', label: 'Keep a trade treaty with another kingdom' },
+          { kind: 'built', building: 'councilHall', count: 1, label: 'Build the Council Hall' },
+        ],
+      },
+    ],
+    unlocks: ['Open the frontier to conflict (Realm tab): border campaigns, war and peace', 'Launch prepared campaigns with your allies'],
   },
 };
 export const MILESTONE_ORDER: MilestoneId[] = ['camp', 'hamlet', 'village', 'town', 'region', 'civilization'];

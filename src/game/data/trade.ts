@@ -8,7 +8,7 @@ import type { ResourceId } from './resources';
 export const PRICES: Record<ResourceId, number> = {
   food: 1, wood: 1, stone: 1, planks: 2, tools: 6, wheat: 1, flour: 2, apples: 1,
   coal: 2, charcoal: 2, copperOre: 3, ironOre: 3, copperIngot: 7, ironIngot: 8,
-  silverOre: 10, goldOre: 20, diamonds: 60,
+  silverOre: 10, goldOre: 20, diamonds: 60, swords: 12, bows: 6, armor: 18, horses: 30,
 };
 
 /** What a merchant asks for one unit. */
@@ -29,5 +29,6 @@ export const MERCHANT_GOODS: { res: ResourceId; min: number; max: number }[] = [
   { res: 'coal', min: 8, max: 16 },
   { res: 'wheat', min: 10, max: 20 },
   { res: 'apples', min: 10, max: 25 },
+  { res: 'horses', min: 1, max: 3 },
 ];
 export const MERCHANT_ORES: ResourceId[] = ['copperOre', 'ironOre'];

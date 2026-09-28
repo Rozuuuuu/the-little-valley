@@ -1,6 +1,8 @@
 import type { Inventory } from './resources';
 import type { RecipeId } from './recipes';
 import type { MilestoneId } from './progression';
+import type { ResourceId } from './resources';
+import type { UnitType } from './units';
 
 export type BuildingCategory = 'housing' | 'farming' | 'storage' | 'production' | 'infrastructure' | 'decor' | 'project';
 /** Which terrain a footprint must sit on. */
@@ -35,6 +37,10 @@ export interface BuildingDef {
   span?: { min: number; max: number; costPerTile: Inventory; workPerTile: number };
   /** Finished buildings of this type can't be demolished. */
   permanent?: boolean;
+  /** Storage takes only these resources. */
+  accepts?: readonly ResourceId[];
+  /** Soldiers of these kinds drill here; at most `slots` at a time. */
+  training?: { units: readonly UnitType[]; slots: number };
   /** Guest rooms for travelling merchants. */
   lodging?: number;
   /** Caravans set off from here; its workers are teamsters. */
@@ -60,6 +66,7 @@ export type BuildingId =
   | 'camp' | 'house' | 'familyHome' | 'cottage' | 'field' | 'orchard' | 'storehouse' | 'workshop' | 'mill' | 'bakery'
   | 'quarry' | 'mine' | 'charcoalKiln' | 'smelter' | 'forge'
   | 'inn' | 'depot' | 'crate' | 'royalHall'
+  | 'barracks' | 'archeryRange' | 'armory' | 'stable' | 'councilHall'
   | 'path' | 'bridge' | 'stoneBridge' | 'fence' | 'flowerbed' | 'lamp' | 'bench' | 'market' | 'waystation';
 
 export const BUILDINGS: Record<BuildingId, BuildingDef> = {
@@ -102,7 +109,7 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     id: 'workshop', name: 'Workshop', category: 'production',
     description: 'A crafter turns wood into planks and planks into tools.',
     size: { w: 3, h: 2 }, cost: { wood: 30, stone: 16 }, work: 360, placement: 'land', blocks: true, buildable: true,
-    recipes: ['planks', 'tools', 'driedApples'], light: 2, reveal: 6, maxWorkers: 1,
+    recipes: ['planks', 'tools', 'driedApples', 'makeBows'], light: 2, reveal: 6, maxWorkers: 1,
   },
   mill: {
     id: 'mill', name: 'Mill', category: 'production',
@@ -157,7 +164,7 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     id: 'forge', name: 'Forge', category: 'production',
     description: 'Hammers an ingot and a plank into tools: 1 from copper, 2 from iron.',
     size: { w: 3, h: 2 }, cost: { stone: 30, planks: 15 }, work: 360, placement: 'land', blocks: true, buildable: true,
-    recipes: ['forgeCopperTools', 'forgeIronTools'], maxWorkers: 1, light: 3, reveal: 5, unlock: 'hamlet',
+    recipes: ['forgeCopperTools', 'forgeIronTools', 'forgeSwords', 'forgeArmor'], maxWorkers: 1, light: 3, reveal: 5, unlock: 'hamlet',
   },
   inn: {
     id: 'inn', name: 'Inn', category: 'project',
@@ -176,6 +183,36 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     description: 'A great stone hall with a throne room and a banner tower: the seat of your crown. Once built it stands for good.',
     size: { w: 4, h: 3 }, cost: { stone: 80, planks: 40, wood: 40, tools: 10 }, work: 1200, placement: 'land', blocks: true, buildable: true,
     light: 5, reveal: 10, maxBuilders: 4, permanent: true, unlock: 'town',
+  },
+  barracks: {
+    id: 'barracks', name: 'Barracks', category: 'project',
+    description: 'Drill yard and bunks for training infantry and knights, 4 at a time. Recruits bring their gear from the stores.',
+    size: { w: 3, h: 2 }, cost: { stone: 40, planks: 30, wood: 20 }, work: 520, placement: 'land', blocks: true, buildable: true,
+    training: { units: ['infantry', 'knight'], slots: 4 }, light: 3, reveal: 6, unlock: 'region',
+  },
+  archeryRange: {
+    id: 'archeryRange', name: 'Archery Range', category: 'project',
+    description: 'Butts and a shooting line for training archers, 4 at a time.',
+    size: { w: 3, h: 2 }, cost: { wood: 30, planks: 20 }, work: 360, placement: 'land', blocks: true, buildable: true,
+    training: { units: ['archer'], slots: 4 }, reveal: 6, unlock: 'region',
+  },
+  armory: {
+    id: 'armory', name: 'Armory', category: 'storage',
+    description: 'Racks for swords, bows and armour (holds 120).',
+    size: { w: 2, h: 2 }, cost: { stone: 30, planks: 15 }, work: 300, placement: 'land', blocks: true, buildable: true,
+    storage: 120, accepts: ['swords', 'bows', 'armor'], reveal: 5, unlock: 'region',
+  },
+  stable: {
+    id: 'stable', name: 'Stable', category: 'storage',
+    description: 'Four stalls. Horses live only here, and each eats 1 food a day from your stores.',
+    size: { w: 3, h: 2 }, cost: { wood: 40, planks: 15 }, work: 320, placement: 'land', blocks: true, buildable: true,
+    storage: 4, accepts: ['horses'], reveal: 5, unlock: 'region',
+  },
+  councilHall: {
+    id: 'councilHall', name: 'Council Hall', category: 'project',
+    description: 'Where the council meets and envoys are received. A mark of a settled realm.',
+    size: { w: 3, h: 2 }, cost: { stone: 50, planks: 30, tools: 6 }, work: 700, placement: 'land', blocks: true, buildable: true,
+    light: 4, reveal: 8, permanent: true, unlock: 'region',
   },
   crate: {
     id: 'crate', name: 'Crate', category: 'storage',

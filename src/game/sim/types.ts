@@ -44,6 +44,7 @@ export type Task =
   | { kind: 'farm'; field: number; action: FieldAction; stage: 'walk' | 'work'; timer: number }
   | { kind: 'orchard'; orchard: number; action: OrchardAction; stage: 'walk' | 'work'; timer: number }
   | { kind: 'survey'; x: number; y: number; stage: 'walk' | 'work'; timer: number }
+  | { kind: 'train'; site: number; stage: 'walk' | 'drill' }
   | { kind: 'extract'; site: number; slot: number; amount: number; stage: 'walk' | 'work'; timer: number }
   | { kind: 'craft'; ws: number; stage: 'walk' | 'work' }
   | { kind: 'eat'; src: number }
@@ -106,6 +107,23 @@ export interface Settler {
   awayOn: number | null;
   /** The kingdom this settler is loyal to. Moving between settlements never changes it. */
   kingdomId: number;
+  /** Serving as a soldier (null for civilians). */
+  military: MilitaryService | null;
+}
+
+/** A settler's time in the army: what they carry and what they return to. */
+export interface MilitaryService {
+  unit: 'infantry' | 'archer' | 'knight';
+  state: 'training' | 'ready' | 'deployed';
+  /** Drill ticks so far. */
+  trained: number;
+  buildingId: number;
+  companyId: number;
+  /** Gear taken from the stores; it goes back when they leave. */
+  gear: Inventory;
+  priorJob: JobId;
+  priorPriorities: WorkKind[] | null;
+  priorArea: number | null;
 }
 
 /** A 16×16-tile block of land. */
@@ -132,6 +150,23 @@ export interface Company {
   /** The coalition commitment it is pledged to, if any. */
   pledgedTo: number | null;
   owner: number;
+  /** Player companies: their soldiers (settler ids) and field state. */
+  members?: number[];
+  state?: 'home' | 'deployed' | 'returning';
+  /** Food carried. */
+  supplies?: number;
+  suppliesDay?: number;
+  /** 0–100: falls without food; at 0 they come home. */
+  readiness?: number;
+  x?: number;
+  y?: number;
+  home?: { x: number; y: number };
+  target?: { x: number; y: number } | null;
+  /** Walking path (transient). */
+  path?: { x: number; y: number }[] | null;
+  orders?: string;
+  /** Hit points of the company in battle (M7). */
+  health?: number;
 }
 
 export type Stance = 'neutral' | 'trading' | 'ally' | 'enemy';
@@ -271,6 +306,11 @@ export interface CoalitionCommitment {
   reasons: string[];
   decideTick: number;
   unit: Company['kind'] | null;
+  arriveTick?: number;
+  serviceEnds?: number;
+  supplyDay?: number;
+  supplyMissed?: number;
+  returnTick?: number;
 }
 
 export interface Kingdom {

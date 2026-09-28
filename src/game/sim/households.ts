@@ -194,6 +194,8 @@ export function requestChild(sim: Simulation, householdId: unknown): CommandResu
   const b = sim.settler(h.adults[1]);
   if (!a || !b) return err('Both parents need to be in the valley');
   if (a.settlementId !== b.settlementId) return err('The parents live in different settlements');
+  const away = [a, b].find((p) => p.military?.state === 'deployed' || p.awayOn !== null);
+  if (away) return err(`${away.name} is away with the army or a caravan — wait until they are home`);
   const food = localAvailable(sim, a.settlementId, 'food');
   if (food < GROWTH_MIN_FOOD) return err(`Not enough food: ${settlementName(sim, a.settlementId)} needs ${GROWTH_MIN_FOOD} food in its stores (${food} now)`);
   const claim = claimBed(sim, { kind: 'birth', id: h.id }, a.settlementId, a.homeId);
@@ -262,6 +264,7 @@ function updatePending(sim: Simulation, h: Household): void {
   let blocked = '';
   if (!a || !b) blocked = 'Both parents need to be in the valley';
   else if (a.settlementId !== b.settlementId) blocked = 'The parents live in different settlements — move them back together';
+  else if (a.military?.state === 'deployed' || b.military?.state === 'deployed') blocked = 'A parent is away with the army';
   else {
     if (p.claimId === null) p.claimId = claimBed(sim, { kind: 'birth', id: h.id }, a.settlementId, a.homeId)?.id ?? null;
     const food = localAvailable(sim, a.settlementId, 'food');

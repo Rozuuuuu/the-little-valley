@@ -21,6 +21,10 @@ export const RESOURCES = {
   silverOre: { id: 'silverOre', name: 'Silver ore', description: 'Valued by traders. Not needed for any building or tool.' },
   goldOre: { id: 'goldOre', name: 'Gold ore', description: 'Rare and prized by traders. Not needed for any building or tool.' },
   diamonds: { id: 'diamonds', name: 'Diamonds', description: 'Very rare gems for prestige and trade. Not needed for any building or tool.' },
+  swords: { id: 'swords', name: 'Swords', description: 'Forged from iron. Infantry and knights each carry one.' },
+  bows: { id: 'bows', name: 'Bows', description: 'Made from planks at a workshop. Each archer carries one.' },
+  armor: { id: 'armor', name: 'Armour', description: 'Forged from iron. Knights need a suit.' },
+  horses: { id: 'horses', name: 'Horses', description: 'Bought from merchants. Kept only in stable stalls, where each eats 1 food a day. Knights need one.' },
   apples: { id: 'apples', name: 'Apples', description: 'Picked in orchards. Travellers settle for a welcome package of apples; a workshop can dry spare ones into food.' },
 } as const satisfies Record<string, ResourceDef>;
 

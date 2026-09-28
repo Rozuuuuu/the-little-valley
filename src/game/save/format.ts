@@ -5,7 +5,7 @@ import type { MilestoneId } from '../data/progression';
 import type { RecipeId } from '../data/recipes';
 import type { Inventory, ResourceId } from '../data/resources';
 import type {
-  CoalitionCommitment, ConcernState, Incident, NewsReport, Stance, TreatyOffer, WarPlan, Warning, WorldEvent,
+  CoalitionCommitment, ConcernState, Incident, MilitaryService, NewsReport, Stance, TreatyOffer, WarPlan, Warning, WorldEvent,
   Appearance, BedClaim, ChronicleEntry, Facing, GrowthMode, Household, Kingdom, LifeStage, Manifest, OrchardState, Party, Recruitment, Route, SessionMark, Settlement, Stats, TravelerOffer, WorkArea,
 } from '../sim/types';
 
@@ -13,7 +13,7 @@ import type {
  * Save file format. Bump SAVE_VERSION whenever this shape changes and add a
  * migration in migrations.ts so older worlds keep loading.
  */
-export const SAVE_VERSION = 9;
+export const SAVE_VERSION = 10;
 
 export interface SaveMeta {
   name: string;
@@ -57,6 +57,7 @@ export interface SavedSettler {
   householdId: number | null;
   awayOn: number | null;
   kingdomId: number;
+  military: MilitaryService | null;
 }
 
 export interface SavedBuilding {
@@ -200,7 +201,15 @@ export interface SaveFileV9 extends Omit<SaveFileV8, 'version' | 'sim'> {
   };
 }
 
-export type SaveFile = SaveFileV9;
+export interface SaveFileV10 extends Omit<SaveFileV9, 'version' | 'sim'> {
+  version: 10;
+  sim: SaveFileV9['sim'] & {
+    /** Day the horses were last fed. */
+    horseDay: number;
+  };
+}
+
+export type SaveFile = SaveFileV10;
 
 export class SaveError extends Error {
   constructor(message: string) {

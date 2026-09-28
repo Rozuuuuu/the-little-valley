@@ -58,6 +58,14 @@ export function requirementProgress(sim: Simulation, req: Requirement): Requirem
       current = sim.settlements.filter((st) => residentsOfSettlement(sim, st.id).length >= req.minResidents).length;
       label = `Have ${req.count} settlements with ${req.minResidents}+ settlers each`;
       break;
+    case 'crowned': {
+      const done = !!sim.kingdoms.find((k) => k.player)?.crowned;
+      return { label: 'Crown your ruler', current: done ? 1 : 0, target: 1, done };
+    }
+    case 'treaty': {
+      const done = sim.offers.some((o) => o.state === 'active' && o.kind === req.treaty && (o.proposer === 0 || o.recipient === 0));
+      return { label: req.label, current: done ? 1 : 0, target: 1, done };
+    }
     case 'roadLink': {
       const linked = anyRoadLink(sim);
       return { label: 'Join two settlements with a road', current: linked ? 1 : 0, target: 1, done: linked };

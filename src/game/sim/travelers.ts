@@ -18,6 +18,7 @@ import { buyPrice, MERCHANT_GOODS, MERCHANT_ORES, sellPrice } from '../data/trad
 import { direction, nearbyTowns, regionById, ROAD_SPEED } from '../world/regions';
 import { knowKingdomOf, playerKingdom } from './kingdoms';
 import { merchantBringsNews, merchantCarriesNews } from './diplomacy';
+import { storesResource } from './military';
 import { MERCHANT_PURSE, POLICIES, TRUST_MIN_RECRUIT } from '../data/kingdoms';
 
 const ok = (message?: string, id?: number): CommandResult => ({ ok: true, message, id });
@@ -371,10 +372,12 @@ export function barter(sim: Simulation, partyId: unknown, giveRaw: unknown, take
   if (-coins + tax > p.coins && coins < 0) return err(`${p.name} has only ${p.coins} coins${tax ? ` (and owes ${tax} in tax)` : ''}`);
   const levy = Math.min(tax, p.coins - Math.max(0, -coins));
   const stores = localStores(sim, settlement);
-  const free = stores.reduce((a, b) => a + sim.storageCapacity(b) - sim.storageUsed(b), 0);
-  const takeTotal = invEntries(take).reduce((a, [, n]) => a + n, 0);
-  const giveTotal = invEntries(give).reduce((a, [, n]) => a + n, 0);
+  const free = stores.filter((b) => storesResource(b, 'food')).reduce((a, b) => a + sim.storageCapacity(b) - sim.storageUsed(b), 0);
+  const takeTotal = invEntries(take).filter(([r]) => r !== 'horses').reduce((a, [, n]) => a + n, 0);
+  const giveTotal = invEntries(give).filter(([r]) => r !== 'horses').reduce((a, [, n]) => a + n, 0);
   if (free + giveTotal < takeTotal) return err('Not enough room in your stores for what you would take');
+  const stalls = sim.storages().filter((b) => storesResource(b, 'horses')).reduce((a, b) => a + sim.storageCapacity(b) - sim.storageUsed(b), 0);
+  if ((take.horses ?? 0) > stalls) return err(`Horses need free stable stalls (${stalls} free) — build a stable`);
   // All checks passed: move everything.
   for (const [r, n] of invEntries(give)) {
     let left = n;
@@ -388,7 +391,7 @@ export function barter(sim: Simulation, partyId: unknown, giveRaw: unknown, take
   for (const [r, n] of invEntries(take)) {
     addInv(p.stock, r, -n);
     let left = n;
-    for (const b of stores) left -= sim.deposit(b, r, left);
+    for (const b of r === 'horses' ? sim.storages() : stores) left -= sim.deposit(b, r, left);
   }
   p.coins += coins - levy;
   crown.treasury += -coins + levy;

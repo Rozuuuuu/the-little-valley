@@ -25,6 +25,7 @@ import { newPlayerKingdom, updateKingdoms } from './kingdoms';
 import { activeTreaty, makeOffer, pairKey, refreshStance, setStanceDirect, stanceOf, updateDiplomacy } from './diplomacy';
 import { deliverReports } from './news';
 import { updateCampaigns } from './campaigns';
+import { storesResource, updateMilitary } from './military';
 import { GROWTH_STEP } from '../data/kingdomBalance';
 import { checkMilestones } from './progression';
 import { updateRegrowth, updateWorkshops } from './buildings';
@@ -52,6 +53,7 @@ export function emptyStats(): Stats {
     wheatHarvested: 0, flourMilled: 0, bakedFood: 0, pathsBuilt: 0, births: 0, applesPicked: 0, driedApples: 0,
     surveys: 0, oreMined: 0, stoneQuarried: 0, charcoalMade: 0, coalBurned: 0, charcoalBurned: 0, copperSmelted: 0, ironSmelted: 0, copperToolsForged: 0, ironToolsForged: 0,
     caravanTrips: 0, caravanDeliveries: 0, provisions: 0, merchantVisits: 0, trades: 0,
+    swordsMade: 0, bowsMade: 0, armorMade: 0, horseFeed: 0, soldiersTrained: 0,
   };
 }
 
@@ -136,6 +138,8 @@ export class Simulation implements PathGrid {
   commitments: CoalitionCommitment[] = [];
   /** Day diplomacy last took its daily turn. */
   diplomacyDay = 0;
+  /** Day the horses were last fed. */
+  horseDay = 0;
   /** Adults when prosperity was last noticed. */
   lastProsperity = 0;
   routes: Route[] = [];
@@ -306,7 +310,7 @@ export class Simulation implements PathGrid {
       task: null, focus: null, idleReason: '', hidden: false, path: null, pathIndex: 0,
       goalKey: null, repaths: 0, lastNotice: -9999, arrivedTick: this.tick,
       areaId: null, priorities: null, insideId: null, restNote: '', nextThink: 0, settlementId,
-      lifeStage: 'adult', ageTicks: 0, householdId: null, awayOn: null, kingdomId: 0,
+      lifeStage: 'adult', ageTicks: 0, householdId: null, awayOn: null, kingdomId: 0, military: null,
     };
     this.settlers.push(s);
     return s;
@@ -423,11 +427,12 @@ export class Simulation implements PathGrid {
     return best;
   }
 
-  nearestStorageWithSpace(x: number, y: number): Building | null {
+  /** The nearest store with room for this resource (ordinary goods when none is given). */
+  nearestStorageWithSpace(x: number, y: number, res: ResourceId = 'wood'): Building | null {
     let best: Building | null = null;
     let bestD = Infinity;
     for (const b of this.storages()) {
-      if (this.storageUsed(b) >= this.storageCapacity(b)) continue;
+      if (this.storageUsed(b) >= this.storageCapacity(b) || !storesResource(b, res)) continue;
       const d = Math.hypot(b.x + b.w / 2 - x, b.y + b.h / 2 - y);
       if (d < bestD) {
         bestD = d;
@@ -439,6 +444,7 @@ export class Simulation implements PathGrid {
 
   /** Adds up to `amount` goods, limited by free space. Returns how many went in. */
   deposit(b: Building, res: ResourceId, amount: number): number {
+    if (!storesResource(b, res)) return 0;
     const space = this.storageCapacity(b) - this.storageUsed(b);
     const n = Math.max(0, Math.min(space, amount));
     if (n > 0) b.inventory[res] = (b.inventory[res] ?? 0) + n;
@@ -495,6 +501,7 @@ export class Simulation implements PathGrid {
     if (this.tick % 20 === 0) updateRegrowth(this);
     for (const s of this.settlers) updateSettler(this, s);
     updateParties(this);
+    updateMilitary(this);
     if (this.tick % LOGISTICS_STEP === 0) {
       updateLogistics(this);
       updateDiplomacy(this);

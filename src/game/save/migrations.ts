@@ -214,6 +214,24 @@ export const MIGRATIONS: Record<number, (save: AnyRecord) => AnyRecord> = {
       },
     };
   },
+
+  /**
+   * v9 was diplomacy. v10 adds the army: nobody has enlisted yet, the player has
+   * no companies, and horses have never been fed.
+   */
+  9: (v9) => {
+    const sim = v9.sim as AnyRecord;
+    return {
+      ...v9,
+      version: 10,
+      sim: {
+        ...sim,
+        settlers: ((sim.settlers as AnyRecord[] | undefined) ?? []).map((s) => ({ ...s, military: null })),
+        stats: { ...emptyStats(), ...(sim.stats as AnyRecord | undefined) },
+        horseDay: 0,
+      },
+    };
+  },
 };
 
 export function migrate(raw: unknown): SaveFile {
@@ -275,6 +293,11 @@ export function validateSave(save: AnyRecord): void {
     check(s.householdId === null || isInt(s.householdId), `settler ${s.id} household`);
     check(s.awayOn === null || isInt(s.awayOn), `settler ${s.id} caravan`);
     check(isInt(s.kingdomId), `settler ${s.id} allegiance`);
+    if (s.military !== null) {
+      const m = s.military as AnyRecord;
+      check(m && ['infantry', 'archer', 'knight'].includes(m.unit as string) && ['training', 'ready', 'deployed'].includes(m.state as string) && isNum(m.trained) && isInt(m.companyId), `settler ${s.id} service`);
+      checkInventory(m.gear, `settler ${s.id} gear`);
+    }
   }
   check(Array.isArray(sim.buildings), 'building list');
   for (const b of sim.buildings as AnyRecord[]) {
@@ -353,6 +376,7 @@ export function validateSave(save: AnyRecord): void {
   for (const o of dip.offers as AnyRecord[]) check(isInt(o.id) && isNum(o.escrow) && (o.escrow as number) >= 0 && typeof o.state === 'string', 'treaty offer');
   for (const c of dip.commitments as AnyRecord[]) check(isInt(c.id) && isNum(c.escrow) && (c.escrow as number) >= 0 && Array.isArray((c.terms as AnyRecord)?.companies), 'coalition commitment');
   for (const k of sim.kingdoms as AnyRecord[]) check(Array.isArray(k.companies), `kingdom ${String(k.id)} companies`);
+  check(isNum(sim.horseDay), 'stables');
   check(Array.isArray(sim.claims) && (sim.claims as unknown[][]).every((c) => Array.isArray(c) && isInt(c[0]) && isInt(c[1]) && isInt(c[2])), 'claims');
   check(Array.isArray(sim.recruits), 'recruits');
   for (const r of sim.recruits as AnyRecord[]) {

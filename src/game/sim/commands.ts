@@ -15,7 +15,8 @@ import { appointCouncil, coronate, setPolicy } from './kingdoms';
 import { activateFrontier, claimFrontier, setConflictMode } from './territory';
 import { cancelTreaty, proposeTreaty, respondToIncident, respondToOffer } from './diplomacy';
 import { respondToWarning } from './concern';
-import { acceptCampaignOffer, cancelWarPlan, counterCampaignOffer, createWarPlan, mobilizeCampaign, requestCampaignSupport, type SupportRequest } from './campaigns';
+import { acceptCampaignOffer, cancelWarPlan, counterCampaignOffer, createWarPlan, requestCampaignSupport, type SupportRequest } from './campaigns';
+import { cancelTraining, demobilize, enlist, mobilizeCampaign, orderCompany } from './military';
 import { surveyDeposit, upgradeMine } from './mining';
 import { adoptDeliberateGrowth, cancelChildRequest, formHousehold, isChild, requestChild } from './households';
 import { fieldAction } from './farming';
@@ -74,7 +75,11 @@ export type Command =
   | { type: 'counterCampaignOffer'; commitmentId: number; terms: SupportRequest }
   | { type: 'acceptCampaignOffer'; commitmentId: number }
   | { type: 'cancelWarPlan'; planId: number }
-  | { type: 'mobilizeCampaign'; planId: number };
+  | { type: 'mobilizeCampaign'; planId: number }
+  | { type: 'enlist'; ids: number[]; unit: string; buildingId: number }
+  | { type: 'cancelTraining'; settlerId: number }
+  | { type: 'demobilize'; companyId: number }
+  | { type: 'orderCompany'; companyId: number; order: string; x?: number; y?: number; supplyDays?: number };
 
 const MAX_AREA = 40 * 40;
 /** Most settlers one work area can take. */
@@ -131,8 +136,9 @@ function pickSettlers(sim: Simulation, ids: unknown): Settler[] {
 function pickWorkers(sim: Simulation, ids: unknown, what: string): Settler[] | string {
   const all = pickSettlers(sim, ids);
   if (all.length === 0) return 'Select a settler first';
-  const list = all.filter((s) => !isChild(s));
+  const list = all.filter((s) => !isChild(s) && !s.military);
   if (list.length > 0) return list;
+  if (all.some((s) => s.military)) return `${all.find((s) => s.military)!.name} is a soldier — stand their company down first`;
   const who = all.length === 1 ? `${all[0].name} is a child` : 'These are children';
   return `${who} — children play near home and can't ${what} until they grow up`;
 }
@@ -615,6 +621,14 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
       return cancelWarPlan(sim, cmd.planId);
     case 'mobilizeCampaign':
       return mobilizeCampaign(sim, cmd.planId);
+    case 'enlist':
+      return enlist(sim, cmd.ids, cmd.unit, cmd.buildingId);
+    case 'cancelTraining':
+      return cancelTraining(sim, cmd.settlerId);
+    case 'demobilize':
+      return demobilize(sim, cmd.companyId);
+    case 'orderCompany':
+      return orderCompany(sim, cmd.companyId, cmd.order, cmd.x, cmd.y, cmd.supplyDays);
 
     case 'unassignWorker': {
       const b = sim.buildings.get(cmd.buildingId);
