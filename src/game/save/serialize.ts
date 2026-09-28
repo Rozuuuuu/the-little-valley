@@ -73,6 +73,7 @@ export function serializeSim(sim: Simulation, extras: SerializeExtras): SaveFile
     military: s.military ? JSON.parse(JSON.stringify(s.military)) : null,
     captive: s.captive ? { ...s.captive } : null,
     ...(s.ruler ? { ruler: true } : {}),
+    ...(s.hp !== undefined && s.hp < 100 ? { hp: s.hp } : {}),
     ...(s.boostUntil && s.boostUntil > sim.tick ? { boostUntil: s.boostUntil } : {}),
   }));
   const buildings: SavedBuilding[] = [...sim.buildings.values()].map((b) => {
@@ -126,7 +127,7 @@ export function serializeSim(sim: Simulation, extras: SerializeExtras): SaveFile
       kingdoms: sim.kingdoms.map((k) => JSON.parse(JSON.stringify({ ...k, companies: k.companies.map((c) => ({ ...c, path: null })) })) as Kingdom),
       horseDay: sim.horseDay,
       rallyReadyAt: sim.rallyReadyAt,
-      animals: sim.animals.map((a) => ({ id: a.id, species: a.species, x: a.x, y: a.y, homeX: a.homeX, homeY: a.homeY, penId: a.penId, facing: a.facing })),
+      animals: sim.animals.map((a) => ({ id: a.id, species: a.species, x: a.x, y: a.y, homeX: a.homeX, homeY: a.homeY, penId: a.penId, facing: a.facing, ...(a.hp !== undefined ? { hp: a.hp } : {}) })),
       animalRng: sim.animalRng.state,
       war: JSON.parse(JSON.stringify({ states: [...sim.warStates], sieges: [...sim.sieges], occupationTimers: [...sim.occupationTimers] })),
       diplomacy: JSON.parse(JSON.stringify({
@@ -197,7 +198,7 @@ export function deserializeSim(save: SaveFile): Simulation {
   if (d.animalRng !== undefined) sim.animalRng.state = d.animalRng;
   sim.animals = (d.animals ?? []).map((a) => ({
     id: a.id, species: a.species, x: a.x, y: a.y, px: a.x, py: a.y, homeX: a.homeX, homeY: a.homeY,
-    tx: a.x, ty: a.y, moving: false, flee: false, timer: 0, facing: a.facing, penId: a.penId, huntedBy: null,
+    tx: a.x, ty: a.y, moving: false, flee: false, timer: 0, facing: a.facing, penId: a.penId, huntedBy: null, hp: a.hp,
   }));
   sim.warStates = new Map(d.war.states);
   sim.sieges = new Map(d.war.sieges);
@@ -271,6 +272,7 @@ export function deserializeSim(save: SaveFile): Simulation {
       military: ss.military ? JSON.parse(JSON.stringify(ss.military)) : null,
       captive: ss.captive ? { ...ss.captive } : null,
       ruler: ss.ruler === true ? true : undefined,
+      hp: ss.hp,
       boostUntil: ss.boostUntil,
     };
     // Captives are held elsewhere until peace.

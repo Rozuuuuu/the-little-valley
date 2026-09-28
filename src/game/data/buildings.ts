@@ -285,7 +285,7 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
   },
   hunterLodge: {
     id: 'hunterLodge', name: "Hunter's Lodge", category: 'food',
-    description: 'A timber lodge hung with bows and pelts. Its hunters stalk wild game nearby for meat, and bring back hides.',
+    description: 'A timber lodge hung with pelts. Its hunters stalk wild game nearby for meat and hides: bare-handed at first, with knives and then bows as you upgrade it.',
     size: { w: 2, h: 2 }, cost: { wood: 20, stone: 4 }, work: 180, placement: 'land', blocks: true, buildable: true,
     hunting: { radius: HUNT_RADIUS }, maxWorkers: 2, storage: 30, accepts: ['hides'], reveal: 10,
   },
@@ -498,8 +498,9 @@ const LEVELS: Partial<Record<BuildingId, LevelDef[]>> = {
     { name: "Marksmen's Range", cost: { wood: 30, planks: 20 }, time: 1200, perks: ['Trains 8 at a time'], trainingSlots: 8 },
   ],
   hunterLodge: [
-    { name: "Hunter's Lodge", cost: {}, time: 0, perks: [] },
-    { name: 'Hunting Hall', cost: { wood: 20, planks: 10, leather: 4 }, time: 900, perks: ['A third hunter', 'Hunts twice as far'], maxWorkers: 3, huntRadius: HUNT_RADIUS * 2 },
+    { name: "Hunter's Lodge", cost: {}, time: 0, perks: ['Hunters fight bare-handed, right beside their quarry'] },
+    { name: "Knifemaker's Lodge", cost: { wood: 15, planks: 5, tools: 2 }, time: 720, perks: ['Knives: more than twice the damage of bare hands'] },
+    { name: 'Hunting Hall', cost: { wood: 20, planks: 15, leather: 4 }, time: 1200, requires: 'hamlet', perks: ['Bows: hunters shoot from 5 tiles away', 'A third hunter', 'Hunts twice as far'], maxWorkers: 3, huntRadius: HUNT_RADIUS * 2 },
   ],
   fisherHut: [
     { name: "Fisher's Hut", cost: {}, time: 0, perks: [] },

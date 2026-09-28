@@ -168,3 +168,6 @@
 
 /* Shortfalls stay red but readable (5.8:1 on the panels). */
 .cost .short { color: #ff7b6b; }
+
+.bar.hp > i { background: #e04848; }
+.con-bars { grid-template-columns: auto 1fr auto 1fr auto 1fr; }

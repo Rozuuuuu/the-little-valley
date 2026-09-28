@@ -366,5 +366,17 @@ export function makeToolSprites(): Record<ToolKind, Sprite> {
       for (let x = 3; x < 10; x += 2) p.px(x, 7, P.stone1);
     }),
     hand: t(() => {}),
+    knife: t((p) => {
+      p.hline(1, 3, 9, P.wood1);
+      p.px(4, 8, P.stone0);
+      for (let i = 0; i < 5; i++) p.px(5 + i, 7 - i, i === 4 ? P.stone3 : P.stone2);
+      for (let i = 0; i < 4; i++) p.px(5 + i, 8 - i, P.stone1);
+    }),
+    bow: t((p) => {
+      for (let i = 0; i < 10; i++) p.px(2 + Math.round(Math.sin((i / 9) * Math.PI) * 3), i, P.wood2);
+      p.vline(2, 0, 9, '#e8dcc0');
+      p.hline(2, 9, 5, P.wood3);
+      p.px(10, 5, P.stone2);
+    }),
   };
 }

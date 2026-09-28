@@ -27,8 +27,8 @@ import { OBJECTS, TERRAIN } from '../game/world/tiles';
 import type { Overview } from './overview';
 import type { GrowthInfo } from './growthInfo';
 import { gameTime } from './growthInfo';
-import { SPECIES } from '../game/data/animals';
-import { huntRadiusOf, penAnimals, penCapacity, penStatus, preyNear } from '../game/sim/animals';
+import { SPECIES, WEAPONS } from '../game/data/animals';
+import { animalHp, huntRadiusOf, penAnimals, penCapacity, penStatus, preyNear, weaponOfLodge } from '../game/sim/animals';
 import { levelName, levelOf, nextLevel, upgradeProblem } from '../game/sim/levels';
 import { innInfo, type InnInfo, type LogisticsInfo } from './tradeInfo';
 import type { DiplomacyInfo, KingdomInfo, NewsItem, WarCouncilInfo, WarInfo } from './kingdomSnapshot';
@@ -51,6 +51,8 @@ export interface SettlerInfo {
   name: string;
   /** For portraits. */
   appearance: Appearance;
+  /** Health 0–100. */
+  hp: number;
   /** The ruler: the player on the map. */
   ruler: boolean;
   job: JobId;
@@ -102,7 +104,7 @@ export interface BuildingInfo {
   /** Pens and pastures. */
   pen?: { species: string; count: number; capacity: number; status: string; ready: number; product: string | null };
   /** Hunter's lodges. */
-  hunting?: { prey: number; radius: number; kinds: string };
+  hunting?: { prey: number; radius: number; kinds: string; weapon: string };
   /** Upgrade levels, for buildings that have them. */
   level?: {
     level: number;
@@ -238,7 +240,7 @@ export function settlerInfo(sim: Simulation, s: Settler): SettlerInfo {
   if (!home) bedNote = 'No free bed anywhere — rests by the campfire. Build a house.';
   else if (!isPermanentHome(home)) bedNote = home.type === 'townHall' ? 'Sleeps in a Town Hall bunk until a house bed is free.' : 'Sleeps in a camp bedroll until a house bed is free.';
   return {
-    id: s.id, name: s.name, appearance: s.appearance, ruler: !!s.ruler, job: s.job, task: describeTask(sim, s), idleReason: s.idleReason, idle,
+    id: s.id, name: s.name, appearance: s.appearance, hp: Math.round(s.hp ?? 100), ruler: !!s.ruler, job: s.job, task: describeTask(sim, s), idleReason: s.idleReason, idle,
     carrying: s.carrying ? { ...s.carrying } : null, hunger: Math.round(s.hunger), energy: Math.round(s.energy),
     home: home ? (isPermanentHome(home) ? `${BUILDINGS[home.type].name}` : home.type === 'townHall' ? 'Town Hall bunk' : 'Camp bedroll') : 'No bed',
     homeId: home?.id ?? null, bedNote,
@@ -331,7 +333,7 @@ export function buildingInfo(sim: Simulation, list: Building[]): BuildingInfo | 
   if (def.hunting && b.built) {
     const prey = preyNear(sim, b);
     const kinds = [...new Set(prey.map((a) => SPECIES[a.species].plural))];
-    info.hunting = { prey: prey.length, radius: huntRadiusOf(b), kinds: kinds.join(', ') || 'none' };
+    info.hunting = { prey: prey.length, radius: huntRadiusOf(b), kinds: kinds.join(', ') || 'none', weapon: WEAPONS[weaponOfLodge(b)].name };
     info.status = prey.length ? `${prey.length} game animals within ${huntRadiusOf(b)} tiles: ${kinds.join(', ')}` : 'No game nearby — wild animals roam back in time';
   }
   if (def.training && b.built) info.training = trainingInfo(sim, b);
@@ -449,7 +451,7 @@ export function hoverText(sim: Simulation, wx: number, wy: number, claimMode = f
   const a = sim.animals.find((an) => Math.abs(an.x - fx) < 0.7 && an.y - fy > -0.9 && an.y - fy < 0.4);
   if (a) {
     const sp = SPECIES[a.species];
-    return `${sp.name} · ${a.penId !== null ? 'livestock' : sp.hunt ? 'wild game' : 'wild'} · ${sp.note}`;
+    return `${sp.name} · ${Math.ceil(animalHp(a))}/${sp.hp} HP · ${a.penId !== null ? 'livestock' : sp.hunt ? 'wild game' : 'wild'}${sp.fightsBack ? ' · fights back' : ''} · ${sp.note}`;
   }
   const known = surveyedCell(sim, x, y);
   const geo = known ? ` · surveyed: ${describeCell(known)}` : '';

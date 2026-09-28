@@ -317,6 +317,9 @@ export function SettlerCard({ s }: { s: SettlerInfo }) {
       </div>
       {s.idle && <div className="reason">⚠ {s.idleReason}</div>}
       <div className="row">
+        Health <Bar value={s.hp / 100} kind="hp" /> <span className="muted">{s.hp < 100 ? `${s.hp}/100` : ''}</span>
+      </div>
+      <div className="row">
         Fed <Bar value={s.hunger / 100} kind="food" /> <span className="muted">{s.hunger < 15 ? 'Hungry: slower' : ''}</span>
       </div>
       <div className="row">
@@ -457,6 +460,10 @@ export function BuildingCard({ info }: { info: BuildingInfo }) {
       )}
       {info.hunting && (
         <div className="residents">
+          <div className="row">
+            <span>Weapon</span>
+            <strong>{info.hunting.weapon}</strong>
+          </div>
           <div className="row">
             <span>Game within {info.hunting.radius} tiles</span>
             <strong>{info.hunting.prey}</strong>

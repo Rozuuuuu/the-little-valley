@@ -142,6 +142,7 @@ function SettlerInfoPanel({ p, onMore }: { p: SettlerInfo; onMore: () => void })
         </div>
         <div className={p.idle ? 'reason' : 'con-task'}>{p.idle ? `⚠ ${p.idleReason}` : p.task}</div>
         <div className="con-bars">
+          <span>Health</span> <Bar value={p.hp / 100} kind="hp" />
           <span>Fed</span> <Bar value={p.hunger / 100} kind="food" />
           <span>Rested</span> <Bar value={p.energy / 100} kind="energy" />
         </div>

@@ -258,6 +258,9 @@ export const MIGRATIONS: Record<number, (save: AnyRecord) => AnyRecord> = {
    * animals; every building of an older world is at level 1 and nothing is upgrading.
    */
   11: (v11) => ({ ...v11, version: 12 }),
+
+  /** v12 → v13: health for settlers and animals; everyone starts at full health. */
+  12: (v12) => ({ ...v12, version: 13 }),
 };
 
 export function migrate(raw: unknown): SaveFile {
@@ -426,6 +429,7 @@ export function validateSave(save: AnyRecord): void {
   for (const s of sim.settlers as AnyRecord[]) {
     check(s.ruler === undefined || typeof s.ruler === 'boolean', `settler ${s.id} ruler`);
     check(s.boostUntil === undefined || isNum(s.boostUntil), `settler ${s.id} rally`);
+    check(s.hp === undefined || (isNum(s.hp) && (s.hp as number) > 0 && (s.hp as number) <= 100), `settler ${s.id} health`);
   }
   check((sim.settlers as AnyRecord[]).filter((s) => s.ruler === true).length <= 1, 'more than one ruler');
   check(sim.rallyReadyAt === undefined || isNum(sim.rallyReadyAt), 'rally');
@@ -435,6 +439,7 @@ export function validateSave(save: AnyRecord): void {
     for (const a of sim.animals as AnyRecord[]) {
       check(isInt(a.id) && isSpeciesId(a.species) && isNum(a.x) && isNum(a.y) && isInt(a.homeX) && isInt(a.homeY), 'animal');
       check(a.penId === null || (isInt(a.penId) && buildingIds.has(a.penId)), `animal ${a.id} pen`);
+      check(a.hp === undefined || (isNum(a.hp) && (a.hp as number) > 0), `animal ${a.id} health`);
     }
   }
   check(sim.animalRng === undefined || isInt(sim.animalRng), 'animal random state');

@@ -15,7 +15,7 @@ import type {
  * Save file format. Bump SAVE_VERSION whenever this shape changes and add a
  * migration in migrations.ts so older worlds keep loading.
  */
-export const SAVE_VERSION = 12;
+export const SAVE_VERSION = 13;
 
 export interface SaveMeta {
   name: string;
@@ -63,6 +63,8 @@ export interface SavedSettler {
   captive: { by: number } | null;
   /** v12+: the ruler, and a Rally boost in effect. */
   ruler?: boolean;
+  /** v13+: health below full. */
+  hp?: number;
   boostUntil?: number;
 }
 
@@ -104,6 +106,8 @@ export interface SavedAnimal {
   homeY: number;
   penId: number | null;
   facing: 2 | 3;
+  /** v13+: health below full. */
+  hp?: number;
 }
 
 export interface SaveView {
@@ -258,7 +262,12 @@ export interface SaveFileV12 extends Omit<SaveFileV11, 'version'> {
   version: 12;
 }
 
-export type SaveFile = SaveFileV12;
+/** v13: health for settlers and animals (optional, so v12 worlds load unchanged). */
+export interface SaveFileV13 extends Omit<SaveFileV12, 'version'> {
+  version: 13;
+}
+
+export type SaveFile = SaveFileV13;
 
 export class SaveError extends Error {
   constructor(message: string) {

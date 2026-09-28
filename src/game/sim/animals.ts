@@ -1,5 +1,5 @@
 import { BUILDINGS, type BuildingId } from '../data/buildings';
-import { PEN_PRODUCT_CAP, PEN_STEP, SPECIES, WILD_CAP, WILD_SPAWN_EVERY, WILD_SPAWN_MAX, WILD_SPAWN_MIN, WILDLIFE, type PenDef, type SpeciesId } from '../data/animals';
+import { PEN_PRODUCT_CAP, PEN_STEP, SPECIES, WILD_CAP, WILD_SPAWN_EVERY, WILD_SPAWN_MAX, WILD_SPAWN_MIN, WILDLIFE, type PenDef, type SpeciesId, type WeaponId } from '../data/animals';
 import type { HabitatId } from '../data/habitats';
 import { T } from '../world/tiles';
 import { levelsOf, levelOf } from './levels';
@@ -277,6 +277,32 @@ export function updateAnimals(sim: Simulation): void {
 }
 
 // ---- hunting and herding ---------------------------------------------------------
+
+/** The weapon a lodge's hunters carry: bare hands, then knives, then bows as it is upgraded. */
+export function weaponOfLodge(b: Building | undefined): WeaponId {
+  const level = b?.level ?? 1;
+  return level >= 3 ? 'bow' : level === 2 ? 'knife' : 'hands';
+}
+
+export function animalHp(a: Animal): number {
+  return a.hp ?? SPECIES[a.species].hp;
+}
+
+/** A struck animal bolts a few tiles away from whoever hit it. */
+export function startle(sim: Simulation, a: Animal, fromX: number, fromY: number): void {
+  const dx = a.x - fromX;
+  const dy = a.y - fromY;
+  const d = Math.hypot(dx, dy) || 1;
+  for (const dist of [4, 3, 2]) {
+    const x = Math.floor(a.x + (dx / d) * dist);
+    const y = Math.floor(a.y + (dy / d) * dist);
+    if (canStand(sim, a.species, x, y)) {
+      setTarget(a, x, y);
+      a.flee = true;
+      return;
+    }
+  }
+}
 
 export function huntRadiusOf(b: Building): number {
   const levels = levelsOf(b);

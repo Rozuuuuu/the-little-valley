@@ -24,7 +24,7 @@ export interface Appearance {
 /** 0 = down, 1 = up, 2 = left, 3 = right. */
 export type Facing = 0 | 1 | 2 | 3;
 export type Anim = 'idle' | 'walk' | 'work' | 'sleep';
-export type ToolKind = 'axe' | 'pick' | 'hand' | 'hoe' | 'can' | 'hammer' | 'saw' | 'sickle';
+export type ToolKind = 'axe' | 'pick' | 'hand' | 'hoe' | 'can' | 'hammer' | 'saw' | 'sickle' | 'knife' | 'bow';
 
 /** A settler is told to keep working the same kind of thing near a spot after a manual order. */
 export interface Focus {
@@ -114,6 +114,10 @@ export interface Settler {
   military: MilitaryService | null;
   /** Held by another kingdom after a lost battle; home at peace. */
   captive?: { by: number } | null;
+  /** Health 0–100 (absent: full). Nobody dies of it: the hurt rest and heal. */
+  hp?: number;
+  /** Tick of the last blow taken (transient; for the hit flash). */
+  hitAt?: number;
   /** The ruler: the player on the map. Never works, enlists or fights. */
   ruler?: boolean;
   /** Works faster until this tick (the ruler's Rally). */
@@ -620,6 +624,10 @@ export interface Animal {
   penId: number | null;
   /** The hunter stalking it. Not saved: hunts are re-planned after loading. */
   huntedBy: number | null;
+  /** Health (absent: full). */
+  hp?: number;
+  /** Tick of the last blow it took (transient; for the hit flash). */
+  hitAt?: number;
 }
 
 export interface Regrowth {
@@ -643,6 +651,7 @@ export type SimEvent =
   | { type: 'toast'; text: string; level: 'info' | 'good' | 'warn' }
   | { type: 'sfx'; name: SfxName; x?: number; y?: number }
   | { type: 'fx'; kind: FxKind; x: number; y: number }
+  | { type: 'hit'; target: 'animal' | 'settler'; id: number; amount: number; reach: number; x: number; y: number }
   | { type: 'milestone'; id: MilestoneId }
   | { type: 'arrival'; settlerId: number }
   | { type: 'important' }

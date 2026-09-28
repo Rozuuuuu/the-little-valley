@@ -25,14 +25,12 @@ import { awayPenalty } from './settlements';
 import type { Simulation } from './Simulation';
 import type { Building, OrchardAction, Settler, Task, ToolKind, WorkArea } from './types';
 import { speedOf, workersOf } from './levels';
-import { huntRadiusOf, penAnimals, penCapacity, preyNear, removeAnimal } from './animals';
-import { SPECIES } from '../data/animals';
+import { animalHp, huntRadiusOf, penAnimals, penCapacity, preyNear, removeAnimal, startle, weaponOfLodge } from './animals';
+import { HEAL_ASLEEP, HEAL_AWAKE, HUNT_BREAK_OFF, HUNT_HEALED, SPECIES, WEAPONS } from '../data/animals';
 import type { Animal } from './types';
 
 /** A woodlot sapling grows into a tree this fast. */
 const REPLANT_TICKS = Math.round(DAY_TICKS * 0.75);
-/** Hunters shoot from this far (tiles). */
-const HUNT_RANGE = 4;
 /** Herder work per visit (ticks). */
 const HERD_WORK = 40;
 
@@ -694,6 +692,7 @@ const FINDERS: Record<WorkKind, Finder> = {
 
 /** Wild game for a hunter from a lodge they may work at. */
 function findHunt(sim: Simulation, s: Settler): Task | string | null {
+  if ((s.hp ?? 100) < HUNT_HEALED) return 'Healing before hunting again';
   let reason: string | null = null;
   let best: { b: Building; a: Animal; d: number } | null = null;
   for (const b of sim.workIndex().lodges) {
@@ -719,6 +718,7 @@ function findHunt(sim: Simulation, s: Settler): Task | string | null {
 
 /** Game inside a hunting ground. */
 function findHuntInArea(sim: Simulation, s: Settler, area: WorkArea): Task | string {
+  if ((s.hp ?? 100) < HUNT_HEALED) return 'Healing before hunting again';
   let best: Animal | null = null;
   let bestD = Infinity;
   let any = false;
@@ -1176,41 +1176,78 @@ function runExtract(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'extra
 }
 
 
-/** Hunters close to bow range of their quarry, aim, and bring the meat home; hides go to the lodge. */
+/**
+ * Hunters fight by damage. Bare hands and knives need the hunter right beside the animal;
+ * bows reach five tiles. Each blow takes a bite of the animal's health, and it bolts; the
+ * hunter follows. Boar, wolves, bears, moose and bison strike back, and a hunter who is
+ * hurt badly breaks off and goes to heal — nobody dies.
+ */
 function runHunt(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'hunt' }>): void {
   const lodge = t.lodge !== null ? sim.buildings.get(t.lodge) : undefined;
   const ground = t.area !== undefined ? sim.area(t.area) : undefined;
   const a = sim.animals.find((x) => x.id === t.animal);
   if ((!lodge && !ground) || !a || a.penId !== null || s.carrying) return abortTask(sim, s);
+  const sp = SPECIES[a.species];
+  const weapon = WEAPONS[weaponOfLodge(lodge)];
   const d = Math.hypot(a.x - s.x, a.y - s.y);
-  const reach = lodge ? huntRadiusOf(lodge) + 12 : ground ? Math.max(ground.x1 - ground.x0, ground.y1 - ground.y0) + 12 : 0;
-  if (d > reach) return abortTask(sim, s, 'The quarry got away');
+  const range = lodge ? huntRadiusOf(lodge) + 12 : ground ? Math.max(ground.x1 - ground.x0, ground.y1 - ground.y0) + 12 : 0;
+  if (d > range) return abortTask(sim, s, 'The quarry got away');
+  // Dangerous animals hit back at anyone close enough.
+  if (sp.fightsBack && d <= 1.8 && (sim.tick + a.id) % sp.fightsBack.every === 0) {
+    s.hp = Math.max(1, (s.hp ?? 100) - sp.fightsBack.damage);
+    s.hitAt = sim.tick;
+    sim.emit({ type: 'hit', target: 'settler', id: s.id, amount: sp.fightsBack.damage, reach: d, x: s.x, y: s.y });
+    if (s.hp < HUNT_BREAK_OFF) return abortTask(sim, s, `Hurt by a ${sp.name.toLowerCase()} — resting before hunting again`);
+  }
   if (t.stage === 'stalk') {
-    if (d <= HUNT_RANGE) {
+    if (d <= weapon.reach) {
       t.stage = 'aim';
+      t.timer = weapon.every / 2;
       s.path = null;
       return;
     }
-    // Follow the animal: plan again only when it has moved away from where we were heading.
+    // Close in on foot for the last few tiles; plan a path only when farther away.
+    if (d < 3) {
+      const v = moveSpeed(sim, s);
+      const nx = s.x + ((a.x - s.x) / d) * v;
+      const ny = s.y + ((a.y - s.y) / d) * v;
+      if (sim.walkable(Math.floor(nx), Math.floor(ny))) {
+        s.anim = 'walk';
+        s.path = null;
+        stepToward(sim, s, a.x, a.y);
+        return;
+      }
+    }
     if (Math.hypot(a.x - (t.tx + 0.5), a.y - (t.ty + 0.5)) > 2.5) {
       t.tx = Math.floor(a.x);
       t.ty = Math.floor(a.y);
     }
-    const r = goTo(sim, s, { x: t.tx - 1, y: t.ty - 1, w: 3, h: 3, adjacent: false }, 6000);
+    const r = goTo(sim, s, { x: t.tx, y: t.ty, w: 1, h: 1, adjacent: true }, 6000);
     if (r === 'failed') return fail(sim, s, "Can't reach the game", `hunt${a.id}`);
-    if (r === 'arrived') t.stage = 'aim';
+    if (r === 'arrived' && d <= weapon.reach) t.stage = 'aim';
     return;
   }
-  if (d > HUNT_RANGE + 2) {
+  if (d > weapon.reach + 0.4) {
     t.stage = 'stalk';
     return;
   }
   face(s, a.x, a.y);
   s.anim = 'work';
-  s.tool = 'hand';
+  s.tool = weapon === WEAPONS.bow ? 'bow' : weapon === WEAPONS.knife ? 'knife' : 'hand';
   t.timer += workSpeed(sim, s);
-  const hunt = SPECIES[a.species].hunt!;
-  if (t.timer < hunt.work) return;
+  if (t.timer < weapon.every) return;
+  t.timer = 0;
+  const dmg = weapon.damage;
+  a.hp = animalHp(a) - dmg;
+  a.hitAt = sim.tick;
+  sim.emit({ type: 'hit', target: 'animal', id: a.id, amount: dmg, reach: d, x: a.x, y: a.y });
+  sim.emit({ type: 'sfx', name: 'chop', x: a.x, y: a.y });
+  if (a.hp > 0) {
+    // Prey bolts; fighters stand their ground.
+    if (!sp.fightsBack) startle(sim, a, s.x, s.y);
+    return;
+  }
+  const hunt = sp.hunt!;
   removeAnimal(sim, a);
   s.carrying = { res: 'food', amount: hunt.food };
   sim.stats.foodGathered += hunt.food;
@@ -1437,6 +1474,10 @@ export function updateSettler(sim: Simulation, s: Settler): void {
   s.hunger = Math.max(0, s.hunger - HUNGER_DECAY);
   const sleeping = s.task?.kind === 'sleep' && s.task.stage === 'sleep';
   if (!sleeping) s.energy = Math.max(0, s.energy - ENERGY_DECAY);
+  if (s.hp !== undefined && s.hp < 100) {
+    s.hp = Math.min(100, s.hp + (sleeping ? HEAL_ASLEEP : HEAL_AWAKE));
+    if (s.hp >= 100) s.hp = undefined;
+  }
   if ((!s.task || s.task.kind === 'wander') && (sim.tick + s.id) % 4 === 0 && sim.tick >= s.nextThink) assignTask(sim, s);
   if (s.task) runTask(sim, s);
   else {
