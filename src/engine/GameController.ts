@@ -1,5 +1,6 @@
 import { regionalInfo } from './snapshot';
 import { growthInfo } from './growthInfo';
+import { logisticsInfo } from './tradeInfo';
 import { AudioEngine, type SoundName } from '../audio/AudioEngine';
 import { TICK_MS, TILE } from '../game/core/constants';
 import { BUILDINGS, type BuildingId } from '../game/data/buildings';
@@ -881,6 +882,7 @@ export class GameController {
     this.ui.set({
       region: regionalInfo(sim),
       growth: growthInfo(sim),
+      logistics: logisticsInfo(sim),
       running: true,
       paused: this.paused,
       speed: this.speed,

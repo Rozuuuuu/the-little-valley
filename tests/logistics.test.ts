@@ -193,3 +193,19 @@ describe('supply routes', () => {
     expect(sim.world.chunks.size).toBe(before);
   });
 });
+
+describe('logistics panel', () => {
+  it('lists stores in both settlements, routes with their status, and carts on the road', async () => {
+    const { logisticsInfo } = await import('../src/engine/tradeInfo');
+    const { sim, home, hall } = twoTowns();
+    const id = route(sim, home, hall, 'wood', 20);
+    let info = logisticsInfo(sim);
+    expect(info.stores.map((s) => s.id)).toEqual(expect.arrayContaining([home.id, hall.id]));
+    expect(info.stores.find((s) => s.id === hall.id)!.name).toMatch(/Riverside|Waystation/);
+    expect(info.routes[0].id).toBe(id);
+    runUntil(sim, () => sim.manifests.length > 0, DAY_TICKS);
+    info = logisticsInfo(sim);
+    expect(info.carts).toBe(1);
+    expect(info.routes[0].status).toMatch(/cart/i);
+  });
+});

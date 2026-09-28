@@ -517,6 +517,87 @@ const forge: Draw = (p, lit) => {
   p.hline(34, 43, 26, P.wood3);
 };
 
+/** A two-storey inn with a hanging sign, lanterns and a bench. */
+const inn: Draw = (p, lit) => {
+  p.rect(1, 6, 46, 26, P.wall1);
+  p.rect(1, 6, 3, 23, P.wall2);
+  for (const x of [1, 16, 31, 46]) p.vline(x, 6, 28, P.wood1);
+  p.hline(1, 46, 17, P.wood1);
+  p.rect(1, 28, 46, 4, P.stone1);
+  p.hline(1, 46, 28, P.stone2);
+  p.rect(38, -18, 5, 12, P.stone2);
+  p.hline(38, 42, -18, P.stone0);
+  shingles(p, -1, 48, -12, 8, ROOF, 3);
+  p.hline(0, 47, 8, P.wall0);
+  for (const x of [5, 21, 36]) windowAt(p, x, 10, 6, 5, lit);
+  windowAt(p, 5, 20, 6, 6, lit);
+  windowAt(p, 36, 20, 6, 6, lit);
+  // Double door and a hanging sign with a mug
+  p.rect(19, 19, 10, 13, P.wood0);
+  p.rect(20, 20, 8, 12, P.wood2);
+  p.vline(24, 20, 31, P.wood0);
+  p.hline(29, 36, 19, P.wood0);
+  p.vline(35, 19, 21, P.wood0);
+  p.rect(32, 21, 7, 6, P.wood3);
+  p.rect(34, 22, 3, 4, P.fire2);
+  p.px(37, 23, P.fire2);
+  p.px(12, 20, lit ? P.fire2 : P.wood0);
+};
+
+/** A caravan depot: open cart shed, a waiting cart, crates and a hitching post. */
+const depot: Draw = (p) => {
+  shingles(p, -1, 48, -8, 9, SLATE, 3);
+  for (const x of [1, 24, 46]) p.rect(x, 9, 2, 22, P.wood1);
+  p.rect(3, 10, 43, 20, '#4a3b36');
+  // Cart inside
+  p.rect(6, 18, 16, 7, P.wood2);
+  p.hline(6, 21, 18, P.wood3);
+  p.ellipse(9, 27, 3, 3, P.wood0);
+  p.ellipse(19, 27, 3, 3, P.wood0);
+  p.px(9, 27, P.wood3);
+  p.px(19, 27, P.wood3);
+  p.hline(22, 27, 21, P.wood1);
+  // Crates and sacks
+  for (const [x, y] of [[28, 22], [34, 22], [31, 16]]) {
+    p.rect(x, y, 6, 6, P.wood3);
+    p.hline(x, x + 5, y, P.wood4);
+    p.vline(x + 2, y, y + 5, P.wood1);
+  }
+  p.ellipse(42, 26, 3, 3, '#d8c28e');
+};
+
+/** Goods left by a caravan with nowhere to go. */
+const crate: Draw = (p) => {
+  p.rect(2, 4, 12, 10, P.wood3);
+  p.hline(2, 13, 4, P.wood4);
+  p.rect(2, 8, 12, 1, P.wood1);
+  p.vline(4, 4, 13, P.wood1);
+  p.vline(11, 4, 13, P.wood1);
+};
+
+/** A small covered cart with a pony, drawn along supply routes. */
+export function makeCartSprite(): Sprite {
+  const p = new Painter(30, 22, 0, 0);
+  // Pony
+  p.rect(21, 8, 7, 5, '#8a5a3a');
+  p.rect(26, 5, 3, 5, '#8a5a3a');
+  p.px(28, 6, P.outline);
+  p.vline(22, 13, 16, '#6b4428');
+  p.vline(26, 13, 16, '#6b4428');
+  p.hline(20, 21, 10, P.wood1);
+  // Cart with a canvas cover
+  p.rect(3, 9, 17, 6, P.wood2);
+  p.hline(3, 19, 9, P.wood3);
+  p.ellipse(11, 7, 8, 5, '#e8dcc0');
+  p.hline(4, 18, 9, '#c9b89a');
+  p.ellipse(7, 16, 3, 3, P.wood0);
+  p.ellipse(16, 16, 3, 3, P.wood0);
+  p.px(7, 16, P.wood3);
+  p.px(16, 16, P.wood3);
+  p.outline();
+  return p.sprite(15, 19);
+}
+
 /** Quarry pits: each stage cuts one more step into the rock. */
 export function makeQuarrySprites(): Sprite[] {
   const out: Sprite[] = [];
@@ -668,6 +749,9 @@ export function makeBuildingSprites(): Partial<Record<BuildingId, BuildingSprite
     cottage: make(54, 50, 3, 17, cottage),
     familyHome: make(54, 50, 3, 17, familyHome),
     charcoalKiln: make(36, 50, 2, 16, charcoalKiln),
+    inn: make(54, 58, 3, 22, inn),
+    depot: make(54, 48, 3, 14, depot),
+    crate: make(18, 20, 1, 4, crate),
     smelter: make(36, 58, 2, 24, smelter),
     forge: make(54, 46, 3, 12, forge),
     camp: make(52, 46, 2, 12, camp),

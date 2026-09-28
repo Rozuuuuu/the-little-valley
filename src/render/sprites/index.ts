@@ -3,7 +3,7 @@ import type { CropId } from '../../game/data/crops';
 import type { ResourceId } from '../../game/data/resources';
 import type { Appearance, ToolKind } from '../../game/sim/types';
 import { makeCanvas, type Sprite } from '../pixel';
-import { makeBuildingSprites, makeFenceSprites, makeMillSails, makeMineSprites, makeOrchardSprites, makeQuarrySprites, makeVillageHall, type BuildingSprites, type OrchardLook } from './buildings';
+import { makeBuildingSprites, makeCartSprite, makeFenceSprites, makeMillSails, makeMineSprites, makeOrchardSprites, makeQuarrySprites, makeVillageHall, type BuildingSprites, type OrchardLook } from './buildings';
 import { appearanceKey, makeSettlerSheet, type SettlerSheet } from './characters';
 import { makeCropSprites, makeSoil, type SoilState } from './crops';
 import { makeResourceIcons, makeToolSprites, makeUiIcons, type UiIconId } from './icons';
@@ -43,6 +43,7 @@ export class SpriteBank {
   readonly quarry: Sprite[] = makeQuarrySprites();
   /** Mine entrances by shaft level (1–3), day and night. */
   readonly mine: BuildingSprites[] = makeMineSprites();
+  readonly cart: Sprite = makeCartSprite();
   readonly villageHall: BuildingSprites = makeVillageHall();
   readonly crops: Record<CropId, Sprite[]> = makeCropSprites();
   readonly soil: Record<SoilState, Sprite> = { wild: makeSoil('wild'), tilled: makeSoil('tilled'), wet: makeSoil('wet') };

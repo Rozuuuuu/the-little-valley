@@ -8,6 +8,8 @@ import { fieldStage, WATER_THRESHOLD } from '../game/sim/farming';
 import { costOf, isPermanentHome, materialsComplete, workOf } from '../game/sim/buildings';
 import { orchardEstablished } from '../game/sim/orchards';
 import { knownDeposits, quarryStage } from '../game/sim/mining';
+import { cartPosition } from '../game/sim/logistics';
+import type { Manifest, Party } from '../game/sim/types';
 import { MINERALS } from '../game/data/minerals';
 import type { OrchardLook } from './sprites/buildings';
 import { invEntries } from '../game/sim/inventory';
@@ -317,6 +319,21 @@ export class Renderer {
       else if (b.type === 'stoneBridge') {
         if (!b.built) this.drawStoneBridgeSite(b, st.time);
       } else drawables.push({ y: (b.y + b.h) * TILE, draw: () => this.drawBuilding(sim, b, st, night, occupied) });
+    }
+    // Merchants walking in or out, and caravans on the road.
+    for (const p of sim.parties) {
+      if (p.state !== 'arriving' && p.state !== 'leaving') continue;
+      const x = p.x * TILE;
+      const y = p.y * TILE;
+      if (x < tl.x - 32 || x > br.x + 32 || y < tl.y - 32 || y > br.y + 48) continue;
+      drawables.push({ y, draw: () => this.drawTraveller(p, x, y, st.time) });
+    }
+    for (const m of sim.manifests) {
+      const at = cartPosition(sim, m, st.alpha);
+      const x = at.x * TILE;
+      const y = at.y * TILE;
+      if (x < tl.x - 32 || x > br.x + 32 || y < tl.y - 32 || y > br.y + 48) continue;
+      drawables.push({ y, draw: () => this.drawCart(m, x, y, st.time) });
     }
     for (const s of sim.settlers) {
       if (s.hidden) continue;
@@ -738,6 +755,33 @@ export class Renderer {
     ctx.fillStyle = selected ? P.select : 'rgba(255,255,255,0.55)';
     const pts = [[-4, -2], [-3, -2], [-2, -2], [-1, -2], [0, -2], [1, -2], [2, -2], [3, -2], [-5, -1], [4, -1], [-6, 0], [5, 0], [-5, 1], [4, 1], [-4, 2], [-3, 2], [-2, 2], [-1, 2], [0, 2], [1, 2], [2, 2], [3, 2]];
     for (const [dx, dy] of pts) ctx.fillRect(Math.round((x + dx) * sc + cam.tx), Math.round((y + dy - 1) * sc + cam.ty), sc, sc);
+  }
+
+  private drawTraveller(p: Party, x: number, y: number, time: number): void {
+    const sheet = this.sprites.settler(p.appearance);
+    const next = p.path?.[0];
+    const dx = next ? next.x + 0.5 - p.x : 0;
+    const dy = next ? next.y + 0.5 - p.y : 1;
+    const facing = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 2 : 3) : dy < 0 ? 1 : 0;
+    const frame = FRAME.carry + (Math.floor(time * 8 + p.id * 0.37) % 4);
+    this.ctx.globalAlpha = 0.3;
+    this.rectW(x - 4, y - 1, 8, 2, '#140e1c');
+    this.ctx.globalAlpha = 1;
+    this.blit(sheet[facing][frame], x, y);
+    // A trader's pack
+    this.blit(this.sprites.resources.planks, x, y - 20 + (Math.floor(time * 4) % 2));
+  }
+
+  private drawCart(m: Manifest, x: number, y: number, time: number): void {
+    this.ctx.globalAlpha = 0.3;
+    this.rectW(x - 12, y - 1, 24, 3, '#140e1c');
+    this.ctx.globalAlpha = 1;
+    const bob = Math.floor(time * 6) % 2;
+    const leftward = (m.state === 'outbound' ? m.to.x - m.from.x : m.from.x - m.to.x) < 0;
+    if (leftward) this.blitMirror(this.sprites.cart, x, y - bob);
+    else this.blit(this.sprites.cart, x, y - bob);
+    const res = Object.keys(m.cargo).find((r) => (m.cargo[r as keyof typeof m.cargo] ?? 0) > 0);
+    if (res) this.blit(this.sprites.resources[res as keyof typeof this.sprites.resources], x, y - 24);
   }
 
   private drawSettler(s: Settler, x: number, y: number, time: number): void {

@@ -18,6 +18,7 @@ import { useGame, useSnapshot } from './context';
 import { ResIcon, UiIcon } from './Icon';
 import { Households } from './Households';
 import { Travelers } from './Travelers';
+import { InnPanel, Routes } from './Logistics';
 
 const MAIN_RES: ResourceId[] = ['food', 'wood', 'stone'];
 const CRAFTED: ResourceId[] = [
@@ -513,6 +514,7 @@ function BuildingCard({ info }: { info: BuildingInfo }) {
           </div>
         </>
       )}
+      {info.inn && <InnPanel key={info.ids[0]} />}
       {info.extraction && (
         <div className="residents">
           {info.extraction.deposit && <div>{info.extraction.deposit}</div>}
@@ -821,6 +823,7 @@ export function SidePanel() {
             <label>Food to keep <input type="number" min="0" max="150" key={`${t.id}-${t.target}`} defaultValue={t.target} onBlur={e => game.dispatch({type:'setWants', buildingId:t.id, res:'food', amount:Number(e.target.value)})} /></label>
             <p className="muted">Haulers bring surplus from other stores. Targets reserve local supplies; keep room for incoming goods.</p>
           </section>)}
+          <Routes />
         </>}
         {tab === 'goals' && (
           <>

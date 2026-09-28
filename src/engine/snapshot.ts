@@ -26,6 +26,7 @@ import { formatInv } from '../game/sim/inventory';
 import { OBJECTS, TERRAIN } from '../game/world/tiles';
 import type { Overview } from './overview';
 import type { GrowthInfo } from './growthInfo';
+import { innInfo, type InnInfo, type LogisticsInfo } from './tradeInfo';
 
 export type Mode =
   | { kind: 'select' }
@@ -72,6 +73,7 @@ export interface BuildingInfo {
   status: string;
   /** Orchard state in plain words. */
   orchard?: string;
+  inn?: InnInfo;
   /** Quarries and mines. */
   extraction?: { status: string; level: number | null; maxLevel: number; upgrade: string | null; deposit: string | null };
   storage?: { entries: [ResourceId, number][]; used: number; capacity: number };
@@ -115,6 +117,7 @@ export function regionalInfo(sim: Simulation) {
 export interface UiSnapshot {
   region: ReturnType<typeof regionalInfo>;
   growth: GrowthInfo;
+  logistics: LogisticsInfo;
   running: boolean;
   paused: boolean;
   speed: number;
@@ -156,6 +159,7 @@ export function emptySnapshot(): UiSnapshot {
   for (const r of RESOURCE_IDS) resources[r] = 0;
   return {
     region: { calendar: '', forecast: '', seasonNote: '', towns: [] },
+    logistics: { stores: [], routes: [], carts: 0, towns: [], resources: [] },
     growth: {
       mode: 'deliberate', adoption: '', adults: 0, children: 0, beds: { homeUsed: 0, held: 0, homeTotal: 0, bedrollsUsed: 0, bedrolls: 0 },
       households: [], unpaired: [], visitor: null, nextVisitorIn: '', recruits: [], settlements: [], applesPrice: 0,
@@ -257,6 +261,7 @@ export function buildingInfo(sim: Simulation, list: Building[]): BuildingInfo | 
       held: sim.bedClaims.filter((c) => c.homeId === b.id).map((c) => heldFor(sim, c)),
     };
   }
+  if (def.lodging && b.built) info.inn = innInfo(sim, b);
   if (def.extraction && b.built) {
     const d = mineDeposit(sim, b);
     const next = b.mine && b.mine.level < 3 ? MINE_UPGRADES[(b.mine.level + 1) as 2 | 3] : null;
