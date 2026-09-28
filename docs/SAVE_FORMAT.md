@@ -1,7 +1,7 @@
 # Save format
 
 Saves are JSON documents described by `src/game/save/format.ts`. The current version
-is **7** (`SAVE_VERSION`).
+is **8** (`SAVE_VERSION`).
 
 ## Version history
 
@@ -11,6 +11,7 @@ is **7** (`SAVE_VERSION`).
 | 2 | Milestone 1 | `meta` / `sim` / `world` sections, crafting stats, weather. |
 | 3 | Milestone 2 (Village) | World generator version, work areas, personal work orders, production workers, span building sizes, the chronicle and session marks, new stats. |
 | 4 | Seasons and settlements | `settlements`, settler `settlementId`, storage `wants` (stock targets). |
+| 8 | Crown, government and land | `kingdoms` (the player's kingdom first: crown, ruler, banner, treasury, tax policy, trust, council, frozen homeland, conflict setting; then known rivals), `claims` (frontier sectors), settler `kingdomId`, merchant `coins`. |
 | 7 | Travellers and connected settlements | `routes`, `manifests` (carts on the road with their cargo), `parties` (merchants, without walking paths), `knownRegions`, `nextMerchant`, settler `awayOn`, trade and caravan stats. |
 | 6 | Mountains and mining | `geology` (surveyed cells and ore left), building `mine` (deposit, shaft level) and `quarry` (stone cut), mining and smelting stats. New worlds use generator 3. |
 | 5 | Families and orchards | `growthMode`, settler `lifeStage` / `ageTicks` / `householdId`, `households`, `bedClaims`, visitor `offer`, `nextVisitor`, `recruits` (with apple escrow), `lastRecruit`, building `orchard`, stats `births` / `applesPicked` / `driedApples`. |
@@ -184,6 +185,14 @@ Tests (`tests/save.test.ts`, `tests/village.test.ts`) cover:
 - Fixtures: `tests/fixtures/v4-save.json` is a genuine v4 save (two settlements,
   stock target) captured before the v5 change; the v2 and v3 fixtures also migrate
   through v5.
+
+## Kingdoms and land (v8)
+
+The player's kingdom has id 0; a rival's id is its home region's id, so rivals need no
+id allocation and are recreated identically. The protected homeland is saved as the
+exact list of sectors fixed at coronation. Frontier claims are saved; homeland and
+rival lands are derived. The v7 → v8 migration adds an uncrowned kingdom named after
+the first settlement, with an empty treasury, and makes every settler loyal to it.
 
 ## Caravans and merchants (v7)
 

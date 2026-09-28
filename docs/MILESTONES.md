@@ -1,5 +1,25 @@
 # Milestone reports
 
+## Crown, government and land (plan M4)
+
+**Playable:** the Realm tab (coronation with ruler name, kingdom name and banner;
+treasury, taxes and trust; council posts; land and conflict setting; known kingdoms),
+claim mode with owner/supply/cost shown on hover, sector borders in each banner
+colour, the Royal Hall. Region is now reachable.
+
+**Tests:** 175 passing (`kingdoms.test.ts`, `territory.test.ts`): allegiance unchanged by
+moving settlement, coronation gated/validated/once, exact tax on realized trade only,
+treasury limits, daily trust by policy, low-trust recruitment refusal, council posts,
+homeland previewed/frozen/not grown, legacy buildings outside the start area included,
+negative sector corners, claim previews and contiguity, conflict-setting lock,
+frontier activation needing Civilization, rival land blocking building and claims,
+civilian vs armed entry, full-conquest homelands.
+
+**Save:** v7 → v8.
+
+**Limitations:** rival kingdoms are towns you have heard of, with land but no
+simulated economy yet (M5 adds their diplomacy); coins come only from merchants.
+
 ## Travellers and connected settlements (plan M3)
 
 **Playable:** caravan depots and supply routes between settlements (Towns tab), carts

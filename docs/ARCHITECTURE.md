@@ -90,6 +90,20 @@ A day is 2880 ticks (4.8 minutes at 1×). Night runs from 0.87 to 0.21 of the da
   `barter` checks everything first (stock, your local stores, their prices, room)
   and then moves all goods at once. Prices are in `data/trade.ts`.
 
+- **Kingdoms** (`sim/kingdoms.ts`, `data/kingdoms.ts`): allegiance (`kingdomId`) is
+  separate from settlement membership. Coins enter the treasury only through trade
+  (merchants pay or are paid from a finite purse), and the tax policy levies an exact
+  share of each realized trade from the merchant. Trust changes once a day by policy
+  (plus the steward); below 25, travellers won't settle. Council posts take a real adult
+  off work. Region is a real milestone; coronation is an explicit, one-time command.
+- **Territory** (`sim/territory.ts`): 16×16 sectors. Legal owner and occupier are
+  separate. The homeland (starting 3×3 chunks plus sectors with the player's buildings)
+  is frozen at coronation. Frontier claims cost coins and must touch your land or hold a
+  settlement served by a route; the first claim locks the conflict setting. Rival towns
+  own the sectors around them; you can't build there. Civilians may pass anywhere; armed
+  entry needs ownership, a passage agreement or war, never into a protected homeland
+  (`canEnterTerritory`).
+
 > Old worlds keep their generator forever. See "World generator versions" in
 > [SAVE_FORMAT.md](SAVE_FORMAT.md). Never change an existing generator: add a new one.
 

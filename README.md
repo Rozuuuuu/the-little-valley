@@ -96,6 +96,12 @@ in `localStorage`.
      there; carts follow roads and bridges over explored land (they can't cross an
      unbridged river). Build an **Inn** and merchants from distant towns come to
      barter: open the inn to trade.
+   - **The crown** (Realm tab): at **Region** (two settlements of 4+ joined by a route,
+     plus two of 10 forged metal tools, 3 trades or a Royal Hall) you can crown a ruler,
+     name the kingdom and choose a banner. Crowning fixes your protected homeland. Sell
+     goods to merchants for coins; taxes take a share of each trade but cost public
+     trust. Appoint a Steward, Envoy and Marshal from your adults. **Claim land** mode
+     shows each sector's owner and cost before you click.
    - **Village** needs 10 adults, 8 beds in real homes, and any **2** of:
      bake 30 food, run 2 staffed work areas, finish a stone bridge, lay 25 path tiles.
 8. **Beds:** houses have 2, family homes 3, cottages 4, and the camp has 5 temporary
