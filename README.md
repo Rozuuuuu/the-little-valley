@@ -114,6 +114,11 @@ in `localStorage`.
      companies lose readiness and come home. Stand a company down to send everyone back
      to their old work. **Civilization** needs a crown, supply lines and two of 20
      equipment, a trade treaty or a council hall — never a war.
+   - **War** (Realm → War), only after Civilization and opening the frontier: the
+     declaration preview says what it would break and who might join them. Companies
+     defend where you send them, break off when their morale fails, and never fight in
+     or from a protected homeland. Holding their frontier land occupies it; a peace
+     treaty can make it yours. Captives come home at peace.
    - **Village** needs 10 adults, 8 beds in real homes, and any **2** of:
      bake 30 food, run 2 staffed work areas, finish a stone bridge, lay 25 path tiles.
 8. **Beds:** houses have 2, family homes 3, cottages 4, and the camp has 5 temporary

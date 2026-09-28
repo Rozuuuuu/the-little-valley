@@ -138,6 +138,22 @@ A day is 2880 ticks (4.8 minutes at 1×). Night runs from 0.87 to 0.21 of the da
   arrived (fee paid) → service → home; the player's supply share is charged daily
   with a day's grace. Allied soldiers never enter the player's population.
 
+- **War** (`sim/combat.ts`, `data/war.ts`): declaring needs Civilization, an opened
+  frontier and an objective; the preview lists blockers, treaties it would break (which
+  must be confirmed), their allies and exposed land. Companies close on enemies within
+  16 tiles and fight within their range (archers 4, needing line of sight past
+  mountains and buildings); damage lowers health and morale, and below 25 morale a
+  company breaks off home with a regroup cooldown. Protection is checked when entering
+  land, choosing a target and applying damage: nothing is hurt in, or shot from, a
+  protected homeland. Default rules capture a soldier from a badly beaten company (home
+  at peace); full conquest kills one, with full cleanup. Holding enemy frontier land
+  unopposed for half a day occupies it; title changes only by peace. A town's surrender
+  meter fills only under a supplied siege with no defenders and drains on relief. Enemy
+  soldiers beside a cart seize its cargo once. Every side shares a 64-soldier field
+  budget. AI kingdoms at war skirmish daily, take frontier land and make peace. Peace
+  applies transfers, lifts other occupations, frees captives, sends allies home and
+  settles promised land (unmet promises need an explicit waiver that costs trust).
+
 > Old worlds keep their generator forever. See "World generator versions" in
 > [SAVE_FORMAT.md](SAVE_FORMAT.md). Never change an existing generator: add a new one.
 

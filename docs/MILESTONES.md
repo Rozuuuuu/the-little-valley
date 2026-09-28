@@ -1,5 +1,27 @@
 # Milestone reports
 
+## Frontier war, occupation and peace (plan M7)
+
+**Playable:** Realm → War (declaration preview and confirmation, wars with held land,
+siege meter and captives, peace/truce offers with land and reparations, evacuation),
+launching a mustered campaign, enemy and allied squads with health bars, hatched
+occupied land.
+
+**Tests:** 230 passing. `combat.test.ts`: declaration gating and breach confirmation,
+a fight ending in a rout with nobody lost under default rules, protected homelands
+(not entered, not shot into, not a firing platform), line of sight, full-conquest death
+with complete cleanup, the shared field budget, occupation vs title and peace
+transfer (across a reload), the surrender meter and relief, plundered cargo counted
+once, saving a war, the War panel. `war-journey.test.ts`: warning → talks → war →
+defence → peace in both rulesets with reloads at each step, and an AI-to-AI war ending
+in peace with land changing hands.
+
+**Save:** v10 → v11.
+
+**Limitations:** rival towns are abstract (no tile map of their town); rival companies
+march in straight lines between regions and stop at borders they may not cross; siege
+engines, naval war and a controllable hero are excluded by the plan.
+
 ## Barracks, armory and armies (plan M6)
 
 **Playable:** swords, armour, bows and stabled horses; barracks and archery range
