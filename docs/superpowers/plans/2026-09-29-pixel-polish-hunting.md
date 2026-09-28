@@ -34,8 +34,8 @@ pointer leaves the window or a menu is open.
 - **P2** Animals have HP; hunters strike on a timer; a struck animal runs and the hunter
   chases. Boar, wolves, bears, moose and bison fight back. Settlers have HP too, regain it
   over time and at rest, and a hurt hunter breaks off and goes home — **nobody dies** (cozy).
-- **P3** HP bars: always drawn for anyone hurt, and for everyone while Alt is held or when
-  "Always show health bars" is on (default on for animals and settlers in view, off-able).
+- **P3** HP bars over every person and animal by default; L (or Settings) switches to
+  "only the hurt".
 - **P4** Building animation is renderer-only (smoke, flags, sparks, water, turning parts), so
   it never touches the simulation or saves.
 - **P5** HP is saved (v13 adds `hp` to settlers and animals, both optional).
