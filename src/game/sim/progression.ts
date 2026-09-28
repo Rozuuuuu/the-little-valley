@@ -37,6 +37,10 @@ export function requirementProgress(sim: Simulation, req: Requirement): Requirem
       current = sim.stats[req.stat];
       label = req.label;
       break;
+    case 'statSum':
+      current = req.stats.reduce((n, st) => n + sim.stats[st], 0);
+      label = req.label;
+      break;
     case 'beds':
       current = permanentBeds(sim);
       label = `Have ${req.count} beds in real homes (not camp bedrolls)`;

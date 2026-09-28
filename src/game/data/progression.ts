@@ -10,6 +10,8 @@ export type Requirement =
   | { kind: 'population'; count: number }
   | { kind: 'built'; building: BuildingId; count: number; label?: string }
   | { kind: 'stat'; stat: StatId; count: number; label: string }
+  /** The sum of several stats. */
+  | { kind: 'statSum'; stats: readonly StatId[]; count: number; label: string }
   /** Permanent beds in finished homes (camp bedrolls don't count). */
   | { kind: 'beds'; count: number }
   /** Work areas with at least one assigned settler. */
@@ -85,12 +87,24 @@ export const MILESTONES: Record<MilestoneId, MilestoneDef> = {
         ],
       },
     ],
-    unlocks: ['More to come: districts, services and trade'],
+    unlocks: ['Royal Hall', 'Council posts', 'The road to Region: caravans, trade and a crown'],
   },
   region: {
-    id: 'region', name: 'Region', tier: 4, future: true,
-    description: 'Found more settlements and connect them through transport and trade.',
-    requirements: [], unlocks: ['Planned for a future update'],
+    id: 'region', name: 'Region', tier: 4,
+    description: 'Two thriving settlements joined by caravans, then any 2 of: metal tools, trade, or a royal hall. Then crown your ruler.',
+    requirements: [
+      { kind: 'settlements', count: 2, minResidents: 4 },
+      { kind: 'stat', stat: 'caravanDeliveries', count: 1, label: 'Deliver goods along a supply route' },
+      {
+        kind: 'anyOf', count: 2, label: 'Finish 2 of these regional projects',
+        options: [
+          { kind: 'statSum', stats: ['copperToolsForged', 'ironToolsForged'], count: 10, label: 'Forge 10 metal tools' },
+          { kind: 'stat', stat: 'trades', count: 3, label: 'Trade 3 times with merchants' },
+          { kind: 'built', building: 'royalHall', count: 1, label: 'Build the Royal Hall' },
+        ],
+      },
+    ],
+    unlocks: ['Coronation (Kingdom panel)', 'Frontier land claims', 'Taxes on trade and public trust'],
   },
   civilization: {
     id: 'civilization', name: 'Civilization', tier: 5, future: true,

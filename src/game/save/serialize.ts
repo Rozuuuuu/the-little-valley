@@ -9,7 +9,7 @@ import { validateClaims } from '../sim/households';
 import { GEOLOGY_VERSION } from '../world/geology';
 import { currentMilestone } from '../sim/progression';
 import { Simulation } from '../sim/Simulation';
-import type { Building, Settler } from '../sim/types';
+import type { Building, Kingdom, Settler } from '../sim/types';
 import { SAVE_VERSION, type SaveFile, type SaveView, type SavedBuilding, type SavedChunk, type SavedSettler } from './format';
 
 export function bytesToB64(bytes: Uint8Array): string {
@@ -68,7 +68,7 @@ export function serializeSim(sim: Simulation, extras: SerializeExtras): SaveFile
     hunger: s.hunger, energy: s.energy, homeId: s.homeId, appearance: { ...s.appearance },
     focus: s.focus ? { res: s.focus.res, x: s.focus.x, y: s.focus.y, until: s.focus.until } : null,
     areaId: s.areaId, priorities: s.priorities ? [...s.priorities] : null, settlementId: s.settlementId,
-    lifeStage: s.lifeStage, ageTicks: s.ageTicks, householdId: s.householdId, awayOn: s.awayOn,
+    lifeStage: s.lifeStage, ageTicks: s.ageTicks, householdId: s.householdId, awayOn: s.awayOn, kingdomId: s.kingdomId,
   }));
   const buildings: SavedBuilding[] = [...sim.buildings.values()].map((b) => {
     const sb: SavedBuilding = {
@@ -113,7 +113,12 @@ export function serializeSim(sim: Simulation, extras: SerializeExtras): SaveFile
       lastRecruit: Number.isFinite(sim.lastRecruit) ? sim.lastRecruit : null,
       routes: sim.routes.map((r) => ({ id: r.id, sourceId: r.sourceId, destId: r.destId, res: r.res, target: r.target })),
       manifests: sim.manifests.map((m) => ({ ...m, cargo: { ...m.cargo }, from: { ...m.from }, to: { ...m.to } })),
-      parties: sim.parties.map((p) => ({ id: p.id, name: p.name, appearance: { ...p.appearance }, homeRegion: p.homeRegion, stock: { ...p.stock }, state: p.state, innId: p.innId, arriveTick: p.arriveTick, leaveTick: p.leaveTick, x: p.x, y: p.y, edge: { ...p.edge } })),
+      parties: sim.parties.map((p) => ({ id: p.id, name: p.name, appearance: { ...p.appearance }, homeRegion: p.homeRegion, stock: { ...p.stock }, state: p.state, innId: p.innId, arriveTick: p.arriveTick, leaveTick: p.leaveTick, x: p.x, y: p.y, edge: { ...p.edge }, coins: p.coins })),
+      kingdoms: sim.kingdoms.map((k) => JSON.parse(JSON.stringify(k)) as Kingdom),
+      claims: [...sim.claims].map(([key, c]) => {
+        const [x, y] = key.split(',').map(Number);
+        return [x, y, c.legalOwner, c.occupyingKingdom] as [number, number, number, number | null];
+      }),
       knownRegions: [...sim.knownRegions],
       nextMerchant: sim.nextMerchant,
       geology: { version: GEOLOGY_VERSION, cells: [...sim.geology].map(([id, c]) => [id, c.remaining] as [number, number | null]) },
@@ -155,6 +160,8 @@ export function deserializeSim(save: SaveFile): Simulation {
   sim.parties = d.parties.map((p) => ({ ...p, appearance: { ...p.appearance }, stock: { ...p.stock }, edge: { ...p.edge }, path: null }));
   sim.knownRegions = new Set(d.knownRegions);
   sim.nextMerchant = d.nextMerchant;
+  sim.kingdoms = d.kingdoms.map((k) => JSON.parse(JSON.stringify(k)) as Kingdom);
+  for (const [x, y, legalOwner, occupyingKingdom] of d.claims) sim.claims.set(`${x},${y}`, { legalOwner, occupyingKingdom, protectedHomeland: false });
 
   for (const sc of save.world.chunks) {
     const c = generateChunk(sim.seed, sc.cx, sc.cy, save.world.genVersion);
@@ -198,7 +205,7 @@ export function deserializeSim(save: SaveFile): Simulation {
       task: null, focus: ss.focus ? { kind: 'gather', ...ss.focus } : null, idleReason: '', hidden: false,
       path: null, pathIndex: 0, goalKey: null, repaths: 0, lastNotice: -9999, arrivedTick: 0,
       areaId: ss.areaId, priorities: ss.priorities ? [...ss.priorities] : null, insideId: null, restNote: '', nextThink: 0, settlementId: ss.settlementId,
-      lifeStage: ss.lifeStage, ageTicks: ss.ageTicks, householdId: ss.householdId, awayOn: ss.awayOn,
+      lifeStage: ss.lifeStage, ageTicks: ss.ageTicks, householdId: ss.householdId, awayOn: ss.awayOn, kingdomId: ss.kingdomId,
     };
     // Away with a caravan: out of sight until the cart returns.
     if (s.awayOn !== null) s.hidden = true;

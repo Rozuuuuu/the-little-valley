@@ -4,6 +4,8 @@ import { CROPS } from '../data/crops';
 import type { WorkKind } from '../data/jobs';
 import { RECIPES, type RecipeId } from '../data/recipes';
 import { CHILD_ADULT_TICKS } from '../data/kingdomBalance';
+import { COUNCIL_POSTS } from '../data/kingdoms';
+import { councilPostOf } from './kingdoms';
 import { RESOURCES, type ResourceId } from '../data/resources';
 import { O, OBJECTS, T, TERRAIN, type ObjectId } from '../world/tiles';
 import {
@@ -689,6 +691,12 @@ export function assignTask(sim: Simulation, s: Settler): void {
   }
   if (s.lifeStage === 'child') {
     playNearHome(sim, s);
+    return;
+  }
+  const post = councilPostOf(sim, s);
+  if (post) {
+    s.idleReason = `Serving on the council as ${COUNCIL_POSTS[post].name} — not available for other work`;
+    s.nextThink = sim.tick + IDLE_BACKOFF * 4;
     return;
   }
   if (s.focus) {

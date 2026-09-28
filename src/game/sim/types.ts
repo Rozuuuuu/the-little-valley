@@ -104,6 +104,51 @@ export interface Settler {
   householdId: number | null;
   /** Away on a caravan (the manifest's id): not in the valley and not simulated until it returns. */
   awayOn: number | null;
+  /** The kingdom this settler is loyal to. Moving between settlements never changes it. */
+  kingdomId: number;
+}
+
+/** A 16×16-tile block of land. */
+export interface ClaimSector {
+  x: number;
+  y: number;
+}
+
+/** Who holds a sector: legal title, who (if anyone) occupies it, and whether it is a protected homeland. */
+export interface TerritoryClaim {
+  sector: ClaimSector;
+  legalOwner: number;
+  occupyingKingdom: number | null;
+  protectedHomeland: boolean;
+}
+
+export type ConflictMode = 'protected-frontier' | 'full-conquest';
+
+export interface Kingdom {
+  /** 0 for the player; a rival's id is its home region's id. */
+  id: number;
+  name: string;
+  player: boolean;
+  crowned: boolean;
+  ruler: { name: string; appearance: Appearance } | null;
+  banner: { color: string; emblem: string };
+  treasury: number;
+  taxCollected: number;
+  policy: 'none' | 'modest' | 'high';
+  /** Public trust, 0–100. */
+  trust: number;
+  /** Day trust was last updated. */
+  trustDay: number;
+  council: Record<'steward' | 'envoy' | 'marshal', number | null>;
+  /** Protected homeland sectors, fixed at coronation (null before). */
+  homeland: ClaimSector[] | null;
+  conflictMode: ConflictMode;
+  /** The conflict setting can't change after the first frontier claim. */
+  modeLocked: boolean;
+  /** Border incidents and war are enabled (Civilization plus an explicit choice). */
+  frontierActive: boolean;
+  capitalRegion: number | null;
+  capital: { x: number; y: number } | null;
 }
 
 /** A standing order to keep a store in another settlement stocked, served by caravans. */
@@ -160,6 +205,8 @@ export interface Party {
   path: { x: number; y: number }[] | null;
   /** Where they entered the map, and leave it again. */
   edge: { x: number; y: number };
+  /** Coins in their purse (finite). */
+  coins: number;
 }
 
 export type LifeStage = 'child' | 'adult';

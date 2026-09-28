@@ -16,6 +16,8 @@ import { findPath } from './pathfinding';
 import { isResourceId, RESOURCES, type Inventory } from '../data/resources';
 import { buyPrice, MERCHANT_GOODS, MERCHANT_ORES, sellPrice } from '../data/trade';
 import { direction, nearbyTowns, regionById, ROAD_SPEED } from '../world/regions';
+import { knowKingdomOf, playerKingdom } from './kingdoms';
+import { MERCHANT_PURSE, POLICIES, TRUST_MIN_RECRUIT } from '../data/kingdoms';
 
 const ok = (message?: string, id?: number): CommandResult => ({ ok: true, message, id });
 const err = (message: string): CommandResult => ({ ok: false, message });
@@ -46,6 +48,8 @@ export function recruitProblem(sim: Simulation, settlementId: number): string | 
   const wait = sim.lastRecruit + RECRUIT_COOLDOWN - sim.tick;
   if (wait > 0) return `The valley can welcome its next traveller in ${days(wait)}`;
   if (committedPopulation(sim) >= MAX_POPULATION) return `The valley is at the simulation limit of ${MAX_POPULATION} people`;
+  const trust = playerKingdom(sim).trust;
+  if (trust < TRUST_MIN_RECRUIT) return `Travellers have heard the realm taxes harshly (trust ${trust}/100) — lower taxes to rebuild trust`;
   const needs = recruitNeeds(sim, settlementId);
   return needs.length ? `${settlementName(sim, settlementId)} still needs ${needs.join(', ')}` : null;
 }
@@ -204,7 +208,7 @@ function innOf(sim: Simulation, id?: number): Building | undefined {
 function spawnMerchant(sim: Simulation, inn: Building): void {
   const towns = nearbyTowns(sim.seed);
   const home = towns[Math.floor(sim.rng.next() * Math.min(3, towns.length))];
-  sim.knownRegions.add(home.id);
+  knowKingdomOf(sim, home.id);
   const stock: Inventory = {};
   const ore = MERCHANT_ORES[sim.rng.int(MERCHANT_ORES.length)];
   stock[ore] = 10 + sim.rng.int(11);
@@ -215,9 +219,10 @@ function spawnMerchant(sim: Simulation, inn: Building): void {
     id: sim.allocId(), name: sim.pickName(), appearance: sim.randomAppearance(), homeRegion: home.id, stock,
     state: 'travelling', innId: inn.id, arriveTick: sim.tick + Math.round(dist / ROAD_SPEED), leaveTick: 0,
     x: inn.x, y: inn.y, path: null, edge: { x: inn.x, y: inn.y },
+    coins: MERCHANT_PURSE.min + sim.rng.int(MERCHANT_PURSE.max - MERCHANT_PURSE.min + 1),
   };
   sim.parties.push(p);
-  sim.nextMerchant = sim.tick + MERCHANT_INTERVAL;
+  sim.nextMerchant = sim.tick + Math.round(MERCHANT_INTERVAL * POLICIES[playerKingdom(sim).policy].merchantDelay);
   sim.toast(`A merchant, ${p.name}, has set off from ${home.name} (${direction(home.x, home.y)}) to trade at your inn.`, 'info');
   sim.emit({ type: 'important' });
 }
@@ -335,13 +340,18 @@ function cleanInv(v: unknown): Inventory | null {
  * Barter with a lodging merchant. What you give must be worth at least what
  * you take at their prices; everything moves at once or nothing does.
  */
-export function barter(sim: Simulation, partyId: unknown, giveRaw: unknown, takeRaw: unknown): CommandResult {
+export function barter(sim: Simulation, partyId: unknown, giveRaw: unknown, takeRaw: unknown, coinsRaw: unknown = 0): CommandResult {
+  // coins > 0: the treasury pays the merchant; coins < 0: the merchant pays the treasury.
+  const coins = typeof coinsRaw === 'number' && Number.isInteger(coinsRaw) ? coinsRaw : NaN;
+  if (Number.isNaN(coins)) return err('Invalid coin amount');
   const p = sim.parties.find((x) => x.id === partyId);
   if (!p || p.state !== 'lodging') return err('That merchant is not at the inn');
   const give = cleanInv(giveRaw);
   const take = cleanInv(takeRaw);
   if (!give || !take) return err('Invalid trade');
-  if (invEntries(give).length === 0 && invEntries(take).length === 0) return err('Choose what to trade');
+  if (invEntries(give).length === 0 && invEntries(take).length === 0 && coins === 0) return err('Choose what to trade');
+  const crown = playerKingdom(sim);
+  if (coins > crown.treasury) return err(`The treasury holds only ${crown.treasury} coins`);
   const inn = innOf(sim, p.innId);
   if (!inn) return err('The inn is gone');
   for (const [r, n] of invEntries(take)) if ((p.stock[r] ?? 0) < n) return err(`${p.name} only has ${p.stock[r] ?? 0} ${RESOURCES[r].name.toLowerCase()}`);
@@ -350,9 +360,13 @@ export function barter(sim: Simulation, partyId: unknown, giveRaw: unknown, take
     const have = localAvailable(sim, settlement, r);
     if (have < n) return err(`Your stores near the inn have only ${have} ${RESOURCES[r].name.toLowerCase()} to spare`);
   }
-  const offered = invEntries(give).reduce((a, [r, n]) => a + buyPrice(r) * n, 0);
-  const asked = invEntries(take).reduce((a, [r, n]) => a + sellPrice(r) * n, 0);
+  const offered = invEntries(give).reduce((a, [r, n]) => a + buyPrice(r) * n, 0) + Math.max(0, coins);
+  const asked = invEntries(take).reduce((a, [r, n]) => a + sellPrice(r) * n, 0) + Math.max(0, -coins);
   if (offered < asked) return err(`${p.name} wants goods worth ${asked} for that; you offer ${offered}`);
+  // Tax: a share of what the merchant hands over in this trade, paid from their purse.
+  const tax = Math.floor(asked * POLICIES[crown.policy].tradeTax);
+  if (-coins + tax > p.coins && coins < 0) return err(`${p.name} has only ${p.coins} coins${tax ? ` (and owes ${tax} in tax)` : ''}`);
+  const levy = Math.min(tax, p.coins - Math.max(0, -coins));
   const stores = localStores(sim, settlement);
   const free = stores.reduce((a, b) => a + sim.storageCapacity(b) - sim.storageUsed(b), 0);
   const takeTotal = invEntries(take).reduce((a, [, n]) => a + n, 0);
@@ -373,6 +387,9 @@ export function barter(sim: Simulation, partyId: unknown, giveRaw: unknown, take
     let left = n;
     for (const b of stores) left -= sim.deposit(b, r, left);
   }
+  p.coins += coins - levy;
+  crown.treasury += -coins + levy;
+  crown.taxCollected += levy;
   sim.stats.trades++;
   sim.emit({ type: 'sfx', name: 'complete', x: inn.x + 1, y: inn.y + 1 });
   return ok(`Traded with ${p.name}.`);

@@ -14,6 +14,7 @@ import { foundSettlement, settlementAt, spacingProblem } from './settlements';
 import { relocateClaims } from './households';
 import { initOrchard } from './orchards';
 import { depositUnder, siteProblem } from './mining';
+import { landProblem } from './territory';
 import type { Simulation } from './Simulation';
 import type { Building } from './types';
 
@@ -93,7 +94,7 @@ export function checkPlacement(sim: Simulation, type: BuildingId, x: number, y: 
       tiles.push({ x: x + dx, y: y + dy, ok: !p });
     }
   }
-  const spacing = spacingProblem(sim, type, x, y) ?? (def.site ? siteProblem(sim, type, x, y) : null);
+  const spacing = spacingProblem(sim, type, x, y) ?? (def.site ? siteProblem(sim, type, x, y) : null) ?? landProblem(sim, x, y, def.size.w, def.size.h);
   if (spacing) {
     reason ??= spacing;
     for (const t of tiles) t.ok = false;

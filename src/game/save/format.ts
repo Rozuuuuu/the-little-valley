@@ -5,14 +5,14 @@ import type { MilestoneId } from '../data/progression';
 import type { RecipeId } from '../data/recipes';
 import type { Inventory, ResourceId } from '../data/resources';
 import type {
-  Appearance, BedClaim, ChronicleEntry, Facing, GrowthMode, Household, LifeStage, Manifest, OrchardState, Party, Recruitment, Route, SessionMark, Settlement, Stats, TravelerOffer, WorkArea,
+  Appearance, BedClaim, ChronicleEntry, Facing, GrowthMode, Household, Kingdom, LifeStage, Manifest, OrchardState, Party, Recruitment, Route, SessionMark, Settlement, Stats, TravelerOffer, WorkArea,
 } from '../sim/types';
 
 /**
  * Save file format. Bump SAVE_VERSION whenever this shape changes and add a
  * migration in migrations.ts so older worlds keep loading.
  */
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 8;
 
 export interface SaveMeta {
   name: string;
@@ -55,6 +55,7 @@ export interface SavedSettler {
   ageTicks: number;
   householdId: number | null;
   awayOn: number | null;
+  kingdomId: number;
 }
 
 export interface SavedBuilding {
@@ -166,7 +167,17 @@ export interface SaveFileV7 extends Omit<SaveFileV6, 'version' | 'sim'> {
   };
 }
 
-export type SaveFile = SaveFileV7;
+export interface SaveFileV8 extends Omit<SaveFileV7, 'version' | 'sim'> {
+  version: 8;
+  sim: SaveFileV7['sim'] & {
+    /** The player's kingdom first, then rival kingdoms that are known. */
+    kingdoms: Kingdom[];
+    /** Frontier claims: [sectorX, sectorY, legalOwner, occupyingKingdom | null]. */
+    claims: [number, number, number, number | null][];
+  };
+}
+
+export type SaveFile = SaveFileV8;
 
 export class SaveError extends Error {
   constructor(message: string) {

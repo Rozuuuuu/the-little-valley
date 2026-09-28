@@ -11,6 +11,8 @@ import {
 import { cleanPriorities } from './priorities';
 import { acceptRecruit, barter, cancelRecruit } from './travelers';
 import { cancelRoute, createRoute, setRouteTarget } from './logistics';
+import { appointCouncil, coronate, setPolicy } from './kingdoms';
+import { activateFrontier, claimFrontier, setConflictMode } from './territory';
 import { surveyDeposit, upgradeMine } from './mining';
 import { adoptDeliberateGrowth, cancelChildRequest, formHousehold, isChild, requestChild } from './households';
 import { fieldAction } from './farming';
@@ -52,7 +54,13 @@ export type Command =
   | { type: 'createRoute'; sourceId: number; destinationId: number; resource: ResourceId; target: number }
   | { type: 'setRouteTarget'; routeId: number; target: number }
   | { type: 'cancelRoute'; routeId: number }
-  | { type: 'barter'; partyId: number; give: Inventory; take: Inventory };
+  | { type: 'barter'; partyId: number; give: Inventory; take: Inventory; coins?: number }
+  | { type: 'coronate'; rulerName: string; kingdomName: string; banner: { color: string; emblem: string } }
+  | { type: 'setPolicy'; policy: string }
+  | { type: 'appointCouncil'; post: string; settlerId: number | null }
+  | { type: 'claimFrontier'; sector: { x: number; y: number } }
+  | { type: 'setConflictMode'; mode: string }
+  | { type: 'activateFrontier' };
 
 const MAX_AREA = 40 * 40;
 /** Most settlers one work area can take. */
@@ -558,7 +566,19 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
     case 'cancelRoute':
       return cancelRoute(sim, cmd.routeId);
     case 'barter':
-      return barter(sim, cmd.partyId, cmd.give, cmd.take);
+      return barter(sim, cmd.partyId, cmd.give, cmd.take, cmd.coins ?? 0);
+    case 'coronate':
+      return coronate(sim, cmd.rulerName, cmd.kingdomName, cmd.banner);
+    case 'setPolicy':
+      return setPolicy(sim, cmd.policy);
+    case 'appointCouncil':
+      return appointCouncil(sim, cmd.post, cmd.settlerId);
+    case 'claimFrontier':
+      return claimFrontier(sim, cmd.sector);
+    case 'setConflictMode':
+      return setConflictMode(sim, cmd.mode);
+    case 'activateFrontier':
+      return activateFrontier(sim);
 
     case 'unassignWorker': {
       const b = sim.buildings.get(cmd.buildingId);

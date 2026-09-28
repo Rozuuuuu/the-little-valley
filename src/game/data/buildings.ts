@@ -59,7 +59,7 @@ export interface BuildingDef {
 export type BuildingId =
   | 'camp' | 'house' | 'familyHome' | 'cottage' | 'field' | 'orchard' | 'storehouse' | 'workshop' | 'mill' | 'bakery'
   | 'quarry' | 'mine' | 'charcoalKiln' | 'smelter' | 'forge'
-  | 'inn' | 'depot' | 'crate'
+  | 'inn' | 'depot' | 'crate' | 'royalHall'
   | 'path' | 'bridge' | 'stoneBridge' | 'fence' | 'flowerbed' | 'lamp' | 'bench' | 'market' | 'waystation';
 
 export const BUILDINGS: Record<BuildingId, BuildingDef> = {
@@ -170,6 +170,12 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     description: 'Carts and a stable yard. Its workers drive caravans along supply routes to your other settlements. Needs a road or bridge between them.',
     size: { w: 3, h: 2 }, cost: { wood: 30, stone: 10, planks: 10 }, work: 360, placement: 'land', blocks: true, buildable: true,
     storage: 100, maxWorkers: 2, depot: true, reveal: 6, unlock: 'village',
+  },
+  royalHall: {
+    id: 'royalHall', name: 'Royal Hall', category: 'project',
+    description: 'A great stone hall with a throne room and a banner tower: the seat of your crown. Once built it stands for good.',
+    size: { w: 4, h: 3 }, cost: { stone: 80, planks: 40, wood: 40, tools: 10 }, work: 1200, placement: 'land', blocks: true, buildable: true,
+    light: 5, reveal: 10, maxBuilders: 4, permanent: true, unlock: 'town',
   },
   crate: {
     id: 'crate', name: 'Crate', category: 'storage',

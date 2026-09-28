@@ -6,6 +6,7 @@ import { SUPPORTED_GENS } from '../world/worldgen';
 import { isMilestoneId } from '../data/progression';
 import { isResourceId } from '../data/resources';
 import { emptyStats } from '../sim/Simulation';
+import { newPlayerKingdom } from '../sim/kingdoms';
 import { SAVE_VERSION, SaveError, type SaveFile } from './format';
 
 type AnyRecord = Record<string, unknown>;
@@ -163,6 +164,29 @@ export const MIGRATIONS: Record<number, (save: AnyRecord) => AnyRecord> = {
       },
     };
   },
+
+  /**
+   * v7 was Travellers. v8 adds the crown: the player's kingdom (uncrowned,
+   * named after the first settlement, no treasury), every settler loyal to it,
+   * no frontier claims, and purses for merchants already on the road. Towns
+   * already heard of become rival kingdoms the next time they are needed.
+   */
+  7: (v7) => {
+    const sim = v7.sim as AnyRecord;
+    const settlements = (sim.settlements as AnyRecord[] | undefined) ?? [];
+    const name = typeof settlements[0]?.name === 'string' ? (settlements[0].name as string) : 'The Valley';
+    return {
+      ...v7,
+      version: 8,
+      sim: {
+        ...sim,
+        settlers: ((sim.settlers as AnyRecord[] | undefined) ?? []).map((s) => ({ ...s, kingdomId: 0 })),
+        parties: ((sim.parties as AnyRecord[] | undefined) ?? []).map((p) => ({ ...p, coins: 50 })),
+        kingdoms: [newPlayerKingdom(name)],
+        claims: [],
+      },
+    };
+  },
 };
 
 export function migrate(raw: unknown): SaveFile {
@@ -223,6 +247,7 @@ export function validateSave(save: AnyRecord): void {
     check((s.lifeStage === 'adult' || s.lifeStage === 'child') && isInt(s.ageTicks) && (s.ageTicks as number) >= 0, `settler ${s.id} age`);
     check(s.householdId === null || isInt(s.householdId), `settler ${s.id} household`);
     check(s.awayOn === null || isInt(s.awayOn), `settler ${s.id} caravan`);
+    check(isInt(s.kingdomId), `settler ${s.id} allegiance`);
   }
   check(Array.isArray(sim.buildings), 'building list');
   for (const b of sim.buildings as AnyRecord[]) {
@@ -289,6 +314,13 @@ export function validateSave(save: AnyRecord): void {
     checkInventory(p.stock, `merchant ${p.id} stock`);
   }
   check(Array.isArray(sim.knownRegions) && (sim.knownRegions as unknown[]).every(isInt) && isNum(sim.nextMerchant), 'regions');
+  check(Array.isArray(sim.kingdoms) && (sim.kingdoms as AnyRecord[]).filter((k) => k.player === true).length === 1, 'kingdoms');
+  for (const k of sim.kingdoms as AnyRecord[]) {
+    check(isInt(k.id) && typeof k.name === 'string' && isNum(k.treasury) && (k.treasury as number) >= 0 && isNum(k.trust), `kingdom ${String(k.id)}`);
+    check(['none', 'modest', 'high'].includes(k.policy as string) && ['protected-frontier', 'full-conquest'].includes(k.conflictMode as string), `kingdom ${String(k.id)} settings`);
+    check(k.homeland === null || (Array.isArray(k.homeland) && (k.homeland as AnyRecord[]).every((q) => isInt(q.x) && isInt(q.y))), `kingdom ${String(k.id)} homeland`);
+  }
+  check(Array.isArray(sim.claims) && (sim.claims as unknown[][]).every((c) => Array.isArray(c) && isInt(c[0]) && isInt(c[1]) && isInt(c[2])), 'claims');
   check(Array.isArray(sim.recruits), 'recruits');
   for (const r of sim.recruits as AnyRecord[]) {
     check(isInt(r.id) && isInt(r.settlementId) && (r.state === 'travelling' || r.state === 'refunding') && isNum(r.arrivesTick), 'recruit');

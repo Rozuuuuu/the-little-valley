@@ -8,7 +8,7 @@ import { TERRAIN } from '../world/tiles';
 import { World } from '../world/World';
 import type { PathGrid } from './pathfinding';
 import type {
-  Appearance, BedClaim, Building, ChronicleEntry, GrowthMode, Household, Manifest, Party, Recruitment, Route, TravelerOffer, ProgressionState, Regrowth, SessionMark, Settlement, Settler, SimEvent, Stats, WeatherState, WorkArea,
+  Appearance, BedClaim, Building, ChronicleEntry, GrowthMode, Household, Kingdom, Manifest, Party, Recruitment, Route, TerritoryClaim, TravelerOffer, ProgressionState, Regrowth, SessionMark, Settlement, Settler, SimEvent, Stats, WeatherState, WorkArea,
 } from './types';
 import { updateSettler } from './settlers';
 import { updateFields, updateWeather } from './farming';
@@ -20,6 +20,7 @@ import { updateOrchards } from './orchards';
 import { surveyedCell, type SurveyedCell } from './mining';
 import { updateParties, updateTravelers } from './travelers';
 import { LOGISTICS_STEP, updateLogistics } from './logistics';
+import { newPlayerKingdom, updateKingdoms } from './kingdoms';
 import { GROWTH_STEP } from '../data/kingdomBalance';
 import { checkMilestones } from './progression';
 import { updateRegrowth, updateWorkshops } from './buildings';
@@ -106,6 +107,10 @@ export class Simulation implements PathGrid {
   recruits: Recruitment[] = [];
   /** Tick the last recruited traveller settled (for the once-per-two-days limit). */
   lastRecruit = -Infinity;
+  /** The player's kingdom first, then every rival kingdom heard of (saved). */
+  kingdoms: Kingdom[] = [newPlayerKingdom('The Valley')];
+  /** Frontier claims by sector key (the homeland and rival lands are derived). */
+  claims = new Map<string, Omit<TerritoryClaim, 'sector'>>();
   routes: Route[] = [];
   /** Caravans on the road (saved). */
   manifests: Manifest[] = [];
@@ -204,6 +209,18 @@ export class Simulation implements PathGrid {
     return out;
   }
 
+  /** A passage agreement lets one kingdom's armed parties cross another's land (treaties set this). */
+  hasPassage(a: number, b: number): boolean {
+    return this.passage(a, b);
+  }
+  /** Two kingdoms are at war (war declarations set this). */
+  atWar(a: number, b: number): boolean {
+    return this.war(a, b);
+  }
+  /** Replaced by the diplomacy and war systems. */
+  passage: (a: number, b: number) => boolean = () => false;
+  war: (a: number, b: number) => boolean = () => false;
+
   /** What surveying found at (x, y), or null if nobody has surveyed there. */
   surveyedCell(x: number, y: number): SurveyedCell | null {
     return surveyedCell(this, x, y);
@@ -244,7 +261,7 @@ export class Simulation implements PathGrid {
       task: null, focus: null, idleReason: '', hidden: false, path: null, pathIndex: 0,
       goalKey: null, repaths: 0, lastNotice: -9999, arrivedTick: this.tick,
       areaId: null, priorities: null, insideId: null, restNote: '', nextThink: 0, settlementId,
-      lifeStage: 'adult', ageTicks: 0, householdId: null, awayOn: null,
+      lifeStage: 'adult', ageTicks: 0, householdId: null, awayOn: null, kingdomId: 0,
     };
     this.settlers.push(s);
     return s;
@@ -435,6 +452,7 @@ export class Simulation implements PathGrid {
     updateParties(this);
     if (this.tick % LOGISTICS_STEP === 0) updateLogistics(this);
     if (this.tick % 10 === 0) updateWorkshops(this);
+    updateKingdoms(this);
     if (this.tick % GROWTH_STEP === 0) {
       updateHouseholds(this);
       updateTravelers(this);

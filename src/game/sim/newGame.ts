@@ -1,6 +1,7 @@
 import type { JobId } from '../data/jobs';
 import { assignHomes, completeBuilding, placeBuilding } from './buildings';
 import { CURRENT_GEN } from '../world/worldgen';
+import { newPlayerKingdom } from './kingdoms';
 import { FIRST_VISITOR_TICK } from '../data/kingdomBalance';
 import { Simulation, STARTING_SETTLERS } from './Simulation';
 
@@ -18,6 +19,7 @@ export function createNewGame(seed: number, genVersion = CURRENT_GEN): Simulatio
   completeBuilding(sim, camp, true);
   camp.inventory = { ...STARTING_GOODS };
   sim.settlements = [{ id: camp.id, name: 'Home' }];
+  sim.kingdoms = [newPlayerKingdom('Home')];
   const spots = [[-1, 2], [0, 2], [1, 2], [-2, 1], [2, 1]];
   for (let i = 0; i < STARTING_SETTLERS; i++) {
     const [x, y] = spots[i];
