@@ -31,6 +31,19 @@ interface Look {
 
 const SKIN_SHADE = ['#dcae84', '#c48c62', '#9a6242', '#613b28'];
 
+/** A lighter tint for highlights (hair shine, the lit edge of a tunic). */
+function light(hex: string, k = 0.3): string {
+  const v = parseInt(hex.slice(1), 16);
+  const f = (c: number) => Math.min(255, Math.round(c + (255 - c) * k));
+  return `#${[f((v >> 16) & 255), f((v >> 8) & 255), f(v & 255)].map((c) => c.toString(16).padStart(2, '0')).join('')}`;
+}
+
+function dark(hex: string, k = 0.3): string {
+  const v = parseInt(hex.slice(1), 16);
+  const f = (c: number) => Math.round(c * (1 - k));
+  return `#${[f((v >> 16) & 255), f((v >> 8) & 255), f(v & 255)].map((c) => c.toString(16).padStart(2, '0')).join('')}`;
+}
+
 function lookOf(a: Appearance): Look {
   return {
     skin: P.skin[a.skin % P.skin.length],
@@ -63,6 +76,10 @@ function drawFront(p: Painter, l: Look, pose: Pose, back: boolean): void {
   p.rect(5, 8 + b, 6, 5, l.shirt);
   p.vline(10, 8 + b, 12 + b, l.shirtDark);
   p.hline(5, 10, 12 + b, l.shirtDark);
+  // Lit edge and a belt.
+  p.vline(5, 8 + b, 10 + b, light(l.shirt));
+  p.hline(5, 10, 11 + b, dark(l.pants, 0.35));
+  if (!back) p.px(8, 11 + b, '#d8b048');
   // Arms
   if (pose.arms === 'up') {
     p.rect(4, 5 + b, 1, 4, l.shirt);
@@ -115,6 +132,8 @@ function drawFront(p: Painter, l: Look, pose: Pose, back: boolean): void {
   if (l.style === 2) {
     p.hline(7, 8, hy - 1, l.hair);
   }
+  // Hair shine.
+  p.hline(6, 7, hy, light(l.hair, 0.35));
 }
 
 function drawSide(p: Painter, l: Look, pose: Pose): void {
@@ -137,6 +156,8 @@ function drawSide(p: Painter, l: Look, pose: Pose): void {
   p.rect(6, 8 + b, 4, 5, l.shirt);
   p.vline(9, 8 + b, 12 + b, l.shirtDark);
   p.hline(6, 9, 12 + b, l.shirtDark);
+  p.vline(6, 8 + b, 10 + b, light(l.shirt));
+  p.hline(6, 9, 11 + b, dark(l.pants, 0.35));
   // One visible arm
   if (pose.arms === 'up') {
     p.rect(6, 5 + b, 1, 4, l.shirt);
@@ -161,6 +182,7 @@ function drawSide(p: Painter, l: Look, pose: Pose): void {
   p.px(6, hy + 4, pose.closed ? l.skinShade : P.outline);
   p.px(6, hy + 5, P.blush);
   if (l.style === 2) p.hline(9, 10, hy - 1, l.hair);
+  p.hline(6, 7, hy, light(l.hair, 0.35));
 }
 
 const POSES: Pose[] = [

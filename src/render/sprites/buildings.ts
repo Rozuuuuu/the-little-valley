@@ -1219,6 +1219,79 @@ export function makeStoneWallSprites(): Sprite[] {
   return out;
 }
 
+/** Haystack: a golden dome with straw ends sticking out. */
+const haystack: Draw = (p) => {
+  p.ellipse(8, 9, 7, 6, '#d8b048');
+  p.ellipse(7, 7, 5, 4, '#e8c860');
+  for (let i = 0; i < 6; i++) p.px(2 + i * 2, 13 - (i % 2), '#b89030');
+  for (const [x, y] of [[4, 4], [9, 3], [12, 6], [6, 9]]) p.px(x, y, '#f4dc80');
+  p.hline(2, 14, 14, '#9a7a28');
+};
+
+/** Barrels and a crate. */
+const barrels: Draw = (p) => {
+  for (const [x, y] of [[1, 4], [7, 6]]) {
+    p.rect(x, y, 7, 9, '#8a5a30');
+    p.hline(x, x + 6, y + 2, '#5a3a20');
+    p.hline(x, x + 6, y + 6, '#5a3a20');
+    p.ellipse(x + 3.5, y, 3.5, 1.5, '#a87040');
+    p.vline(x + 1, y + 1, y + 8, '#a87040');
+  }
+  p.rect(10, 0, 5, 5, P.wood2);
+  p.hline(10, 14, 2, P.wood0);
+};
+
+/** Signpost with two arrows. */
+const signpost: Draw = (p) => {
+  p.rect(7, -12, 2, 27, P.wood1);
+  p.rect(2, -8, 11, 3, P.wood3);
+  p.px(13, -7, P.wood3);
+  p.rect(4, -3, 10, 3, P.wood3);
+  p.px(3, -2, P.wood3);
+  p.hline(4, 10, -7, P.wood0);
+  p.hline(6, 12, -2, P.wood0);
+  p.vline(11, -15, -12, P.wood0);
+  p.rect(12, -15, 3, 2, '#f4dc5c');
+};
+
+/** Flower garden: a stone border, mixed blooms and a birdbath. */
+const garden: Draw = (p) => {
+  p.rect(0, 2, 32, 28, '#6a4a30');
+  p.rect(2, 4, 28, 24, '#5a8a38');
+  for (let x = 0; x < 32; x += 4) {
+    p.rect(x, 1, 3, 2, P.stone2);
+    p.rect(x, 29, 3, 2, P.stone2);
+  }
+  const blooms = ['#f4dc5c', '#e0584a', '#f09ab8', '#b07ad8', '#fffbe8'];
+  for (let i = 0; i < 26; i++) {
+    const x = 4 + ((i * 7) % 24);
+    const y = 6 + ((i * 11) % 20);
+    if (Math.hypot(x - 16, y - 16) < 5) continue;
+    p.px(x, y, blooms[i % blooms.length]);
+    p.px(x, y + 1, '#3a6a2a');
+  }
+  p.ellipse(16, 14, 4, 2, P.stone2);
+  p.ellipse(16, 13.5, 3, 1.3, '#6fb0d6');
+  p.rect(15, 15, 2, 4, P.stone1);
+  p.rect(13, 19, 6, 2, P.stone2);
+};
+
+/** Statue of the founder on a stepped plinth. */
+const statue: Draw = (p) => {
+  p.rect(2, 20, 28, 10, P.stone1);
+  p.rect(5, 16, 22, 5, P.stone2);
+  p.hline(2, 29, 20, P.stone3);
+  p.hline(5, 26, 16, P.stone3);
+  p.rect(11, -4, 10, 20, '#9aa0a8');
+  p.rect(11, -4, 3, 20, '#b8bec6');
+  p.ellipse(16, -8, 4, 4, '#a8aeb6');
+  p.rect(13, -14, 7, 3, '#c8a840');
+  for (const x of [13, 16, 19]) p.px(x, -15, '#e8c860');
+  p.rect(20, -2, 5, 2, '#9aa0a8');
+  p.vline(25, -12, 6, '#8a9098');
+  p.hline(9, 23, 30, P.stone0);
+};
+
 export function makeVillageHall(): BuildingSprites {
   return make(52, 58, 2, 28, villageHall);
 }
@@ -1258,6 +1331,11 @@ export function makeBuildingSprites(): Partial<Record<BuildingId, BuildingSprite
     flowerbed: make(18, 20, 1, 4, flowerbed),
     lamp: make(18, 34, 1, 17, lamp),
     bench: make(34, 18, 1, 3, bench),
+    haystack: make(18, 22, 1, 4, haystack),
+    barrels: make(18, 20, 1, 3, barrels),
+    signpost: make(18, 36, 1, 18, signpost),
+    garden: make(36, 38, 2, 4, garden),
+    statue: make(36, 54, 2, 20, statue),
   };
 }
 

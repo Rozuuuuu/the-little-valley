@@ -70,9 +70,71 @@ export interface RenderState {
   areaMode: boolean;
   /** Claim mode: show every owned sector. */
   claimMode?: boolean;
+  /** A faint tile grid. */
+  showGrid?: boolean;
   /** Something the player just jumped to (tile rect), pulsing briefly. */
   highlight: { x: number; y: number; w: number; h: number; t0: number } | null;
 }
+
+/**
+ * Building life, drawn by the renderer only (never saved): chimney smoke at home and
+ * in workshops, sparks over forges and smelters, dust and splashes while someone works.
+ * Positions are art pixels from the footprint's top-left corner.
+ */
+const BUILDING_LIFE: Partial<Record<BuildingId, {
+  smoke?: [number, number][]; heavy?: boolean; sparks?: [number, number]; work?: 'dust' | 'spark' | 'stonechips' | 'splash' | 'woodchips';
+  /** Something that happens now and then whatever the time: butterflies, birds, dust, glints. */
+  ambient?: 'butterfly' | 'bird' | 'dust' | 'glint' | 'leaves';
+  /** Flag tips that wave (art pixels from the footprint corner; direction the cloth streams). */
+  flags?: [number, number, string][];
+}>> = {
+  flowerbed: { ambient: 'butterfly' },
+  orchard: { ambient: 'butterfly' },
+  granary: { ambient: 'bird' },
+  storehouse: { ambient: 'dust' },
+  depot: { ambient: 'dust' },
+  stable: { ambient: 'dust' },
+  armory: { ambient: 'glint' },
+  royalHall: { ambient: 'glint', flags: [[61, -44, '#e0584a']] },
+  councilHall: { ambient: 'glint', smoke: [[40, -2]] },
+  market: { ambient: 'glint' },
+  archeryRange: { ambient: 'dust', flags: [[46, -2, '#e0584a']] },
+  watchtower: { flags: [[14, -28, '#e0584a']] },
+  bench: { ambient: 'butterfly' },
+  haystack: { ambient: 'bird' },
+  statue: { ambient: 'glint' },
+  garden: { ambient: 'butterfly' },
+  signpost: { flags: [[12, -14, '#f4dc5c']] },
+  lamp: { ambient: 'glint' },
+  waystation: { smoke: [[36, -6]] },
+  travelCamp: { ambient: 'leaves' },
+  camp: { ambient: 'leaves' },
+  chickenCoop: { ambient: 'bird' },
+  sheepPen: { ambient: 'butterfly' },
+  cattlePasture: { ambient: 'butterfly' },
+  horsePaddock: { ambient: 'dust' },
+  goatPen: { ambient: 'dust' },
+  pigsty: { ambient: 'dust' },
+  house: { smoke: [[24, -10]] },
+  familyHome: { smoke: [[38, -8]] },
+  cottage: { smoke: [[38, -8]] },
+  inn: { smoke: [[40, -12]] },
+  bakery: { smoke: [[40, -6]], heavy: true, work: 'dust' },
+  smelter: { smoke: [[18, -22]], heavy: true, sparks: [18, -22], work: 'spark' },
+  forge: { smoke: [[40, -6]], sparks: [24, 22], work: 'spark' },
+  charcoalKiln: { smoke: [[16, -6]], heavy: true },
+  workshop: { smoke: [[40, -8]], work: 'woodchips' },
+  mill: { work: 'dust' },
+  hunterLodge: { smoke: [[26, -4]] },
+  tannery: { smoke: [[22, -2]], work: 'dust' },
+  weaver: { smoke: [[26, -4]] },
+  townHall: { smoke: [[54, -8]], flags: [[38, -45, '#e0584a']] },
+  barracks: { smoke: [[10, -4]], flags: [[52, -16, '#e0584a']] },
+  quarry: { work: 'stonechips' },
+  mine: { work: 'stonechips' },
+  fisherHut: { smoke: [[6, -2]], work: 'splash' },
+  well: { work: 'splash' },
+};
 
 export const AREA_COLORS: Record<AreaKind, string> = { farm: '#e9c65a', wood: '#8ee07a', stone: '#d6dadc', build: '#8fc9e0', hunt: '#e0845a', forage: '#e07ab8' };
 /** A letter per area kind so areas never rely on colour alone. */
@@ -284,6 +346,8 @@ export class Renderer {
     const { sim } = st;
     const ctx = this.ctx;
     const cam = this.camera;
+    this.simTick = st.sim.tick;
+    this.lastSim = st.sim;
     const dt = Math.min(0.1, Math.max(0, st.time - this.lastTime));
     this.lastTime = st.time;
     this.frame++;
@@ -301,6 +365,7 @@ export class Renderer {
     const ty1 = Math.floor(br.y / TILE) + 3;
     const light = this.darkness(sim.timeOfDay);
     const night = light.dark > 0.3;
+    this.night = night;
 
     // Ground
     let chunks = 0;
@@ -331,6 +396,7 @@ export class Renderer {
         // Pens: the yard lies under the animals; only the front rail sorts in front of them.
         const pen = this.sprites.pens[b.type];
         this.blit(pen.back, b.x * TILE, b.y * TILE);
+        this.animateBuilding(b, b.x * TILE, b.y * TILE);
         drawables.push({ y: (b.y + b.h) * TILE, draw: () => this.blit(pen.front, b.x * TILE, (b.y + b.h) * TILE - 1) });
       } else drawables.push({ y: (b.y + b.h) * TILE, draw: () => this.drawBuilding(sim, b, st, night, occupied) });
     }
@@ -406,16 +472,13 @@ export class Renderer {
       this.smokeTimer = 0;
       for (const b of sim.buildings.values()) {
         if (!b.built || b.x > tx1 || b.x + b.w < tx0 || b.y > ty1 || b.y < ty0 - 3) continue;
-        if (b.type === 'house') this.particles.fx('smoke', b.x + 23.5 / 16, b.y - 14 / 16, this.sprites.ui);
-        if (b.type === 'workshop') this.particles.fx('smoke', b.x + 35.5 / 16, b.y - 16 / 16, this.sprites.ui);
-        if (b.type === 'bakery') this.particles.fx('smoke', b.x + 38 / 16, b.y - 16 / 16, this.sprites.ui);
-        if (b.type === 'cottage') this.particles.fx('smoke', b.x + 38.5 / 16, b.y - 14 / 16, this.sprites.ui);
         if (b.type === 'camp' || b.type === 'travelCamp') this.particles.fx('spark', b.x + 1.5, b.y + 1.6, this.sprites.ui);
       }
     }
     this.particles.update(dt);
     this.particles.draw(ctx, sc, cam.tx, cam.ty);
 
+    if (st.showGrid) this.drawGrid(tx0, ty0, tx1, ty1);
     this.drawOverlays(st, tx0, ty0, tx1, ty1);
     this.drawHighlight(st);
 
@@ -551,6 +614,7 @@ export class Renderer {
       else this.drawPlaceholder(wx, wy, w, h);
       if (b.type === 'camp' || b.type === 'travelCamp') this.drawCampfire(wx + 24, wy + 28, st.time);
       if (b.type === 'market') this.drawFountain(wx + 40, wy + 36, st.time);
+      this.animateBuilding(b, wx, wy);
       if (b.type === 'mill') {
         // Sails turn faster while the miller is grinding.
         const busy = !!b.workshop && b.workshop.progress > 0;
@@ -796,8 +860,13 @@ export class Renderer {
 
   private drawAnimal(a: Animal, x: number, y: number, time: number): void {
     const frames = this.sprites.animals[a.species];
-    const f = a.moving ? Math.floor(time * (a.flee ? 12 : 6) + a.id * 0.37) % 2 : 0;
-    const sprite = frames[f];
+    // Walking cycles four frames (faster when fleeing); standing animals graze now and then.
+    const f = a.moving
+      ? Math.floor(time * (a.flee ? 16 : 8) + a.id * 0.37) % 4
+      : (time * 0.5 + a.id * 0.23) % 3 < 1 ? 5 : 4;
+    let sprite = frames[f];
+    // A red flash for a moment after a blow.
+    if (a.hitAt !== undefined && this.simTick - a.hitAt < 4) sprite = this.flash(sprite);
     if (!SPECIES[a.species].swims) {
       this.ctx.globalAlpha = 0.25;
       this.rectW(x - sprite.w / 4, y - 1, sprite.w / 2, 2, '#140e1c');
@@ -805,6 +874,113 @@ export class Renderer {
     }
     if (a.facing === 3) this.blitMirror(sprite, x, y);
     else this.blit(sprite, x, y);
+    const sp = SPECIES[a.species];
+    const hp = a.hp ?? sp.hp;
+    // Just above the animal's back: small, medium and large animals stand at different heights.
+    if (this.healthBars === 'always' || hp < sp.hp) this.drawHpBar(x, y - [0, 13, 18, 23][sp.size], hp / sp.hp, a.penId !== null ? 'tame' : sp.fightsBack ? 'danger' : 'wild');
+  }
+
+  /** A faint line along every tile edge (toggle with G). */
+  private drawGrid(tx0: number, ty0: number, tx1: number, ty1: number): void {
+    const ctx = this.ctx;
+    const cam = this.camera;
+    ctx.fillStyle = 'rgba(20, 16, 28, 0.18)';
+    for (let x = tx0; x <= tx1 + 1; x++) {
+      const p = cam.worldToScreen(x * TILE, 0);
+      ctx.fillRect(Math.round(p.x), 0, 1, cam.height);
+    }
+    for (let y = ty0; y <= ty1 + 1; y++) {
+      const p = cam.worldToScreen(0, y * TILE);
+      ctx.fillRect(0, Math.round(p.y), cam.width, 1);
+    }
+  }
+
+  /** Buildings where someone is at work this frame (rebuilt once per frame). */
+  private working = new Set<number>();
+  private workingFrame = -1;
+
+  private isWorking(sim: Simulation, id: number): boolean {
+    if (this.workingFrame !== this.frame) {
+      this.workingFrame = this.frame;
+      this.working.clear();
+      for (const s of sim.settlers) {
+        const t = s.task;
+        if (!t) continue;
+        if (t.kind === 'craft' && t.stage === 'work') this.working.add(t.ws);
+        else if (t.kind === 'extract' && t.stage === 'work') this.working.add(t.site);
+        else if (t.kind === 'herd' && t.stage === 'work') this.working.add(t.pen);
+      }
+    }
+    return this.working.has(id);
+  }
+
+  /** Smoke, sparks and work effects for one visible building. */
+  private animateBuilding(b: Building, wx: number, wy: number): void {
+    const life = BUILDING_LIFE[b.type];
+    if (!life) return;
+    const sim = this.lastSim;
+    const busy = sim ? this.isWorking(sim, b.id) : false;
+    // Homes smoke at breakfast and supper time, workshops while they work, some always.
+    const homey = b.type === 'house' || b.type === 'familyHome' || b.type === 'cottage' || b.type === 'inn' || b.type === 'townHall' || b.type === 'hunterLodge' || b.type === 'weaver' || b.type === 'barracks' || b.type === 'fisherHut';
+    const fire = homey ? this.night || (this.frame + b.id * 7) % 600 < 200 : busy || life.heavy;
+    const every = life.heavy ? 9 : 16;
+    if (life.smoke && fire && (this.frame + b.id * 13) % every === 0) {
+      for (const [dx, dy] of life.smoke) this.particles.fx('smoke', (wx + dx) / TILE, (wy + dy) / TILE, this.sprites.ui);
+    }
+    if (life.ambient && (this.frame + b.id * 17) % (life.ambient === 'butterfly' ? 140 : life.ambient === 'glint' ? 90 : 110) === 0) {
+      this.particles.fx(life.ambient, b.x + b.w / 2, b.y + b.h / 2, this.sprites.ui);
+    }
+    if (life.flags) {
+      // A streaming tail on each flag, rippling in the wind.
+      const t = performance.now() / 1000;
+      for (const [dx, dy, color] of life.flags) {
+        let fdx = dx;
+        let fdy = dy;
+        if (b.type === 'townHall') {
+          const lv = b.level ?? 1;
+          if (lv === 2) [fdx, fdy] = [42, -51];
+          if (lv === 3) [fdx, fdy] = [44, -65];
+        }
+        for (let i = 0; i < 4; i++) {
+          const wave = Math.round(Math.sin(t * 7 - i * 0.9 + b.id) * 1.2);
+          this.rectW(wx + fdx + i, wy + fdy + wave + (i > 1 ? 1 : 0), 1, i > 2 ? 1 : 2, color);
+        }
+      }
+    }
+    if (life.sparks && busy && (this.frame + b.id) % 5 === 0) this.particles.fx('spark', (wx + life.sparks[0]) / TILE, (wy + life.sparks[1]) / TILE, this.sprites.ui);
+    if (life.work && busy && (this.frame + b.id * 3) % 24 === 0) {
+      const kind = life.work === 'spark' ? 'spark' : life.work;
+      this.particles.fx(kind, b.x + b.w / 2, b.y + b.h, this.sprites.ui);
+    }
+  }
+
+  /** Health bars: 'always' over every living thing, or only over the hurt. */
+  healthBars: 'always' | 'hurt' = 'always';
+  /** The simulation tick of the frame being drawn (for hit flashes). */
+  private simTick = 0;
+  private lastSim: Simulation | null = null;
+  private night = false;
+  private flashCache = new Map<Sprite, Sprite>();
+
+  private flash(s: Sprite): Sprite {
+    let f = this.flashCache.get(s);
+    if (!f) {
+      f = { ...s, canvas: tinted(s.canvas, '#ff5040', 0.65) };
+      this.flashCache.set(s, f);
+    }
+    return f;
+  }
+
+  /** A small pixel health bar centred on (x, y) in art pixels. */
+  private drawHpBar(x: number, y: number, frac: number, kind: 'settler' | 'tame' | 'wild' | 'danger'): void {
+    const w = 12;
+    const f = Math.max(0, Math.min(1, frac));
+    const fill = f > 0.6 ? (kind === 'danger' ? '#e0a040' : '#5ecb4a') : f > 0.3 ? '#e8c040' : '#e04848';
+    this.ctx.globalAlpha = 0.9;
+    this.rectW(x - w / 2 - 1, y - 1, w + 2, 4, '#1a1420');
+    this.rectW(x - w / 2, y, w, 2, '#4a3a3a');
+    this.rectW(x - w / 2, y, Math.max(1, Math.round(w * f)), 2, fill);
+    this.ctx.globalAlpha = 1;
   }
 
   /** The ruler's presence: a slowly turning dashed gold circle showing who works faster. */
@@ -927,7 +1103,8 @@ export class Renderer {
       default:
         frame = s.carrying ? FRAME.carry : FRAME.idle + (Math.floor(time * 1.4 + s.id) % 2);
     }
-    const sprite = sheet[s.facing][frame];
+    let sprite = sheet[s.facing][frame];
+    if (s.hitAt !== undefined && this.simTick - s.hitAt < 4) sprite = this.flash(sprite);
     this.ctx.globalAlpha = 0.3;
     this.rectW(x - 4, y - 1, 8, 2, '#140e1c');
     this.ctx.globalAlpha = 1;
@@ -946,18 +1123,20 @@ export class Renderer {
     this.blit(sprite, x, y);
     if (s.facing !== 1) toolAt();
 
+    const hp = s.hp ?? 100;
+    if (this.healthBars === 'always' || hp < 100) this.drawHpBar(x, y - 22, hp / 100, 'settler');
     if (s.carrying) this.blit(this.sprites.resources[s.carrying.res], x, y - 20 + (phase % 2));
     // The ruler wears a crown (a little higher while walking, so it bobs).
     if (s.ruler && s.anim !== 'sleep') this.blit(this.sprites.ui.crown, x, y - 21 - (s.anim === 'walk' ? phase % 2 : 0));
     if (s.anim === 'sleep') {
       const t = (time * 0.6 + s.id * 0.3) % 1;
       this.ctx.globalAlpha = 1 - t;
-      this.blit(this.sprites.ui.zzz, x + 4 + t * 3, y - 20 - t * 8);
+      this.blit(this.sprites.ui.zzz, x + 4 + t * 3, y - 25 - t * 8);
       this.ctx.globalAlpha = 1;
     } else if (s.hunger < 15) {
-      this.blit(this.sprites.ui.hungry, x, y - 24 + Math.round(Math.sin(time * 4)));
+      this.blit(this.sprites.ui.hungry, x, y - 29 + Math.round(Math.sin(time * 4)));
     } else if ((!s.task || s.task.kind === 'wander') && s.idleReason && s.idleReason !== 'Stores are well stocked') {
-      this.blit(this.sprites.ui.idle, x, y - 24 + Math.round(Math.sin(time * 3 + s.id)));
+      this.blit(this.sprites.ui.idle, x, y - 29 + Math.round(Math.sin(time * 3 + s.id)));
     }
   }
 
@@ -1242,11 +1421,20 @@ export class Renderer {
           ctx.globalAlpha = 1;
         }
       }
-    } else if (st.showBuildHover && st.hoverTile) {
-      const p = cam.worldToScreen(st.hoverTile.x * TILE, st.hoverTile.y * TILE);
-      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    } else if (st.hoverTile && st.sim.world.explored(st.hoverTile.x, st.hoverTile.y)) {
+      // The hit box: whatever is under the pointer gets a box — a building's whole footprint,
+      // otherwise the single tile.
+      const b = st.sim.buildingAt(st.hoverTile.x, st.hoverTile.y);
+      const r = b && !b.field ? { x: b.x, y: b.y, w: b.w, h: b.h } : { x: st.hoverTile.x, y: st.hoverTile.y, w: 1, h: 1 };
+      const p = cam.worldToScreen(r.x * TILE, r.y * TILE);
+      const w = r.w * TILE * sc;
+      const h = r.h * TILE * sc;
+      ctx.fillStyle = 'rgba(255, 246, 194, 0.08)';
+      ctx.fillRect(Math.round(p.x), Math.round(p.y), w, h);
+      ctx.strokeStyle = b ? 'rgba(236, 210, 126, 0.85)' : 'rgba(255, 255, 255, 0.55)';
       ctx.lineWidth = Math.max(1, sc >> 1);
-      ctx.strokeRect(Math.round(p.x) + 0.5, Math.round(p.y) + 0.5, TILE * sc - 1, TILE * sc - 1);
+      ctx.strokeRect(Math.round(p.x) + 0.5, Math.round(p.y) + 0.5, w - 1, h - 1);
+      if (b) this.drawBrackets(b.x * TILE, b.y * TILE, b.w * TILE, b.h * TILE, '#ecd27e');
     }
     if (st.areaBox) {
       const a = st.areaBox;

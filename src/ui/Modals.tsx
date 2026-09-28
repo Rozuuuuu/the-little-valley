@@ -117,8 +117,31 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
       </div>
       <h3 style={{ marginTop: 12 }}>Play</h3>
       <div className="row">
-        <span>Pan when the mouse touches the screen edge</span>
+        <span>Scroll when the mouse touches the screen edge (Warcraft-style)</span>
         <input type="checkbox" checked={s.edgePan} onChange={(e) => update({ ...s, edgePan: e.target.checked })} />
+      </div>
+      <label className="slider">
+        <span>Edge scroll speed</span>
+        <input type="range" min={0.5} max={2} step={0.25} value={s.edgeSpeed} disabled={!s.edgePan} onChange={(e) => update({ ...s, edgeSpeed: Number(e.target.value) })} />
+        <span>{s.edgeSpeed}×</span>
+      </label>
+      <div className="row">
+        <span>Health bars</span>
+        <select value={s.healthBars} onChange={(e) => update({ ...s, healthBars: e.target.value as 'always' | 'hurt' })}>
+          <option value="always">Over everyone</option>
+          <option value="hurt">Only when hurt</option>
+        </select>
+      </div>
+      <div className="row">
+        <span>"See more" details</span>
+        <select value={s.detailsInHud ? 'hud' : 'float'} onChange={(e) => update({ ...s, detailsInHud: e.target.value === 'hud' })}>
+          <option value="hud">Inside the bottom panel</option>
+          <option value="float">In a floating window</option>
+        </select>
+      </div>
+      <div className="row">
+        <span>Show the tile grid (G)</span>
+        <input type="checkbox" checked={s.showGrid} onChange={(e) => update({ ...s, showGrid: e.target.checked })} />
       </div>
       <div className="row">
         <span>Autosave every</span>

@@ -24,17 +24,18 @@ import { WarCouncil } from './WarCouncil';
 import { Military, TrainingPanel } from './Military';
 import { War } from './War';
 import type { WindowTab } from './Console';
+import { keyLabel, type Action } from '../input/bindings';
 
 /** Always on the bar; everything else lives in the Goods drawer. */
 const MAIN_RES: ResourceId[] = ['food', 'wood', 'stone', 'planks', 'tools'];
 
-const WINDOWS: { id: WindowTab; label: string; title: string }[] = [
-  { id: 'people', label: 'People', title: 'Everyone in the valley' },
-  { id: 'areas', label: 'Areas', title: 'Work areas' },
-  { id: 'towns', label: 'Towns', title: 'Settlements, seasons and supply routes' },
-  { id: 'families', label: 'Families', title: 'Households, children and visitors' },
-  { id: 'realm', label: 'Realm', title: 'Crown, diplomacy, news and war' },
-  { id: 'goals', label: 'Goals', title: 'Milestones and what they unlock' },
+const WINDOWS: { id: WindowTab; label: string; title: string; key: Action }[] = [
+  { id: 'people', label: 'People', title: 'Everyone in the valley', key: 'winPeople' },
+  { id: 'areas', label: 'Areas', title: 'Work areas', key: 'winAreas' },
+  { id: 'towns', label: 'Towns', title: 'Settlements, seasons and supply routes', key: 'winTowns' },
+  { id: 'families', label: 'Families', title: 'Households, children and visitors', key: 'winFamilies' },
+  { id: 'realm', label: 'Realm', title: 'Crown, diplomacy, news and war', key: 'winRealm' },
+  { id: 'goals', label: 'Goals', title: 'Milestones and what they unlock', key: 'winGoals' },
 ];
 
 function GoodsDrawer({ onClose }: { onClose: () => void }) {
@@ -76,6 +77,14 @@ export function TopBar({ onMenu, win, setWin }: { onMenu: () => void; win: Windo
   const { game } = useGame();
   const s = useSnapshot();
   const [goods, setGoods] = useState(false);
+  const kb = game.settings.bindings;
+  const k = (a: Action) => keyLabel(kb[a][0] ?? '');
+  // The Goods key (I) toggles the drawer.
+  useEffect(() => {
+    const toggle = () => setGoods((g) => !g);
+    window.addEventListener('lv:goods', toggle);
+    return () => window.removeEventListener('lv:goods', toggle);
+  }, []);
   const full = s.storage.capacity > 0 && s.storage.used >= s.storage.capacity;
   const otherGoods = RESOURCE_IDS.filter((r) => !MAIN_RES.includes(r) && s.resources[r] > 0).length;
   const alerts = s.diplomacy.warnings.length + s.diplomacy.incidents.length + s.diplomacy.offersToYou.length;
@@ -90,7 +99,7 @@ export function TopBar({ onMenu, win, setWin }: { onMenu: () => void; win: Windo
             {s.resources[r]}
           </div>
         ))}
-        <button className={`res goods-btn${goods ? ' on' : ''}`} onClick={() => setGoods(!goods)} aria-expanded={goods} title="Every other good in your stores">
+        <button className={`res goods-btn${goods ? ' on' : ''}`} onClick={() => setGoods(!goods)} aria-expanded={goods} title={`Every other good in your stores (${k('goods')})`}>
           Goods <small>{otherGoods}</small> ▾
         </button>
         <div className="res sep" title={s.populationStatus || 'Settlers / beds'}>
@@ -109,7 +118,8 @@ export function TopBar({ onMenu, win, setWin }: { onMenu: () => void; win: Windo
       <div className="spacer" />
       <div className="panel win-tabs" role="toolbar" aria-label="Windows">
         {WINDOWS.map((w) => (
-          <button key={w.id} className={`win-btn${win === w.id ? ' on' : ''}`} onClick={() => setWin(win === w.id ? null : w.id)} title={w.title} aria-pressed={win === w.id}>
+          <button key={w.id} className={`win-btn${win === w.id ? ' on' : ''}`} onClick={() => setWin(win === w.id ? null : w.id)} title={`${w.title} (${k(w.key)})`} aria-pressed={win === w.id}>
+            <kbd className="corner-key">{k(w.key)}</kbd>
             {w.label}
             {badge(w.id) !== null && <span className="badge">{badge(w.id)}</span>}
           </button>
@@ -135,7 +145,7 @@ export function TopBar({ onMenu, win, setWin }: { onMenu: () => void; win: Windo
               {sp}×
             </button>
           ))}
-          <button className="btn" onClick={() => game.openOverview()} title="Valley today: issues and ideas">
+          <button className="btn" onClick={() => game.openOverview()} title={`Valley today: issues and ideas (${k('today')})`}>
             Today
           </button>
           <button className="btn" onClick={onMenu} title="Menu (Esc)">
@@ -300,12 +310,18 @@ export function SettlerCard({ s }: { s: SettlerInfo }) {
   return (
     <>
       <h2>{s.name}</h2>
-      <div className="row">
-        Job <JobSelect ids={[s.id]} value={s.job} />
-      </div>
-      <div className="row">
-        Work area <AreaSelect ids={[s.id]} value={s.areaId} />
-      </div>
+      {s.ruler ? (
+        <div className="row muted">Your ruler: no chores, no army. People within 8 tiles work faster; Rally makes everyone nearby faster still.</div>
+      ) : (
+        <>
+          <div className="row">
+            Job <JobSelect ids={[s.id]} value={s.job} />
+          </div>
+          <div className="row">
+            Work area <AreaSelect ids={[s.id]} value={s.areaId} />
+          </div>
+        </>
+      )}
       {s.workplace && <div className="row muted">Works at the {s.workplace.toLowerCase()}</div>}
       <div className="row">
         <span>{s.task}</span>
@@ -338,7 +354,7 @@ export function SettlerCard({ s }: { s: SettlerInfo }) {
         {s.age}
         {s.partner ? ` · household with ${s.partner}` : ''}
       </div>
-      <WorkOrder s={s} />
+      {!s.ruler && <WorkOrder s={s} />}
       <div className="muted">Right-click a tree, rock, field, site or spot to give a direct order. They go back to this routine afterwards.</div>
     </>
   );

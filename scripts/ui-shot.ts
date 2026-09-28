@@ -38,7 +38,7 @@ try {
     page.on('request', (req) => {
       const u = new URL(req.url());
       if (u.host !== 'little-valley.test') return void req.abort();
-      const file = join('dist', u.pathname === '/' ? 'index.html' : decodeURIComponent(u.pathname));
+      const file = join(process.env.DIST ?? 'dist', u.pathname === '/' ? 'index.html' : decodeURIComponent(u.pathname));
       if (!existsSync(file)) return void req.respond({ status: 404, body: '' });
       void req.respond({ status: 200, contentType: TYPES[extname(file)] ?? 'application/octet-stream', body: readFileSync(file) });
     });

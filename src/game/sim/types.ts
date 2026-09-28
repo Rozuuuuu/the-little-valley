@@ -651,7 +651,7 @@ export type SimEvent =
   | { type: 'toast'; text: string; level: 'info' | 'good' | 'warn' }
   | { type: 'sfx'; name: SfxName; x?: number; y?: number }
   | { type: 'fx'; kind: FxKind; x: number; y: number }
-  | { type: 'hit'; target: 'animal' | 'settler'; id: number; amount: number; reach: number; x: number; y: number }
+  | { type: 'hit'; target: 'animal' | 'settler'; id: number; amount: number; reach: number; x: number; y: number; fromX?: number; fromY?: number }
   | { type: 'milestone'; id: MilestoneId }
   | { type: 'arrival'; settlerId: number }
   | { type: 'important' }

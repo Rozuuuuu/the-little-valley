@@ -8,11 +8,13 @@ export type Action =
   | 'zoomIn' | 'zoomOut'
   | 'pause' | 'speed1' | 'speed2' | 'speed3'
   | 'build' | 'harvest' | 'unmark' | 'demolish' | 'cancel'
-  | 'nextIdle' | 'selectAll' | 'save' | 'help';
+  | 'nextIdle' | 'selectAll' | 'save' | 'help'
+  | 'survey' | 'homeView' | 'findRuler' | 'rally' | 'toggleGrid' | 'healthBars' | 'goods' | 'today' | 'seeMore'
+  | 'winPeople' | 'winAreas' | 'winTowns' | 'winFamilies' | 'winRealm' | 'winGoals';
 
 export interface ActionDef {
   label: string;
-  group: 'Camera' | 'Time' | 'Tools' | 'Other';
+  group: 'Camera' | 'Time' | 'Tools' | 'Windows' | 'Other';
   keys: string[];
 }
 
@@ -36,6 +38,21 @@ export const DEFAULT_BINDINGS: Record<Action, ActionDef> = {
   selectAll: { label: 'Select all settlers', group: 'Other', keys: ['KeyE'] },
   save: { label: 'Quick save', group: 'Other', keys: ['F5'] },
   help: { label: 'Controls help', group: 'Other', keys: ['F1'] },
+  survey: { label: 'Survey for ore', group: 'Tools', keys: ['KeyY'] },
+  homeView: { label: 'Jump to the Town Hall', group: 'Camera', keys: ['Backspace', 'Home'] },
+  findRuler: { label: 'Find yourself (the ruler)', group: 'Camera', keys: ['KeyK'] },
+  rally: { label: 'Rally the people (ruler selected)', group: 'Tools', keys: ['KeyR'] },
+  toggleGrid: { label: 'Show or hide the tile grid', group: 'Other', keys: ['KeyG'] },
+  healthBars: { label: 'Health bars: everyone / only the hurt', group: 'Other', keys: ['KeyL'] },
+  goods: { label: 'All goods', group: 'Windows', keys: ['KeyI'] },
+  today: { label: 'Valley today', group: 'Windows', keys: ['KeyT'] },
+  seeMore: { label: 'See more about the selection', group: 'Windows', keys: ['KeyV'] },
+  winPeople: { label: 'People window', group: 'Windows', keys: ['F2'] },
+  winAreas: { label: 'Work areas window', group: 'Windows', keys: ['F3'] },
+  winTowns: { label: 'Towns window', group: 'Windows', keys: ['F4'] },
+  winFamilies: { label: 'Families window', group: 'Windows', keys: ['F6'] },
+  winRealm: { label: 'Realm window', group: 'Windows', keys: ['F7'] },
+  winGoals: { label: 'Goals window', group: 'Windows', keys: ['F8'] },
 };
 
 export type Bindings = Record<Action, string[]>;
@@ -57,7 +74,7 @@ export function keyLabel(code: string): string {
   if (code.startsWith('Digit')) return code.slice(5);
   const names: Record<string, string> = {
     ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→', Space: 'Space', Escape: 'Esc',
-    Equal: '=', Minus: '-', NumpadAdd: 'Num +', NumpadSubtract: 'Num -', Period: '.', Delete: 'Del',
+    Equal: '=', Minus: '-', NumpadAdd: 'Num +', NumpadSubtract: 'Num -', Period: '.', Delete: 'Del', Backspace: 'Bksp', Home: 'Home',
   };
   return names[code] ?? code;
 }

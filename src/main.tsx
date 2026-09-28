@@ -9,6 +9,7 @@ import '@fontsource/pixelify-sans/latin-700.css';
 import { App } from './ui/App';
 import './ui/styles.css';
 import './ui/hud.css';
+import './ui/pixel.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

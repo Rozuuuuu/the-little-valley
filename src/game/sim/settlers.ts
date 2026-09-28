@@ -1240,7 +1240,7 @@ function runHunt(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'hunt' }>
   const dmg = weapon.damage;
   a.hp = animalHp(a) - dmg;
   a.hitAt = sim.tick;
-  sim.emit({ type: 'hit', target: 'animal', id: a.id, amount: dmg, reach: d, x: a.x, y: a.y });
+  sim.emit({ type: 'hit', target: 'animal', id: a.id, amount: dmg, reach: d, x: a.x, y: a.y, fromX: s.x, fromY: s.y });
   sim.emit({ type: 'sfx', name: 'chop', x: a.x, y: a.y });
   if (a.hp > 0) {
     // Prey bolts; fighters stand their ground.
@@ -1536,7 +1536,9 @@ export function describeTask(sim: Simulation, s: Settler): string {
     case 'hunt': {
       const a = sim.animals.find((x) => x.id === t.animal);
       const name = a ? SPECIES[a.species].name.toLowerCase() : 'game';
-      return t.stage === 'aim' ? `Taking aim at a ${name}` : `Stalking a ${name}`;
+      const w = weaponOfLodge(t.lodge !== null ? sim.buildings.get(t.lodge) : undefined);
+      if (t.stage !== 'aim') return `Stalking a ${name}`;
+      return w === 'bow' ? `Shooting at a ${name}` : w === 'knife' ? `Fighting a ${name} with a knife` : `Wrestling a ${name} bare-handed`;
     }
     case 'herd': {
       const b = sim.buildings.get(t.pen);

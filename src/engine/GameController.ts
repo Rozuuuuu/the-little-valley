@@ -24,7 +24,7 @@ import { OBJECTS } from '../game/world/tiles';
 import { actionFor, type Action } from '../input/bindings';
 import type { Camera } from '../render/Camera';
 import type { Marker, PlacementPreview, Renderer, RenderState } from '../render/Renderer';
-import type { Settings } from './settings';
+import { saveSettings, type Settings } from './settings';
 import {
   areaInfo, buildingInfo, celebrationInfo, clockOf, emptySnapshot, hoverText, housingOf, milestoneInfo, settlerInfo, unlockedSets,
   type Mode, type Toast, type UiSnapshot,
@@ -212,7 +212,9 @@ export class GameController {
       selectedArea: this.selectedArea,
       areaMode: this.mode.kind === 'area' || this.areasTabOpen,
       highlight: this.highlight,
+      showGrid: this.settings.showGrid,
     });
+    this.renderer.healthBars = this.settings.healthBars;
     if (this.minimap && !this.attract && now - this.lastMinimap > 200) {
       this.lastMinimap = now;
       this.minimap.draw(this.sim, this.camera, now / 1000, this.highlight && now / 1000 - this.highlight.t0 < 2.6 ? this.highlight : null);
@@ -231,8 +233,8 @@ export class GameController {
     if (this.pressed.has('panUp')) dy -= 1;
     if (this.pressed.has('panDown')) dy += 1;
     if (this.edge.x || this.edge.y) {
-      dx += this.edge.x;
-      dy += this.edge.y;
+      dx += this.edge.x * this.settings.edgeSpeed;
+      dy += this.edge.y * this.settings.edgeSpeed;
     }
     if (this.attract) {
       dx = 0.05;
@@ -257,6 +259,11 @@ export class GameController {
           break;
         case 'fx':
           this.renderer.particles.fx(e.kind, e.x, e.y, this.renderer.sprites.ui);
+          break;
+        case 'hit':
+          if (e.reach > 2.5 && e.fromX !== undefined && e.fromY !== undefined) this.renderer.particles.arrow(e.fromX, e.fromY, e.x, e.y);
+          this.renderer.particles.floatText(e.x, e.y, `-${e.amount}`, e.target === 'settler' ? '#ff7b6b' : '#ffe08a');
+          this.renderer.particles.fx('dust', e.x, e.y, this.renderer.sprites.ui);
           break;
         case 'important':
           this.pendingImportant ||= performance.now();
@@ -781,8 +788,25 @@ export class GameController {
       case 'save':
         void this.save(true);
         break;
+      case 'survey':
+        this.setMode(this.mode.kind === 'survey' ? { kind: 'select' } : { kind: 'survey' });
+        break;
+      case 'homeView':
+        this.findNext('home');
+        break;
+      case 'toggleGrid':
+        this.settings = { ...this.settings, showGrid: !this.settings.showGrid };
+        saveSettings(this.settings);
+        this.toast(this.settings.showGrid ? 'Tile grid on (G to hide).' : 'Tile grid off.', 'info');
+        break;
+      case 'healthBars':
+        this.settings = { ...this.settings, healthBars: this.settings.healthBars === 'always' ? 'hurt' : 'always' };
+        saveSettings(this.settings);
+        this.toast(this.settings.healthBars === 'always' ? 'Health bars over everyone.' : 'Health bars only over the hurt.', 'info');
+        break;
       default:
-        return action !== 'build' && action !== 'cancel' && action !== 'help' ? true : false;
+        // Keys the React UI answers (windows, goods, see more, the ruler).
+        return false;
     }
     return true;
   }

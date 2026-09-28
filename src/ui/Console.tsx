@@ -26,8 +26,6 @@ interface Cmd {
   glyph?: string;
   /** Key shown on the button (KeyboardEvent.code). */
   hotkey?: string;
-  /** The card answers this hotkey itself (keys no other control uses). */
-  ownKey?: boolean;
   on?: boolean;
   disabled?: boolean;
   badge?: string | number;
@@ -95,6 +93,12 @@ function ConsoleMinimap() {
   );
 }
 
+/** The See more key, as the player bound it. */
+function MoreKey() {
+  const { game } = useGame();
+  return <kbd>{keyLabel(game.settings.bindings.seeMore[0])}</kbd>;
+}
+
 // ---- info panel ------------------------------------------------------------------
 
 function Portrait({ src, big }: { src: string; big?: boolean }) {
@@ -127,7 +131,7 @@ function SettlerInfoPanel({ p, onMore }: { p: SettlerInfo; onMore: () => void })
           <div className="muted con-line">{s.ruler.rallyIn ? `Rally ready in ${s.ruler.rallyIn}` : 'Rally is ready (R): nearby people work 30% faster for an hour.'}</div>
         </div>
         <button className="btn small see-more" onClick={onMore}>
-          See more
+          See more <MoreKey />
         </button>
       </div>
     );
@@ -157,7 +161,7 @@ function SettlerInfoPanel({ p, onMore }: { p: SettlerInfo; onMore: () => void })
         </div>
       </div>
       <button className="btn small see-more" onClick={onMore}>
-        See more
+        See more <MoreKey />
       </button>
     </div>
   );
@@ -184,7 +188,7 @@ function GroupInfoPanel({ list, onMore }: { list: SettlerInfo[]; onMore: () => v
         </div>
       </div>
       <button className="btn small see-more" onClick={onMore}>
-        See more
+        See more <MoreKey />
       </button>
     </div>
   );
@@ -249,7 +253,7 @@ function BuildingInfoPanel({ b, onMore }: { b: BuildingInfo; onMore: () => void 
         )}
       </div>
       <button className="btn small see-more" onClick={onMore}>
-        See more
+        See more <MoreKey />
       </button>
     </div>
   );
@@ -293,7 +297,7 @@ function ValleyInfoPanel({ onGoals }: { onGoals: () => void }) {
         )}
       </div>
       <button className="btn small see-more" onClick={onGoals}>
-        See more
+        See more <MoreKey />
       </button>
     </div>
   );
@@ -431,18 +435,18 @@ function useCommands(menu: CardMenu, setMenu: (m: CardMenu) => void, openWindow:
     run: () => game.setMode(mode.kind === 'unmark' ? { kind: 'select' } : { kind: 'unmark' }),
   };
   slots[3] = {
-    id: 'survey', label: 'Survey', glyph: '⛏', on: mode.kind === 'survey', disabled: s.selection.length === 0,
+    id: 'survey', label: 'Survey', glyph: '⛏', hotkey: b.survey[0], on: mode.kind === 'survey', disabled: s.selection.length === 0,
     tip: { title: 'Survey for ore', body: 'With an adult selected, click rocky ground or a hill face: they survey the 16×16 area around it for ore.', note: s.selection.length ? undefined : 'Select an adult first' },
     run: () => game.setMode(mode.kind === 'survey' ? { kind: 'select' } : { kind: 'survey' }),
   };
-  slots[4] = { id: 'areas', label: 'Areas', glyph: '▦', tip: { title: 'Work areas', body: 'Draw woodlots, farm areas, quarries and building areas, then assign workers.' }, run: () => openWindow('areas') };
+  slots[4] = { id: 'areas', label: 'Areas', glyph: '▦', hotkey: b.winAreas[0], tip: { title: 'Work areas', body: 'Draw woodlots, farm areas, quarries and building areas, then assign workers.' }, run: () => openWindow('areas') };
   slots[5] = { id: 'idle', label: 'Next idle', glyph: '?', hotkey: b.nextIdle[0], badge: s.finds.idle || undefined, tip: { title: 'Next idle settler', body: 'Jump to someone with nothing to do.' }, run: () => game.findNext('idle') };
   slots[6] = { id: 'all', label: 'Select all', glyph: '☺', hotkey: b.selectAll[0], tip: { title: 'Select every settler' }, run: () => game.selectAll() };
   slots[7] = { id: 'sites', label: 'Sites', glyph: '▲', badge: s.finds.sites || undefined, tip: { title: 'Construction sites', body: 'Jump to the next building under construction.' }, run: () => game.findNext('sites') };
   slots[8] = { id: 'waiting', label: 'Waiting', glyph: '…', badge: s.finds.waiting || undefined, tip: { title: 'Waiting buildings', body: 'Buildings short of materials or workers.' }, run: () => game.findNext('waiting') };
   const ruler = s.ruler;
   slots[10] = {
-    id: 'ruler', label: ruler ? 'You' : 'Throne', glyph: '♛', hotkey: 'KeyK', ownKey: true,
+    id: 'ruler', label: ruler ? 'You' : 'Throne', glyph: '♛', hotkey: b.findRuler[0],
     tip: ruler ? { title: `${ruler.name}, ${ruler.title}`, body: 'Select yourself and jump to where you stand.' } : { title: 'Take the throne', body: 'Name your ruler (you) to walk the realm, speed up work nearby and Rally your people.' },
     run: () => {
       if (ruler) game.selectSettlers([ruler.id], true);
@@ -479,7 +483,7 @@ function useCommands(menu: CardMenu, setMenu: (m: CardMenu) => void, openWindow:
     const one = s.selection.length === 1 ? s.selection[0] : null;
     if (one?.ruler && s.ruler) {
       slots[9] = {
-        id: 'rally', label: 'Rally', glyph: '⚜', hotkey: 'KeyR', ownKey: true, disabled: !!s.ruler.rallyIn, badge: s.ruler.rallyIn ? '…' : undefined,
+        id: 'rally', label: 'Rally', glyph: '⚜', hotkey: b.rally[0], disabled: !!s.ruler.rallyIn, badge: s.ruler.rallyIn ? '…' : undefined,
         tip: { title: 'Rally the people', body: 'Everyone within 12 tiles works 30% faster for an hour. Once a day.', note: s.ruler.rallyIn ? `Ready again in ${s.ruler.rallyIn}` : undefined },
         run: () => game.dispatch({ type: 'rally' }),
       };
@@ -503,16 +507,15 @@ function CommandCard({ menu, setMenu, openWindow, openDetails }: { menu: CardMen
   const latest = useRef(slots);
   latest.current = slots;
 
-  // Grid hotkeys while a build menu is open (they win over camera keys like WASD);
-  // at the root, only the card's own keys (ruler, rally).
+  // Grid hotkeys while a build menu is open (they win over camera keys like WASD).
+  // At the root, keys go through the remappable bindings instead.
   useEffect(() => {
+    if (!menu) return;
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
-      const i = !menu
-        ? latest.current.findIndex((c) => c?.ownKey && c.hotkey === e.code)
-        : e.code === 'Escape' ? BACK_SLOT : GRID_KEYS.indexOf(e.code);
+      const i = e.code === 'Escape' ? BACK_SLOT : GRID_KEYS.indexOf(e.code);
       if (i < 0) return;
       const c = latest.current[i];
       e.preventDefault();
@@ -603,22 +606,64 @@ function DetailsWindow({ onClose }: { onClose: () => void }) {
   );
 }
 
+/** "See more" inside the console: the full card, scrolling, with a way back to the summary. */
+function HudDetails({ onClose }: { onClose: () => void }) {
+  const s = useSnapshot();
+  const { game } = useGame();
+  let body: React.ReactNode = null;
+  if (s.selection.length === 1) body = <SettlerCard s={s.selection[0]} />;
+  else if (s.selection.length > 1) body = <GroupCard list={s.selection} />;
+  else if (s.building) body = <BuildingCard info={s.building} />;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== 'Escape') return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      onClose();
+    };
+    window.addEventListener('keydown', onKey, { capture: true });
+    return () => window.removeEventListener('keydown', onKey, { capture: true });
+  }, [onClose]);
+  return (
+    <div className="hud-details inspector">
+      <div className="hud-details-bar">
+        <button className="btn small" onClick={onClose}>
+          ◂ See less <kbd>{keyLabel(game.settings.bindings.seeMore[0])}</kbd>
+        </button>
+      </div>
+      <div className="hud-details-body">{body}</div>
+    </div>
+  );
+}
+
 // ---- the console -------------------------------------------------------------------
 
 export function BottomConsole({ menu, setMenu, openWindow }: { menu: CardMenu; setMenu: (m: CardMenu) => void; openWindow: (w: WindowTab) => void }) {
+  const { game } = useGame();
   const s = useSnapshot();
   const [details, setDetails] = useState(false);
   const hasSelection = s.selection.length > 0 || !!s.building;
+  // The See more key (V) toggles the details.
+  useEffect(() => {
+    const toggle = () => setDetails((d) => !d);
+    window.addEventListener('lv:see-more', toggle);
+    return () => window.removeEventListener('lv:see-more', toggle);
+  }, []);
+  const inHud = game.settings.detailsInHud;
+  const showDetails = details && hasSelection && s.mode.kind !== 'place';
   let info: React.ReactNode;
   if (s.mode.kind === 'place') info = <PlacingPanel />;
+  else if (showDetails && inHud) info = <HudDetails onClose={() => setDetails(false)} />;
   else if (s.selection.length === 1) info = <SettlerInfoPanel p={s.selection[0]} onMore={() => setDetails(!details)} />;
   else if (s.selection.length > 1) info = <GroupInfoPanel list={s.selection} onMore={() => setDetails(!details)} />;
   else if (s.building) info = <BuildingInfoPanel b={s.building} onMore={() => setDetails(!details)} />;
   else info = <ValleyInfoPanel onGoals={() => openWindow('goals')} />;
   return (
     <>
-      {details && hasSelection && s.mode.kind !== 'place' && <DetailsWindow onClose={() => setDetails(false)} />}
-      <div className="console" aria-label="Command console">
+      {showDetails && !inHud && <DetailsWindow onClose={() => setDetails(false)} />}
+      <div className={`console${showDetails && inHud ? ' expanded' : ''}`} aria-label="Command console">
         <ConsoleMinimap />
         <div className="con-info">{info}</div>
         <CommandCard menu={menu} setMenu={setMenu} openWindow={openWindow} openDetails={() => setDetails(true)} />

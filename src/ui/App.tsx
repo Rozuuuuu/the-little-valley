@@ -68,7 +68,8 @@ export function App() {
     const game = new GameController(renderer, camera, audio, new SaveManager(makeStore(), localEmergencyStore), settings);
     game.onFatal = (e) => setError(`Something went wrong: ${e instanceof Error ? e.message : String(e)}. Your last save is safe; reload the page to continue.`);
     const input = new InputController(canvas, game);
-    if (import.meta.env.DEV) (window as unknown as { __game: GameController }).__game = game;
+    // Development builds (the dev server, or `vite build --mode development` for scripted screenshots).
+    if (import.meta.env.DEV || import.meta.env.MODE === 'development') (window as unknown as { __game: GameController }).__game = game;
 
     const resize = () => {
       const dpr = window.devicePixelRatio || 1;
@@ -260,6 +261,24 @@ function InputBridge({ screen, overlay, setOverlay, buildOpen, setBuildOpen, win
         if (buildOpen) setBuildOpen(false);
         else if (win) setWin(null);
         else setOverlay('pause');
+      } else {
+        const wins: [keyof typeof b, WindowTab][] = [['winPeople', 'people'], ['winAreas', 'areas'], ['winTowns', 'towns'], ['winFamilies', 'families'], ['winRealm', 'realm'], ['winGoals', 'goals']];
+        const hit = wins.find(([k]) => b[k].includes(e.code));
+        if (hit) {
+          e.preventDefault();
+          setWin(win === hit[1] ? null : hit[1]);
+          return;
+        }
+        if (b.goods.includes(e.code)) window.dispatchEvent(new Event('lv:goods'));
+        else if (b.seeMore.includes(e.code)) window.dispatchEvent(new Event('lv:see-more'));
+        else if (b.today.includes(e.code)) game.openOverview();
+        else if (b.findRuler.includes(e.code)) {
+          const r = game.ui.get().ruler;
+          if (r) game.selectSettlers([r.id], true);
+        } else if (b.rally.includes(e.code)) {
+          const sel = game.ui.get().selection;
+          if (sel.length === 1 && sel[0].ruler) game.dispatch({ type: 'rally' });
+        }
       }
     };
     window.addEventListener('keydown', onKey);

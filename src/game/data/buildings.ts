@@ -124,7 +124,8 @@ export type BuildingId =
   | 'barracks' | 'archeryRange' | 'armory' | 'stable' | 'councilHall'
   | 'path' | 'bridge' | 'stoneBridge' | 'fence' | 'flowerbed' | 'lamp' | 'bench' | 'market' | 'waystation'
   | 'hunterLodge' | 'fisherHut' | 'chickenCoop' | 'pigsty' | 'sheepPen' | 'goatPen' | 'cattlePasture' | 'horsePaddock'
-  | 'well' | 'granary' | 'tannery' | 'weaver' | 'watchtower' | 'stoneWall';
+  | 'well' | 'granary' | 'tannery' | 'weaver' | 'watchtower' | 'stoneWall'
+  | 'haystack' | 'barrels' | 'signpost' | 'statue' | 'garden';
 
 export const BUILDINGS: Record<BuildingId, BuildingDef> = {
   townHall: {
@@ -405,6 +406,31 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     description: 'A warm light for evening walks.',
     size: { w: 1, h: 1 }, cost: { planks: 1, stone: 2 }, work: 30, placement: 'land', blocks: true, buildable: true,
     light: 4, maxBuilders: 1, unlock: 'hamlet',
+  },
+  haystack: {
+    id: 'haystack', name: 'Haystack', category: 'roads',
+    description: 'A fat golden stack of hay. Sparrows love it.',
+    size: { w: 1, h: 1 }, cost: { wood: 2 }, work: 20, placement: 'land', blocks: true, buildable: true, maxBuilders: 1,
+  },
+  barrels: {
+    id: 'barrels', name: 'Barrels', category: 'roads',
+    description: 'A stack of barrels and a crate, for a busy look by stores and workshops.',
+    size: { w: 1, h: 1 }, cost: { planks: 2 }, work: 20, placement: 'land', blocks: true, buildable: true, maxBuilders: 1, unlock: 'hamlet',
+  },
+  signpost: {
+    id: 'signpost', name: 'Signpost', category: 'roads',
+    description: 'Arrows pointing the way, with a little pennant on top.',
+    size: { w: 1, h: 1 }, cost: { wood: 3 }, work: 20, placement: 'land', blocks: true, buildable: true, maxBuilders: 1,
+  },
+  garden: {
+    id: 'garden', name: 'Flower Garden', category: 'roads',
+    description: 'A bordered garden of mixed flowers with a birdbath. Butterflies come to visit.',
+    size: { w: 2, h: 2 }, cost: { wood: 4, stone: 6 }, work: 60, placement: 'land', blocks: true, buildable: true, maxBuilders: 2, unlock: 'hamlet',
+  },
+  statue: {
+    id: 'statue', name: 'Statue of the Founder', category: 'realm',
+    description: 'A stone statue of the valley\'s founder on a stepped plinth. It catches the light.',
+    size: { w: 2, h: 2 }, cost: { stone: 30, tools: 2 }, work: 400, placement: 'land', blocks: true, buildable: true, maxBuilders: 2, light: 2, unlock: 'village',
   },
   bench: {
     id: 'bench', name: 'Bench', category: 'roads',

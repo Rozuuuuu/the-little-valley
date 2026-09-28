@@ -1,6 +1,8 @@
 import { BUILDINGS } from '../game/data/buildings';
 import type { GameController } from '../engine/GameController';
 
+/** CSS pixels from a window edge that scroll the map. */
+const EDGE_MARGIN = 14;
 const DRAG_THRESHOLD = 5;
 
 /**
@@ -25,6 +27,40 @@ export class InputController {
     window.addEventListener('keydown', this.keyDown);
     window.addEventListener('keyup', this.keyUp);
     window.addEventListener('blur', this.blur);
+    window.addEventListener('mousemove', this.edgeMove);
+    document.addEventListener('mouseout', this.edgeOut);
+  }
+
+  /**
+   * Warcraft-style edge scrolling: the whole window's edge is the scroll zone (over the HUD
+   * too), corners scroll diagonally, and the closer to the edge the faster it goes.
+   */
+  private edgeMove = (e: MouseEvent): void => {
+    const g = this.game;
+    if (!g.settings.edgePan || g.menuOpen || g.attract) return this.setEdge(0, 0, 1);
+    const m = EDGE_MARGIN;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const ex = e.clientX < m ? -1 : e.clientX > w - 1 - m ? 1 : 0;
+    const ey = e.clientY < m ? -1 : e.clientY > h - 1 - m ? 1 : 0;
+    const depth = Math.max(
+      ex < 0 ? m - e.clientX : ex > 0 ? e.clientX - (w - 1 - m) : 0,
+      ey < 0 ? m - e.clientY : ey > 0 ? e.clientY - (h - 1 - m) : 0,
+    );
+    this.setEdge(ex, ey, 1 + Math.min(1, depth / m));
+  };
+
+  private edgeOut = (e: MouseEvent): void => {
+    // The pointer left the window.
+    if (!e.relatedTarget) this.setEdge(0, 0, 1);
+  };
+
+  private setEdge(x: number, y: number, strength: number): void {
+    const g = this.game;
+    g.edge.x = x * strength;
+    g.edge.y = y * strength;
+    const dir = (y < 0 ? 'n' : y > 0 ? 's' : '') + (x < 0 ? 'w' : x > 0 ? 'e' : '');
+    if (document.body.dataset.edge !== dir) document.body.dataset.edge = dir;
   }
 
   dispose(): void {
@@ -36,6 +72,8 @@ export class InputController {
     window.removeEventListener('keydown', this.keyDown);
     window.removeEventListener('keyup', this.keyUp);
     window.removeEventListener('blur', this.blur);
+    window.removeEventListener('mousemove', this.edgeMove);
+    document.removeEventListener('mouseout', this.edgeOut);
   }
 
   private pos(e: PointerEvent | WheelEvent): { sx: number; sy: number } {
@@ -61,11 +99,6 @@ export class InputController {
     const g = this.game;
     g.hoverWorld = g.camera.screenToWorld(sx, sy);
     g.hoverSettler = g.settlerAtScreen(sx, sy);
-    if (g.settings.edgePan) {
-      const m = 12 * this.dpr;
-      g.edge.x = sx < m ? -1 : sx > this.canvas.width - m ? 1 : 0;
-      g.edge.y = sy < m ? -1 : sy > this.canvas.height - m ? 1 : 0;
-    }
     if (this.panFrom) {
       const s = g.camera.scale;
       g.camera.centerOn(this.panFrom.cx - (sx - this.panFrom.sx) / s, this.panFrom.cy - (sy - this.panFrom.sy) / s);

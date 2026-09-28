@@ -29,21 +29,27 @@ function quad(q: Quad, frame: number): Sprite {
   const p = new Painter(W, H, Math.floor(W / 2), H - 2);
   const x0 = -Math.floor(q.len / 2);
   const x1 = x0 + q.len - 1;
-  const top = -q.leg - q.body;
-  // Legs: front and back pairs step in turn.
+  // Frames 0–3 walk (diagonal leg pairs step in turn, the body bobs); 4 stands; 5 grazes.
+  const walking = frame < 4;
+  const bob = walking && frame % 2 === 1 ? 1 : 0;
+  const top = -q.leg - q.body - bob;
   const legs = [x0 + 1, x0 + 3, x1 - 3, x1 - 1];
   legs.forEach((lx, i) => {
-    const lift = (i % 2 === frame % 2) ? 1 : 0;
-    p.rect(lx, -q.leg, 1, q.leg - lift, i % 2 ? q.dark : q.fur);
-    p.px(lx, -1 - lift, q.dark);
+    const pairA = i === 0 || i === 3;
+    const lift = walking && (pairA ? frame < 2 : frame >= 2) ? (frame % 2 === 0 ? 1 : 2) : 0;
+    // A lifted leg also swings forward a pixel.
+    const sx = lift ? -1 : 0;
+    p.rect(lx + sx, -q.leg - bob, 1, q.leg + bob - lift, i % 2 ? q.dark : q.fur);
+    p.px(lx + sx, -1 - lift, q.dark);
   });
   // Body
   p.rect(x0, top, q.len, q.body, q.fur);
   p.hline(x0 + 1, x1 - 1, top + q.body - 1, q.belly);
   p.hline(x0 + 1, x1 - 1, top, q.dark === q.fur ? q.fur : lighten(q.fur));
   q.extra?.(p, x0, top);
-  q.tail?.(p, x1 + 1, top + 1);
-  q.head(p, x0, top);
+  q.tail?.(p, x1 + 1, top + 1 - (frame === 4 ? 1 : 0));
+  // Grazing: the head dips towards the grass.
+  q.head(p, x0 - (frame === 5 ? 1 : 0), top + (frame === 5 ? 3 : 0));
   p.outline();
   return p.sprite(Math.floor(W / 2), H - 2);
 }
@@ -56,39 +62,48 @@ function lighten(hex: string): string {
 
 /** A small bird (duck, chicken): round body, neck and bill, tiny feet. */
 function bird(frame: number, o: { body: string; wing: string; head: string; bill: string; swims?: boolean; comb?: boolean }): Sprite {
-  const p = new Painter(14, 14, 7, 12);
+  const p = new Painter(14, 16, 7, 14);
+  // 0–3 waddle (feet in turn, a bob), 4 stands, 5 pecks.
+  const bob = frame < 4 && frame % 2 === 1 ? 1 : 0;
+  const peck = frame === 5 ? 3 : 0;
   if (!o.swims) {
-    p.vline(-1 + (frame ? 1 : 0), -2, -1, '#d8902a');
-    p.vline(2 - (frame ? 1 : 0), -2, -1, '#d8902a');
+    const step = frame < 4 ? [0, 1, 0, -1][frame] : 0;
+    p.vline(-1 + step, -2, -1, '#d8902a');
+    p.vline(2 - step, -2, -1, '#d8902a');
   } else {
-    // Ripples around a swimming bird.
-    p.hline(-5, 5, 0, frame ? '#8fc9e0' : '#6fb0d6');
+    // Ripples spread around a swimming bird.
+    const w = frame < 4 ? 4 + (frame % 2) : 5;
+    p.hline(-w, w, 0, frame % 2 ? '#8fc9e0' : '#6fb0d6');
+    if (frame % 2) p.px(-w - 1, -1, '#b8e0f0');
   }
-  p.ellipse(1, -4, 4, 2.8, o.body);
-  p.hline(-1, 3, -4, o.wing);
-  p.hline(0, 3, -3, o.wing);
-  p.rect(-3, -8, 3, 4, o.head);
-  p.rect(-5, -7, 2, 1, o.bill);
-  p.px(-2, -7, '#1a1420');
-  if (o.comb) p.rect(-2, -9, 2, 1, '#d8384a');
+  p.ellipse(1, -4 - bob, 4, 2.8, o.body);
+  p.hline(-1, 3, -4 - bob, o.wing);
+  p.hline(0, 3, -3 - bob, o.wing);
+  if (frame === 4) p.px(4, -6, o.wing);
+  p.rect(-3, -8 - bob + peck, 3, 4, o.head);
+  p.rect(-5, -7 - bob + peck, 2, 1, o.bill);
+  p.px(-2, -7 - bob + peck, '#1a1420');
+  if (o.comb) p.rect(-2, -9 - bob + peck, 2, 1, '#d8384a');
   p.px(5, -5, o.wing);
   p.outline();
-  return p.sprite(7, 12);
+  return p.sprite(7, 14);
 }
 
 function rabbitLike(frame: number, fur: string, dark: string, earLen: number): Sprite {
-  const p = new Painter(14, 14, 7, 12);
-  const hop = frame ? 1 : 0;
+  const p = new Painter(14, 16, 7, 14);
+  // 0–3 hop (up and down), 4 sits, 5 nibbles.
+  const hop = frame < 4 ? [0, 1, 2, 1][frame] : 0;
+  const nibble = frame === 5 ? 1 : 0;
   p.ellipse(1, -3 - hop, 3.4, 2.4, fur);
   p.px(4, -4 - hop, '#f4f0e6');
-  p.rect(-3, -5 - hop, 3, 3, fur);
-  p.vline(-2, -5 - hop - earLen, -6 - hop, dark);
-  p.vline(-1, -5 - hop - earLen + 1, -6 - hop, fur);
-  p.px(-3, -4 - hop, '#1a1420');
+  p.rect(-3, -5 - hop + nibble, 3, 3, fur);
+  p.vline(-2, -5 - hop - earLen + nibble, -6 - hop + nibble, dark);
+  p.vline(-1, -5 - hop - earLen + 1 + nibble + (frame === 4 ? 1 : 0), -6 - hop + nibble, fur);
+  p.px(-3, -4 - hop + nibble, '#1a1420');
   p.rect(-2, -1 - hop, 2, 1, dark);
   p.rect(2, -1, 2, 1, dark);
   p.outline();
-  return p.sprite(7, 12);
+  return p.sprite(7, 14);
 }
 
 const DRAW: Record<SpeciesId, (frame: number) => Sprite> = {
@@ -294,9 +309,13 @@ const DRAW: Record<SpeciesId, (frame: number) => Sprite> = {
   }, f),
 };
 
-/** Two walking frames per species, facing left. */
+/** Six frames per species, facing left: 0–3 walking, 4 standing, 5 grazing or pecking. */
+export const ANIMAL_WALK = [0, 1, 2, 3] as const;
+export const ANIMAL_STAND = 4;
+export const ANIMAL_GRAZE = 5;
+
 export function makeAnimalSprites(): Record<SpeciesId, Sprite[]> {
   const out = {} as Record<SpeciesId, Sprite[]>;
-  for (const [id, draw] of Object.entries(DRAW)) out[id as SpeciesId] = [draw(0), draw(1)];
+  for (const [id, draw] of Object.entries(DRAW)) out[id as SpeciesId] = [0, 1, 2, 3, 4, 5].map((f) => draw(f));
   return out;
 }
