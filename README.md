@@ -141,7 +141,11 @@ for, and **Valley today** gathers the most important issues when you return.
 - [Asset manifest](docs/ASSET_MANIFEST.md): every sprite and sound and where it is generated.
 - [Milestones](docs/MILESTONES.md): what's playable, what was tested, known limits, what's next.
 - [Playtest script](docs/PLAYTEST.md): a no-coaching session plan and feedback form (not yet run).
+- [Kingdom playtest](docs/KINGDOM_PLAYTEST.md): sessions for families, mining, trade, diplomacy and war (not yet run).
+- [Implementation plan](docs/superpowers/plans/2026-09-28-families-to-kingdoms.md): the families-to-kingdoms roadmap and what was built.
 
-More scripts: `npx tsx scripts/profile-village.ts 100` profiles a 100-settler
+More scripts: `npx tsx scripts/profile-kingdom.ts` profiles 100 people in two towns,
+four rival kingdoms and 64 soldiers in the field; `npx tsx scripts/render-preview.ts`
+renders art to PNG without a browser. `npx tsx scripts/profile-village.ts 100` profiles a 100-settler
 village, and `npx tsx scripts/check-gen-fingerprint.ts` confirms generator 1 output is
 unchanged.

@@ -16,6 +16,9 @@ from other games. Fonts are loaded from Google Fonts (SIL Open Font License).
 | Camp, house, storehouse, workshop, grand market, flower bed, lantern post, bench (day + lit night) | `buildings.ts` | footprint-relative drawings |
 | Mill, bakery, cottage (day + lit night) | `buildings.ts` | Milestone 2 |
 | Family home (day + lit night: porch swing, washing line) | `buildings.ts` `familyHome` | Families |
+| Royal Hall, barracks, archery range, armory, stable, council hall (day + lit night) | `buildings.ts` | Crown and army |
+| Company squads (settler sheets + sword/bow icons, knights on horses) with banner and health bar | `Renderer.drawCompany`, `drawForeignCompany` | war |
+| Borders, claim tint and hatched occupation | `Renderer.drawLand` | territory |
 | Inn (day + lit night, hanging sign), caravan depot, crate, caravan cart with pony | `buildings.ts` `inn`, `depot`, `crate`, `makeCartSprite` | Travellers |
 | Charcoal kiln, smelter, forge (day + lit night) | `buildings.ts` | Mountains and mining |
 | Quarry pit ×4 excavation stages, mine entrance ×3 shaft levels (day + night) | `buildings.ts` `makeQuarrySprites`, `makeMineSprites` | chosen by `Renderer.spriteFor` |
@@ -31,7 +34,7 @@ from other games. Fonts are loaded from Google Fonts (SIL Open Font License).
 | Crops: turnip, wheat, pumpkin × 4 stages | `crops.ts` `makeCropSprites` | driven by `CROPS[].art` |
 | Settler sheets: 4 directions × 13 poses per appearance | `characters.ts` `makeSettlerSheet` | 4 skins × 6 hair × 3 styles × 6 shirts × 3 trousers |
 | Tools: axe, pick, hoe, hammer, watering can, sickle, saw | `icons.ts` `makeToolSprites` | |
-| Resource icons: food, wood, stone, planks, tools, wheat, flour, apples, coal, charcoal, copper/iron ore, copper/iron ingots, silver/gold ore, diamonds | `icons.ts` | shared by HUD and world |
+| Resource icons: food, wood, stone, planks, tools, wheat, flour, apples, coal, charcoal, copper/iron ore, copper/iron ingots, silver/gold ore, diamonds, swords, bows, armour, horses | `icons.ts` | shared by HUD and world |
 | UI icons: people, house, sun, moon, rain, star, storage, idle, hungry, warning, drop, axe, pick, basket, zzz, heart | `icons.ts` | |
 | Ground (all terrain, shores, paths, bridges, decorations) | `render/terrainPainter.ts` | painted per chunk in a worker |
 | Favicon | inline SVG in `index.html` | |

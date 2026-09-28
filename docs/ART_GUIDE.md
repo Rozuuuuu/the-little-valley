@@ -118,6 +118,25 @@ attention.
   stay readable.
 
 
+## Families to kingdoms
+
+- **High ground:** hills are green with soft contour lines that wobble with the colour
+  patches; mountain faces have a lit rim along the top, a dark foot, slanted strata and a
+  short cast shadow onto the ground below. Winter puts snow on hills and cliff rims.
+- **New buildings** keep the footprint-relative drawing, one-pixel outline and the
+  existing palettes (ROOF red for homes and inns, SLATE blue for workshops, stables,
+  depots and military buildings). Night variants light windows, furnaces and lanterns.
+- **Stages show progress:** orchards (saplings → leafy → three fruit levels → autumn →
+  bare/snowy), quarry pits (4 excavation steps), mine entrances (portal → winch →
+  headframe with a lantern).
+- **Soldiers** reuse the settler sheets with a sword or bow icon; knights stand on a
+  horse icon. A company carries a small banner in its kingdom's colour and shows a
+  readiness or health bar only when it is below full.
+- **Land:** borders and a faint tint in each banner colour; occupied sectors are
+  hatched in the occupier's colour, so title and occupation read differently.
+- Check new art without a browser: `npx tsx scripts/render-preview.ts sprites out.png [ids]`
+  and `... terrain out.png <seed> <gen> <cx> <cy> <n>`.
+
 ## Seasons and settlements continuation
 
-Seasonal ground palettes retain 16-pixel tiles and existing geometry. Autumn oaks recolour the original canopy; winter oaks use original bare-branch pixel drawings, pines retain snow-tipped foliage, and depleted berry bushes become dormant. Winter precipitation falls slowly as snow. Waystations currently reuse the original village hall day/night sprite; a distinct waystation silhouette remains future art work.
+Seasonal ground palettes retain 16-pixel tiles and existing geometry. Autumn oaks recolour the original canopy; winter oaks use original bare-branch pixel drawings, pines retain snow-tipped foliage, and depleted berry bushes become dormant. Winter precipitation falls slowly as snow. Waystations reuse the village hall sprite.

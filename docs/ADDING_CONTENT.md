@@ -111,6 +111,18 @@ alongside `tests/fixtures/gen-v1-fingerprint.json`. See
 [SAVE_FORMAT.md](SAVE_FORMAT.md).
 
 
+## Government, diplomacy and war content
+
+- Tax policies, council posts, banner colours/emblems and territory numbers: `data/kingdoms.ts`.
+- Treaty kinds, AI acceptance thresholds, news limits and concern bands: `data/treaties.ts`.
+- Soldier kinds (gear, training time and place, strength, range): `data/units.ts`; a new
+  kind also needs a training building that lists it in `training.units`.
+- Combat and war numbers (field budget, morale break, occupation and siege times):
+  `data/war.ts`.
+- New world events for news and concern are added to `WorldEventKind` (`sim/types.ts`)
+  and weighed in `evaluateConcern` (`sim/concern.ts`); give them words in
+  `KIND_WORDS` (`engine/kingdomSnapshot.ts`).
+
 ## Trade goods
 
 Every resource needs a value in `PRICES` (`data/trade.ts`); merchants sell at 125% and

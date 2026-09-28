@@ -79,6 +79,9 @@ file the rest as candidates. Compare against the telemetry-free signals above: t
 failed clicks, and panels opened.
 
 
+For the kingdom systems (mining, trade, crown, diplomacy, war) see
+[KINGDOM_PLAYTEST.md](KINGDOM_PLAYTEST.md).
+
 ## Families and orchards (deliberate growth)
 
 **Status:** prepared, **not yet run**. Start 5–8 unfamiliar players from a **new**

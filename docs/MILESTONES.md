@@ -1,5 +1,60 @@
 # Milestone reports
 
+## Integration, performance and playtesting (plan M8) — the families-to-kingdoms plan, complete in code
+
+**What exists now:** every milestone of the plan (M0–M8) is implemented in the
+simulation, saved (save version 11), shown in the UI and covered by tests. The report
+for each milestone is below.
+
+**Full journey (headless, `tests/kingdom-journey.test.ts`):** deliberate growth (an
+orchard pays for a traveller) → survey, mine, kiln, smelter, forge → a copper tool →
+*reload* → a second town supplied by caravan and a trade at the inn for coins →
+coronation, envoy, three known kingdoms, an alliance signed, a frontier claim → a
+trained company → *reload* → a war plan against a stronger kingdom, an ally's support
+negotiated, mustered, arrived and launched → the enemy meets our company on our
+frontier; the homeland is untouched → peace with reparations, allies go home → *reload*,
+identical state, conservation and reservation checks. Setup shortcuts are labelled in
+the test (instant buildings, milestone gates granted where the gate is tested
+elsewhere); failures name the seed, stage and tick.
+
+**Saves:** `tests/migrations-chain.test.ts` takes the genuine v2, v3 and v4 fixtures
+through every migration to v11, plays a day and saves again; a genuine v11 fixture
+(`tests/fixtures/v11-save.json`, every system in use) loads and plays; newer and damaged
+saves are refused without being touched.
+
+**Tests:** 237 passing (24 files). `npm run build` passes; generator 1 and 2
+fingerprints unchanged.
+
+**Performance (Node simulation timings, same machine; not browser frames):**
+
+| Scenario | p50 | p95 | p99 | max |
+| --- | --- | --- | --- | --- |
+| Village, 100 settlers (profile-village), M0 baseline | 0.21 | 1.42 | 10.7 | 21.8 |
+| Village, 100 settlers, now (two runs) | 0.30 | 1.68 | 11.0 | 26–27 |
+| Kingdom: ordinary day (100 people, 2 towns, 4 kingdoms) | 0.16 | 0.92–1.00 | 2.6 | 14–15 |
+| Kingdom: season change | 0.10 | 1.7–1.8 | 3.6–3.8 | 3.9 |
+| Kingdom: combat, 63 soldiers in the field | 0.06 | 0.58–0.63 | 1.8–2.5 | 3.5–4.9 |
+
+News burst (300 events to every kingdom, delivery and concern): about 2 ms. UI snapshot
+data (all panels): ~1 ms average, p95 2–2.5 ms. Save 231 KB: 9–11 ms to write, ~50 ms to
+load. Heap 16–23 MB. Path searches in an ordinary day: 1,140 (76,000 nodes). The
+village p95 is 18% above the M0 baseline — inside the plan's 20% bound, but close to
+it; the p95 tick target (≤10 ms) is met everywhere. **Frame times were not measured**
+(no browser).
+
+**Not done — needs a person:**
+
+- **No browser check** of any of M1–M8's UI. The development server was stopped for low
+  memory and has not been restarted. Art was checked as PNG renders only
+  (`scripts/render-preview.ts`); layout at 1366×768/1920×1080, keyboard access,
+  contrast and animation are unverified.
+- **No human playtests.** Scripts are ready: [PLAYTEST.md](PLAYTEST.md) and
+  [KINGDOM_PLAYTEST.md](KINGDOM_PLAYTEST.md).
+- Balance numbers are the plan's proposals, untuned by play.
+
+The plan's gate stands: this is not a finished kingdom release until the browser
+playthrough and playtests are done.
+
 ## Frontier war, occupation and peace (plan M7)
 
 **Playable:** Realm → War (declaration preview and confirmation, wars with held land,

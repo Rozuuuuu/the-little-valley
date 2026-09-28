@@ -1,6 +1,6 @@
 # Little Valley: Families, Industry and Kingdoms — Implementation Plan
 
-> **Status (2026-09-28):** M0 and M1 are implemented on branch `families-to-kingdoms` (see §10 for results, the decisions taken during implementation and the plan changes they caused). M2–M8 remain plans; each still needs its own authorization.
+> **Status (2026-09-28):** M0–M8 are implemented in code (M0–M1 merged to `master`; M2–M8 on branch `mountains-and-mining`), with save version 11 and 237 passing tests. See §10 for results, decisions and lessons. The plan's release gate is **not** met: no browser playthrough or human playtest has been done.
 > For execution: use superpowers:executing-plans, or subagent-driven-development when suitable tools are available. Implement only the milestone the user authorizes.
 
 **Goal:** Extend the existing persistent farming game into a slowly growing kingdom with families, mining, travelers, a player monarch, equipped armies, territorial diplomacy and believable news.
@@ -568,7 +568,13 @@ Protected homelands, numeric concern scores, abstract shafts and simplified trai
 | M0 | Done except the browser check | v4 fixture; two-town journey test; unreachable-note bug reproduced and fixed; baseline profile recorded |
 | M1A | Done | Save v5; `households.test.ts` 14 tests |
 | M1B | Done except browser/art check | `recruitment.test.ts` 14 tests incl. deliberate journey; Families tab; sprites |
-| M2–M8 | Not started | — |
+| M2 | Done except browser check | Generator 3 hills/mountains (gen 1–2 fingerprinted), versioned geology, surveys, quarries, mines, kiln, smelter, forge; save v6; `geology`, `mining` tests |
+| M3 | Done except browser check | Depots, supply routes, carts, crates, regional towns, inn merchants, barter; save v7; `logistics`, `travelers` tests |
+| M4 | Done except browser check | Kingdoms, coronation, policies/trust, council, coin trade tax, Region, sectors, homeland, claims, conflict setting; save v8 |
+| M5 | Done except browser check | Treaties, incidents, news with provenance, concern bands and warnings, war council and coalition commitments; save v9 |
+| M6 | Done except browser check | Equipment, stables, barracks/range training, companies with supplies and readiness, mustering, Civilization; save v10 |
+| M7 | Done except browser check | War declaration and preview, combat with range/LOS/morale, protection checks, captives or casualties, occupation vs title, sieges, plunder, AI wars, peace settlement; save v11 |
+| M8 | Done except human/browser gates | Kingdom journey test, migration chain to v11 with a genuine v11 fixture, `profile-kingdom.ts`, `KINGDOM_PLAYTEST.md`, docs |
 
 Full suite 125/125, build passes, generator-1 fingerprint 18/18. Node profile p95
 about +10–15% (inside the 20% bound). No browser check or human playtest has been
@@ -615,6 +621,29 @@ run; the M0 visual check and the M1 art remain release gates.
   jobs and areas, and run it several times: single runs on this machine vary by 2×.
 - **CRLF and LF files coexist** in the repo; exact-text tooling must respect each
   file's line endings.
+
+### Decisions taken in M2–M8
+
+8. **Mines and quarries are Craft work with their own `extract` task**, reserving ore
+   per trip rather than per building, so two miners can share a mine and can't take the
+   last unit twice.
+9. **Fuel is a recipe property** (`fuel: n`, coal first then charcoal), not two recipes.
+10. **Stores can refuse resources** (`accepts`): horses only in stables, the armory only
+    equipment. Delivery now looks for a store that accepts the goods; the first version
+    looped forever (caught by the knight test).
+11. **Rival kingdoms are abstract**: a seeded town with land, companies and a
+    temperament, not a simulated tile map. Their companies march in straight lines and
+    stop at borders they may not cross.
+12. **Rival land is a protected core (1 sector) plus a frontier ring (2 sectors)**, so
+    passage treaties and frontier war have somewhere to happen.
+13. **Concern splits border troops from distant build-ups**: only the latter are
+    discounted for distance.
+14. **Campaign strength estimates come from report magnitudes**, never from hidden
+    truth.
+15. **Enemy company strength is revealed only to allies** in the UI.
+16. **A company that breaks with heavy losses (health < 50) leaves one soldier** —
+    captured under default rules, killed under full conquest (with full cleanup).
+17. **Defending companies close on enemies within 16 tiles** (one sector's width).
 
 ### Plan adjustments for M2 onward
 
