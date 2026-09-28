@@ -18,6 +18,7 @@ export interface MinimapLayers {
 const TERRAIN_COLOR: Record<number, string> = {
   [T.DeepWater]: P.deep0, [T.Water]: P.water1, [T.Sand]: P.sand1, [T.Grass]: P.grass1, [T.Meadow]: P.meadow2,
   [T.Forest]: P.forest1, [T.Rocky]: P.rock1, [T.Road]: P.dirt2, [T.Bridge]: P.wood3, [T.StoneBridge]: P.stone3,
+  [T.Hill]: P.hill1, [T.Mountain]: P.cliff2,
 };
 
 function rgbaWord(hex: string): number {

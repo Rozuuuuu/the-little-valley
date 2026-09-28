@@ -28,9 +28,66 @@ function moisture(seed: number, x: number, y: number): number {
  * and unexplored chunks of old worlds keep using that version forever.
  * 1: Milestone 1 generator.
  * 2: adds the great river east of the spawn and its fertile, stony far bank.
+ * 3: adds hills and mountains: a northern ridge with regular passes, lone
+ *    massifs far from the camp, and two small starter outcrops whose hill faces
+ *    hold the guaranteed copper and iron (see geology.ts). Everything from 2 stays.
  */
-export const CURRENT_GEN = 2;
-export const SUPPORTED_GENS = [1, 2];
+export const CURRENT_GEN = 3;
+export const SUPPORTED_GENS = [1, 2, 3];
+
+/** Small rocky outcrops near the camp (generator 3+): a mountain core ringed by hill slopes. */
+export const STARTER_OUTCROPS = [
+  { x: -20, y: -24, mineral: 'copper' },
+  { x: -36, y: 16, mineral: 'iron' },
+] as const;
+const OUTCROP_CORE = 2.2;
+const OUTCROP_SLOPE = 4.8;
+/** A pass through the ridge every this many tiles, so the north is never sealed off. */
+const PASS_EVERY = 48;
+const PASS_WIDTH = 7;
+
+function ridgeY(seed: number, x: number): number {
+  return -56 + 9 * Math.sin(x / 41 + (Math.abs(seed) % 314) / 50) + (fbm(x / 53, 7.3, seed ^ 0x41d6, 2) - 0.5) * 14;
+}
+function ridgeCore(seed: number, x: number): number {
+  return 3 + fbm(x / 19, 2.1, seed ^ 0x2c1, 2) * 4;
+}
+function inPass(seed: number, x: number): boolean {
+  const phase = Math.abs(seed) % PASS_EVERY;
+  return (((x - phase) % PASS_EVERY) + PASS_EVERY) % PASS_EVERY < PASS_WIDTH;
+}
+
+/** Within the northern ridge's band of cliffs and foothills (generator 3+). */
+export function onRidge(seed: number, x: number, y: number): boolean {
+  return Math.abs(y - ridgeY(seed, x)) < ridgeCore(seed, x) + 5;
+}
+
+function outcropDistance(x: number, y: number): number {
+  let d = Infinity;
+  for (const o of STARTER_OUTCROPS) d = Math.min(d, Math.hypot(x - o.x, y - o.y));
+  return d;
+}
+
+/** Mountain, hill or nothing for generator 3's high ground. */
+function highGround(seed: number, x: number, y: number): TerrainId | null {
+  const od = outcropDistance(x, y);
+  if (od < OUTCROP_CORE) return T.Mountain;
+  if (od < OUTCROP_SLOPE) return T.Hill;
+  const dy = Math.abs(y - ridgeY(seed, x));
+  const core = ridgeCore(seed, x);
+  if (dy < core) return inPass(seed, x) ? T.Hill : T.Mountain;
+  if (dy < core + 5) return T.Hill;
+  const d = Math.hypot(x, y);
+  const e = elevation(seed, x, y);
+  if (d > 40 && e > 0.74) return T.Mountain;
+  if (d > 34 && e > 0.66) return T.Hill;
+  return null;
+}
+
+/** High ground is never flooded by the small rivers and lakes (the great river still cuts through). */
+function dryHighGround(seed: number, x: number, y: number): boolean {
+  return outcropDistance(x, y) < OUTCROP_SLOPE + 1.5 || onRidge(seed, x, y);
+}
 
 /** Centre line of the great river (generator 2+), meandering north to south. */
 export function riverCenter(seed: number, y: number): number {
@@ -48,6 +105,7 @@ export function waterAt(seed: number, x: number, y: number, gen = 1): 0 | 1 | 2 
     // No fords: the deep channel can only be crossed by a stone bridge.
     if (d < hw) return d < hw - 1.6 ? 2 : 1;
   }
+  if (gen >= 3 && dryHighGround(seed, x, y)) return 0;
   return waterAtV1(seed, x, y);
 }
 
@@ -84,6 +142,10 @@ export function terrainAt(seed: number, x: number, y: number, gen = 1, water: (x
       if ((dx || dy) && water(x + dx, y + dy) !== 0) return T.Sand;
     }
   }
+  if (gen >= 3) {
+    const hg = highGround(seed, x, y);
+    if (hg !== null) return hg;
+  }
   const d = Math.hypot(x, y);
   if (Math.hypot(x - MEADOW.x, y - MEADOW.y) < MEADOW.r + hash01(x, y, seed ^ 0x19) * 1.2) return T.Meadow;
   const e = elevation(seed, x, y);
@@ -102,7 +164,7 @@ export function terrainAt(seed: number, x: number, y: number, gen = 1, water: (x
 export function objectAt(seed: number, x: number, y: number, terrain: TerrainId, gen = 1): ObjectId {
   const d = Math.hypot(x, y);
   if (d < SPAWN_CLEAR) return O.None;
-  if (terrain === T.Water || terrain === T.DeepWater || terrain === T.Road || terrain === T.Bridge) return O.None;
+  if (terrain === T.Water || terrain === T.DeepWater || terrain === T.Road || terrain === T.Bridge || terrain === T.Mountain) return O.None;
   const r = hash01(x, y, seed ^ 0xabc1);
   const kind = hash01(x, y, seed ^ 0x5eed);
   const ring = d < 16 ? hash01(x, y, seed ^ 0x2222) : 1;
@@ -141,6 +203,13 @@ export function objectAt(seed: number, x: number, y: number, terrain: TerrainId,
       return O.None;
     case T.Sand:
       if (r < 0.012) return O.Rock;
+      return O.None;
+    case T.Hill:
+      // Starter outcrop slopes stay clear so their mine faces are easy to reach.
+      if (outcropDistance(x, y) < OUTCROP_SLOPE + 1) return O.None;
+      if (r < 0.05) return O.Pine;
+      if (r < 0.085) return O.Rock;
+      if (r < 0.1) return O.Boulder;
       return O.None;
   }
   return O.None;

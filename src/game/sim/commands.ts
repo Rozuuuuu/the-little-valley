@@ -10,6 +10,7 @@ import {
 } from './buildings';
 import { cleanPriorities } from './priorities';
 import { acceptRecruit, cancelRecruit } from './travelers';
+import { surveyDeposit, upgradeMine } from './mining';
 import { adoptDeliberateGrowth, cancelChildRequest, formHousehold, isChild, requestChild } from './households';
 import { fieldAction } from './farming';
 import { abortTask, findHaulFor } from './settlers';
@@ -44,7 +45,9 @@ export type Command =
   | { type: 'cancelChildRequest'; householdId: number }
   | { type: 'adoptDeliberateGrowth' }
   | { type: 'acceptRecruit'; offerId: number; settlementId: number }
-  | { type: 'cancelRecruit'; recruitId: number };
+  | { type: 'cancelRecruit'; recruitId: number }
+  | { type: 'surveyDeposit'; settlerId: number; x: number; y: number }
+  | { type: 'upgradeMine'; buildingId: number };
 
 const MAX_AREA = 40 * 40;
 /** Most settlers one work area can take. */
@@ -223,7 +226,7 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
         s.task = { kind: 'farm', field: b.id, action, stage: 'walk', timer: 0 };
         return ok();
       }
-      if (b.workshop) return applyCommand(sim, { type: 'assignWorker', buildingId: b.id, ids: list.map((s) => s.id) });
+      if (b.workshop || def.extraction) return applyCommand(sim, { type: 'assignWorker', buildingId: b.id, ids: list.map((s) => s.id) });
       if (def.storage) {
         for (const s of list) {
           takeOrder(sim, s);
@@ -461,7 +464,7 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
 
     case 'assignWorker': {
       const b = sim.buildings.get(cmd.buildingId);
-      if (!b?.workshop || !b.built) return err('Workers can only be assigned to finished workshops, mills and bakeries');
+      if (!b || !(b.workshop || BUILDINGS[b.type].extraction) || !b.built) return err('Workers can only be assigned to finished workshops, mills, bakeries, quarries, mines, kilns, smelters and forges');
       const list = pickWorkers(sim, cmd.ids, 'work at a workshop');
       if (typeof list === 'string') return err(list);
       const max = maxWorkers(b);
@@ -536,6 +539,10 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
       return acceptRecruit(sim, cmd.offerId, cmd.settlementId);
     case 'cancelRecruit':
       return cancelRecruit(sim, cmd.recruitId);
+    case 'surveyDeposit':
+      return surveyDeposit(sim, cmd.settlerId, cmd.x, cmd.y);
+    case 'upgradeMine':
+      return upgradeMine(sim, cmd.buildingId);
 
     case 'unassignWorker': {
       const b = sim.buildings.get(cmd.buildingId);

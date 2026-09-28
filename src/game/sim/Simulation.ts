@@ -17,6 +17,7 @@ import type { SeasonId } from '../data/seasons';
 import { updatePopulation } from './population';
 import { updateHouseholds } from './households';
 import { updateOrchards } from './orchards';
+import { surveyedCell, type SurveyedCell } from './mining';
 import { updateTravelers } from './travelers';
 import { GROWTH_STEP } from '../data/kingdomBalance';
 import { checkMilestones } from './progression';
@@ -43,6 +44,7 @@ export function emptyStats(): Stats {
   return {
     woodGathered: 0, stoneGathered: 0, foodGathered: 0, harvested: 0, planksCrafted: 0, toolsCrafted: 0, arrivals: 0,
     wheatHarvested: 0, flourMilled: 0, bakedFood: 0, pathsBuilt: 0, births: 0, applesPicked: 0, driedApples: 0,
+    surveys: 0, oreMined: 0, stoneQuarried: 0, charcoalMade: 0, coalBurned: 0, charcoalBurned: 0, copperSmelted: 0, ironSmelted: 0, copperToolsForged: 0, ironToolsForged: 0,
   };
 }
 
@@ -102,6 +104,10 @@ export class Simulation implements PathGrid {
   recruits: Recruitment[] = [];
   /** Tick the last recruited traveller settled (for the once-per-two-days limit). */
   lastRecruit = -Infinity;
+  /** Surveyed geology cells (saved): cell id to ore left (null when the cell holds no deposit). */
+  geology = new Map<number, { remaining: number | null }>();
+  /** Ore units promised to miners on their way (transient, rebuilt from tasks). */
+  readonly oreReserved = new Map<number, number>();
   /** Last season announced (transient; seasons follow the calendar). */
   lastSeason: SeasonId | null = null;
 
@@ -183,6 +189,11 @@ export class Simulation implements PathGrid {
     const out = this.events;
     this.events = [];
     return out;
+  }
+
+  /** What surveying found at (x, y), or null if nobody has surveyed there. */
+  surveyedCell(x: number, y: number): SurveyedCell | null {
+    return surveyedCell(this, x, y);
   }
 
   // ---- ids & settlers -----------------------------------------------------

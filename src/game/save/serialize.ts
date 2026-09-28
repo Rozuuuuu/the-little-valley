@@ -6,6 +6,7 @@ import { generateChunk } from '../world/worldgen';
 import type { ObjectId } from '../world/tiles';
 import { assignHomes } from '../sim/buildings';
 import { validateClaims } from '../sim/households';
+import { GEOLOGY_VERSION } from '../world/geology';
 import { currentMilestone } from '../sim/progression';
 import { Simulation } from '../sim/Simulation';
 import type { Building, Settler } from '../sim/types';
@@ -80,6 +81,8 @@ export function serializeSim(sim: Simulation, extras: SerializeExtras): SaveFile
     }
     if (b.field) sb.field = { ...b.field };
     if (b.orchard) sb.orchard = { ...b.orchard };
+    if (b.mine) sb.mine = { ...b.mine };
+    if (b.quarry) sb.quarry = { ...b.quarry };
     if (b.workshop) sb.workshop = { recipe: b.workshop.recipe, progress: b.workshop.progress, paused: b.workshop.paused };
     return sb;
   });
@@ -108,6 +111,7 @@ export function serializeSim(sim: Simulation, extras: SerializeExtras): SaveFile
       nextVisitor: sim.nextVisitor,
       recruits: sim.recruits.map((r) => ({ ...r, appearance: { ...r.appearance }, escrow: { ...r.escrow } })),
       lastRecruit: Number.isFinite(sim.lastRecruit) ? sim.lastRecruit : null,
+      geology: { version: GEOLOGY_VERSION, cells: [...sim.geology].map(([id, c]) => [id, c.remaining] as [number, number | null]) },
     },
     world: { genVersion: sim.world.genVersion, chunks },
     view: extras.view,
@@ -140,6 +144,7 @@ export function deserializeSim(save: SaveFile): Simulation {
   sim.nextVisitor = d.nextVisitor;
   sim.recruits = d.recruits.map((r) => ({ ...r, appearance: { ...r.appearance }, escrow: { ...r.escrow } }));
   sim.lastRecruit = d.lastRecruit ?? -Infinity;
+  for (const [id, remaining] of d.geology.cells) sim.geology.set(id, { remaining });
 
   for (const sc of save.world.chunks) {
     const c = generateChunk(sim.seed, sc.cx, sc.cy, save.world.genVersion);
@@ -168,6 +173,8 @@ export function deserializeSim(save: SaveFile): Simulation {
     };
     if (sb.field) b.field = { ...sb.field };
     if (sb.orchard) b.orchard = { ...sb.orchard };
+    if (sb.mine) b.mine = { ...sb.mine };
+    if (sb.quarry) b.quarry = { ...sb.quarry };
     if (sb.workshop) b.workshop = { ...sb.workshop, status: '' };
     sim.buildings.set(b.id, b);
     for (let dy = 0; dy < b.h; dy++) for (let dx = 0; dx < b.w; dx++) sim.occupancy.set(tileKey(b.x + dx, b.y + dy), b.id);

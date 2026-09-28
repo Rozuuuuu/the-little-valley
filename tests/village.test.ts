@@ -19,7 +19,7 @@ import { MILESTONES } from '../src/game/data/progression';
 import type { Simulation } from '../src/game/sim/Simulation';
 import type { Building } from '../src/game/sim/types';
 import { O, OBJECTS, T } from '../src/game/world/tiles';
-import { riverCenter } from '../src/game/world/worldgen';
+import { CURRENT_GEN, riverCenter } from '../src/game/world/worldgen';
 import {
   accountedFor, assertNoNegativeReservations, assertReservationsConsistent, consumedByConstruction, consumedByCrafting, run, runUntil,
 } from './helpers';
@@ -544,7 +544,7 @@ describe('save compatibility', () => {
     }
     // And new worlds get the new generator with the great river.
     const fresh = createNewGame(424242);
-    expect(fresh.world.genVersion).toBe(2);
+    expect(fresh.world.genVersion).toBe(CURRENT_GEN);
     const c = Math.round(riverCenter(424242, 0));
     expect([T.Water, T.DeepWater]).toContain(fresh.world.terrain(c, 0));
   });

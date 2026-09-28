@@ -33,6 +33,7 @@ const SEASON_OVERRIDES: Record<GroundSeason, Record<string, string>> = {
     grass0: '#6b7a34', grass1: '#84913f', grass2: '#98a147', grass3: '#c3a44c',
     meadow0: '#7d8a3a', meadow1: '#9aa548', meadow2: '#b3ad50', meadow3: '#d0a24e',
     forest0: '#4a4a26', forest1: '#5b5a2c', forest2: '#6a6230', forestLeaf: '#c8702e',
+    hill0: '#5f6a30', hill1: '#7f8a3c', hill2: '#929a44', hill3: '#bba34a',
   },
   winter: {
     grass0: '#aebdca', grass1: '#e3eaf0', grass2: '#edf2f6', grass3: '#f8fbfd',
@@ -41,6 +42,8 @@ const SEASON_OVERRIDES: Record<GroundSeason, Record<string, string>> = {
     sand0: '#c4ccd2', sand1: '#dde4ea', sand2: '#eef2f5', sand3: '#b3bec8',
     rock0: '#a9b4bd', rock1: '#cfd7de', rock2: '#e3e9ee', rock3: '#97a2ac',
     dirt0: '#8a7862', dirt1: '#b9ab98', dirt2: '#d6ccbf', dirt3: '#9a8a74',
+    hill0: '#a3b3c1', hill1: '#dfe7ee', hill2: '#ebf1f5', hill3: '#f8fbfd',
+    cliff3: '#f3f7fa',
   },
 };
 
@@ -55,6 +58,7 @@ const PALETTES = Object.fromEntries(
 const REACH: Record<number, number> = {
   [T.DeepWater]: 0, [T.Water]: 0.9, [T.Sand]: 1, [T.Grass]: 1, [T.Meadow]: 0.85,
   [T.Forest]: 1, [T.Rocky]: 0.9, [T.Road]: 0.45, [T.Bridge]: 0, [T.StoneBridge]: 0,
+  [T.Hill]: 0.9, [T.Mountain]: 0.35,
 };
 
 const isWater = (t: number) => t === T.Water || t === T.DeepWater;
@@ -205,6 +209,23 @@ export function computePixels(seed: number, cx: number, cy: number, terr: Uint8A
         case T.Rocky:
           col = h < 0.04 ? C.rock2 : h > 0.95 ? C.rock3 : patch > 0.55 ? C.rock2 : C.rock1;
           break;
+        case T.Hill: {
+          // Soft contour lines follow the slope; they wobble with the colour patches.
+          const contour = (wy + Math.floor(patch * 12)) % 11 === 0;
+          col = contour ? C.hill0 : h < 0.035 ? C.hill3 : patch > 0.55 ? C.hill2 : C.hill1;
+          break;
+        }
+        case T.Mountain: {
+          // A lit rim along the top, a dark foot, and slanted strata between.
+          const top = clsAt(px, py - 1) !== T.Mountain || clsAt(px, py - 2) !== T.Mountain;
+          const foot = clsAt(px, py + 1) !== T.Mountain || clsAt(px, py + 2) !== T.Mountain || clsAt(px, py + 3) !== T.Mountain;
+          if (top) col = C.cliff3;
+          else if (foot) col = C.cliff0;
+          else if (((wx + wy * 2) >> 2) % 7 === 0) col = C.cliff1;
+          else col = h < 0.06 ? C.cliff3 : patch > 0.5 ? C.cliff2 : C.cliff1;
+          if (winter && !foot && h < 0.25) col = C.snowcap;
+          break;
+        }
         case T.Road: {
           const edge = clsAt(px - 1, py) !== T.Road || clsAt(px + 1, py) !== T.Road || clsAt(px, py - 1) !== T.Road || clsAt(px, py + 1) !== T.Road;
           col = edge ? C.dirt0 : h < 0.06 ? C.dirt2 : h > 0.96 ? C.dirt3 : C.dirt1;
@@ -244,6 +265,8 @@ export function computePixels(seed: number, cx: number, cy: number, terr: Uint8A
       }
       // Land lip above water: a darker edge so banks read as raised.
       if (!isWater(c) && c !== T.Bridge && c !== T.StoneBridge && isWater(clsAt(px, py + 1))) col = c === T.Sand ? C.sand3 : C.grass0;
+      // Cliffs cast a short shadow onto the ground below them.
+      if (c !== T.Mountain && !isWater(c) && (clsAt(px, py - 1) === T.Mountain || clsAt(px, py - 2) === T.Mountain)) col = c === T.Hill ? C.hill0 : C.grass0;
       out[py * S + px] = col;
     }
   }
@@ -263,10 +286,10 @@ export function computePixels(seed: number, cx: number, cy: number, terr: Uint8A
       const r = (n: number) => ((hv >>> (n * 4)) & 15) / 16;
       const bx = tx * TILE;
       const by = ty * TILE;
-      if (t === T.Grass || t === T.Meadow || t === T.Forest) {
+      if (t === T.Grass || t === T.Meadow || t === T.Forest || t === T.Hill) {
         const tufts = r(0) < 0.45 ? 1 : r(0) < 0.7 ? 2 : 0;
-        const light = t === T.Forest ? C.forest2 : t === T.Meadow ? C.meadow3 : C.grass3;
-        const dark = t === T.Forest ? C.forest0 : t === T.Meadow ? C.meadow0 : C.grass0;
+        const light = t === T.Forest ? C.forest2 : t === T.Meadow ? C.meadow3 : t === T.Hill ? C.hill3 : C.grass3;
+        const dark = t === T.Forest ? C.forest0 : t === T.Meadow ? C.meadow0 : t === T.Hill ? C.hill0 : C.grass0;
         for (let i = 0; i < tufts; i++) {
           const x = bx + 2 + Math.floor(r(1 + i * 2) * 12);
           const y = by + 2 + Math.floor(r(2 + i * 2) * 11);

@@ -5,6 +5,8 @@ import type { MilestoneId } from './progression';
 export type BuildingCategory = 'housing' | 'farming' | 'storage' | 'production' | 'infrastructure' | 'decor' | 'project';
 /** Which terrain a footprint must sit on. */
 export type PlacementRule = 'land' | 'farmland' | 'water' | 'span';
+/** Extra site rules on top of the placement rule. */
+export type SiteRule = 'rock' | 'deposit';
 
 export interface BuildingDef {
   id: string;
@@ -33,6 +35,10 @@ export interface BuildingDef {
   span?: { min: number; max: number; costPerTile: Inventory; workPerTile: number };
   /** Finished buildings of this type can't be demolished. */
   permanent?: boolean;
+  /** Workers dig here instead of crafting: a quarry cuts stone, a mine digs its deposit's ore. */
+  extraction?: 'quarry' | 'mine';
+  /** 'rock': half the footprint on rocky ground or hills; 'deposit': over a surveyed deposit with no mine yet. */
+  site?: SiteRule;
   /** Founds a settlement when finished; must be this many tiles from any other settlement centre. */
   settlementCenter?: { minSpacing: number };
   recipes?: readonly RecipeId[];
@@ -48,6 +54,7 @@ export interface BuildingDef {
 
 export type BuildingId =
   | 'camp' | 'house' | 'familyHome' | 'cottage' | 'field' | 'orchard' | 'storehouse' | 'workshop' | 'mill' | 'bakery'
+  | 'quarry' | 'mine' | 'charcoalKiln' | 'smelter' | 'forge'
   | 'path' | 'bridge' | 'stoneBridge' | 'fence' | 'flowerbed' | 'lamp' | 'bench' | 'market' | 'waystation';
 
 export const BUILDINGS: Record<BuildingId, BuildingDef> = {
@@ -116,6 +123,36 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     size: { w: 3, h: 2 }, cost: { wood: 40, stone: 30, planks: 10 }, work: 480, placement: 'land', blocks: true, buildable: true,
     housing: 4, temporaryBeds: true, storage: 150, light: 5, reveal: 14, maxBuilders: 3, permanent: true, unlock: 'village',
     settlementCenter: { minSpacing: 24 },
+  },
+  quarry: {
+    id: 'quarry', name: 'Quarry', category: 'production',
+    description: 'Cut stone from rocky ground or a hill slope, without end. Assign up to 2 quarry workers; the pit deepens as they work.',
+    size: { w: 2, h: 2 }, cost: { wood: 15 }, work: 160, placement: 'land', site: 'rock', blocks: true, buildable: true,
+    extraction: 'quarry', maxWorkers: 2, reveal: 6,
+  },
+  mine: {
+    id: 'mine', name: 'Mine', category: 'production',
+    description: 'A timbered entrance over a surveyed deposit. Up to 2 miners dig its ore until the seam runs out; deepen the shaft for bigger loads.',
+    size: { w: 2, h: 2 }, cost: { wood: 30, stone: 10 }, work: 300, placement: 'land', site: 'deposit', blocks: true, buildable: true,
+    extraction: 'mine', maxWorkers: 2, light: 2, reveal: 6, unlock: 'hamlet',
+  },
+  charcoalKiln: {
+    id: 'charcoalKiln', name: 'Charcoal Kiln', category: 'production',
+    description: 'Slow-burns 3 wood into 2 charcoal: smelter fuel when there is no coal.',
+    size: { w: 2, h: 2 }, cost: { wood: 10, stone: 20 }, work: 220, placement: 'land', blocks: true, buildable: true,
+    recipes: ['charcoal'], maxWorkers: 1, light: 2, reveal: 5, unlock: 'hamlet',
+  },
+  smelter: {
+    id: 'smelter', name: 'Smelter', category: 'production',
+    description: 'Melts 2 ore and 1 fuel (coal or charcoal) into an ingot.',
+    size: { w: 2, h: 2 }, cost: { wood: 10, stone: 30, planks: 5 }, work: 320, placement: 'land', blocks: true, buildable: true,
+    recipes: ['smeltCopper', 'smeltIron'], maxWorkers: 1, light: 3, reveal: 5, unlock: 'hamlet',
+  },
+  forge: {
+    id: 'forge', name: 'Forge', category: 'production',
+    description: 'Hammers an ingot and a plank into tools: 1 from copper, 2 from iron.',
+    size: { w: 3, h: 2 }, cost: { stone: 30, planks: 15 }, work: 360, placement: 'land', blocks: true, buildable: true,
+    recipes: ['forgeCopperTools', 'forgeIronTools'], maxWorkers: 1, light: 3, reveal: 5, unlock: 'hamlet',
   },
   stoneBridge: {
     id: 'stoneBridge', name: 'Stone Bridge', category: 'project',

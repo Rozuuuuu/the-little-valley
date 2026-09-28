@@ -129,6 +129,21 @@ export const MIGRATIONS: Record<number, (save: AnyRecord) => AnyRecord> = {
       },
     };
   },
+
+  /**
+   * v5 was Families and orchards. v6 adds geology: nothing has been surveyed
+   * yet, so the cell list starts empty. Old worlds keep their generator; ore
+   * deposits appear on their rocky ground when surveyed, and their land is
+   * never regenerated.
+   */
+  5: (v5) => {
+    const sim = v5.sim as AnyRecord;
+    return {
+      ...v5,
+      version: 6,
+      sim: { ...sim, stats: { ...emptyStats(), ...(sim.stats as AnyRecord | undefined) }, geology: { version: 1, cells: [] } },
+    };
+  },
 };
 
 export function migrate(raw: unknown): SaveFile {
@@ -199,6 +214,8 @@ export function validateSave(save: AnyRecord): void {
     checkInventory(b.inventory, `building ${b.id}`);
     check(Array.isArray(b.workers) && (b.workers as unknown[]).every(isInt), `building ${b.id} workers`);
     checkInventory(b.wants, `building ${b.id} stock targets`);
+    if (b.mine !== undefined) check(isInt((b.mine as AnyRecord).depositId) && [1, 2, 3].includes((b.mine as AnyRecord).level as number), `building ${b.id} mine`);
+    if (b.quarry !== undefined) check(isInt((b.quarry as AnyRecord).extracted) && ((b.quarry as AnyRecord).extracted as number) >= 0, `building ${b.id} quarry`);
     if (BUILDINGS[b.type as keyof typeof BUILDINGS].span) check(isInt(b.w) && isInt(b.h) && (b.w as number) >= 1 && (b.h as number) >= 1, `building ${b.id} size`);
     if (b.field) {
       const f = b.field as AnyRecord;
@@ -235,6 +252,11 @@ export function validateSave(save: AnyRecord): void {
   check(sim.offer === null || (typeof sim.offer === 'object' && isInt((sim.offer as AnyRecord).id) && isNum((sim.offer as AnyRecord).expiresTick)), 'visitor');
   check(isNum(sim.nextVisitor), 'next visitor');
   check(sim.lastRecruit === null || isNum(sim.lastRecruit), 'last recruit');
+  const geo = sim.geology as AnyRecord | undefined;
+  check(geo && isInt(geo.version) && Array.isArray(geo.cells), 'geology');
+  for (const c of geo.cells as unknown[]) {
+    check(Array.isArray(c) && c.length === 2 && isInt(c[0]) && (c[1] === null || (isInt(c[1]) && (c[1] as number) >= 0)), 'geology cell');
+  }
   check(Array.isArray(sim.recruits), 'recruits');
   for (const r of sim.recruits as AnyRecord[]) {
     check(isInt(r.id) && isInt(r.settlementId) && (r.state === 'travelling' || r.state === 'refunding') && isNum(r.arrivesTick), 'recruit');

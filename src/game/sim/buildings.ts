@@ -3,7 +3,7 @@ import { hash01 } from '../core/rng';
 import { BUILDINGS, type BuildingId } from '../data/buildings';
 import { CROPS, type CropId } from '../data/crops';
 import { MILESTONES } from '../data/progression';
-import { RECIPES } from '../data/recipes';
+import { FUELS, RECIPES, type RecipeDef } from '../data/recipes';
 import { RESOURCES, type Inventory } from '../data/resources';
 import { O, OBJECTS, T, TERRAIN } from '../world/tiles';
 import { addInv, formatInv, hasAll, invEntries } from './inventory';
@@ -13,6 +13,7 @@ import { seasonOf } from './seasons';
 import { foundSettlement, settlementAt, spacingProblem } from './settlements';
 import { relocateClaims } from './households';
 import { initOrchard } from './orchards';
+import { depositUnder, siteProblem } from './mining';
 import type { Simulation } from './Simulation';
 import type { Building } from './types';
 
@@ -92,7 +93,7 @@ export function checkPlacement(sim: Simulation, type: BuildingId, x: number, y: 
       tiles.push({ x: x + dx, y: y + dy, ok: !p });
     }
   }
-  const spacing = spacingProblem(sim, type, x, y);
+  const spacing = spacingProblem(sim, type, x, y) ?? (def.site ? siteProblem(sim, type, x, y) : null);
   if (spacing) {
     reason ??= spacing;
     for (const t of tiles) t.ok = false;
@@ -184,6 +185,11 @@ export function placeBuilding(sim: Simulation, type: BuildingId, x: number, y: n
   }
   if (type === 'field') {
     b.field = { crop: crop === undefined ? 'turnip' : crop, state: 'wild', growth: 0, moisture: 0.5 };
+  }
+  if (def.extraction === 'quarry') b.quarry = { extracted: 0 };
+  if (def.extraction === 'mine') {
+    const d = depositUnder(sim, b.x, b.y, b.w, b.h);
+    if (d) b.mine = { depositId: d.id, level: 1 };
   }
   if (workOf(b) === 0 && invEntries(costOf(b)).length === 0) completeBuilding(sim, b, true);
   else sim.mapChanged();
@@ -463,14 +469,51 @@ export function maxWorkers(b: Building): number {
   return BUILDINGS[b.type].maxWorkers ?? 0;
 }
 
-/** Production inputs are buffered for two batches so the worker rarely waits. */
-export function workshopNeeds(b: Building): { res: keyof typeof RESOURCES; need: number }[] {
+/** Fuel (coal and charcoal) on hand in an inventory. */
+export function fuelIn(inv: Inventory): number {
+  let n = 0;
+  for (const f of FUELS) n += inv[f] ?? 0;
+  return n;
+}
+
+/** Inputs and fuel for one batch are on hand. */
+export function recipeReady(have: Inventory, r: RecipeDef): boolean {
+  return hasAll(have, r.inputs) && fuelIn(have) >= (r.fuel ?? 0);
+}
+
+/** Burns fuel for a batch, coal first. Records what was burned. */
+export function burnFuel(sim: Simulation, have: Inventory, amount: number): void {
+  let left = amount;
+  for (const f of FUELS) {
+    const n = Math.min(left, have[f] ?? 0);
+    if (n <= 0) continue;
+    addInv(have, f, -n);
+    left -= n;
+    if (f === 'coal') sim.stats.coalBurned += n;
+    else sim.stats.charcoalBurned += n;
+  }
+}
+
+/**
+ * Production inputs are buffered for two batches so the worker rarely waits.
+ * Fuel is asked for as whichever fuel the stores hold more of (coal on a tie).
+ */
+export function workshopNeeds(b: Building, sim?: Simulation): { res: keyof typeof RESOURCES; need: number }[] {
   const ws = b.workshop;
   if (!b.built || !ws || !ws.recipe || ws.paused) return [];
   const out: { res: keyof typeof RESOURCES; need: number }[] = [];
-  for (const [r, n] of invEntries(RECIPES[ws.recipe].inputs)) {
+  const recipe = RECIPES[ws.recipe];
+  for (const [r, n] of invEntries(recipe.inputs)) {
     const need = n * 2 - (b.delivered[r] ?? 0) - (b.incoming[r] ?? 0);
     if (need > 0) out.push({ res: r, need });
+  }
+  if (recipe.fuel) {
+    const need = recipe.fuel * 2 - fuelIn(b.delivered) - fuelIn(b.incoming);
+    if (need > 0) {
+      const coal = sim ? sim.storedTotal('coal') : 1;
+      const charcoal = sim ? sim.storedTotal('charcoal') : 0;
+      out.push({ res: charcoal > coal ? 'charcoal' : 'coal', need });
+    }
   }
   return out;
 }
@@ -500,14 +543,18 @@ export function updateWorkshops(sim: Simulation): void {
       const r = RECIPES[ws.recipe];
       const crafting = sim.reservations.has(`craft:${b.id}`);
       if (crafting && ws.progress > 0) ws.status = `${r.name} (${Math.floor((ws.progress / r.work) * 100)}%)`;
-      else if (!hasAll(b.delivered, r.inputs)) {
+      else if (!recipeReady(b.delivered, r)) {
         const missing: Inventory = {};
         for (const [res, n] of invEntries(r.inputs)) {
           const have = b.delivered[res] ?? 0;
           if (have < n) addInv(missing, res, n - have);
         }
         const inStock = invEntries(missing).every(([res, n]) => sim.storedTotal(res) + (b.incoming[res] ?? 0) >= n);
-        ws.status = inStock ? `Waiting for delivery: ${formatInv(missing)}` : `Needs ${formatInv(missing)} — none in storage`;
+        const fuelShort = (r.fuel ?? 0) - fuelIn(b.delivered);
+        const fuelStock = sim.storedTotal('coal') + sim.storedTotal('charcoal') + fuelIn(b.incoming);
+        if (invEntries(missing).length === 0 && fuelShort > 0) {
+          ws.status = fuelStock >= fuelShort ? 'Waiting for fuel (coal or charcoal)' : 'Needs fuel — no coal or charcoal in storage; build a charcoal kiln or mine coal';
+        } else ws.status = inStock ? `Waiting for delivery: ${formatInv(missing)}` : `Needs ${formatInv(missing)} — none in storage`;
       } else if (!sim.nearestStorageWithSpace(b.x, b.y)) ws.status = 'Storage is full — nowhere to put the output';
       else ws.status = crafting ? 'Worker on the way' : 'Ready — waiting for a worker';
     }

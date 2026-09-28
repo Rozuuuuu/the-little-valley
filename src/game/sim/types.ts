@@ -43,6 +43,8 @@ export type Task =
   | { kind: 'build'; site: number; slot: number; stage: 'walk' | 'work' }
   | { kind: 'farm'; field: number; action: FieldAction; stage: 'walk' | 'work'; timer: number }
   | { kind: 'orchard'; orchard: number; action: OrchardAction; stage: 'walk' | 'work'; timer: number }
+  | { kind: 'survey'; x: number; y: number; stage: 'walk' | 'work'; timer: number }
+  | { kind: 'extract'; site: number; slot: number; amount: number; stage: 'walk' | 'work'; timer: number }
   | { kind: 'craft'; ws: number; stage: 'walk' | 'work' }
   | { kind: 'eat'; src: number }
   | { kind: 'sleep'; home: number | null; stage: 'walk' | 'sleep' };
@@ -249,6 +251,10 @@ export interface Building {
   reservedOut: Inventory;
   field?: FieldState;
   orchard?: OrchardState;
+  /** Mines: the deposit worked (its cell id) and the shaft level (1–3). */
+  mine?: { depositId: number; level: number };
+  /** Quarries: stone cut so far (drives the visible excavation stage). */
+  quarry?: { extracted: number };
   workshop?: WorkshopState;
   placedTick: number;
   /** Settlers assigned to work here (production buildings), up to maxWorkers. */

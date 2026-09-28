@@ -61,13 +61,22 @@ export function consumedByConstruction(sim: Simulation, res: ResourceId, convert
 export function consumedByCrafting(sim: Simulation, res: ResourceId): number {
   const batches = {
     planks: sim.stats.planksCrafted / (RECIPES.planks.outputs.planks ?? 1),
-    tools: sim.stats.toolsCrafted / (RECIPES.tools.outputs.tools ?? 1),
+    // Forged tools count toward toolsCrafted too; only the rest came from the workshop recipe.
+    tools: (sim.stats.toolsCrafted - sim.stats.copperToolsForged - sim.stats.ironToolsForged) / (RECIPES.tools.outputs.tools ?? 1),
+    charcoal: sim.stats.charcoalMade / (RECIPES.charcoal.outputs.charcoal ?? 1),
+    smeltCopper: sim.stats.copperSmelted / (RECIPES.smeltCopper.outputs.copperIngot ?? 1),
+    smeltIron: sim.stats.ironSmelted / (RECIPES.smeltIron.outputs.ironIngot ?? 1),
+    forgeCopperTools: sim.stats.copperToolsForged / (RECIPES.forgeCopperTools.outputs.tools ?? 1),
+    forgeIronTools: sim.stats.ironToolsForged / (RECIPES.forgeIronTools.outputs.tools ?? 1),
     flour: sim.stats.flourMilled / (RECIPES.flour.outputs.flour ?? 1),
     bread: sim.stats.bakedFood / (RECIPES.bread.outputs.food ?? 1),
     driedApples: sim.stats.driedApples / (RECIPES.driedApples.outputs.food ?? 1),
   };
   let n = 0;
   for (const [id, count] of Object.entries(batches)) n += count * (RECIPES[id as keyof typeof RECIPES].inputs[res] ?? 0);
+  // Fuel is recorded as burned, per kind.
+  if (res === 'coal') n += sim.stats.coalBurned;
+  if (res === 'charcoal') n += sim.stats.charcoalBurned;
   return n;
 }
 

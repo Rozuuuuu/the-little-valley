@@ -55,6 +55,54 @@ export const RESOURCE_ICON_DRAW: Record<ResourceId, (p: Painter) => void> = {
     }
     p.hline(1, 9, 7, P.wood2);
   },
+  coal: (p) => {
+    p.ellipse(4, 6, 3.6, 3, '#2e2b30');
+    p.ellipse(7.5, 7, 2.6, 2.4, '#3b373e');
+    p.px(3, 5, '#6b6572');
+    p.px(7, 6, '#6b6572');
+  },
+  charcoal: (p) => {
+    for (const [x, y] of [[1, 5], [3, 3], [5, 5]]) {
+      p.rect(x, y, 5, 3, '#3a2e28');
+      p.hline(x, x + 4, y, '#5a4a40');
+      p.px(x + 4, y + 1, P.fire1);
+    }
+  },
+  copperOre: (p) => {
+    p.ellipse(5, 6, 4.6, 3.6, P.stone1);
+    for (const [x, y] of [[3, 5], [6, 4], [5, 7], [7, 7]]) p.px(x, y, '#d4773c');
+    p.px(3, 4, '#f0a060');
+  },
+  ironOre: (p) => {
+    p.ellipse(5, 6, 4.6, 3.6, P.stone0);
+    for (const [x, y] of [[3, 5], [6, 4], [5, 7], [7, 6]]) p.px(x, y, '#a0522d');
+    p.px(4, 4, '#c98a6a');
+  },
+  copperIngot: (p) => {
+    p.rect(1, 5, 9, 4, '#b8622e');
+    p.hline(2, 8, 4, '#e08a4a');
+    p.hline(1, 9, 8, '#8a441e');
+    p.px(3, 5, '#f4b27a');
+  },
+  ironIngot: (p) => {
+    p.rect(1, 5, 9, 4, '#6d737a');
+    p.hline(2, 8, 4, '#9aa1a8');
+    p.hline(1, 9, 8, '#4a4f55');
+    p.px(3, 5, '#c9ced3');
+  },
+  silverOre: (p) => {
+    p.ellipse(5, 6, 4.6, 3.6, P.stone1);
+    for (const [x, y] of [[3, 5], [6, 4], [5, 7]]) p.px(x, y, '#e8eef4');
+  },
+  goldOre: (p) => {
+    p.ellipse(5, 6, 4.6, 3.6, P.stone1);
+    for (const [x, y] of [[3, 5], [6, 4], [5, 7], [7, 6]]) p.px(x, y, P.fire2);
+  },
+  diamonds: (p) => {
+    for (let i = 0; i < 4; i++) p.hline(4 - i, 4 + i, 3 + i, i < 2 ? '#bdf2ff' : '#7fd8f0');
+    for (let i = 0; i < 4; i++) p.hline(1 + i, 7 - i, 7 + i, '#4fb4d8');
+    p.px(3, 5, '#ffffff');
+  },
   apples: (p) => {
     p.ellipse(3.5, 6.5, 3, 2.8, '#c8423a');
     p.ellipse(7, 6, 2.6, 2.6, '#d9573f');

@@ -2,6 +2,7 @@ import type { BuildingId } from './buildings';
 
 export type StatId =
   | 'woodGathered' | 'stoneGathered' | 'foodGathered' | 'harvested' | 'planksCrafted' | 'toolsCrafted' | 'arrivals' | 'births' | 'applesPicked' | 'driedApples'
+  | 'surveys' | 'oreMined' | 'stoneQuarried' | 'charcoalMade' | 'coalBurned' | 'charcoalBurned' | 'copperSmelted' | 'ironSmelted' | 'copperToolsForged' | 'ironToolsForged'
   | 'wheatHarvested' | 'flourMilled' | 'bakedFood' | 'pathsBuilt';
 
 export type Requirement =

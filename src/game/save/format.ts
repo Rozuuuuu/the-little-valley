@@ -12,7 +12,7 @@ import type {
  * Save file format. Bump SAVE_VERSION whenever this shape changes and add a
  * migration in migrations.ts so older worlds keep loading.
  */
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 export interface SaveMeta {
   name: string;
@@ -68,6 +68,8 @@ export interface SavedBuilding {
   field?: { crop: CropId | null; state: 'wild' | 'tilled' | 'growing' | 'ripe'; growth: number; moisture: number };
   workshop?: { recipe: RecipeId | null; progress: number; paused: boolean };
   orchard?: OrchardState;
+  mine?: { depositId: number; level: number };
+  quarry?: { extracted: number };
   placedTick: number;
   /** Only for span buildings, whose size varies. */
   w?: number;
@@ -143,7 +145,15 @@ export interface SaveFileV5 extends Omit<SaveFileV4, 'version' | 'sim'> {
   };
 }
 
-export type SaveFile = SaveFileV5;
+export interface SaveFileV6 extends Omit<SaveFileV5, 'version' | 'sim'> {
+  version: 6;
+  sim: SaveFileV5['sim'] & {
+    /** Surveyed geology cells: [cellId, ore left or null when the cell holds no deposit]. */
+    geology: { version: number; cells: [number, number | null][] };
+  };
+}
+
+export type SaveFile = SaveFileV6;
 
 export class SaveError extends Error {
   constructor(message: string) {

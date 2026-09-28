@@ -12,6 +12,10 @@ export const T = {
   Road: 7,
   Bridge: 8,
   StoneBridge: 9,
+  /** Generator 3+: walkable, buildable slopes. */
+  Hill: 10,
+  /** Generator 3+: impassable cliff faces of mountains and outcrops. */
+  Mountain: 11,
 } as const;
 export type TerrainId = (typeof T)[keyof typeof T];
 
@@ -39,6 +43,8 @@ export const TERRAIN: Record<TerrainId, TerrainDef> = {
   [T.Road]: { name: 'Path', walkable: true, buildable: false, fertility: 0, moveCost: 0.6, priority: 8 },
   [T.Bridge]: { name: 'Bridge', walkable: true, buildable: false, fertility: 0, moveCost: 0.6, priority: 9 },
   [T.StoneBridge]: { name: 'Stone bridge', walkable: true, buildable: false, fertility: 0, moveCost: 0.6, priority: 10 },
+  [T.Hill]: { name: 'Hill slope', walkable: true, buildable: true, fertility: 0.6, moveCost: 1.45, priority: 7 },
+  [T.Mountain]: { name: 'Mountain face', walkable: false, buildable: false, fertility: 0, moveCost: 1, priority: 11 },
 };
 
 export const O = {

@@ -11,7 +11,9 @@ import {
 } from './buildings';
 import { applyFieldAction, FIELD_WORK, fieldAction } from './farming';
 import { applyOrchardAction, ORCHARD_WORK, orchardAction } from './orchards';
-import { addInv, hasAll, invEntries } from './inventory';
+import { completeExtraction, completeSurvey, EXTRACT_WORK, findExtract, releaseExtraction, SURVEY_WORK } from './mining';
+import { burnFuel, recipeReady } from './buildings';
+import { addInv, invEntries } from './inventory';
 import { findPath, goalSatisfied, lastPathStats, type Goal } from './pathfinding';
 import { effectivePriorities } from './priorities';
 import { seasonOf } from './seasons';
@@ -188,6 +190,10 @@ function releaseTask(sim: Simulation, s: Settler): void {
     case 'orchard':
       sim.release(`orchard:${t.orchard}`, s.id);
       break;
+    case 'extract':
+      sim.release(`extract:${t.site}:${t.slot}`, s.id);
+      releaseExtraction(sim, t.site, t.amount);
+      break;
     case 'craft':
       sim.release(`craft:${t.ws}`, s.id);
       break;
@@ -230,6 +236,8 @@ export function taskKeys(s: Settler): string[] {
       return [`field:${t.field}`];
     case 'orchard':
       return [`orchard:${t.orchard}`];
+    case 'extract':
+      return [`extract:${t.site}:${t.slot}`];
     case 'craft':
       return [`craft:${t.ws}`];
     default:
@@ -307,7 +315,7 @@ function haulNeeds(sim: Simulation, area?: WorkArea): HaulNeed[] {
         if (need > 0) out.push({ dst: b, res: r, need, priority: 0 });
       }
     } else if (b.workshop) {
-      for (const { res, need } of workshopNeeds(b)) out.push({ dst: b, res, need, priority: 12 });
+      for (const { res, need } of workshopNeeds(b, sim)) out.push({ dst: b, res, need, priority: 12 });
     } else if (BUILDINGS[b.type].storage) {
       // Stock targets: keep this store supplied from others with a surplus.
       const wants = invEntries(b.wants);
@@ -577,8 +585,8 @@ function findCraft(sim: Simulation, s: Settler): Task | string | null {
     if (ws.paused || !ws.recipe || !mayWorkAt(b, s.id)) continue;
     if (sim.isReserved(`craft:${b.id}`, s.id) || sim.isUnreachable(s.id, `b${b.id}`, s.x, s.y)) continue;
     const name = BUILDINGS[b.type].name.toLowerCase();
-    if (!hasAll(b.delivered, RECIPES[ws.recipe].inputs)) {
-      reason ??= `The ${name} is waiting for ${invEntries(RECIPES[ws.recipe].inputs).map(([r]) => r).join(' and ')}`;
+    if (!recipeReady(b.delivered, RECIPES[ws.recipe])) {
+      reason ??= `The ${name} is waiting for ${[...invEntries(RECIPES[ws.recipe].inputs).map(([r]) => r), ...(RECIPES[ws.recipe].fuel ? ['fuel'] : [])].join(' and ')}`;
       continue;
     }
     const c = centre(b);
@@ -589,11 +597,21 @@ function findCraft(sim: Simulation, s: Settler): Task | string | null {
       best = b;
     }
   }
-  if (!any) return 'No workshop, mill or bakery built yet';
+  if (!any) return null;
   if (!best) return reason;
   if (!sim.nearestStorageWithSpace(s.x, s.y)) return 'Storage is full — nowhere to put what I make';
   sim.reserve(`craft:${best.id}`, s.id);
   return { kind: 'craft', ws: best.id, stage: 'walk' };
+}
+
+/** Crafting and digging share the Craft work kind: assigned workers go to their own building first. */
+function findCraftOrDig(sim: Simulation, s: Settler): Task | string | null {
+  const dig = findExtract(sim, s);
+  if (dig && typeof dig === 'object') return dig;
+  const craft = findCraft(sim, s);
+  if (craft && typeof craft === 'object') return craft;
+  const anyShop = [...sim.buildings.values()].some((b) => b.built && (b.workshop || BUILDINGS[b.type].extraction));
+  return dig ?? craft ?? (anyShop ? null : 'No workshop, mill, bakery, quarry or mine built yet');
 }
 
 const FINDERS: Record<WorkKind, Finder> = {
@@ -601,7 +619,7 @@ const FINDERS: Record<WorkKind, Finder> = {
   haul: (sim, s) => findHaul(sim, s),
   farm: (sim, s) => findFarm(sim, s),
   gather: findGather,
-  craft: findCraft,
+  craft: findCraftOrDig,
 };
 
 function findFocus(sim: Simulation, s: Settler): Task | null {
@@ -894,15 +912,65 @@ function runOrchard(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'orcha
   abortTask(sim, s);
 }
 
-const CRAFT_TOOL: Record<RecipeId, ToolKind> = { planks: 'saw', tools: 'hammer', flour: 'hand', bread: 'hand', driedApples: 'hand' };
-const CRAFT_SFX: Record<RecipeId, 'saw' | 'hammer' | 'mill' | 'bake'> = { planks: 'saw', tools: 'hammer', flour: 'mill', bread: 'bake', driedApples: 'bake' };
+function runSurvey(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'survey' }>): void {
+  if (t.stage === 'walk') {
+    const r = goTo(sim, s, { x: t.x, y: t.y, w: 1, h: 1, adjacent: !sim.walkable(t.x, t.y) }, 9000);
+    if (r === 'failed') return abortTask(sim, s, "Can't reach the spot to survey");
+    if (r === 'arrived') t.stage = 'work';
+    return;
+  }
+  face(s, t.x + 0.5, t.y + 0.5);
+  s.anim = 'work';
+  s.tool = 'pick';
+  t.timer += workSpeed(sim, s);
+  if ((sim.tick + s.id) % 15 === 0) sim.emit({ type: 'sfx', name: 'mine', x: t.x, y: t.y });
+  if (t.timer < SURVEY_WORK) return;
+  completeSurvey(sim, s, t.x, t.y);
+  abortTask(sim, s);
+}
+
+const CRAFT_TOOL: Record<RecipeId, ToolKind> = {
+  planks: 'saw', tools: 'hammer', flour: 'hand', bread: 'hand', driedApples: 'hand',
+  charcoal: 'hand', smeltCopper: 'hammer', smeltIron: 'hammer', forgeCopperTools: 'hammer', forgeIronTools: 'hammer',
+};
+const CRAFT_SFX: Record<RecipeId, 'saw' | 'hammer' | 'mill' | 'bake'> = {
+  planks: 'saw', tools: 'hammer', flour: 'mill', bread: 'bake', driedApples: 'bake',
+  charcoal: 'bake', smeltCopper: 'bake', smeltIron: 'bake', forgeCopperTools: 'hammer', forgeIronTools: 'hammer',
+};
+
+function runExtract(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'extract' }>): void {
+  const b = sim.buildings.get(t.site);
+  const kind = b ? BUILDINGS[b.type].extraction : undefined;
+  if (!b || !kind || !b.built || s.carrying) return abortTask(sim, s);
+  if (t.stage === 'walk') {
+    const r = goTo(sim, s, bGoal(b));
+    if (r === 'failed') return fail(sim, s, `Can't reach the ${BUILDINGS[b.type].name.toLowerCase()}`, `b${b.id}`);
+    if (r === 'arrived') t.stage = 'work';
+    return;
+  }
+  faceRect(s, b.x, b.y, b.w, b.h);
+  s.anim = 'work';
+  s.tool = 'pick';
+  t.timer += workSpeed(sim, s);
+  if ((sim.tick + s.id) % 12 === 0) {
+    sim.emit({ type: 'sfx', name: 'mine', x: b.x + 1, y: b.y + 1 });
+    sim.emit({ type: 'fx', kind: 'stonechips', x: b.x + 1, y: b.y + 1 });
+  }
+  if (t.timer < EXTRACT_WORK[kind]) return;
+  const got = completeExtraction(sim, b, t.amount);
+  // The promised ore is now dug (or gone); nothing is left to give back.
+  t.amount = 0;
+  if (got) s.carrying = got;
+  abortTask(sim, s);
+}
+
 
 function runCraft(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'craft' }>): void {
   const b = sim.buildings.get(t.ws);
   const ws = b?.workshop;
   if (!b || !ws || !ws.recipe || ws.paused || s.carrying) return abortTask(sim, s);
   const recipe = RECIPES[ws.recipe];
-  if (!hasAll(b.delivered, recipe.inputs)) return abortTask(sim, s);
+  if (!recipeReady(b.delivered, recipe)) return abortTask(sim, s);
   if (t.stage === 'walk') {
     const r = goTo(sim, s, bGoal(b));
     if (r === 'failed') return fail(sim, s, `Can't reach the ${BUILDINGS[b.type].name.toLowerCase()}`, `b${b.id}`);
@@ -917,6 +985,7 @@ function runCraft(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'craft' 
   if (ws.progress < recipe.work) return;
   ws.progress = 0;
   for (const [r, n] of invEntries(recipe.inputs)) addInv(b.delivered, r, -n);
+  burnFuel(sim, b.delivered, recipe.fuel ?? 0);
   const [out, n] = invEntries(recipe.outputs)[0];
   s.carrying = { res: out, amount: n };
   if (out === 'planks') sim.stats.planksCrafted += n;
@@ -924,6 +993,11 @@ function runCraft(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'craft' 
   if (out === 'flour') sim.stats.flourMilled += n;
   if (ws.recipe === 'bread') sim.stats.bakedFood += n;
   if (ws.recipe === 'driedApples') sim.stats.driedApples += n;
+  if (ws.recipe === 'charcoal') sim.stats.charcoalMade += n;
+  if (ws.recipe === 'smeltCopper') sim.stats.copperSmelted += n;
+  if (ws.recipe === 'smeltIron') sim.stats.ironSmelted += n;
+  if (ws.recipe === 'forgeCopperTools') sim.stats.copperToolsForged += n;
+  if (ws.recipe === 'forgeIronTools') sim.stats.ironToolsForged += n;
   sim.emit({ type: 'fx', kind: 'sparkle', x: b.x + b.w / 2, y: b.y + b.h / 2 });
   abortTask(sim, s);
 }
@@ -1043,6 +1117,10 @@ export function runTask(sim: Simulation, s: Settler): void {
       return runFarm(sim, s, t);
     case 'orchard':
       return runOrchard(sim, s, t);
+    case 'survey':
+      return runSurvey(sim, s, t);
+    case 'extract':
+      return runExtract(sim, s, t);
     case 'craft':
       return runCraft(sim, s, t);
     case 'eat':
@@ -1100,6 +1178,12 @@ export function describeTask(sim: Simulation, s: Settler): string {
       return { till: 'Tilling a field', plant: 'Planting seeds', water: 'Watering a field', harvest: 'Harvesting' }[t.action];
     case 'orchard':
       return t.action === 'pick' ? 'Picking apples' : 'Tending the orchard';
+    case 'survey':
+      return 'Surveying for ore';
+    case 'extract': {
+      const b = sim.buildings.get(t.site);
+      return b?.quarry ? 'Cutting stone at the quarry' : 'Digging ore in the mine';
+    }
     case 'craft': {
       const b = sim.buildings.get(t.ws);
       const r = b?.workshop?.recipe;
