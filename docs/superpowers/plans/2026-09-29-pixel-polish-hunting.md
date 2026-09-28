@@ -39,3 +39,26 @@ pointer leaves the window or a menu is open.
 - **P4** Building animation is renderer-only (smoke, flags, sparks, water, turning parts), so
   it never touches the simulation or saves.
 - **P5** HP is saved (v13 adds `hp` to settlers and animals, both optional).
+
+## Progress (2026-09-29)
+
+Everything above is built and committed on `pixel-polish-hunting` (299 tests, save v13):
+melee hunting with weapons by lodge level, health and healing, health bars, hit flashes,
+damage numbers and arrows; four-frame animal walks and grazing; building life for every
+kind of building that has something to show (smoke, sparks, work dust, splashes, butterflies,
+birds, glints, waving flags); five decorations; settler shading; the sand-and-grass HUD skin;
+See more in the HUD (setting for floating); bigger toasts; window-wide edge scrolling with a
+speed setting; hover hit box and tile grid; hotkeys for windows, goods, today, see more,
+survey, home, grid and health bars (all remappable).
+
+**Checked in the built game (headless Chrome):** the skin at 1366×768 (top bar, console,
+command card, tooltips, windows, new-world screen), See more inside the console, the grid and
+hit box, health bars over settlers and animals, a hunter at work with damage numbers, and the
+lodge and hall smoking. **Not seen in a screenshot:** an arrow in flight and a bear striking
+back (both covered by tests of the simulation, not of the drawing). No human playtest.
+
+### Rulings
+
+- **P6** Paths, fences, walls and fields have no animation: nothing about them moves.
+- **P7** Development builds (`vite build --mode development`) expose `window.__game` so the
+  screenshot script can set up scenes; production builds do not.

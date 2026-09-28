@@ -44,6 +44,11 @@ Handy scripts:
 | Pause / speeds 1×, 2×, 4× | Space, 1, 2, 3 |
 | Build menu (categories on the command card) | B, then Q W E R / A S D F / Z X C V for a category and a building; Esc goes back |
 | Find yourself, the ruler / Rally (ruler selected) | K / R |
+| Windows: People, Areas, Towns, Families, Realm, Goals | F2, F3, F4, F6, F7, F8 |
+| All goods / Valley today / See more about the selection | I / T / V |
+| Survey / jump to the Town Hall | Y / Backspace |
+| Tile grid / health bars (everyone or only the hurt) | G / L |
+| Scroll the map | Touch any edge of the window with the mouse (Warcraft-style; speed in Settings), W A S D / arrows, middle-drag |
 | Mark / unmark resources for harvest | H / U, then drag |
 | Demolish or cancel selected building | Delete or X |
 | Next idle settler / select everyone | `.` / E |
@@ -138,6 +143,22 @@ in `localStorage`.
    what a visitor or household is still waiting for. Valleys saved before this
    update keep automatic newcomer arrivals until you choose **Adopt deliberate
    growth** in the Families tab.
+
+## What's new in the pixel polish update
+
+- **Hunting by damage:** animals have health. Hunters fight bare-handed beside their quarry,
+  then with knives, then with bows from five tiles as the Hunter's Lodge is upgraded. Struck
+  prey bolts and the hunter gives chase; boar, wolves, bears, moose and bison strike back, and
+  a hurt hunter breaks off to heal. Nobody dies.
+- **Health bars** over every person and animal (L: only the hurt), red hit flashes, floating
+  damage numbers and flying arrows.
+- **A pixel HUD:** every box is sand inside a grass frame. **See more** (V) opens inside the
+  bottom panel (or a floating window, in Settings). Pop-ups are bigger and their text fits.
+- **Edge scrolling** like Warcraft III over the whole window, a hover **hit box** around the
+  tile or building under the pointer, an optional tile grid (G), and hotkeys for everything.
+- **Livelier world:** animals walk on four frames and graze; buildings smoke, spark, raise
+  dust, fly flags, and draw butterflies and birds. New decorations: haystack, barrels,
+  signpost, flower garden and a statue.
 
 ## What's new in the Town Hall update
 

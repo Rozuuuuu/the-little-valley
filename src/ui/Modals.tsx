@@ -209,8 +209,14 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
         <span>Speed</span><span>{k('speed1')} / {k('speed2')} / {k('speed3')}</span>
         <span>Build menu (categories on the command card)</span><span>{k('build')}</span>
         <span>Pick a category or building in the build menu</span><span>Q W E R / A S D F / Z X C V</span>
-        <span>Find yourself, the ruler</span><span>K</span>
-        <span>Rally the people (ruler selected)</span><span>R</span>
+        <span>Find yourself, the ruler</span><span>{k('findRuler')}</span>
+        <span>Rally the people (ruler selected)</span><span>{k('rally')}</span>
+        <span>Survey for ore</span><span>{k('survey')}</span>
+        <span>Jump to the Town Hall</span><span>{k('homeView')}</span>
+        <span>People / Areas / Towns / Families / Realm / Goals</span><span>{k('winPeople')} {k('winAreas')} {k('winTowns')} {k('winFamilies')} {k('winRealm')} {k('winGoals')}</span>
+        <span>All goods / Valley today / See more</span><span>{k('goods')} / {k('today')} / {k('seeMore')}</span>
+        <span>Tile grid / health bars</span><span>{k('toggleGrid')} / {k('healthBars')}</span>
+        <span>Scroll the map</span><span>Touch any screen edge with the mouse</span>
         <span>Mark / unmark for harvest</span><span>{k('harvest')} / {k('unmark')}</span>
         <span>Demolish selected building</span><span>{k('demolish')}</span>
         <span>Next idle settler</span><span>{k('nextIdle')}</span>
