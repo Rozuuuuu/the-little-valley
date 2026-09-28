@@ -9,7 +9,7 @@ import { World } from '../world/World';
 import type { PathGrid } from './pathfinding';
 import type {
   Appearance, BedClaim, Building, ChronicleEntry, CoalitionCommitment, ConcernState, GrowthMode, Household, Incident, Kingdom, Manifest, NewsReport, Party, Recruitment, Route, Stance,
-  TerritoryClaim, TravelerOffer, TreatyOffer, WarPlan, Warning, WorldEvent, ProgressionState, Regrowth, SessionMark, Settlement, Settler, SimEvent, Stats, WeatherState, WorkArea,
+  TerritoryClaim, TravelerOffer, TreatyOffer, WarPlan, WarState, Warning, WorldEvent, ProgressionState, Regrowth, SessionMark, Settlement, Settler, SimEvent, Stats, WeatherState, WorkArea,
 } from './types';
 import { updateSettler } from './settlers';
 import { updateFields, updateWeather } from './farming';
@@ -26,6 +26,7 @@ import { activeTreaty, makeOffer, pairKey, refreshStance, setStanceDirect, stanc
 import { deliverReports } from './news';
 import { updateCampaigns } from './campaigns';
 import { storesResource, updateMilitary } from './military';
+import { updateWar } from './combat';
 import { GROWTH_STEP } from '../data/kingdomBalance';
 import { checkMilestones } from './progression';
 import { updateRegrowth, updateWorkshops } from './buildings';
@@ -54,6 +55,7 @@ export function emptyStats(): Stats {
     surveys: 0, oreMined: 0, stoneQuarried: 0, charcoalMade: 0, coalBurned: 0, charcoalBurned: 0, copperSmelted: 0, ironSmelted: 0, copperToolsForged: 0, ironToolsForged: 0,
     caravanTrips: 0, caravanDeliveries: 0, provisions: 0, merchantVisits: 0, trades: 0,
     swordsMade: 0, bowsMade: 0, armorMade: 0, horseFeed: 0, soldiersTrained: 0,
+    battles: 0, soldiersLost: 0, cargoLost: 0, gearLost: 0, enemyLosses: 0,
   };
 }
 
@@ -138,6 +140,12 @@ export class Simulation implements PathGrid {
   commitments: CoalitionCommitment[] = [];
   /** Day diplomacy last took its daily turn. */
   diplomacyDay = 0;
+  /** Wars in progress, by pair key (saved). */
+  warStates = new Map<string, WarState>();
+  /** Surrender meters for besieged towns, by kingdom (saved). */
+  sieges = new Map<number, { besieger: number; progress: number }>();
+  /** Sectors being held unopposed, and since when (saved). */
+  occupationTimers = new Map<string, { kingdom: number; since: number }>();
   /** Day the horses were last fed. */
   horseDay = 0;
   /** Adults when prosperity was last noticed. */
@@ -262,9 +270,20 @@ export class Simulation implements PathGrid {
     this.trust.set(`${from}>${to}`, Math.max(0, Math.min(100, value)));
   }
   setWar(a: number, b: number, war: boolean): void {
-    if (war) this.wars.add(pairKey(a, b));
-    else this.wars.delete(pairKey(a, b));
+    if (war) {
+      this.wars.add(pairKey(a, b));
+      if (!this.warStates.has(pairKey(a, b))) {
+        this.warStates.set(pairKey(a, b), { attacker: a, defender: b, objective: 'raid', startedTick: this.tick, planId: null, truceUntilTick: 0, routs: {}, lastDeploy: {}, lastSkirmishDay: 0 });
+      }
+    } else {
+      this.wars.delete(pairKey(a, b));
+      this.warStates.delete(pairKey(a, b));
+    }
     refreshStance(this, a, b);
+  }
+  /** While a truce holds, no attacks. */
+  truceUntil(a: number, b: number): number {
+    return activeTreaty(this, a, b, 'truce')?.endsTick ?? 0;
   }
   makeOffer(from: number, to: number, kind: TreatyOffer['kind'], terms: { durationDays: number; payment?: number }, expiresIn: number): TreatyOffer {
     return makeOffer(this, from, to, kind, terms, expiresIn);
@@ -502,6 +521,7 @@ export class Simulation implements PathGrid {
     for (const s of this.settlers) updateSettler(this, s);
     updateParties(this);
     updateMilitary(this);
+    updateWar(this);
     if (this.tick % LOGISTICS_STEP === 0) {
       updateLogistics(this);
       updateDiplomacy(this);

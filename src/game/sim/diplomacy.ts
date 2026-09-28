@@ -5,7 +5,8 @@ import { ROAD_SPEED } from '../world/regions';
 import { evaluateConcern, updateConcern } from './concern';
 import { kingdomById, playerKingdom, PLAYER_KINGDOM } from './kingdoms';
 import { deliverMerchantNews, recordEvent, recordObservation } from './news';
-import { sectorOf } from './territory';
+import { ownerOf, sectorOf } from './territory';
+import { applyPeace, peaceScore, unmetRewards } from './combat';
 import type { Simulation } from './Simulation';
 import type { ClaimSector, CommandResult, Company, Incident, Kingdom, Stance, TreatyOffer } from './types';
 
@@ -104,7 +105,7 @@ export function proposeTreaty(sim: Simulation, kind: unknown, to: unknown, terms
   const other = kingdomById(sim, to as number);
   if (!other || other.player) return err('Choose a kingdom you know of');
   if (me.council.envoy === null) return err(`Appoint an ${COUNCIL_POSTS.envoy.name} to carry your letters`);
-  const t = (terms ?? {}) as { durationDays?: unknown; payment?: unknown };
+  const t = (terms ?? {}) as { durationDays?: unknown; payment?: unknown; transfers?: unknown; waiveUnmet?: unknown };
   const days = typeof t.durationDays === 'number' && Number.isInteger(t.durationDays) ? t.durationDays : NaN;
   const pay = t.payment === undefined ? 0 : typeof t.payment === 'number' && Number.isInteger(t.payment) && t.payment >= 0 ? t.payment : NaN;
   if (!(days >= 1 && days <= 64) || Number.isNaN(pay)) return err('Invalid terms');
@@ -115,7 +116,25 @@ export function proposeTreaty(sim: Simulation, kind: unknown, to: unknown, terms
   if (activeTreaty(sim, me.id, other.id, kind)) return err(`You already have a ${TREATIES[kind].name.toLowerCase()} with ${other.name}`);
   const bad = incompatible(sim, me.id, other.id, kind);
   if (bad) return err(bad);
+  let transfers: ClaimSector[] = [];
+  if (kind === 'peace') {
+    transfers = Array.isArray(t.transfers) ? (t.transfers as ClaimSector[]).filter((s) => Number.isInteger(s?.x) && Number.isInteger(s?.y)).map((s) => ({ x: s.x, y: s.y })) : [];
+    for (const s of transfers) {
+      const o = ownerOf(sim, s);
+      if (!o || o.legalOwner !== other.id || o.protectedHomeland) return err(`Sector ${s.x},${s.y} is not ${other.name}'s frontier land`);
+      if (o.occupyingKingdom !== me.id) return err(`You can only ask for land your soldiers hold (sector ${s.x},${s.y})`);
+    }
+    const unmet = unmetRewards(sim, other.id, transfers);
+    if (unmet.length && t.waiveUnmet !== true) {
+      return err(`This peace would leave promises unmet: ${unmet.map((u) => `${kingdomById(sim, u.ally)?.name}: ${u.sectors.map((q) => `${q.x},${q.y}`).join(' ')}`).join('; ')}. Include that land or waive the promises (it costs their trust).`);
+    }
+    for (const u of unmet) {
+      changeTrust(sim, u.ally, me.id, -20);
+      for (const cm of sim.commitments) if (cm.contributor === u.ally) cm.reasons.push('The land promised to them was waived in the peace');
+    }
+  }
   const o = makeOffer(sim, me.id, other.id, kind, { durationDays: days, payment: pay }, 4 * DAY_TICKS);
+  if (transfers.length) o.terms.transfers = transfers;
   sim.emit({ type: 'important' });
   return ok(`Your envoy is taking the ${TREATIES[kind].name.toLowerCase()} to ${other.name}${pay ? ` with ${pay} coins held until they answer` : ''}.`, o.id);
 }
@@ -127,9 +146,7 @@ function activate(sim: Simulation, o: TreatyOffer): void {
   const to = kingdomById(sim, o.recipient);
   if (to) to.treasury += o.escrow;
   o.escrow = 0;
-  if (o.kind === 'peace' || o.kind === 'truce') {
-    if (o.kind === 'peace') sim.wars.delete(pairKey(o.proposer, o.recipient));
-  }
+  if (o.kind === 'peace') applyPeace(sim, o);
   refreshStance(sim, o.proposer, o.recipient);
   changeTrust(sim, o.recipient, o.proposer, 5);
   changeTrust(sim, o.proposer, o.recipient, 5);
@@ -168,6 +185,11 @@ export function respondToOffer(sim: Simulation, offerId: unknown, accept: unknow
 /** How willing an AI kingdom is to sign, with its reasons (from what it knows). */
 export function aiVerdict(sim: Simulation, o: TreatyOffer): { accept: boolean; reasons: string[] } {
   const def = TREATIES[o.kind];
+  if (o.kind === 'peace' || o.kind === 'truce') {
+    const p = peaceScore(sim, o);
+    const accept = p.score >= def.threshold;
+    return { accept, reasons: [...p.reasons, accept ? `We accept the ${def.name.toLowerCase()}` : 'Not on these terms'] };
+  }
   const me = kingdomById(sim, o.recipient)!;
   const them = kingdomById(sim, o.proposer)!;
   const reasons: string[] = [];

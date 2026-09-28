@@ -109,6 +109,22 @@ export interface Settler {
   kingdomId: number;
   /** Serving as a soldier (null for civilians). */
   military: MilitaryService | null;
+  /** Held by another kingdom after a lost battle; home at peace. */
+  captive?: { by: number } | null;
+}
+
+/** A war between two kingdoms and what it has cost each side. */
+export interface WarState {
+  attacker: number;
+  defender: number;
+  objective: 'raid' | 'capture' | 'defend';
+  startedTick: number;
+  planId: number | null;
+  truceUntilTick: number;
+  /** Companies routed, per kingdom. */
+  routs: Record<number, number>;
+  lastDeploy: Record<number, number>;
+  lastSkirmishDay: number;
 }
 
 /** A settler's time in the army: what they carry and what they return to. */
@@ -165,8 +181,12 @@ export interface Company {
   /** Walking path (transient). */
   path?: { x: number; y: number }[] | null;
   orders?: string;
-  /** Hit points of the company in battle (M7). */
+  /** Hit points of the company in battle, 0–100. */
   health?: number;
+  /** 0–100: below 25 the company breaks off. */
+  morale?: number;
+  /** Can't attack again until this tick after breaking off. */
+  regroupUntil?: number;
 }
 
 export type Stance = 'neutral' | 'trading' | 'ally' | 'enemy';
@@ -215,7 +235,7 @@ export interface TreatyOffer {
   kind: 'trade' | 'passage' | 'nonAggression' | 'defensiveAlliance' | 'truce' | 'peace';
   proposer: number;
   recipient: number;
-  terms: { durationDays: number; payment: number };
+  terms: { durationDays: number; payment: number; transfers?: ClaimSector[]; waiveUnmet?: boolean };
   /** Coins held until the answer. */
   escrow: number;
   state: 'proposed' | 'accepted' | 'active' | 'fulfilled' | 'expired' | 'rejected' | 'breached';

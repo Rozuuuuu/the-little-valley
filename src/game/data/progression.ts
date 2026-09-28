@@ -5,6 +5,7 @@ export type StatId =
   | 'surveys' | 'oreMined' | 'stoneQuarried' | 'charcoalMade' | 'coalBurned' | 'charcoalBurned' | 'copperSmelted' | 'ironSmelted' | 'copperToolsForged' | 'ironToolsForged'
   | 'caravanTrips' | 'caravanDeliveries' | 'provisions' | 'merchantVisits' | 'trades'
   | 'swordsMade' | 'bowsMade' | 'armorMade' | 'horseFeed' | 'soldiersTrained'
+  | 'battles' | 'soldiersLost' | 'cargoLost' | 'gearLost' | 'enemyLosses'
   | 'wheatHarvested' | 'flourMilled' | 'bakedFood' | 'pathsBuilt';
 
 export type Requirement =

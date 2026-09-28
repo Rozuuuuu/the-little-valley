@@ -232,6 +232,24 @@ export const MIGRATIONS: Record<number, (save: AnyRecord) => AnyRecord> = {
       },
     };
   },
+
+  /**
+   * v10 was the army. v11 adds war: no wars are in progress in an older save
+   * (a v10 save can't have declared one), nobody is captive, nothing is besieged.
+   */
+  10: (v10) => {
+    const sim = v10.sim as AnyRecord;
+    return {
+      ...v10,
+      version: 11,
+      sim: {
+        ...sim,
+        settlers: ((sim.settlers as AnyRecord[] | undefined) ?? []).map((s) => ({ ...s, captive: null })),
+        stats: { ...emptyStats(), ...(sim.stats as AnyRecord | undefined) },
+        war: { states: [], sieges: [], occupationTimers: [] },
+      },
+    };
+  },
 };
 
 export function migrate(raw: unknown): SaveFile {
@@ -377,6 +395,9 @@ export function validateSave(save: AnyRecord): void {
   for (const c of dip.commitments as AnyRecord[]) check(isInt(c.id) && isNum(c.escrow) && (c.escrow as number) >= 0 && Array.isArray((c.terms as AnyRecord)?.companies), 'coalition commitment');
   for (const k of sim.kingdoms as AnyRecord[]) check(Array.isArray(k.companies), `kingdom ${String(k.id)} companies`);
   check(isNum(sim.horseDay), 'stables');
+  const war = sim.war as AnyRecord | undefined;
+  check(war && Array.isArray(war.states) && Array.isArray(war.sieges) && Array.isArray(war.occupationTimers), 'war');
+  for (const s of sim.settlers as AnyRecord[]) check(s.captive === null || (typeof s.captive === 'object' && isInt((s.captive as AnyRecord).by)), `settler ${s.id} captivity`);
   check(Array.isArray(sim.claims) && (sim.claims as unknown[][]).every((c) => Array.isArray(c) && isInt(c[0]) && isInt(c[1]) && isInt(c[2])), 'claims');
   check(Array.isArray(sim.recruits), 'recruits');
   for (const r of sim.recruits as AnyRecord[]) {

@@ -14,6 +14,8 @@ import { abortTask } from './settlers';
 import { canEnterTerritory, ownerOf, sectorOf } from './territory';
 import type { Simulation } from './Simulation';
 import type { Building, CommandResult, Company, Settler } from './types';
+import { deployedSoldiers } from './combat';
+import { ACTIVE_BUDGET } from '../data/war';
 
 /**
  * The realm's soldiers. Recruits are real adults: their gear leaves the stores
@@ -229,6 +231,7 @@ export function orderCompany(sim: Simulation, companyId: unknown, order: unknown
   const from = { x: Math.floor(c.x ?? 0), y: Math.floor(c.y ?? 0) };
   const path = findPath(sim, from.x, from.y, { x, y, w: 1, h: 1, adjacent: !sim.walkable(x, y) }, 60000);
   if (!path) return err('No way there on foot');
+  if (c.state === 'home' && deployedSoldiers(sim) + ready.length > ACTIVE_BUDGET) return err(`The field is crowded (${ACTIVE_BUDGET} soldiers at most across every side) — wait for others to come home`);
   if (c.state === 'home') {
     const days = typeof supplyDays === 'number' && Number.isInteger(supplyDays) && supplyDays >= 1 ? supplyDays : 2;
     const food = ready.length * RATION * days;
@@ -236,6 +239,8 @@ export function orderCompany(sim: Simulation, companyId: unknown, order: unknown
     sim.withdrawUnreserved('food', food);
     c.supplies = food;
     c.readiness = 100;
+    c.health = 100;
+    c.morale = 100;
     for (const id of ready) {
       const s = sim.settler(id)!;
       abortTask(sim, s);
@@ -261,6 +266,12 @@ function march(sim: Simulation, c: Company): void {
     c.x = c.target.x;
     c.y = c.target.y;
     arrive(sim, c);
+    return;
+  }
+  // Checked at every step: soldiers never walk into land they may not enter.
+  if (c.state === 'deployed' && !canEnterTerritory(sim, PLAYER_KINGDOM, sectorOf(next.x, next.y), true).allowed) {
+    c.target = null;
+    c.path = null;
     return;
   }
   const dx = next.x + 0.5 - (c.x ?? 0);

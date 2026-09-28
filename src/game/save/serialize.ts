@@ -70,6 +70,7 @@ export function serializeSim(sim: Simulation, extras: SerializeExtras): SaveFile
     areaId: s.areaId, priorities: s.priorities ? [...s.priorities] : null, settlementId: s.settlementId,
     lifeStage: s.lifeStage, ageTicks: s.ageTicks, householdId: s.householdId, awayOn: s.awayOn, kingdomId: s.kingdomId,
     military: s.military ? JSON.parse(JSON.stringify(s.military)) : null,
+    captive: s.captive ? { ...s.captive } : null,
   }));
   const buildings: SavedBuilding[] = [...sim.buildings.values()].map((b) => {
     const sb: SavedBuilding = {
@@ -118,6 +119,7 @@ export function serializeSim(sim: Simulation, extras: SerializeExtras): SaveFile
       // Company walking paths are transient; they are rebuilt after loading.
       kingdoms: sim.kingdoms.map((k) => JSON.parse(JSON.stringify({ ...k, companies: k.companies.map((c) => ({ ...c, path: null })) })) as Kingdom),
       horseDay: sim.horseDay,
+      war: JSON.parse(JSON.stringify({ states: [...sim.warStates], sieges: [...sim.sieges], occupationTimers: [...sim.occupationTimers] })),
       diplomacy: JSON.parse(JSON.stringify({
         worldEvents: sim.worldEvents,
         // Infinity (never warned) is saved as a large negative number.
@@ -182,6 +184,9 @@ export function deserializeSim(save: SaveFile): Simulation {
   sim.nextMerchant = d.nextMerchant;
   sim.kingdoms = d.kingdoms.map((k) => JSON.parse(JSON.stringify(k)) as Kingdom);
   sim.horseDay = d.horseDay;
+  sim.warStates = new Map(d.war.states);
+  sim.sieges = new Map(d.war.sieges);
+  sim.occupationTimers = new Map(d.war.occupationTimers);
   const dip = JSON.parse(JSON.stringify(d.diplomacy)) as SaveFile['sim']['diplomacy'];
   sim.worldEvents = dip.worldEvents;
   sim.reports = dip.reports;
@@ -243,7 +248,10 @@ export function deserializeSim(save: SaveFile): Simulation {
       areaId: ss.areaId, priorities: ss.priorities ? [...ss.priorities] : null, insideId: null, restNote: '', nextThink: 0, settlementId: ss.settlementId,
       lifeStage: ss.lifeStage, ageTicks: ss.ageTicks, householdId: ss.householdId, awayOn: ss.awayOn, kingdomId: ss.kingdomId,
       military: ss.military ? JSON.parse(JSON.stringify(ss.military)) : null,
+      captive: ss.captive ? { ...ss.captive } : null,
     };
+    // Captives are held elsewhere until peace.
+    if (s.captive) s.hidden = true;
     // Soldiers out with their company stay out of sight until it returns.
     if (s.military?.state === 'deployed') s.hidden = true;
     // Away with a caravan: out of sight until the cart returns.

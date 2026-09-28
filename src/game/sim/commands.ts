@@ -17,6 +17,7 @@ import { cancelTreaty, proposeTreaty, respondToIncident, respondToOffer } from '
 import { respondToWarning } from './concern';
 import { acceptCampaignOffer, cancelWarPlan, counterCampaignOffer, createWarPlan, requestCampaignSupport, type SupportRequest } from './campaigns';
 import { cancelTraining, demobilize, enlist, mobilizeCampaign, orderCompany } from './military';
+import { declareWar, evacuate, launchCampaign } from './combat';
 import { surveyDeposit, upgradeMine } from './mining';
 import { adoptDeliberateGrowth, cancelChildRequest, formHousehold, isChild, requestChild } from './households';
 import { fieldAction } from './farming';
@@ -65,7 +66,7 @@ export type Command =
   | { type: 'claimFrontier'; sector: { x: number; y: number } }
   | { type: 'setConflictMode'; mode: string }
   | { type: 'activateFrontier' }
-  | { type: 'proposeTreaty'; kind: string; to: number; terms: { durationDays: number; payment?: number } }
+  | { type: 'proposeTreaty'; kind: string; to: number; terms: { durationDays: number; payment?: number; transfers?: { x: number; y: number }[]; waiveUnmet?: boolean } }
   | { type: 'respondToOffer'; offerId: number; accept: boolean }
   | { type: 'cancelTreaty'; offerId: number }
   | { type: 'respondToIncident'; incidentId: number; response: string }
@@ -79,7 +80,10 @@ export type Command =
   | { type: 'enlist'; ids: number[]; unit: string; buildingId: number }
   | { type: 'cancelTraining'; settlerId: number }
   | { type: 'demobilize'; companyId: number }
-  | { type: 'orderCompany'; companyId: number; order: string; x?: number; y?: number; supplyDays?: number };
+  | { type: 'orderCompany'; companyId: number; order: string; x?: number; y?: number; supplyDays?: number }
+  | { type: 'declareWar'; target: number; objective: string; confirmBreach: boolean }
+  | { type: 'launchCampaign'; planId: number; confirmBreach: boolean }
+  | { type: 'evacuate'; from: number; to: number };
 
 const MAX_AREA = 40 * 40;
 /** Most settlers one work area can take. */
@@ -629,6 +633,12 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
       return demobilize(sim, cmd.companyId);
     case 'orderCompany':
       return orderCompany(sim, cmd.companyId, cmd.order, cmd.x, cmd.y, cmd.supplyDays);
+    case 'declareWar':
+      return declareWar(sim, cmd.target, cmd.objective, cmd.confirmBreach);
+    case 'launchCampaign':
+      return launchCampaign(sim, cmd.planId, cmd.confirmBreach);
+    case 'evacuate':
+      return evacuate(sim, cmd.from, cmd.to);
 
     case 'unassignWorker': {
       const b = sim.buildings.get(cmd.buildingId);
