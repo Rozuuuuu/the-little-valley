@@ -9,6 +9,9 @@ import { costOf, isPermanentHome, materialsComplete, workOf } from '../game/sim/
 import { orchardEstablished } from '../game/sim/orchards';
 import { knownDeposits, quarryStage } from '../game/sim/mining';
 import { cartPosition } from '../game/sim/logistics';
+import { ownerOf, sectorOf } from '../game/sim/territory';
+import { kingdomById } from '../game/sim/kingdoms';
+import { SECTOR } from '../game/data/kingdoms';
 import type { Manifest, Party } from '../game/sim/types';
 import { MINERALS } from '../game/data/minerals';
 import type { OrchardLook } from './sprites/buildings';
@@ -61,6 +64,8 @@ export interface RenderState {
   selectedArea: number | null;
   /** Work-area tools are open: show every area clearly. */
   areaMode: boolean;
+  /** Claim mode: show every owned sector. */
+  claimMode?: boolean;
   /** Something the player just jumped to (tile rect), pulsing briefly. */
   highlight: { x: number; y: number; w: number; h: number; t0: number } | null;
 }
@@ -848,6 +853,32 @@ export class Renderer {
     this.blit(m, wx, wy);
   }
 
+  private drawLand(st: RenderState, tx0: number, ty0: number, tx1: number, ty1: number): void {
+    const { sim } = st;
+    const s0 = sectorOf(tx0, ty0);
+    const s1 = sectorOf(tx1, ty1);
+    for (let sy = s0.y; sy <= s1.y; sy++) {
+      for (let sx = s0.x; sx <= s1.x; sx++) {
+        const o = ownerOf(sim, { x: sx, y: sy });
+        if (!o) continue;
+        const k = kingdomById(sim, o.legalOwner);
+        if (!k || (k.player && !st.claimMode)) continue;
+        const x = sx * SECTOR * TILE;
+        const y = sy * SECTOR * TILE;
+        const size = SECTOR * TILE;
+        this.ctx.globalAlpha = st.claimMode ? 0.16 : 0.08;
+        this.rectW(x, y, size, size, k.banner.color);
+        this.ctx.globalAlpha = 0.6;
+        const edge = (dx: number, dy: number) => ownerOf(sim, { x: sx + dx, y: sy + dy })?.legalOwner !== o.legalOwner;
+        if (edge(0, -1)) this.rectW(x, y, size, 1, k.banner.color);
+        if (edge(0, 1)) this.rectW(x, y + size - 1, size, 1, k.banner.color);
+        if (edge(-1, 0)) this.rectW(x, y, 1, size, k.banner.color);
+        if (edge(1, 0)) this.rectW(x + size - 1, y, 1, size, k.banner.color);
+        this.ctx.globalAlpha = 1;
+      }
+    }
+  }
+
   private drawBar(wx: number, wy: number, w: number, f: number, color: string): void {
     this.rectW(wx - 1, wy - 1, w + 2, 4, P.outline);
     this.rectW(wx, wy, w, 2, '#4a3d52');
@@ -856,6 +887,8 @@ export class Renderer {
 
   private drawOverlays(st: RenderState, tx0: number, ty0: number, tx1: number, ty1: number): void {
     const { sim } = st;
+    // Land: tinted sectors with a border in each owner's banner colour (claim mode, or any rival land in view).
+    if (st.showMarks && (st.claimMode || sim.kingdoms.length > 1)) this.drawLand(st, tx0, ty0, tx1, ty1);
     // Harvest marks
     for (const k of st.showMarks ? sim.designations : []) {
       const x = keyX(k);

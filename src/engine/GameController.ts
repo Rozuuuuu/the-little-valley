@@ -1,6 +1,8 @@
 import { regionalInfo } from './snapshot';
 import { growthInfo } from './growthInfo';
 import { logisticsInfo } from './tradeInfo';
+import { kingdomInfo } from './kingdomSnapshot';
+import { sectorOf } from '../game/sim/territory';
 import { AudioEngine, type SoundName } from '../audio/AudioEngine';
 import { TICK_MS, TILE } from '../game/core/constants';
 import { BUILDINGS, type BuildingId } from '../game/data/buildings';
@@ -205,6 +207,7 @@ export class GameController {
       markers: this.markers,
       showBuildHover: this.mode.kind !== 'select',
       showMarks: !this.attract,
+      claimMode: this.mode.kind === 'claim',
       selectedArea: this.selectedArea,
       areaMode: this.mode.kind === 'area' || this.areasTabOpen,
       highlight: this.highlight,
@@ -529,6 +532,14 @@ export class GameController {
     }
     if (res.ok && !keepMode && !def.paint) this.setMode({ kind: 'select' });
     this.updatePlacement(sx, sy, null);
+  }
+
+  /** Claim mode: claim the sector under the cursor. */
+  claimAt(sx: number, sy: number): void {
+    const t = this.worldTile(sx, sy);
+    const res = this.dispatch({ type: 'claimFrontier', sector: sectorOf(t.x, t.y) });
+    this.marker(t.x, t.y, res.ok ? 'work' : 'bad');
+    if (res.ok) this.audio.play('complete');
   }
 
   /** Survey mode: the first selected adult goes to survey the clicked spot. */
@@ -878,11 +889,12 @@ export class GameController {
     const settlers = sim.settlers.map((s) => settlerInfo(sim, s));
     const t = this.tutorial;
     const step = !t.done ? TUTORIAL[t.step] : null;
-    const hover = this.hoverWorld ? hoverText(sim, this.hoverWorld.x, this.hoverWorld.y) : null;
+    const hover = this.hoverWorld ? hoverText(sim, this.hoverWorld.x, this.hoverWorld.y, this.mode.kind === 'claim') : null;
     this.ui.set({
       region: regionalInfo(sim),
       growth: growthInfo(sim),
       logistics: logisticsInfo(sim),
+      kingdom: kingdomInfo(sim),
       running: true,
       paused: this.paused,
       speed: this.speed,

@@ -566,6 +566,40 @@ const depot: Draw = (p) => {
   p.ellipse(42, 26, 3, 3, '#d8c28e');
 };
 
+/** The Royal Hall: dressed stone, a great door, tall windows and a banner tower. */
+const royalHall: Draw = (p, lit) => {
+  // Main hall
+  p.rect(2, 6, 60, 42, P.stone2);
+  p.rect(2, 6, 4, 40, P.stone3);
+  for (let y = 10; y < 46; y += 6) p.hline(2, 61, y, P.stone1);
+  for (let y = 10; y < 46; y += 12) for (let x = 8; x < 62; x += 10) p.vline(x, y, y + 5, P.stone1);
+  p.rect(2, 44, 60, 4, P.stone0);
+  shingles(p, 0, 63, -10, 8, SLATE, 4);
+  p.hline(0, 63, 8, P.stone0);
+  // Banner tower
+  p.rect(46, -30, 12, 38, P.stone2);
+  p.rect(46, -30, 3, 36, P.stone3);
+  for (let x = 46; x < 58; x += 3) p.rect(x, -33, 2, 3, P.stone2);
+  p.vline(52, -46, -33, P.wood1);
+  p.rect(53, -46, 8, 5, P.flowerR);
+  p.hline(53, 60, -42, P.roof0);
+  windowAt(p, 49, -22, 6, 8, lit);
+  // Tall windows and a great arched door
+  for (const x of [8, 18, 38]) windowAt(p, x, 14, 6, 14, lit);
+  p.rect(26, 26, 12, 22, P.stone0);
+  p.rect(27, 24, 10, 2, P.stone0);
+  p.rect(28, 27, 8, 21, P.wood1);
+  p.vline(32, 27, 47, P.wood0);
+  p.px(30, 38, P.fire2);
+  p.px(34, 38, P.fire2);
+  // Steps and two lanterns
+  p.hline(24, 40, 47, P.stone3);
+  for (const x of [21, 42]) {
+    p.rect(x, 34, 2, 12, P.wood0);
+    p.rect(x - 1, 31, 4, 4, lit ? P.fire2 : P.stone0);
+  }
+};
+
 /** Goods left by a caravan with nowhere to go. */
 const crate: Draw = (p) => {
   p.rect(2, 4, 12, 10, P.wood3);
@@ -752,6 +786,7 @@ export function makeBuildingSprites(): Partial<Record<BuildingId, BuildingSprite
     inn: make(54, 58, 3, 22, inn),
     depot: make(54, 48, 3, 14, depot),
     crate: make(18, 20, 1, 4, crate),
+    royalHall: make(70, 100, 3, 50, royalHall),
     smelter: make(36, 58, 2, 24, smelter),
     forge: make(54, 46, 3, 12, forge),
     camp: make(52, 46, 2, 12, camp),

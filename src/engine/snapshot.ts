@@ -27,6 +27,9 @@ import { OBJECTS, TERRAIN } from '../game/world/tiles';
 import type { Overview } from './overview';
 import type { GrowthInfo } from './growthInfo';
 import { innInfo, type InnInfo, type LogisticsInfo } from './tradeInfo';
+import type { KingdomInfo } from './kingdomSnapshot';
+import { claimPreview, ownerOf, sectorOf } from '../game/sim/territory';
+import { kingdomById } from '../game/sim/kingdoms';
 
 export type Mode =
   | { kind: 'select' }
@@ -34,7 +37,8 @@ export type Mode =
   | { kind: 'mark' }
   | { kind: 'unmark' }
   | { kind: 'area'; areaKind: AreaKind; editId: number | null }
-  | { kind: 'survey' };
+  | { kind: 'survey' }
+  | { kind: 'claim' };
 
 export interface SettlerInfo {
   id: number;
@@ -118,6 +122,7 @@ export interface UiSnapshot {
   region: ReturnType<typeof regionalInfo>;
   growth: GrowthInfo;
   logistics: LogisticsInfo;
+  kingdom: KingdomInfo;
   running: boolean;
   paused: boolean;
   speed: number;
@@ -160,6 +165,11 @@ export function emptySnapshot(): UiSnapshot {
   return {
     region: { calendar: '', forecast: '', seasonNote: '', towns: [] },
     logistics: { stores: [], routes: [], carts: 0, towns: [], resources: [] },
+    kingdom: {
+      name: '', crowned: false, ruler: null, banner: { color: '#3a6ea5', emblem: 'oak' }, treasury: 0, taxCollected: 0, policy: 'none', policies: [], trust: 0,
+      council: [], homeland: 0, homelandPreview: 0, claims: 0, claimCost: 0, conflictMode: 'protected-frontier', modeLocked: false, frontierActive: false,
+      canCoronate: false, bannerColors: [], emblems: [], rivals: [],
+    },
     growth: {
       mode: 'deliberate', adoption: '', adults: 0, children: 0, beds: { homeUsed: 0, held: 0, homeTotal: 0, bedrollsUsed: 0, bedrolls: 0 },
       households: [], unpaired: [], visitor: null, nextVisitorIn: '', recruits: [], settlements: [], applesPrice: 0,
@@ -352,9 +362,16 @@ export function celebrationInfo(id: MilestoneId): UiSnapshot['celebration'] {
   };
 }
 
-export function hoverText(sim: Simulation, wx: number, wy: number): string | null {
+export function hoverText(sim: Simulation, wx: number, wy: number, claimMode = false): string | null {
   const x = Math.floor(wx / TILE);
   const y = Math.floor(wy / TILE);
+  if (claimMode) {
+    const sec = sectorOf(x, y);
+    const p = claimPreview(sim, sec);
+    const o = ownerOf(sim, sec);
+    const owner = o ? kingdomById(sim, o.legalOwner)?.name ?? 'another kingdom' : 'nobody';
+    return `Sector ${sec.x},${sec.y} · held by ${owner}${o?.protectedHomeland ? ' (protected homeland)' : ''} · ${p.supplied ? 'supplied' : 'not supplied'} · ${p.problem ?? `claim for ${p.cost} coins`}`;
+  }
   if (!sim.world.explored(x, y)) return 'Unexplored — send a settler to look';
   const known = surveyedCell(sim, x, y);
   const geo = known ? ` · surveyed: ${describeCell(known)}` : '';

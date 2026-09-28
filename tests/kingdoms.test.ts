@@ -129,3 +129,22 @@ describe('the kingdom', () => {
     expect(playerKingdom(sim).council.steward).toBeNull();
   });
 });
+
+describe('realm panel snapshot', () => {
+  it('shows the crown, treasury, trust, council and known kingdoms from what the player knows', async () => {
+    const { kingdomInfo } = await import('../src/engine/kingdomSnapshot');
+    const sim = regionReady();
+    let info = kingdomInfo(sim);
+    expect(info.crowned).toBe(false);
+    expect(info.canCoronate).toBe(false);
+    expect(info.council.map((c) => c.post)).toEqual(['steward', 'envoy', 'marshal']);
+    expect(info.homelandPreview).toBeGreaterThan(30);
+    expect(info.rivals).toEqual([]);
+    sim.progression.reached.push('region');
+    expect(kingdomInfo(sim).canCoronate).toBe(true);
+    applyCommand(sim, { type: 'coronate', ...identity });
+    info = kingdomInfo(sim);
+    expect(info.ruler).toBe('Queen Alder');
+    expect(info.homeland).toBe(info.homelandPreview);
+  });
+});

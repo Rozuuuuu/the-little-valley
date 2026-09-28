@@ -24,7 +24,7 @@ button, select, input { font: inherit; color: inherit; }
 img.px, canvas { image-rendering: pixelated; }
 
 .game-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; outline: none; cursor: default; }
-.game-canvas.mode-place, .game-canvas.mode-mark, .game-canvas.mode-unmark, .game-canvas.mode-survey { cursor: crosshair; }
+.game-canvas.mode-place, .game-canvas.mode-mark, .game-canvas.mode-unmark, .game-canvas.mode-survey, .game-canvas.mode-claim { cursor: crosshair; }
 
 /* ---- panels: hard pixel-stepped frame, no blur ---- */
 .panel {
@@ -284,3 +284,5 @@ select, input[type='text'] {
 .route { border-top: 1px dashed var(--moss-3); padding: 4px 0; }
 .route-form { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
 .route-form select, .residents select { font: inherit; background: var(--ink); color: var(--straw); border: 1px solid var(--moss-3); max-width: 100%; }
+
+.banner-chip { display: inline-block; width: 10px; height: 14px; border: 1px solid var(--edge-hi); vertical-align: middle; }

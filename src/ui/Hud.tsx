@@ -19,6 +19,7 @@ import { ResIcon, UiIcon } from './Icon';
 import { Households } from './Households';
 import { Travelers } from './Travelers';
 import { InnPanel, Routes } from './Logistics';
+import { KingdomPanel } from './Kingdom';
 
 const MAIN_RES: ResourceId[] = ['food', 'wood', 'stone'];
 const CRAFTED: ResourceId[] = [
@@ -755,7 +756,7 @@ function AreasTab() {
 export function SidePanel() {
   const { game } = useGame();
   const s = useSnapshot();
-  const [tab, setTab] = useState<'people' | 'areas' | 'towns' | 'families' | 'goals' | null>('goals');
+  const [tab, setTab] = useState<'people' | 'areas' | 'towns' | 'families' | 'realm' | 'goals' | null>('goals');
   useEffect(() => {
     game.areasTabOpen = tab === 'areas';
   }, [tab, game]);
@@ -783,6 +784,9 @@ export function SidePanel() {
         <button role="tab" aria-selected={tab === 'families'} className={tab === 'families' ? 'on' : ''} onClick={() => setTab('families')}>
           Families{s.growth.visitor && <span className="badge" title={`${s.growth.visitor.name} is visiting`}>!</span>}
         </button>
+        <button role="tab" aria-selected={tab === 'realm'} className={tab === 'realm' ? 'on' : ''} onClick={() => setTab('realm')}>
+          Realm
+        </button>
         <button role="tab" aria-selected={tab === 'goals'} className={tab === 'goals' ? 'on' : ''} onClick={() => setTab('goals')}>
           Goals
         </button>
@@ -805,6 +809,7 @@ export function SidePanel() {
           </>
         )}
         {tab === 'areas' && <AreasTab />}
+        {tab === 'realm' && <KingdomPanel />}
         {tab === 'families' && (
           <>
             <Travelers />

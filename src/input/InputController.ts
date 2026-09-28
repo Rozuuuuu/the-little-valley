@@ -113,6 +113,10 @@ export class InputController {
       g.surveyAt(sx, sy);
       return;
     }
+    if (mode.kind === 'claim') {
+      g.claimAt(sx, sy);
+      return;
+    }
     if (mode.kind === 'mark' || mode.kind === 'unmark') {
       g.markArea(d.tile, sx, sy);
       g.areaBox = null;
