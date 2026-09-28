@@ -128,6 +128,16 @@ A day is 2880 ticks (4.8 minutes at 1×). Night runs from 0.87 to 0.21 of the da
   uses only reports (a strength range widening with uncertainty and age) and counts only
   arrived allies.
 
+- **Military** (`sim/military.ts`, `data/units.ts`): enlisting takes real adults and
+  withdraws their gear at once (the last sword can go to one recruit only), frees their
+  civilian claims and keeps home, household and old job. Recruits drill at a barracks
+  or archery range (4 slots). A company on the move carries food from the stores; each
+  day without it costs 25 readiness and at 0 it marches home — soldiers are never
+  removed. Horses are stored only in stable stalls (`storesResource`) and eat daily.
+  Mustering moves accepted allied contingents through assembling → en route →
+  arrived (fee paid) → service → home; the player's supply share is charged daily
+  with a day's grace. Allied soldiers never enter the player's population.
+
 > Old worlds keep their generator forever. See "World generator versions" in
 > [SAVE_FORMAT.md](SAVE_FORMAT.md). Never change an existing generator: add a new one.
 

@@ -108,6 +108,12 @@ in `localStorage`.
      (borders, allies) or confirmations (your envoy) and says who told you and how old
      it is. Worried neighbours send warnings you can answer. The war council drafts
      private plans and negotiates allied support.
+   - **Army** (Realm → Army): forge swords and armour, make bows, buy horses into a
+     stable. Select adults, open a Barracks or Archery Range and enlist them. Trained
+     companies march where you click, carrying food for the days you choose; hungry
+     companies lose readiness and come home. Stand a company down to send everyone back
+     to their old work. **Civilization** needs a crown, supply lines and two of 20
+     equipment, a trade treaty or a council hall — never a war.
    - **Village** needs 10 adults, 8 beds in real homes, and any **2** of:
      bake 30 food, run 2 staffed work areas, finish a stone bridge, lay 25 path tiles.
 8. **Beds:** houses have 2, family homes 3, cottages 4, and the camp has 5 temporary

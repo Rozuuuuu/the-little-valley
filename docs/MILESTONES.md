@@ -1,5 +1,23 @@
 # Milestone reports
 
+## Barracks, armory and armies (plan M6)
+
+**Playable:** swords, armour, bows and stabled horses; barracks and archery range
+training (enlist from their inspector); the Army panel with readiness, food carried,
+march/hold/come-home/stand-down; squads drawn in the field under the realm's banner;
+mustering allies from the war council; the Civilization milestone.
+
+**Tests:** 215 passing. `military.test.ts`: children refused, the last sword to one
+recruit, civilian claims released but home/household/job kept, training slots, training
+across a reload, cancelling returns gear, horses only in stalls and fed daily, knights
+needing horse and armour, demobilising returning gear and horse, a patrol running out of
+food and coming home with everyone, no entry into protected or foreign land, family
+requests paused while a parent is deployed, Civilization never requiring war, allied
+contingents arriving (fee paid on arrival) and going home, and a fix for settlers looping
+when the nearest store refused their goods.
+
+**Save:** v9 → v10.
+
 ## Diplomacy, concern and news (plan M5)
 
 **Playable:** Realm → Diplomacy (warnings with six answers, incidents with three,

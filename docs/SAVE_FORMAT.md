@@ -1,7 +1,7 @@
 # Save format
 
 Saves are JSON documents described by `src/game/save/format.ts`. The current version
-is **9** (`SAVE_VERSION`).
+is **10** (`SAVE_VERSION`).
 
 ## Version history
 
@@ -11,6 +11,7 @@ is **9** (`SAVE_VERSION`).
 | 2 | Milestone 1 | `meta` / `sim` / `world` sections, crafting stats, weather. |
 | 3 | Milestone 2 (Village) | World generator version, work areas, personal work orders, production workers, span building sizes, the chronicle and session marks, new stats. |
 | 4 | Seasons and settlements | `settlements`, settler `settlementId`, storage `wants` (stock targets). |
+| 10 | Barracks, armory and armies | settler `military` (unit, training progress, company, gear held, prior job/order/area), the player's companies with members, field state, carried food, readiness and position (paths rebuilt), allied contingent timing on commitments, `horseDay`, equipment stats. |
 | 9 | Diplomacy, concern and news | `sim.diplomacy`: world events (internal truth), news reports (pending and delivered, with source, certainty, times, supersession and relay chain), summarised counts, stances, directional trust, wars, treaty offers (with escrow and reasons), incidents, warnings, concern states (band, score, warning dedupe, reassurance), war plans, coalition commitments (escrow, reserved company ids); kingdoms gain a temperament and companies. |
 | 8 | Crown, government and land | `kingdoms` (the player's kingdom first: crown, ruler, banner, treasury, tax policy, trust, council, frozen homeland, conflict setting; then known rivals), `claims` (frontier sectors), settler `kingdomId`, merchant `coins`. |
 | 7 | Travellers and connected settlements | `routes`, `manifests` (carts on the road with their cargo), `parties` (merchants, without walking paths), `knownRegions`, `nextMerchant`, settler `awayOn`, trade and caravan stats. |
