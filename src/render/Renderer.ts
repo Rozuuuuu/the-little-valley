@@ -12,7 +12,8 @@ import { cartPosition } from '../game/sim/logistics';
 import { ownerOf, sectorOf } from '../game/sim/territory';
 import { kingdomById } from '../game/sim/kingdoms';
 import { SECTOR } from '../game/data/kingdoms';
-import type { Manifest, Party } from '../game/sim/types';
+import type { Company, Manifest, Party } from '../game/sim/types';
+import { playerCompanies } from '../game/sim/military';
 import { MINERALS } from '../game/data/minerals';
 import type { OrchardLook } from './sprites/buildings';
 import { invEntries } from '../game/sim/inventory';
@@ -332,6 +333,13 @@ export class Renderer {
       const y = p.y * TILE;
       if (x < tl.x - 32 || x > br.x + 32 || y < tl.y - 32 || y > br.y + 48) continue;
       drawables.push({ y, draw: () => this.drawTraveller(p, x, y, st.time) });
+    }
+    for (const c of playerCompanies(sim)) {
+      if (c.state !== 'deployed' && c.state !== 'returning') continue;
+      const x = (c.x ?? 0) * TILE;
+      const y = (c.y ?? 0) * TILE;
+      if (x < tl.x - 48 || x > br.x + 48 || y < tl.y - 48 || y > br.y + 64) continue;
+      drawables.push({ y, draw: () => this.drawCompany(sim, c, x, y, st.time) });
     }
     for (const m of sim.manifests) {
       const at = cartPosition(sim, m, st.alpha);
@@ -775,6 +783,33 @@ export class Renderer {
     this.blit(sheet[facing][frame], x, y);
     // A trader's pack
     this.blit(this.sprites.resources.planks, x, y - 20 + (Math.floor(time * 4) % 2));
+  }
+
+  /** A company in the field: its soldiers in a loose square under the realm's banner. */
+  private drawCompany(sim: Simulation, c: Company, x: number, y: number, time: number): void {
+    const members = (c.members ?? []).map((id) => sim.settler(id)).filter((s): s is Settler => !!s && s.military?.state === 'deployed');
+    const next = c.path?.[0];
+    const dx = next ? next.x + 0.5 - (c.x ?? 0) : 0;
+    const dy = next ? next.y + 0.5 - (c.y ?? 0) : 1;
+    const facing = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 2 : 3) : dy < 0 ? 1 : 0;
+    const moving = !!next;
+    members.forEach((s, i) => {
+      const ox = (i % 2) * 10 - 5;
+      const oy = Math.floor(i / 2) * 7 - 3;
+      const frame = (moving ? FRAME.walk : FRAME.idle) + (Math.floor(time * 8 + i) % (moving ? 4 : 2));
+      this.ctx.globalAlpha = 0.3;
+      this.rectW(x + ox - 4, y + oy - 1, 8, 2, '#140e1c');
+      this.ctx.globalAlpha = 1;
+      if (s.military?.unit === 'knight') this.blit(this.sprites.resources.horses, x + ox, y + oy + 2);
+      this.blit(this.sprites.settler(s.appearance)[facing][frame], x + ox, y + oy);
+      const gear = s.military?.unit === 'archer' ? this.sprites.resources.bows : this.sprites.resources.swords;
+      this.blit(gear, x + ox + 5, y + oy - 8);
+    });
+    // Banner in the realm's colour
+    const k = sim.kingdoms.find((q) => q.player);
+    this.rectW(x - 10, y - 30, 1, 22, P.wood0);
+    this.rectW(x - 9, y - 30, 7, 5, k?.banner.color ?? P.flowerR);
+    if ((c.readiness ?? 100) < 100) this.drawBar(x - 8, y - 34, 16, (c.readiness ?? 100) / 100, (c.readiness ?? 100) < 40 ? '#d9481f' : '#6cab4c');
   }
 
   private drawCart(m: Manifest, x: number, y: number, time: number): void {

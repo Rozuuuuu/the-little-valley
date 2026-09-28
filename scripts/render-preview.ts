@@ -199,7 +199,7 @@ async function main(): Promise<void> {
   const list: { canvas: FakeCanvas }[] = [];
   const add = (s: { canvas: unknown } | undefined) => s && list.push(s as { canvas: FakeCanvas });
   const extra = (process.argv[4] ?? '').split(',').filter(Boolean);
-  for (const id of ['familyHome', 'charcoalKiln', 'smelter', 'forge', ...extra]) {
+  for (const id of extra.length ? extra : ['familyHome', 'charcoalKiln', 'smelter', 'forge']) {
     const set = bank.buildings[id as 'forge'];
     add(set?.day);
     add(set?.night);

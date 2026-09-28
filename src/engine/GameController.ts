@@ -2,6 +2,7 @@ import { regionalInfo } from './snapshot';
 import { growthInfo } from './growthInfo';
 import { logisticsInfo } from './tradeInfo';
 import { diplomacyInfo, kingdomInfo, newsInfo, warCouncilInfo } from './kingdomSnapshot';
+import { armyInfo } from './militaryInfo';
 import { sectorOf } from '../game/sim/territory';
 import { AudioEngine, type SoundName } from '../audio/AudioEngine';
 import { TICK_MS, TILE } from '../game/core/constants';
@@ -534,6 +535,15 @@ export class GameController {
     this.updatePlacement(sx, sy, null);
   }
 
+  /** March mode: send a company to the clicked spot. */
+  marchAt(sx: number, sy: number): void {
+    if (this.mode.kind !== 'march') return;
+    const t = this.worldTile(sx, sy);
+    const res = this.dispatch({ type: 'orderCompany', companyId: this.mode.companyId, order: 'move', x: t.x, y: t.y, supplyDays: this.mode.supplyDays });
+    this.marker(t.x, t.y, res.ok ? 'move' : 'bad');
+    if (res.ok) this.setMode({ kind: 'select' });
+  }
+
   /** Claim mode: claim the sector under the cursor. */
   claimAt(sx: number, sy: number): void {
     const t = this.worldTile(sx, sy);
@@ -898,6 +908,7 @@ export class GameController {
       diplomacy: diplomacyInfo(sim),
       news: newsInfo(sim),
       warCouncil: warCouncilInfo(sim),
+      army: armyInfo(sim),
       running: true,
       paused: this.paused,
       speed: this.speed,

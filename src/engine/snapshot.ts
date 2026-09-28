@@ -28,6 +28,7 @@ import type { Overview } from './overview';
 import type { GrowthInfo } from './growthInfo';
 import { innInfo, type InnInfo, type LogisticsInfo } from './tradeInfo';
 import type { DiplomacyInfo, KingdomInfo, NewsItem, WarCouncilInfo } from './kingdomSnapshot';
+import { trainingInfo, type ArmyInfo } from './militaryInfo';
 import { claimPreview, ownerOf, sectorOf } from '../game/sim/territory';
 import { kingdomById } from '../game/sim/kingdoms';
 
@@ -38,7 +39,8 @@ export type Mode =
   | { kind: 'unmark' }
   | { kind: 'area'; areaKind: AreaKind; editId: number | null }
   | { kind: 'survey' }
-  | { kind: 'claim' };
+  | { kind: 'claim' }
+  | { kind: 'march'; companyId: number; supplyDays: number };
 
 export interface SettlerInfo {
   id: number;
@@ -78,6 +80,7 @@ export interface BuildingInfo {
   /** Orchard state in plain words. */
   orchard?: string;
   inn?: InnInfo;
+  training?: ReturnType<typeof trainingInfo>;
   /** Quarries and mines. */
   extraction?: { status: string; level: number | null; maxLevel: number; upgrade: string | null; deposit: string | null };
   storage?: { entries: [ResourceId, number][]; used: number; capacity: number };
@@ -126,6 +129,7 @@ export interface UiSnapshot {
   diplomacy: DiplomacyInfo;
   news: { items: NewsItem[]; summarised: number };
   warCouncil: WarCouncilInfo;
+  army: ArmyInfo;
   running: boolean;
   paused: boolean;
   speed: number;
@@ -171,6 +175,7 @@ export function emptySnapshot(): UiSnapshot {
     diplomacy: { kingdoms: [], offersToYou: [], yourOffers: [], incidents: [], warnings: [], treatyKinds: [], hasEnvoy: false },
     news: { items: [], summarised: 0 },
     warCouncil: { plans: [], allies: [] },
+    army: { companies: [], equipment: { swords: 0, bows: 0, armor: 0, horses: 0 }, units: [], training: 0 },
     kingdom: {
       name: '', crowned: false, ruler: null, banner: { color: '#3a6ea5', emblem: 'oak' }, treasury: 0, taxCollected: 0, policy: 'none', policies: [], trust: 0,
       council: [], homeland: 0, homelandPreview: 0, claims: 0, claimCost: 0, conflictMode: 'protected-frontier', modeLocked: false, frontierActive: false,
@@ -278,6 +283,7 @@ export function buildingInfo(sim: Simulation, list: Building[]): BuildingInfo | 
     };
   }
   if (def.lodging && b.built) info.inn = innInfo(sim, b);
+  if (def.training && b.built) info.training = trainingInfo(sim, b);
   if (def.extraction && b.built) {
     const d = mineDeposit(sim, b);
     const next = b.mine && b.mine.level < 3 ? MINE_UPGRADES[(b.mine.level + 1) as 2 | 3] : null;

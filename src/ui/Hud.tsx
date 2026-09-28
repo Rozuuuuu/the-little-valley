@@ -23,6 +23,7 @@ import { KingdomPanel } from './Kingdom';
 import { Diplomacy } from './Diplomacy';
 import { KingdomNews } from './KingdomNews';
 import { WarCouncil } from './WarCouncil';
+import { Military, TrainingPanel } from './Military';
 
 const MAIN_RES: ResourceId[] = ['food', 'wood', 'stone'];
 const CRAFTED: ResourceId[] = [
@@ -519,6 +520,7 @@ function BuildingCard({ info }: { info: BuildingInfo }) {
         </>
       )}
       {info.inn && <InnPanel key={info.ids[0]} />}
+      {info.training && <TrainingPanel buildingId={info.ids[0]} />}
       {info.extraction && (
         <div className="residents">
           {info.extraction.deposit && <div>{info.extraction.deposit}</div>}
@@ -758,14 +760,14 @@ function AreasTab() {
 
 function RealmTabs() {
   const s = useSnapshot();
-  const [sub, setSub] = useState<'crown' | 'diplomacy' | 'news' | 'war'>('crown');
+  const [sub, setSub] = useState<'crown' | 'diplomacy' | 'news' | 'war' | 'army'>('crown');
   const alerts = s.diplomacy.warnings.length + s.diplomacy.incidents.length + s.diplomacy.offersToYou.length;
   return (
     <>
       <div className="sub-tabs" role="tablist">
-        {(['crown', 'diplomacy', 'news', 'war'] as const).map((k) => (
+        {(['crown', 'diplomacy', 'news', 'war', 'army'] as const).map((k) => (
           <button key={k} role="tab" aria-selected={sub === k} className={`btn small${sub === k ? ' on' : ''}`} onClick={() => setSub(k)}>
-            {k === 'crown' ? 'Crown' : k === 'diplomacy' ? `Diplomacy${alerts ? ` (${alerts})` : ''}` : k === 'news' ? 'News' : 'War council'}
+            {k === 'crown' ? 'Crown' : k === 'diplomacy' ? `Diplomacy${alerts ? ` (${alerts})` : ''}` : k === 'news' ? 'News' : k === 'war' ? 'War council' : 'Army'}
           </button>
         ))}
       </div>
@@ -773,6 +775,7 @@ function RealmTabs() {
       {sub === 'diplomacy' && <Diplomacy />}
       {sub === 'news' && <KingdomNews />}
       {sub === 'war' && <WarCouncil />}
+      {sub === 'army' && <Military />}
     </>
   );
 }

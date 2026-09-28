@@ -24,7 +24,7 @@ button, select, input { font: inherit; color: inherit; }
 img.px, canvas { image-rendering: pixelated; }
 
 .game-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; outline: none; cursor: default; }
-.game-canvas.mode-place, .game-canvas.mode-mark, .game-canvas.mode-unmark, .game-canvas.mode-survey, .game-canvas.mode-claim { cursor: crosshair; }
+.game-canvas.mode-place, .game-canvas.mode-mark, .game-canvas.mode-unmark, .game-canvas.mode-survey, .game-canvas.mode-claim, .game-canvas.mode-march { cursor: crosshair; }
 
 /* ---- panels: hard pixel-stepped frame, no blur ---- */
 .panel {

@@ -121,6 +121,11 @@ export function WarCouncil() {
           ) : (
             <p className="muted">You have no allies to ask. A defensive alliance comes first.</p>
           )}
+          {p.state === 'drafting' && (
+            <button className="btn small" onClick={() => game.dispatch({ type: 'mobilizeCampaign', planId: p.id })} title="Allies who agreed start marching to your staging ground. Nothing attacks until you launch.">
+              Muster
+            </button>
+          )}
           <button className="btn small" onClick={() => game.dispatch({ type: 'cancelWarPlan', planId: p.id })}>
             Shelve the plan
           </button>

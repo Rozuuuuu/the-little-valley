@@ -600,6 +600,91 @@ const royalHall: Draw = (p, lit) => {
   }
 };
 
+/** Barracks: a long stone bunkhouse with a drill yard fence and a pennant. */
+const barracks: Draw = (p, lit) => {
+  p.rect(1, 8, 46, 24, P.stone2);
+  p.rect(1, 8, 3, 22, P.stone3);
+  for (let y = 12; y < 30; y += 5) p.hline(1, 46, y, P.stone1);
+  p.rect(1, 28, 46, 4, P.stone0);
+  shingles(p, -1, 48, -6, 10, SLATE, 3);
+  p.hline(0, 47, 10, P.stone0);
+  for (const x of [6, 16, 32, 40]) windowAt(p, x, 15, 4, 6, lit);
+  p.rect(22, 18, 6, 14, P.wood0);
+  p.rect(23, 19, 4, 13, P.wood2);
+  // Weapon rack and a pennant
+  p.vline(44, -18, 8, P.wood1);
+  p.rect(45, -18, 7, 4, P.flowerR);
+  for (const x of [8, 12]) {
+    for (let i = 0; i < 6; i++) p.px(x + i * 0.3, 24 - i, P.stone3);
+  }
+};
+
+/** Archery range: straw butts with targets and a shooting line. */
+const archeryRange: Draw = (p) => {
+  p.rect(0, 20, 48, 12, '#b89f6a');
+  p.hline(0, 47, 30, P.wood1);
+  for (const x of [8, 24, 40]) {
+    p.ellipse(x, 12, 6, 7, '#d8c28e');
+    p.ellipse(x, 11, 4, 4, '#ffffff');
+    p.ellipse(x, 11, 2.5, 2.5, P.flowerR);
+    p.px(x, 11, P.fire2);
+    p.vline(x - 3, 17, 22, P.wood0);
+    p.vline(x + 3, 17, 22, P.wood0);
+  }
+  // Arrows stuck in the butts
+  p.hline(9, 12, 10, P.wood2);
+  p.hline(25, 28, 12, P.wood2);
+};
+
+/** Armory: squat stone store with shields on the wall. */
+const armory: Draw = (p, lit) => {
+  p.rect(1, 6, 30, 26, P.stone1);
+  p.rect(1, 6, 3, 24, P.stone2);
+  for (let y = 10; y < 30; y += 5) p.hline(1, 30, y, P.stone0);
+  shingles(p, -1, 32, -8, 8, SLATE, 3);
+  p.rect(12, 18, 8, 14, P.wood0);
+  p.rect(13, 19, 6, 13, P.stone0);
+  p.hline(13, 18, 24, P.stone3);
+  for (const [x, c] of [[4, P.flowerR], [24, '#3a6ea5']] as const) {
+    p.ellipse(x + 2, 15, 3, 4, c);
+    p.px(x + 2, 14, P.fire2);
+  }
+  p.px(16, 26, lit ? P.fire2 : P.stone2);
+};
+
+/** Stable: timber stalls with half doors and a horse looking out. */
+const stable: Draw = (p) => {
+  shingles(p, -1, 48, -6, 9, ROOF, 3);
+  p.rect(1, 9, 46, 23, P.wood2);
+  for (let x = 1; x < 47; x += 4) p.vline(x, 9, 31, P.wood1);
+  for (const x of [4, 16, 28, 40]) {
+    p.rect(x, 16, 8, 16, '#3a2e28');
+    p.rect(x, 24, 8, 8, P.wood3);
+    p.hline(x, x + 7, 24, P.wood4);
+  }
+  // A horse's head over a door
+  p.rect(18, 15, 4, 6, '#8a5a3a');
+  p.rect(17, 14, 3, 3, '#8a5a3a');
+  p.px(18, 15, P.outline);
+  p.ellipse(44, 30, 3, 2, '#d8c28e');
+};
+
+/** Council Hall: columns, steps and a round window. */
+const councilHall: Draw = (p, lit) => {
+  p.rect(2, 10, 44, 22, P.wall2);
+  for (let i = 0; i < 6; i++) p.hline(-1 + i, 48 - i, 4 + i, P.stone2);
+  p.hline(4, 43, 3, P.stone3);
+  for (const x of [5, 13, 33, 41]) {
+    p.rect(x, 10, 3, 20, P.stone3);
+    p.vline(x + 2, 10, 29, P.stone1);
+  }
+  p.ellipse(24, 17, 4, 4, P.stone1);
+  p.ellipse(24, 17, 3, 3, lit ? P.fire2 : P.slate1);
+  p.rect(20, 22, 8, 10, P.wood0);
+  p.rect(21, 23, 6, 9, P.wood2);
+  for (let i = 0; i < 3; i++) p.hline(1 + i * 2, 46 - i * 2, 30 + i, P.stone2);
+};
+
 /** Goods left by a caravan with nowhere to go. */
 const crate: Draw = (p) => {
   p.rect(2, 4, 12, 10, P.wood3);
@@ -787,6 +872,11 @@ export function makeBuildingSprites(): Partial<Record<BuildingId, BuildingSprite
     depot: make(54, 48, 3, 14, depot),
     crate: make(18, 20, 1, 4, crate),
     royalHall: make(70, 100, 3, 50, royalHall),
+    barracks: make(54, 60, 3, 26, barracks),
+    archeryRange: make(54, 40, 3, 6, archeryRange),
+    armory: make(38, 46, 3, 14, armory),
+    stable: make(54, 46, 3, 12, stable),
+    councilHall: make(54, 42, 3, 8, councilHall),
     smelter: make(36, 58, 2, 24, smelter),
     forge: make(54, 46, 3, 12, forge),
     camp: make(52, 46, 2, 12, camp),
