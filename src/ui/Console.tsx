@@ -606,7 +606,7 @@ function DetailsWindow({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** "See more" inside the console: the full card, scrolling, with a way back to the summary. */
+/** "See more" docked on top of the console, over the selection: the full card, scrolling. The console keeps its size. */
 function HudDetails({ onClose }: { onClose: () => void }) {
   const s = useSnapshot();
   const { game } = useGame();
@@ -626,11 +626,13 @@ function HudDetails({ onClose }: { onClose: () => void }) {
     window.addEventListener('keydown', onKey, { capture: true });
     return () => window.removeEventListener('keydown', onKey, { capture: true });
   }, [onClose]);
+  const title = s.selection.length === 1 ? s.selection[0].name : s.selection.length > 1 ? `${s.selection.length} selected` : s.building?.name ?? '';
   return (
-    <div className="hud-details inspector">
+    <div className="panel hud-details-dock inspector" role="dialog" aria-label="Details">
       <div className="hud-details-bar">
+        <h3>{title}</h3>
         <button className="btn small" onClick={onClose}>
-          ◂ See less <kbd>{keyLabel(game.settings.bindings.seeMore[0])}</kbd>
+          Close <kbd>{keyLabel(game.settings.bindings.seeMore[0])}</kbd>
         </button>
       </div>
       <div className="hud-details-body">{body}</div>
@@ -655,7 +657,6 @@ export function BottomConsole({ menu, setMenu, openWindow }: { menu: CardMenu; s
   const showDetails = details && hasSelection && s.mode.kind !== 'place';
   let info: React.ReactNode;
   if (s.mode.kind === 'place') info = <PlacingPanel />;
-  else if (showDetails && inHud) info = <HudDetails onClose={() => setDetails(false)} />;
   else if (s.selection.length === 1) info = <SettlerInfoPanel p={s.selection[0]} onMore={() => setDetails(!details)} />;
   else if (s.selection.length > 1) info = <GroupInfoPanel list={s.selection} onMore={() => setDetails(!details)} />;
   else if (s.building) info = <BuildingInfoPanel b={s.building} onMore={() => setDetails(!details)} />;
@@ -663,7 +664,8 @@ export function BottomConsole({ menu, setMenu, openWindow }: { menu: CardMenu; s
   return (
     <>
       {showDetails && !inHud && <DetailsWindow onClose={() => setDetails(false)} />}
-      <div className={`console${showDetails && inHud ? ' expanded' : ''}`} aria-label="Command console">
+      {showDetails && inHud && <HudDetails onClose={() => setDetails(false)} />}
+      <div className="console" aria-label="Command console">
         <ConsoleMinimap />
         <div className="con-info">{info}</div>
         <CommandCard menu={menu} setMenu={setMenu} openWindow={openWindow} openDetails={() => setDetails(true)} />

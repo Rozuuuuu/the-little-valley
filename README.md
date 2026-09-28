@@ -152,8 +152,8 @@ in `localStorage`.
   a hurt hunter breaks off to heal. Nobody dies.
 - **Health bars** over every person and animal (L: only the hurt), red hit flashes, floating
   damage numbers and flying arrows.
-- **A pixel HUD:** every box is sand inside a grass frame. **See more** (V) opens inside the
-  bottom panel (or a floating window, in Settings). Pop-ups are bigger and their text fits.
+- **A pixel HUD:** every box is dirt inside a grassy frame. **See more** (V) opens docked on top
+  of the bottom panel without changing its size (or as a floating window, in Settings). Pop-ups are bigger and their text fits.
 - **Edge scrolling** like Warcraft III over the whole window, a hover **hit box** around the
   tile or building under the pointer, an optional tile grid (G), and hotkeys for everything.
 - **Livelier world:** animals walk on four frames and graze; buildings smoke, spark, raise

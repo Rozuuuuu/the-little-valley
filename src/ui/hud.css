@@ -172,14 +172,6 @@
 .bar.hp > i { background: #e04848; }
 .con-bars { grid-template-columns: auto 1fr auto 1fr auto 1fr; }
 
-/* "See more" inside the console: it grows to show everything and scrolls. */
-:root { --console-h-expanded: min(52vh, 420px); }
-.console.expanded { height: var(--console-h-expanded); }
-.console.expanded ~ .details-window { display: none; }
-.hud-details { display: flex; flex-direction: column; height: 100%; min-height: 0; position: static; width: auto; max-height: none; padding: 0; background: none; border: none; box-shadow: none; }
-.hud-details-bar { display: flex; justify-content: flex-end; margin-bottom: 4px; }
-.hud-details-body { flex: 1; min-height: 0; overflow: auto; padding-right: 6px; columns: 2 320px; column-gap: 18px; }
-.hud-details-body > * { break-inside: avoid; }
 
 .win-btn { position: relative; }
 .corner-key { position: absolute; top: -1px; left: 2px; font-family: var(--body); font-size: 8px; font-weight: 700; color: var(--brass-hi); background: none; padding: 0; line-height: 1; }

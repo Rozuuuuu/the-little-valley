@@ -62,3 +62,10 @@ back (both covered by tests of the simulation, not of the drawing). No human pla
 - **P6** Paths, fences, walls and fields have no animation: nothing about them moves.
 - **P7** Development builds (`vite build --mode development`) expose `window.__game` so the
   screenshot script can set up scenes; production builds do not.
+
+### Follow-up (2026-09-29)
+
+The player didn't like the sand boxes: the skin is now **dirt inside, grass outside** (light text
+on soil, a grass frame with blades along the top), and **See more** docks on top of the bottom
+panel over the selection column instead of growing the panel. Text contrast on dirt: 4.8:1 or
+better everywhere.

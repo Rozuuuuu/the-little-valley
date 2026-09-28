@@ -135,7 +135,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
       <div className="row">
         <span>"See more" details</span>
         <select value={s.detailsInHud ? 'hud' : 'float'} onChange={(e) => update({ ...s, detailsInHud: e.target.value === 'hud' })}>
-          <option value="hud">Inside the bottom panel</option>
+          <option value="hud">Docked on the bottom panel</option>
           <option value="float">In a floating window</option>
         </select>
       </div>

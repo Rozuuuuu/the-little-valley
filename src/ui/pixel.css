@@ -1,107 +1,119 @@
 /* =====================================================================================
-   Pixel HUD skin: every box is sand inside and a grass frame outside, drawn as crisp
-   pixel art (a 12×12 frame scaled 2×). Colour variables are redefined inside boxes, so
-   every window, card and control picks up dark-on-sand text without its own rules.
+   Pixel HUD skin: every box is dirt inside and grass outside, drawn as crisp pixel art
+   (a 12×12 grass frame with blades along the top, scaled 2×). Colour variables are
+   redefined inside boxes, so every window, card and control picks up light-on-dirt
+   text without its own rules.
    ===================================================================================== */
 :root {
-  --grass-frame: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' shape-rendering='crispEdges'><rect x='1' y='0' width='1' height='1' fill='%231f3a1a'/><rect x='2' y='0' width='1' height='1' fill='%231f3a1a'/><rect x='3' y='0' width='1' height='1' fill='%231f3a1a'/><rect x='4' y='0' width='1' height='1' fill='%231f3a1a'/><rect x='5' y='0' width='1' height='1' fill='%231f3a1a'/><rect x='6' y='0' width='1' height='1' fill='%231f3a1a'/><rect x='7' y='0' width='1' height='1' fill='%231f3a1a'/><rect x='8' y='0' width='1' height='1' fill='%231f3a1a'/><rect x='9' y='0' width='1' height='1' fill='%231f3a1a'/><rect x='10' y='0' width='1' height='1' fill='%231f3a1a'/><rect x='0' y='1' width='1' height='1' fill='%231f3a1a'/><rect x='1' y='1' width='1' height='1' fill='%237cc050'/><rect x='2' y='1' width='1' height='1' fill='%237cc050'/><rect x='3' y='1' width='1' height='1' fill='%237cc050'/><rect x='4' y='1' width='1' height='1' fill='%237cc050'/><rect x='5' y='1' width='1' height='1' fill='%237cc050'/><rect x='6' y='1' width='1' height='1' fill='%237cc050'/><rect x='7' y='1' width='1' height='1' fill='%237cc050'/><rect x='8' y='1' width='1' height='1' fill='%237cc050'/><rect x='9' y='1' width='1' height='1' fill='%237cc050'/><rect x='10' y='1' width='1' height='1' fill='%237cc050'/><rect x='11' y='1' width='1' height='1' fill='%231f3a1a'/><rect x='0' y='2' width='1' height='1' fill='%231f3a1a'/><rect x='1' y='2' width='1' height='1' fill='%237cc050'/><rect x='2' y='2' width='1' height='1' fill='%234f8a3c'/><rect x='3' y='2' width='1' height='1' fill='%234f8a3c'/><rect x='4' y='2' width='1' height='1' fill='%239ad860'/><rect x='5' y='2' width='1' height='1' fill='%234f8a3c'/><rect x='6' y='2' width='1' height='1' fill='%234f8a3c'/><rect x='7' y='2' width='1' height='1' fill='%239ad860'/><rect x='8' y='2' width='1' height='1' fill='%234f8a3c'/><rect x='9' y='2' width='1' height='1' fill='%234f8a3c'/><rect x='10' y='2' width='1' height='1' fill='%234f8a3c'/><rect x='11' y='2' width='1' height='1' fill='%231f3a1a'/><rect x='0' y='3' width='1' height='1' fill='%231f3a1a'/><rect x='1' y='3' width='1' height='1' fill='%237cc050'/><rect x='2' y='3' width='1' height='1' fill='%234f8a3c'/><rect x='3' y='3' width='1' height='1' fill='%232f5a28'/><rect x='4' y='3' width='1' height='1' fill='%232f5a28'/><rect x='5' y='3' width='1' height='1' fill='%232f5a28'/><rect x='6' y='3' width='1' height='1' fill='%232f5a28'/><rect x='7' y='3' width='1' height='1' fill='%232f5a28'/><rect x='8' y='3' width='1' height='1' fill='%232f5a28'/><rect x='9' y='3' width='1' height='1' fill='%234f8a3c'/><rect x='10' y='3' width='1' height='1' fill='%234f8a3c'/><rect x='11' y='3' width='1' height='1' fill='%231f3a1a'/><rect x='0' y='4' width='1' height='1' fill='%231f3a1a'/><rect x='1' y='4' width='1' height='1' fill='%237cc050'/><rect x='2' y='4' width='1' height='1' fill='%234f8a3c'/><rect x='3' y='4' width='1' height='1' fill='%232f5a28'/><rect x='8' y='4' width='1' height='1' fill='%232f5a28'/><rect x='9' y='4' width='1' height='1' fill='%234f8a3c'/><rect x='10' y='4' width='1' height='1' fill='%234f8a3c'/><rect x='11' y='4' width='1' height='1' fill='%231f3a1a'/><rect x='0' y='5' width='1' height='1' fill='%231f3a1a'/><rect x='1' y='5' width='1' height='1' fill='%237cc050'/><rect x='2' y='5' width='1' height='1' fill='%234f8a3c'/><rect x='3' y='5' width='1' height='1' fill='%232f5a28'/><rect x='8' y='5' width='1' height='1' fill='%232f5a28'/><rect x='9' y='5' width='1' height='1' fill='%234f8a3c'/><rect x='10' y='5' width='1' height='1' fill='%234f8a3c'/><rect x='11' y='5' width='1' height='1' fill='%231f3a1a'/><rect x='0' y='6' width='1' height='1' fill='%231f3a1a'/><rect x='1' y='6' width='1' height='1' fill='%237cc050'/><rect x='2' y='6' width='1' height='1' fill='%234f8a3c'/><rect x='3' y='6' width='1' height='1' fill='%232f5a28'/><rect x='8' y='6' width='1' height='1' fill='%232f5a28'/><rect x='9' y='6' width='1' height='1' fill='%234f8a3c'/><rect x='10' y='6' width='1' height='1' fill='%234f8a3c'/><rect x='11' y='6' width='1' height='1' fill='%231f3a1a'/><rect x='0' y='7' width='1' height='1' fill='%231f3a1a'/><rect x='1' y='7' width='1' height='1' fill='%237cc050'/><rect x='2' y='7' width='1' height='1' fill='%234f8a3c'/><rect x='3' y='7' width='1' height='1' fill='%232f5a28'/><rect x='8' y='7' width='1' height='1' fill='%232f5a28'/><rect x='9' y='7' width='1' height='1' fill='%234f8a3c'/><rect x='10' y='7' width='1' height='1' fill='%234f8a3c'/><rect x='11' y='7' width='1' height='1' fill='%231f3a1a'/><rect x='0' y='8' width='1' height='1' fill='%231f3a1a'/><rect x='1' y='8' width='1' height='1' fill='%237cc050'/><rect x='2' y='8' width='1' height='1' fill='%234f8a3c'/><rect x='3' y='8' width='1' height='1' fill='%232f5a28'/><rect x='4' y='8' width='1' height='1' fill='%232f5a28'/><rect x='5' y='8' width='1' height='1' fill='%232f5a28'/><rect x='6' y='8' width='1' height='1' fill='%232f5a28'/><rect x='7' y='8' width='1' height='1' fill='%232f5a28'/><rect x='8' y='8' width='1' height='1' fill='%232f5a28'/><rect x='9' y='8' width='1' height='1' fill='%234f8a3c'/><rect x='10' y='8' width='1' height='1' fill='%234f8a3c'/><rect x='11' y='8' width='1' height='1' fill='%231f3a1a'/><rect x='0' y='9' width='1' height='1' fill='%231f3a1a'/><rect x='1' y='9' width='1' height='1' fill='%237cc050'/><rect x='2' y='9' width='1' height='1' fill='%234f8a3c'/><rect x='3' y='9' width='1' height='1' fill='%234f8a3c'/><rect x='4' y='9' width='1' height='1' fill='%234f8a3c'/><rect x='5' y='9' width='1' height='1' fill='%234f8a3c'/><rect x='6' y='9' width='1' height='1' fill='%234f8a3c'/><rect x='7' y='9' width='1' height='1' fill='%234f8a3c'/><rect x='8' y='9' width='1' height='1' fill='%234f8a3c'/><rect x='9' y='9' width='1' height='1' fill='%234f8a3c'/><rect x='10' y='9' width='1' height='1' fill='%234f8a3c'/><rect x='11' y='9' width='1' height='1' fill='%231f3a1a'/><rect x='0' y='10' width='1' height='1' fill='%231f3a1a'/><rect x='1' y='10' width='1' height='1' fill='%237cc050'/><rect x='2' y='10' width='1' height='1' fill='%234f8a3c'/><rect x='3' y='10' width='1' height='1' fill='%234f8a3c'/><rect x='4' y='10' width='1' height='1' fill='%234f8a3c'/><rect x='5' y='10' width='1' height='1' fill='%234f8a3c'/><rect x='6' y='10' width='1' height='1' fill='%234f8a3c'/><rect x='7' y='10' width='1' height='1' fill='%234f8a3c'/><rect x='8' y='10' width='1' height='1' fill='%234f8a3c'/><rect x='9' y='10' width='1' height='1' fill='%234f8a3c'/><rect x='10' y='10' width='1' height='1' fill='%234f8a3c'/><rect x='11' y='10' width='1' height='1' fill='%231f3a1a'/><rect x='1' y='11' width='1' height='1' fill='%231f3a1a'/><rect x='2' y='11' width='1' height='1' fill='%231f3a1a'/><rect x='3' y='11' width='1' height='1' fill='%231f3a1a'/><rect x='4' y='11' width='1' height='1' fill='%231f3a1a'/><rect x='5' y='11' width='1' height='1' fill='%231f3a1a'/><rect x='6' y='11' width='1' height='1' fill='%231f3a1a'/><rect x='7' y='11' width='1' height='1' fill='%231f3a1a'/><rect x='8' y='11' width='1' height='1' fill='%231f3a1a'/><rect x='9' y='11' width='1' height='1' fill='%231f3a1a'/><rect x='10' y='11' width='1' height='1' fill='%231f3a1a'/><rect x='1' y='1' width='1' height='1' fill='%231f3a1a'/><rect x='10' y='1' width='1' height='1' fill='%231f3a1a'/><rect x='1' y='10' width='1' height='1' fill='%231f3a1a'/><rect x='10' y='10' width='1' height='1' fill='%231f3a1a'/></svg>");
-  --sand: #ead8aa;
-  --sand-2: #dfc893;
-  --sand-3: #f5e8c6;
-  --sand-edge: #c7a86a;
-  --text-dark: #3b2a18;
-  --text-muted: #6b5436;
-  --accent: #8a4410;
+  --grass-frame: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' shape-rendering='crispEdges'><rect x='1' y='0' width='1' height='1' fill='%23a8e070'/><rect x='4' y='0' width='1' height='1' fill='%23a8e070'/><rect x='7' y='0' width='1' height='1' fill='%23a8e070'/><rect x='10' y='0' width='1' height='1' fill='%23a8e070'/><rect x='1' y='1' width='1' height='1' fill='%23a8e070'/><rect x='2' y='1' width='1' height='1' fill='%237cc050'/><rect x='3' y='1' width='1' height='1' fill='%237cc050'/><rect x='4' y='1' width='1' height='1' fill='%23a8e070'/><rect x='5' y='1' width='1' height='1' fill='%237cc050'/><rect x='6' y='1' width='1' height='1' fill='%237cc050'/><rect x='7' y='1' width='1' height='1' fill='%23a8e070'/><rect x='8' y='1' width='1' height='1' fill='%237cc050'/><rect x='9' y='1' width='1' height='1' fill='%237cc050'/><rect x='10' y='1' width='1' height='1' fill='%23a8e070'/><rect x='0' y='2' width='1' height='1' fill='%231c3416'/><rect x='1' y='2' width='1' height='1' fill='%234f8a3c'/><rect x='2' y='2' width='1' height='1' fill='%234f8a3c'/><rect x='3' y='2' width='1' height='1' fill='%234f8a3c'/><rect x='4' y='2' width='1' height='1' fill='%234f8a3c'/><rect x='5' y='2' width='1' height='1' fill='%234f8a3c'/><rect x='6' y='2' width='1' height='1' fill='%237cc050'/><rect x='7' y='2' width='1' height='1' fill='%234f8a3c'/><rect x='8' y='2' width='1' height='1' fill='%234f8a3c'/><rect x='9' y='2' width='1' height='1' fill='%234f8a3c'/><rect x='10' y='2' width='1' height='1' fill='%237cc050'/><rect x='11' y='2' width='1' height='1' fill='%231c3416'/><rect x='0' y='3' width='1' height='1' fill='%231c3416'/><rect x='1' y='3' width='1' height='1' fill='%237cc050'/><rect x='2' y='3' width='1' height='1' fill='%234f8a3c'/><rect x='3' y='3' width='1' height='1' fill='%233a2414'/><rect x='4' y='3' width='1' height='1' fill='%233a2414'/><rect x='5' y='3' width='1' height='1' fill='%233a2414'/><rect x='6' y='3' width='1' height='1' fill='%233a2414'/><rect x='7' y='3' width='1' height='1' fill='%233a2414'/><rect x='8' y='3' width='1' height='1' fill='%233a2414'/><rect x='9' y='3' width='1' height='1' fill='%237cc050'/><rect x='10' y='3' width='1' height='1' fill='%234f8a3c'/><rect x='11' y='3' width='1' height='1' fill='%231c3416'/><rect x='0' y='4' width='1' height='1' fill='%231c3416'/><rect x='1' y='4' width='1' height='1' fill='%234f8a3c'/><rect x='2' y='4' width='1' height='1' fill='%237cc050'/><rect x='3' y='4' width='1' height='1' fill='%233a2414'/><rect x='8' y='4' width='1' height='1' fill='%233a2414'/><rect x='9' y='4' width='1' height='1' fill='%234f8a3c'/><rect x='10' y='4' width='1' height='1' fill='%234f8a3c'/><rect x='11' y='4' width='1' height='1' fill='%231c3416'/><rect x='0' y='5' width='1' height='1' fill='%231c3416'/><rect x='1' y='5' width='1' height='1' fill='%234f8a3c'/><rect x='2' y='5' width='1' height='1' fill='%234f8a3c'/><rect x='3' y='5' width='1' height='1' fill='%233a2414'/><rect x='8' y='5' width='1' height='1' fill='%233a2414'/><rect x='9' y='5' width='1' height='1' fill='%234f8a3c'/><rect x='10' y='5' width='1' height='1' fill='%234f8a3c'/><rect x='11' y='5' width='1' height='1' fill='%231c3416'/><rect x='0' y='6' width='1' height='1' fill='%231c3416'/><rect x='1' y='6' width='1' height='1' fill='%234f8a3c'/><rect x='2' y='6' width='1' height='1' fill='%234f8a3c'/><rect x='3' y='6' width='1' height='1' fill='%233a2414'/><rect x='8' y='6' width='1' height='1' fill='%233a2414'/><rect x='9' y='6' width='1' height='1' fill='%234f8a3c'/><rect x='10' y='6' width='1' height='1' fill='%237cc050'/><rect x='11' y='6' width='1' height='1' fill='%231c3416'/><rect x='0' y='7' width='1' height='1' fill='%231c3416'/><rect x='1' y='7' width='1' height='1' fill='%237cc050'/><rect x='2' y='7' width='1' height='1' fill='%234f8a3c'/><rect x='3' y='7' width='1' height='1' fill='%233a2414'/><rect x='8' y='7' width='1' height='1' fill='%233a2414'/><rect x='9' y='7' width='1' height='1' fill='%234f8a3c'/><rect x='10' y='7' width='1' height='1' fill='%234f8a3c'/><rect x='11' y='7' width='1' height='1' fill='%231c3416'/><rect x='0' y='8' width='1' height='1' fill='%231c3416'/><rect x='1' y='8' width='1' height='1' fill='%234f8a3c'/><rect x='2' y='8' width='1' height='1' fill='%234f8a3c'/><rect x='3' y='8' width='1' height='1' fill='%233a2414'/><rect x='4' y='8' width='1' height='1' fill='%233a2414'/><rect x='5' y='8' width='1' height='1' fill='%233a2414'/><rect x='6' y='8' width='1' height='1' fill='%233a2414'/><rect x='7' y='8' width='1' height='1' fill='%233a2414'/><rect x='8' y='8' width='1' height='1' fill='%233a2414'/><rect x='9' y='8' width='1' height='1' fill='%237cc050'/><rect x='10' y='8' width='1' height='1' fill='%234f8a3c'/><rect x='11' y='8' width='1' height='1' fill='%231c3416'/><rect x='0' y='9' width='1' height='1' fill='%231c3416'/><rect x='1' y='9' width='1' height='1' fill='%234f8a3c'/><rect x='2' y='9' width='1' height='1' fill='%237cc050'/><rect x='3' y='9' width='1' height='1' fill='%234f8a3c'/><rect x='4' y='9' width='1' height='1' fill='%234f8a3c'/><rect x='5' y='9' width='1' height='1' fill='%234f8a3c'/><rect x='6' y='9' width='1' height='1' fill='%234f8a3c'/><rect x='7' y='9' width='1' height='1' fill='%237cc050'/><rect x='8' y='9' width='1' height='1' fill='%234f8a3c'/><rect x='9' y='9' width='1' height='1' fill='%234f8a3c'/><rect x='10' y='9' width='1' height='1' fill='%234f8a3c'/><rect x='11' y='9' width='1' height='1' fill='%231c3416'/><rect x='0' y='10' width='1' height='1' fill='%231c3416'/><rect x='1' y='10' width='1' height='1' fill='%234f8a3c'/><rect x='2' y='10' width='1' height='1' fill='%237cc050'/><rect x='3' y='10' width='1' height='1' fill='%234f8a3c'/><rect x='4' y='10' width='1' height='1' fill='%234f8a3c'/><rect x='5' y='10' width='1' height='1' fill='%234f8a3c'/><rect x='6' y='10' width='1' height='1' fill='%237cc050'/><rect x='7' y='10' width='1' height='1' fill='%234f8a3c'/><rect x='8' y='10' width='1' height='1' fill='%234f8a3c'/><rect x='9' y='10' width='1' height='1' fill='%234f8a3c'/><rect x='10' y='10' width='1' height='1' fill='%237cc050'/><rect x='11' y='10' width='1' height='1' fill='%231c3416'/><rect x='1' y='11' width='1' height='1' fill='%231c3416'/><rect x='2' y='11' width='1' height='1' fill='%231c3416'/><rect x='3' y='11' width='1' height='1' fill='%231c3416'/><rect x='4' y='11' width='1' height='1' fill='%231c3416'/><rect x='5' y='11' width='1' height='1' fill='%231c3416'/><rect x='6' y='11' width='1' height='1' fill='%231c3416'/><rect x='7' y='11' width='1' height='1' fill='%231c3416'/><rect x='8' y='11' width='1' height='1' fill='%231c3416'/><rect x='9' y='11' width='1' height='1' fill='%231c3416'/><rect x='10' y='11' width='1' height='1' fill='%231c3416'/></svg>");
+  --dirt: #6b4a2e;
+  --dirt-2: #7c5836;
+  --dirt-3: #563a22;
+  --dirt-edge: #3a2414;
+  --text-light: #f6ead0;
+  --text-muted: #dcc7a0;
+  --accent: #f4cf5a;
+  --grass: #4f8a3c;
+  --grass-dark: #2f5a28;
+  --grass-hi: #7cc050;
 }
 
 /* The boxes. */
 .panel, .console .con-map, .console .con-info, .console .con-card, .title-screen .menu .btn {
-  --straw: var(--text-dark);
+  --straw: var(--text-light);
   --straw-dim: var(--text-muted);
   --wheat: var(--accent);
-  --moss: var(--sand);
-  --moss-2: var(--sand-2);
-  --moss-3: var(--sand-edge);
-  --edge: #4f8a3c;
-  --edge-hi: #5e9a45;
-  --ink: var(--sand-3);
-  --felt: var(--sand);
-  --felt-2: var(--sand-2);
+  --moss: var(--dirt);
+  --moss-2: var(--dirt-2);
+  --moss-3: var(--dirt-edge);
+  --edge: var(--grass);
+  --edge-hi: var(--grass-hi);
+  --ink: var(--dirt-3);
+  --felt: var(--dirt);
+  --felt-2: var(--dirt-2);
   --brass-hi: var(--accent);
-  color: var(--text-dark);
+  color: var(--text-light);
 }
 .panel, .console .con-map, .console .con-info, .console .con-card {
-  background-color: var(--sand);
-  background-image: radial-gradient(rgba(150, 110, 50, 0.16) 1px, transparent 1.2px);
-  background-size: 6px 6px;
+  background-color: var(--dirt);
+  /* Soil: light pebbles and dark crumbs. */
+  background-image:
+    radial-gradient(#8a6440 1px, transparent 1.4px),
+    radial-gradient(#4e331c 1px, transparent 1.4px);
+  background-size: 9px 7px, 5px 6px;
+  background-position: 0 0, 2px 3px;
   border: 8px solid transparent;
   border-image: var(--grass-frame) 4 / 8px / 0 stretch;
   image-rendering: pixelated;
-  box-shadow: 0 3px 0 rgba(20, 30, 16, 0.35);
+  box-shadow: 0 3px 0 rgba(20, 30, 16, 0.4);
   border-radius: 0;
   background-clip: padding-box;
 }
 .panel h2, .panel h3 { color: var(--accent); }
 .panel .muted, .console .muted { color: var(--text-muted); }
-.panel .reason, .console .reason { color: #8a3a10; }
+.panel .reason, .console .reason { color: #ffc890; }
 
-/* Controls on sand. */
+/* Controls: darker soil with a turf edge. */
 .panel .btn, .console .btn, .title-screen .menu .btn {
-  background: var(--sand-3);
-  border: 2px solid #4f8a3c;
-  box-shadow: 0 2px 0 #2f5a28;
-  color: var(--text-dark);
+  background: var(--dirt-3);
+  border: 2px solid var(--grass);
+  box-shadow: 0 2px 0 var(--grass-dark);
+  color: var(--text-light);
 }
-.panel .btn:hover, .console .btn:hover, .title-screen .menu .btn:hover { background: #fff3d2; }
-.panel .btn.primary, .console .btn.primary, .title-screen .menu .btn.primary { background: #5b8a2c; border-color: #2f5a28; color: #fffbe8; }
-.panel .btn.primary:hover, .title-screen .menu .btn.primary:hover { background: #6a9c34; }
-.panel .btn.on, .console .btn.on { background: #f3d77a; border-color: #7a5a14; color: var(--text-dark); }
-.panel .btn.danger { border-color: #b0402c; color: #8a2a18; }
+.panel .btn:hover, .console .btn:hover, .title-screen .menu .btn:hover { background: var(--dirt-2); border-color: var(--grass-hi); }
+.panel .btn.primary, .console .btn.primary, .title-screen .menu .btn.primary { background: #4f8a3c; border-color: #a8e070; color: #fffbe8; }
+.panel .btn.primary:hover, .title-screen .menu .btn.primary:hover { background: #5e9a45; }
+.panel .btn.on, .console .btn.on { background: #8a6a1c; border-color: var(--accent); color: #fffbe8; }
+.panel .btn.danger { border-color: #d86048; color: #ffc0b0; }
 .panel select, .panel input[type="text"], .panel input[type="number"], .console select, .console input[type="text"] {
-  background: var(--sand-3); color: var(--text-dark); border: 2px solid var(--sand-edge);
+  background: var(--dirt-3); color: var(--text-light); border: 2px solid var(--dirt-edge);
 }
-.panel .chip, .console .chip { border-color: var(--sand-edge); color: var(--text-dark); background: var(--sand-3); }
-.panel .chip.on, .console .chip.on { border-color: #4f8a3c; background: #d9ecb8; color: #1f3a1a; }
+.panel .chip, .console .chip { border-color: var(--dirt-edge); color: var(--text-light); background: var(--dirt-3); }
+.panel .chip.on, .console .chip.on { border-color: var(--grass-hi); background: var(--grass-dark); color: #fffbe8; }
 .panel kbd, .console kbd { color: var(--accent); }
-.bar { background: var(--sand-3); border-color: var(--sand-edge); }
+.bar { background: var(--dirt-3); border-color: var(--dirt-edge); }
 
 /* Top bar and windows. */
-.win-btn { background: var(--sand-3); border-color: var(--sand-edge); color: var(--text-dark); }
-.win-btn:hover { border-color: #4f8a3c; }
-.win-btn.on { background: #f3d77a; border-color: #7a5a14; color: var(--text-dark); }
-.goods-btn { color: var(--text-dark); border-left-color: var(--sand-edge); }
-.res.sep { border-left-color: var(--sand-edge); }
-.res.warn { color: #a02a18; }
-.side-head, .side-tabs button { border-bottom-color: var(--sand-edge); }
-.settler-row, .area-card, .good, .slot, .vt-list button, .group-cell { background: var(--sand-3); border-color: var(--sand-edge); }
-.settler-row:hover { background: #fff3d2; }
-.settler-row.sel { background: #f3d77a; }
+.win-btn { background: var(--dirt-3); border-color: var(--dirt-edge); color: var(--text-light); }
+.win-btn:hover { border-color: var(--grass-hi); }
+.win-btn.on { background: var(--grass-dark); border-color: var(--grass-hi); color: #fffbe8; }
+.goods-btn { color: var(--text-light); border-left-color: var(--dirt-edge); }
+.res.sep { border-left-color: var(--dirt-edge); }
+.res.warn { color: #ff9a80; }
+.side-head, .side-tabs button { border-bottom-color: var(--dirt-edge); }
+.settler-row, .area-card, .good, .slot, .vt-list button, .group-cell { background: var(--dirt-3); border-color: var(--dirt-edge); }
+.settler-row:hover { background: var(--dirt-2); }
+.settler-row.sel { background: var(--grass-dark); }
+.habitat-card { background: var(--dirt-3); border-color: var(--dirt-edge); }
+.habitat-card:hover { border-color: var(--grass-hi); }
+.habitat-card.on { background: var(--grass-dark); border-color: var(--grass-hi); }
+.hc-name { color: var(--accent); }
+.hc-desc { color: var(--text-muted); }
 
-/* The console: a grass verge along the bottom of the screen with sand boxes on it. */
+/* The console: a grass verge along the bottom of the screen with dirt boxes on it. */
 .console {
-  background: linear-gradient(180deg, #5e9a45 0 4px, #4f8a3c 4px 100%);
   background-image: radial-gradient(#6fae4c 1px, transparent 1.3px), linear-gradient(180deg, #5e9a45 0 4px, #4f8a3c 4px 100%);
   background-size: 5px 5px, 100% 100%;
-  border-top: 3px solid #1f3a1a;
-  box-shadow: 0 -3px 0 #7cc050, 0 -5px 0 #1f3a1a;
+  border-top: 3px solid #1c3416;
+  box-shadow: 0 -3px 0 #7cc050, 0 -5px 0 #1c3416;
 }
 .console::before, .console::after { display: none; }
 .con-map, .con-info, .con-card { box-shadow: none; }
-.portrait { background: radial-gradient(circle at 50% 40%, #f7ecd0, #d9c08a 75%); border-color: #4f8a3c; box-shadow: 0 0 0 2px #1f3a1a; }
-.level-pip { background: #4f8a3c; color: #fffbe8; }
+.portrait { background: radial-gradient(circle at 50% 40%, #8a6440, #3a2414 80%); border-color: var(--grass); box-shadow: 0 0 0 2px #1c3416; }
+.level-pip { background: var(--grass); color: #fffbe8; }
 .card-head { color: var(--accent); }
 .card-btn {
-  background: linear-gradient(180deg, var(--sand-3), var(--sand-2));
-  border: 2px solid #4f8a3c;
-  box-shadow: inset 0 1px 0 #fffbe8, 0 2px 0 #2f5a28;
-  color: var(--text-dark);
+  background: linear-gradient(180deg, #6b4a2e, #563a22);
+  border: 2px solid var(--grass);
+  box-shadow: inset 0 1px 0 #8a6440, 0 2px 0 var(--grass-dark);
+  color: var(--text-light);
 }
-.card-btn:hover { border-color: #2f5a28; background: #fff3d2; }
-.card-btn.on { background: linear-gradient(180deg, #f8e29a, #e8c860); border-color: #7a5a14; }
-.card-btn.empty { background: rgba(160, 120, 60, 0.12); border: 2px dashed rgba(122, 86, 54, 0.35); box-shadow: none; }
-.card-btn kbd { color: var(--accent); }
-.corner-key { color: var(--accent); }
-.minimap-canvas { border: 2px solid #1f3a1a; }
+.card-btn:hover { border-color: var(--grass-hi); background: linear-gradient(180deg, #7c5836, #604028); }
+.card-btn.on { background: linear-gradient(180deg, #8a6a1c, #6a5014); border-color: var(--accent); }
+.card-btn.empty { background: rgba(40, 24, 12, 0.35); border: 2px dashed rgba(124, 192, 80, 0.35); box-shadow: none; }
+.card-btn kbd, .corner-key { color: var(--accent); }
+.minimap-canvas { border: 2px solid #1c3416; }
+.bar.hp > i { background: #5ecb4a; }
 
 /* Toasts: big enough to read, and the text always fits its box. */
 .toasts { width: min(640px, calc(100vw - 24px)); gap: 8px; }
@@ -113,20 +125,30 @@
 .toast::before {
   content: "i"; flex: none; width: 24px; height: 24px; display: grid; place-items: center;
   font-family: var(--pixel); font-weight: 700; font-size: 15px; color: #fffbe8; background: #4a7aa8;
-  box-shadow: 0 0 0 2px #1f3a1a;
+  box-shadow: 0 0 0 2px #1c3416;
 }
 .toast.good::before { content: "✓"; background: #4f8a3c; }
 .toast.warn::before { content: "!"; background: #c8841c; }
 .toast.bad::before { content: "✖"; background: #b0402c; }
-.toast.bad { color: #8a2a18; }
+.toast.bad { color: #ffc0b0; }
 
-.habitat-card { background: var(--sand-3); border-color: var(--sand-edge); }
-.habitat-card:hover { border-color: #4f8a3c; }
-.habitat-card.on { background: #f3d77a; border-color: #7a5a14; }
-.hc-name { color: var(--accent); }
-.hc-desc { color: var(--text-muted); }
-.bar.hp > i { background: #4fb43c; }
-/* With See more open, the minimap and command card keep their usual size at the bottom. */
-.console.expanded { align-items: end; }
-.console.expanded .con-info { align-self: stretch; }
-.console.expanded .con-map, .console.expanded .con-card { height: calc(var(--console-h) - 14px); }
+/* "See more": a window docked on top of the bottom panel, over the selection column. It never
+   changes the size of the console; it grows upwards and scrolls. */
+.hud-details-dock {
+  position: fixed; z-index: 5;
+  left: calc(236px + 14px); right: calc(272px + 14px);
+  bottom: calc(var(--console-h) - 4px);
+  max-height: calc(100vh - var(--top-h) - var(--console-h) - 8px);
+  width: auto; top: auto;
+  display: flex; flex-direction: column; padding: 6px 10px 8px;
+}
+.hud-details-dock .hud-details-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; }
+.hud-details-dock .hud-details-bar h3 { margin: 0; }
+.hud-details-dock .hud-details-body { overflow: auto; min-height: 0; padding-right: 6px; columns: 2 300px; column-gap: 18px; }
+.hud-details-dock .hud-details-body > * { break-inside: avoid; }
+@media (max-width: 1280px) {
+  .hud-details-dock { left: calc(196px + 14px); right: calc(248px + 14px); }
+}
+/* The dock title already names the selection. */
+.hud-details-dock .hud-details-body > h2:first-child { display: none; }
+.panel .cost .short, .console .cost .short { color: #ffbcae; }
