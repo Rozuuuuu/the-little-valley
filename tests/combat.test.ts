@@ -185,3 +185,19 @@ describe('saving a war', () => {
     void company;
   });
 });
+
+describe('war panel', () => {
+  it('previews a declaration with its blockers and breaches, then lists the war with captives and held land', async () => {
+    const { warInfo } = await import('../src/engine/kingdomSnapshot');
+    const { sim, foe: a } = warWorld();
+    let w = warInfo(sim);
+    const p = w.previews.find((x) => x.id === a.id)!;
+    expect(p.preview.blockers).toEqual([]);
+    applyCommand(sim, { type: 'declareWar', target: a.id, objective: 'raid', confirmBreach: true });
+    sim.settlers[3].captive = { by: a.id };
+    w = warInfo(sim);
+    expect(w.wars[0].name).toBe(a.name);
+    expect(w.wars[0].captives).toEqual([sim.settlers[3].name]);
+    expect(w.previews.some((x) => x.id === a.id)).toBe(false);
+  });
+});

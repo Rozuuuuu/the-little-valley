@@ -27,7 +27,7 @@ import { OBJECTS, TERRAIN } from '../game/world/tiles';
 import type { Overview } from './overview';
 import type { GrowthInfo } from './growthInfo';
 import { innInfo, type InnInfo, type LogisticsInfo } from './tradeInfo';
-import type { DiplomacyInfo, KingdomInfo, NewsItem, WarCouncilInfo } from './kingdomSnapshot';
+import type { DiplomacyInfo, KingdomInfo, NewsItem, WarCouncilInfo, WarInfo } from './kingdomSnapshot';
 import { trainingInfo, type ArmyInfo } from './militaryInfo';
 import { claimPreview, ownerOf, sectorOf } from '../game/sim/territory';
 import { kingdomById } from '../game/sim/kingdoms';
@@ -130,6 +130,7 @@ export interface UiSnapshot {
   news: { items: NewsItem[]; summarised: number };
   warCouncil: WarCouncilInfo;
   army: ArmyInfo;
+  war: WarInfo;
   running: boolean;
   paused: boolean;
   speed: number;
@@ -176,6 +177,7 @@ export function emptySnapshot(): UiSnapshot {
     news: { items: [], summarised: 0 },
     warCouncil: { plans: [], allies: [] },
     army: { companies: [], equipment: { swords: 0, bows: 0, armor: 0, horses: 0 }, units: [], training: 0 },
+    war: { wars: [], previews: [], settlements: [] },
     kingdom: {
       name: '', crowned: false, ruler: null, banner: { color: '#3a6ea5', emblem: 'oak' }, treasury: 0, taxCollected: 0, policy: 'none', policies: [], trust: 0,
       council: [], homeland: 0, homelandPreview: 0, claims: 0, claimCost: 0, conflictMode: 'protected-frontier', modeLocked: false, frontierActive: false,

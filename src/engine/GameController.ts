@@ -1,7 +1,7 @@
 import { regionalInfo } from './snapshot';
 import { growthInfo } from './growthInfo';
 import { logisticsInfo } from './tradeInfo';
-import { diplomacyInfo, kingdomInfo, newsInfo, warCouncilInfo } from './kingdomSnapshot';
+import { diplomacyInfo, kingdomInfo, newsInfo, warCouncilInfo, warInfo } from './kingdomSnapshot';
 import { armyInfo } from './militaryInfo';
 import { sectorOf } from '../game/sim/territory';
 import { AudioEngine, type SoundName } from '../audio/AudioEngine';
@@ -909,6 +909,7 @@ export class GameController {
       news: newsInfo(sim),
       warCouncil: warCouncilInfo(sim),
       army: armyInfo(sim),
+      war: warInfo(sim),
       running: true,
       paused: this.paused,
       speed: this.speed,

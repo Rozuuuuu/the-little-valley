@@ -7,6 +7,9 @@ import { TREATIES, TREATY_KINDS } from '../game/data/treaties';
 import { stanceOf, trustOf } from '../game/sim/diplomacy';
 import { knowledgeOf } from '../game/sim/news';
 import { assessCampaign, spareCompanies, type CampaignAssessment } from '../game/sim/campaigns';
+import { declarePreview, type DeclarePreview } from '../game/sim/combat';
+import { pairKey } from '../game/sim/diplomacy';
+import { DAY_TICKS } from '../game/core/constants';
 import { gameTime } from './growthInfo';
 
 /**
@@ -165,5 +168,49 @@ export function warCouncilInfo(sim: Simulation): WarCouncilInfo {
     })),
     // Only allies tell you how many companies they could spare.
     allies: sim.kingdoms.filter((k) => !k.player && stanceOf(sim, PLAYER_KINGDOM, k.id) === 'ally').map((k) => ({ id: k.id, name: k.name, spare: spareCompanies(sim, k.id) })),
+  };
+}
+
+// ---- war (from the player's knowledge; the field is visible on the map) ------------
+
+export interface WarInfo {
+  wars: {
+    with: number;
+    name: string;
+    objective: string;
+    days: number;
+    occupiedByYou: { x: number; y: number }[];
+    occupiedByThem: { x: number; y: number }[];
+    siege: number | null;
+    captives: string[];
+  }[];
+  previews: { id: number; name: string; preview: DeclarePreview }[];
+  settlements: { id: number; name: string }[];
+}
+
+export function warInfo(sim: Simulation): WarInfo {
+  const wars: WarInfo['wars'] = [];
+  for (const k of sim.kingdoms) {
+    if (k.player || !sim.wars.has(pairKey(PLAYER_KINGDOM, k.id))) continue;
+    const ws = sim.warStates.get(pairKey(PLAYER_KINGDOM, k.id));
+    const mine: { x: number; y: number }[] = [];
+    const theirs: { x: number; y: number }[] = [];
+    for (const [key, c] of sim.claims) {
+      const [x, y] = key.split(',').map(Number);
+      if (c.legalOwner === k.id && c.occupyingKingdom === PLAYER_KINGDOM) mine.push({ x, y });
+      if (c.legalOwner === PLAYER_KINGDOM && c.occupyingKingdom === k.id) theirs.push({ x, y });
+    }
+    wars.push({
+      with: k.id, name: k.name, objective: ws?.objective ?? 'raid',
+      days: ws ? Math.floor((sim.tick - ws.startedTick) / DAY_TICKS) : 0,
+      occupiedByYou: mine, occupiedByThem: theirs,
+      siege: sim.sieges.get(k.id)?.besieger === PLAYER_KINGDOM ? Math.round(sim.sieges.get(k.id)!.progress) : null,
+      captives: sim.settlers.filter((s) => s.captive?.by === k.id).map((s) => s.name),
+    });
+  }
+  return {
+    wars,
+    previews: sim.kingdoms.filter((k) => !k.player && !sim.wars.has(pairKey(PLAYER_KINGDOM, k.id))).map((k) => ({ id: k.id, name: k.name, preview: declarePreview(sim, k.id) })),
+    settlements: sim.settlements.map((s) => ({ id: s.id, name: s.name })),
   };
 }

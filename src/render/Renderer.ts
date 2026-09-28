@@ -334,6 +334,17 @@ export class Renderer {
       if (x < tl.x - 32 || x > br.x + 32 || y < tl.y - 32 || y > br.y + 48) continue;
       drawables.push({ y, draw: () => this.drawTraveller(p, x, y, st.time) });
     }
+    // Other kingdoms' companies in the field (enemies and allies alike).
+    for (const k of sim.kingdoms) {
+      if (k.player) continue;
+      for (const c of k.companies) {
+        if (c.state !== 'deployed' && c.state !== 'returning') continue;
+        const x = (c.x ?? 0) * TILE;
+        const y = (c.y ?? 0) * TILE;
+        if (x < tl.x - 48 || x > br.x + 48 || y < tl.y - 48 || y > br.y + 64) continue;
+        drawables.push({ y, draw: () => this.drawForeignCompany(c, k.banner.color, x, y, st.time) });
+      }
+    }
     for (const c of playerCompanies(sim)) {
       if (c.state !== 'deployed' && c.state !== 'returning') continue;
       const x = (c.x ?? 0) * TILE;
@@ -812,6 +823,27 @@ export class Renderer {
     if ((c.readiness ?? 100) < 100) this.drawBar(x - 8, y - 34, 16, (c.readiness ?? 100) / 100, (c.readiness ?? 100) < 40 ? '#d9481f' : '#6cab4c');
   }
 
+  /** A rival or allied company: four soldiers under their own banner, with a health bar. */
+  private drawForeignCompany(c: Company, color: string, x: number, y: number, time: number): void {
+    const look = { skin: c.id % 4, hair: (c.id >> 2) % 6, hairStyle: c.id % 3, shirt: 5, pants: 2 };
+    const sheet = this.sprites.settler(look);
+    const moving = !!c.target;
+    for (let i = 0; i < 4; i++) {
+      const ox = (i % 2) * 10 - 5;
+      const oy = Math.floor(i / 2) * 7 - 3;
+      const frame = (moving ? FRAME.walk : FRAME.idle) + (Math.floor(time * 8 + i) % (moving ? 4 : 2));
+      this.ctx.globalAlpha = 0.3;
+      this.rectW(x + ox - 4, y + oy - 1, 8, 2, '#140e1c');
+      this.ctx.globalAlpha = 1;
+      if (c.kind === 'knight') this.blit(this.sprites.resources.horses, x + ox, y + oy + 2);
+      this.blit(sheet[c.state === 'returning' ? 1 : 0][frame], x + ox, y + oy);
+      this.blit(c.kind === 'archer' ? this.sprites.resources.bows : this.sprites.resources.swords, x + ox + 5, y + oy - 8);
+    }
+    this.rectW(x + 10, y - 30, 1, 22, P.wood0);
+    this.rectW(x + 11, y - 30, 7, 5, color);
+    this.drawBar(x - 8, y - 34, 16, (c.health ?? 100) / 100, (c.health ?? 100) < 40 ? '#d9481f' : '#e0584a');
+  }
+
   private drawCart(m: Manifest, x: number, y: number, time: number): void {
     this.ctx.globalAlpha = 0.3;
     this.rectW(x - 12, y - 1, 24, 3, '#140e1c');
@@ -897,12 +929,18 @@ export class Renderer {
         const o = ownerOf(sim, { x: sx, y: sy });
         if (!o) continue;
         const k = kingdomById(sim, o.legalOwner);
-        if (!k || (k.player && !st.claimMode)) continue;
+        if (!k || (k.player && !st.claimMode && o.occupyingKingdom === null)) continue;
         const x = sx * SECTOR * TILE;
         const y = sy * SECTOR * TILE;
         const size = SECTOR * TILE;
         this.ctx.globalAlpha = st.claimMode ? 0.16 : 0.08;
         this.rectW(x, y, size, size, k.banner.color);
+        // Occupied land: diagonal hatching in the occupier's colour.
+        if (o.occupyingKingdom !== null) {
+          const occ = kingdomById(sim, o.occupyingKingdom);
+          this.ctx.globalAlpha = 0.45;
+          for (let i = 0; i < size; i += 6) this.rectW(x + i, y + i, 3, 3, occ?.banner.color ?? '#000');
+        }
         this.ctx.globalAlpha = 0.6;
         const edge = (dx: number, dy: number) => ownerOf(sim, { x: sx + dx, y: sy + dy })?.legalOwner !== o.legalOwner;
         if (edge(0, -1)) this.rectW(x, y, size, 1, k.banner.color);

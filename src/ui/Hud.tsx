@@ -24,6 +24,7 @@ import { Diplomacy } from './Diplomacy';
 import { KingdomNews } from './KingdomNews';
 import { WarCouncil } from './WarCouncil';
 import { Military, TrainingPanel } from './Military';
+import { War } from './War';
 
 const MAIN_RES: ResourceId[] = ['food', 'wood', 'stone'];
 const CRAFTED: ResourceId[] = [
@@ -760,14 +761,14 @@ function AreasTab() {
 
 function RealmTabs() {
   const s = useSnapshot();
-  const [sub, setSub] = useState<'crown' | 'diplomacy' | 'news' | 'war' | 'army'>('crown');
+  const [sub, setSub] = useState<'crown' | 'diplomacy' | 'news' | 'war' | 'army' | 'fight'>('crown');
   const alerts = s.diplomacy.warnings.length + s.diplomacy.incidents.length + s.diplomacy.offersToYou.length;
   return (
     <>
       <div className="sub-tabs" role="tablist">
-        {(['crown', 'diplomacy', 'news', 'war', 'army'] as const).map((k) => (
+        {(['crown', 'diplomacy', 'news', 'war', 'army', 'fight'] as const).map((k) => (
           <button key={k} role="tab" aria-selected={sub === k} className={`btn small${sub === k ? ' on' : ''}`} onClick={() => setSub(k)}>
-            {k === 'crown' ? 'Crown' : k === 'diplomacy' ? `Diplomacy${alerts ? ` (${alerts})` : ''}` : k === 'news' ? 'News' : k === 'war' ? 'War council' : 'Army'}
+            {k === 'crown' ? 'Crown' : k === 'diplomacy' ? `Diplomacy${alerts ? ` (${alerts})` : ''}` : k === 'news' ? 'News' : k === 'war' ? 'War council' : k === 'army' ? 'Army' : `War${s.war.wars.length ? ` (${s.war.wars.length})` : ''}`}
           </button>
         ))}
       </div>
@@ -776,6 +777,7 @@ function RealmTabs() {
       {sub === 'news' && <KingdomNews />}
       {sub === 'war' && <WarCouncil />}
       {sub === 'army' && <Military />}
+      {sub === 'fight' && <War />}
     </>
   );
 }

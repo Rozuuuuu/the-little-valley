@@ -121,6 +121,11 @@ export function WarCouncil() {
           ) : (
             <p className="muted">You have no allies to ask. A defensive alliance comes first.</p>
           )}
+          {p.state === 'mobilizing' && (
+            <button className="btn small danger" onClick={() => game.dispatch({ type: 'launchCampaign', planId: p.id, confirmBreach: true })} title="Declares war if you are not at war yet, and sends arrived allies into the field. Missing contingents stay missing.">
+              Launch (arrived: {p.assessment.allies.arrived}, still coming: {p.assessment.allies.enRoute + p.assessment.allies.mustered})
+            </button>
+          )}
           {p.state === 'drafting' && (
             <button className="btn small" onClick={() => game.dispatch({ type: 'mobilizeCampaign', planId: p.id })} title="Allies who agreed start marching to your staging ground. Nothing attacks until you launch.">
               Muster
