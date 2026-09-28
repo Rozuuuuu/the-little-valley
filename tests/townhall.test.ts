@@ -73,6 +73,12 @@ describe('the Town Hall', () => {
     expect(levelName(camp)).toBe('Camp');
     const res = applyCommand(sim, { type: 'upgradeBuilding', buildingId: camp.id });
     expect(res.ok, res.message).toBe(true);
+    // Someone loiters right where the hall will grow.
+    const loiterer = sim.settlers[0];
+    runUntil(sim, () => camp.upgrade !== undefined && camp.upgrade.progress >= BUILDINGS.camp.levels![1].time - 2, 20000);
+    loiterer.x = loiterer.px = camp.x + 3.5;
+    loiterer.y = loiterer.py = camp.y - 0.5;
+    loiterer.insideId = null;
     runUntil(sim, () => camp.type === 'townHall', 20000);
     expect(sim.buildings.get(camp.id)).toBe(camp);
     expect(camp.w).toBe(BUILDINGS.townHall.size.w);
@@ -80,6 +86,8 @@ describe('the Town Hall', () => {
     for (let y = camp.y; y < camp.y + camp.h; y++) for (let x = camp.x; x < camp.x + camp.w; x++) expect(sim.buildingAt(x, y)).toBe(camp);
     expect(sim.settlements[0].id).toBe(camp.id);
     expect(sim.settlers.every((p) => p.homeId === camp.id)).toBe(true);
+    // Nobody is left standing inside the new walls.
+    for (const p of sim.settlers) if (p.insideId !== camp.id && !p.hidden) expect(sim.walkable(Math.floor(p.x), Math.floor(p.y))).toBe(true);
     expect(sim.storedTotal('food')).toBeGreaterThan(0);
   });
 

@@ -1,5 +1,6 @@
 import { BUILDINGS, isBuildingId } from '../data/buildings';
 import { isHabitatId } from '../data/habitats';
+import { isSpeciesId } from '../data/animals';
 import { isCropId } from '../data/crops';
 import { isJobId } from '../data/jobs';
 import { WORK_KINDS } from '../sim/priorities';
@@ -421,6 +422,25 @@ export function validateSave(save: AnyRecord): void {
     checkInventory(r.escrow, `recruit ${r.id} escrow`);
   }
   check(sim.session === null || (typeof sim.session === 'object' && isInt((sim.session as AnyRecord).startTick)), 'session');
+  // v12 additions: the ruler, Rally, animals and pens.
+  for (const s of sim.settlers as AnyRecord[]) {
+    check(s.ruler === undefined || typeof s.ruler === 'boolean', `settler ${s.id} ruler`);
+    check(s.boostUntil === undefined || isNum(s.boostUntil), `settler ${s.id} rally`);
+  }
+  check((sim.settlers as AnyRecord[]).filter((s) => s.ruler === true).length <= 1, 'more than one ruler');
+  check(sim.rallyReadyAt === undefined || isNum(sim.rallyReadyAt), 'rally');
+  if (sim.animals !== undefined) {
+    check(Array.isArray(sim.animals), 'animals');
+    const buildingIds = new Set((sim.buildings as AnyRecord[]).map((b) => b.id));
+    for (const a of sim.animals as AnyRecord[]) {
+      check(isInt(a.id) && isSpeciesId(a.species) && isNum(a.x) && isNum(a.y) && isInt(a.homeX) && isInt(a.homeY), 'animal');
+      check(a.penId === null || (isInt(a.penId) && buildingIds.has(a.penId)), `animal ${a.id} pen`);
+    }
+  }
+  check(sim.animalRng === undefined || isInt(sim.animalRng), 'animal random state');
+  for (const b of sim.buildings as AnyRecord[]) {
+    if (b.pen !== undefined) check(isNum((b.pen as AnyRecord).breed) && isNum((b.pen as AnyRecord).ready) && ((b.pen as AnyRecord).ready as number) >= 0, `building ${b.id} pen`);
+  }
   const world = save.world as AnyRecord;
   check(world && Array.isArray(world.chunks), 'world');
   check(SUPPORTED_GENS.includes(world.genVersion as number), `world generator version ${String(world.genVersion)} is not supported by this game version`);

@@ -74,7 +74,10 @@ export function coronate(sim: Simulation, rulerName: unknown, kingdomName: unkno
   if (!b || !BANNER_COLORS.includes(b.color as never) || !EMBLEMS.includes(b.emblem as never)) return err('Choose a banner colour and emblem from the list');
   k.crowned = true;
   k.name = kn;
-  k.ruler = { name: rn, appearance: sim.randomAppearance() };
+  // The ruler who walks the map is the one crowned (taking the crowned name); older worlds gain a ruler here.
+  const walker = sim.ruler();
+  if (walker) walker.name = rn;
+  k.ruler = { name: rn, appearance: walker ? { ...walker.appearance } : sim.randomAppearance() };
   k.banner = { color: b.color as string, emblem: b.emblem as (typeof EMBLEMS)[number] };
   // The protected homeland is fixed now, exactly as previewed; later building never grows it.
   k.homeland = homelandPreview(sim);

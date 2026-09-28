@@ -400,6 +400,16 @@ export function rebuildAs(sim: Simulation, b: Building, type: BuildingId): void 
   b.h = r.h;
   b.level = undefined;
   for (let dy = 0; dy < b.h; dy++) for (let dx = 0; dx < b.w; dx++) sim.occupancy.set(tileKey(b.x + dx, b.y + dy), b.id);
+  // Anyone standing where the new walls went steps out to the door.
+  const door = entranceOf(b);
+  for (const s of sim.settlers) {
+    if (s.hidden || s.insideId === b.id) continue;
+    if (s.x >= b.x && s.x < b.x + b.w && s.y >= b.y && s.y < b.y + b.h) {
+      s.x = s.px = door.x + 0.5;
+      s.y = s.py = door.y + 0.5;
+      s.path = null;
+    }
+  }
   const def = BUILDINGS[type];
   if (def.reveal) sim.world.reveal(b.x + b.w / 2, b.y + b.h / 2, def.reveal);
   sim.mapChanged();

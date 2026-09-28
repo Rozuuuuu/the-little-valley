@@ -6,7 +6,7 @@ export function KingdomPanel() {
   const { game } = useGame();
   const s = useSnapshot();
   const k = s.kingdom;
-  const [ruler, setRuler] = useState('');
+  const [ruler, setRuler] = useState(s.ruler?.name ?? '');
   const [realm, setRealm] = useState(k.name);
   const [color, setColor] = useState(k.bannerColors[0]);
   const [emblem, setEmblem] = useState(k.emblems[0]);

@@ -95,6 +95,17 @@ describe('the ruler (the player on the map)', () => {
     expect(applyCommand(sim, { type: 'appointCouncil', post: 'envoy', settlerId: me.id }).ok).toBe(false);
   });
 
+  it('the ruler who walks the map is the one crowned, keeping their look', () => {
+    const sim = newWorld(3434);
+    sim.progression.reached.push('hamlet', 'village', 'town', 'region');
+    const me = rulerOf(sim);
+    const look = { ...me.appearance };
+    const res = applyCommand(sim, { type: 'coronate', rulerName: 'Lloyd the Kind', kingdomName: 'Westmark', banner: { color: playerKingdom(sim).banner.color, emblem: 'oak' } });
+    expect(res.ok, res.message).toBe(true);
+    expect(me.name).toBe('Lloyd the Kind');
+    expect(playerKingdom(sim).ruler!.appearance).toEqual(look);
+  });
+
   it('survives a save and reload', () => {
     const sim = newWorld();
     const loaded = reload(sim);
