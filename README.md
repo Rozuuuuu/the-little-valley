@@ -90,6 +90,12 @@ in `localStorage`.
      charcoal → ingot) and a **Forge** (ingot + plank → tools; iron makes two).
      Right-click these with settlers to make them their workers. Deepen a mine's shaft
      from its inspector for bigger loads.
+   - **Caravans and trade** (after Village): build a **Caravan Depot** where goods come
+     from and right-click it with a settler to make them a teamster. In **Towns →
+     Supply routes**, pick a store in each settlement, the goods and how much to keep
+     there; carts follow roads and bridges over explored land (they can't cross an
+     unbridged river). Build an **Inn** and merchants from distant towns come to
+     barter: open the inn to trade.
    - **Village** needs 10 adults, 8 beds in real homes, and any **2** of:
      bake 30 food, run 2 staffed work areas, finish a stone bridge, lay 25 path tiles.
 8. **Beds:** houses have 2, family homes 3, cottages 4, and the camp has 5 temporary

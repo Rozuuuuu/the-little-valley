@@ -16,6 +16,7 @@ from other games. Fonts are loaded from Google Fonts (SIL Open Font License).
 | Camp, house, storehouse, workshop, grand market, flower bed, lantern post, bench (day + lit night) | `buildings.ts` | footprint-relative drawings |
 | Mill, bakery, cottage (day + lit night) | `buildings.ts` | Milestone 2 |
 | Family home (day + lit night: porch swing, washing line) | `buildings.ts` `familyHome` | Families |
+| Inn (day + lit night, hanging sign), caravan depot, crate, caravan cart with pony | `buildings.ts` `inn`, `depot`, `crate`, `makeCartSprite` | Travellers |
 | Charcoal kiln, smelter, forge (day + lit night) | `buildings.ts` | Mountains and mining |
 | Quarry pit ×4 excavation stages, mine entrance ×3 shaft levels (day + night) | `buildings.ts` `makeQuarrySprites`, `makeMineSprites` | chosen by `Renderer.spriteFor` |
 | Hill slopes and mountain faces (lit rim, strata, cast shadow, winter snow) | `terrainPainter.ts` | generator 3 |

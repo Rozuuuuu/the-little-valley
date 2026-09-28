@@ -1,7 +1,7 @@
 # Save format
 
 Saves are JSON documents described by `src/game/save/format.ts`. The current version
-is **6** (`SAVE_VERSION`).
+is **7** (`SAVE_VERSION`).
 
 ## Version history
 
@@ -11,6 +11,7 @@ is **6** (`SAVE_VERSION`).
 | 2 | Milestone 1 | `meta` / `sim` / `world` sections, crafting stats, weather. |
 | 3 | Milestone 2 (Village) | World generator version, work areas, personal work orders, production workers, span building sizes, the chronicle and session marks, new stats. |
 | 4 | Seasons and settlements | `settlements`, settler `settlementId`, storage `wants` (stock targets). |
+| 7 | Travellers and connected settlements | `routes`, `manifests` (carts on the road with their cargo), `parties` (merchants, without walking paths), `knownRegions`, `nextMerchant`, settler `awayOn`, trade and caravan stats. |
 | 6 | Mountains and mining | `geology` (surveyed cells and ore left), building `mine` (deposit, shaft level) and `quarry` (stone cut), mining and smelting stats. New worlds use generator 3. |
 | 5 | Families and orchards | `growthMode`, settler `lifeStage` / `ageTicks` / `householdId`, `households`, `bedClaims`, visitor `offer`, `nextVisitor`, `recruits` (with apple escrow), `lastRecruit`, building `orchard`, stats `births` / `applesPicked` / `driedApples`. |
 
@@ -183,6 +184,15 @@ Tests (`tests/save.test.ts`, `tests/village.test.ts`) cover:
 - Fixtures: `tests/fixtures/v4-save.json` is a genuine v4 save (two settlements,
   stock target) captured before the v5 change; the v2 and v3 fixtures also migrate
   through v5.
+
+## Caravans and merchants (v7)
+
+Goods on a cart belong to its manifest alone (they left the source when it set off), so
+a reload in mid-journey restores the cart with its cargo and the teamster still away
+(`awayOn`), and the arrival happens exactly once. Merchants save their stage
+(travelling, arriving, lodging, leaving) and position; their walking path is rebuilt.
+On load, a settler marked away on a caravan that no longer exists comes home. The
+v6 → v7 migration adds empty lists and marks nobody away.
 
 ## v3 → v4 (seasons and settlements)
 

@@ -72,6 +72,24 @@ A day is 2880 ticks (4.8 minutes at 1×). Night runs from 0.87 to 0.21 of the da
   storage all at once. Recipes may take `fuel` (coal first, then charcoal), which the
   haul planner requests as whichever fuel is in stock.
 
+- **Regions** (`world/regions.ts`): a coarse, seeded graph of 96×96-tile regions, some
+  holding distant towns. Pure functions of the seed; nothing is generated until heard of
+  (`sim.knownRegions`).
+- **Logistics** (`sim/logistics.ts`): a route keeps a store in another settlement at a
+  target. A caravan depot's teamster takes up to 20 goods per cart; the goods and a
+  day's provisions leave the source at once into a manifest, the teamster is away
+  (`awayOn`, not simulated), and the cart travels an abstract leg whose time comes from
+  a path over *explored, loaded* tiles only (roads and bridges; no chunk is ever
+  generated, so no crossing an unbridged river). In-flight cargo counts against the
+  destination's space. A store never gives below its own target or the target of a route
+  into it, which keeps opposing routes from shuttling. Leftovers go home, then to any
+  store, then into a `crate` (a temporary store) — never lost, never counted twice.
+- **Merchants** (`sim/travelers.ts`): with an inn, a merchant sets off from a nearby town
+  every two days and passes through stages owned one at a time: *travelling*
+  (abstract), *arriving* (walking on the map), *lodging* (barter), *leaving*.
+  `barter` checks everything first (stock, your local stores, their prices, room)
+  and then moves all goods at once. Prices are in `data/trade.ts`.
+
 > Old worlds keep their generator forever. See "World generator versions" in
 > [SAVE_FORMAT.md](SAVE_FORMAT.md). Never change an existing generator: add a new one.
 

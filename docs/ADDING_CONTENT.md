@@ -111,6 +111,12 @@ alongside `tests/fixtures/gen-v1-fingerprint.json`. See
 [SAVE_FORMAT.md](SAVE_FORMAT.md).
 
 
+## Trade goods
+
+Every resource needs a value in `PRICES` (`data/trade.ts`); merchants sell at 125% and
+buy at 80%. `MERCHANT_GOODS` lists what they may bring; every merchant also carries
+copper or iron ore so metal never depends on a lucky survey.
+
 ## Minerals, extraction and fuel
 
 Minerals live in `data/minerals.ts` (weight, typical amount, the resource a mine

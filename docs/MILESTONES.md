@@ -1,5 +1,28 @@
 # Milestone reports
 
+## Travellers and connected settlements (plan M3)
+
+**Playable:** caravan depots and supply routes between settlements (Towns tab), carts
+drawn on the road with a pony, teamsters away while travelling, crates for goods with
+nowhere to go, an inn that brings merchants from seeded distant towns (they walk in,
+lodge a day and leave) with an explicit barter panel, and faster settler visits once an
+inn stands. Merchants always carry copper or iron ore.
+
+**Tests:** 160 passing. `logistics.test.ts`: target reached then rest, missing depot or
+teamster named, exactly-once return across a mid-journey reload, two routes into one
+store never overfilling, opposing routes settling, source targets respected,
+cancellation bringing every unit home, crates when both ends are full, a river blocking
+freight until a stone bridge stands, no chunk generation, the panel data.
+`travelers.test.ts`: seeded regions without chunks, merchant stages in order exactly
+once, fair/refused barter with finite stock, reload while walking in, inn visitor
+frequency, ore always offered.
+
+**Save:** v6 → v7 (routes, carts, merchants, known towns, `awayOn`).
+
+**Limitations:** one cart per route at a time; carts are drawn along a straight line
+between the ends (their travel time follows the real road); merchants trade by barter
+only (coins come with the crown, M4).
+
 ## Mountains and mining (plan M2)
 
 **Playable:** new valleys (generator 3) have hills, a northern mountain ridge with a pass
