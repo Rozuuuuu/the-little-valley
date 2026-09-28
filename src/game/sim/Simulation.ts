@@ -169,6 +169,8 @@ export class Simulation implements PathGrid {
   readonly oreReserved = new Map<number, number>();
   /** Last season announced (transient; seasons follow the calendar). */
   lastSeason: SeasonId | null = null;
+  /** When the ruler can Rally again. */
+  rallyReadyAt = 0;
   /** Buildings with an upgrade under way (rebuilt from buildings on load). */
   readonly upgrading = new Set<number>();
 
@@ -302,6 +304,22 @@ export class Simulation implements PathGrid {
 
   allocId(): number {
     return this.nextId++;
+  }
+
+  /** The ruler (the player on the map), if this world has one. */
+  ruler(): Settler | undefined {
+    // Looked up once per tick: work speed asks for it for every settler.
+    if (this.rulerTick !== this.tick) {
+      this.rulerTick = this.tick;
+      this.rulerRef = this.settlers.find((s) => s.ruler);
+    }
+    return this.rulerRef;
+  }
+  private rulerTick = -1;
+  private rulerRef: Settler | undefined;
+  /** Call after adding or removing the ruler within a tick. */
+  forgetRuler(): void {
+    this.rulerTick = -1;
   }
 
   settler(id: number): Settler | undefined {

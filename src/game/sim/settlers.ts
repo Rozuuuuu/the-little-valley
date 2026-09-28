@@ -3,7 +3,7 @@ import { BUILDINGS } from '../data/buildings';
 import { CROPS } from '../data/crops';
 import type { WorkKind } from '../data/jobs';
 import { RECIPES, type RecipeId } from '../data/recipes';
-import { CHILD_ADULT_TICKS } from '../data/kingdomBalance';
+import { AURA_RADIUS, CHILD_ADULT_TICKS, RALLY_BOOST, ROYAL_AURA } from '../data/kingdomBalance';
 import { COUNCIL_POSTS } from '../data/kingdoms';
 import { councilPostOf } from './kingdoms';
 import { UNITS } from '../data/units';
@@ -86,6 +86,12 @@ export function workSpeed(sim: Simulation, s: Settler): number {
   // A castle's royal presence speeds up its whole town.
   const hall = s.settlementId !== null ? sim.buildings.get(s.settlementId) : undefined;
   if (hall && hall.type === 'townHall' && (hall.level ?? 1) >= 3) v *= CASTLE_SPEED;
+  // The ruler's presence and Rally.
+  if (!s.ruler) {
+    const r = sim.ruler();
+    if (r && !r.hidden && Math.abs(r.x - s.x) <= AURA_RADIUS && Math.abs(r.y - s.y) <= AURA_RADIUS && Math.hypot(r.x - s.x, r.y - s.y) <= AURA_RADIUS) v *= ROYAL_AURA;
+    if (s.boostUntil !== undefined && s.boostUntil > sim.tick) v *= RALLY_BOOST;
+  }
   return v;
 }
 
@@ -741,6 +747,10 @@ export function assignTask(sim: Simulation, s: Settler): void {
     soldierRoutine(sim, s);
     return;
   }
+  if (s.ruler) {
+    rulerRoutine(sim, s);
+    return;
+  }
   const post = councilPostOf(sim, s);
   if (post) {
     s.idleReason = `Serving on the council as ${COUNCIL_POSTS[post].name} — not available for other work`;
@@ -784,6 +794,18 @@ export function assignTask(sim: Simulation, s: Settler): void {
     const t = tileOf(s);
     const x = t.x + sim.rng.int(5) - 2;
     const y = t.y + sim.rng.int(5) - 2;
+    if (sim.walkable(x, y) && sim.world.explored(x, y)) s.task = { kind: 'wander', x, y };
+  }
+}
+
+/** The ruler strolls where they were sent, greeting people; needs are handled above. */
+function rulerRoutine(sim: Simulation, s: Settler): void {
+  s.idleReason = '';
+  s.nextThink = sim.tick + IDLE_BACKOFF * 2 + (s.id % 7);
+  if (!s.task && sim.rng.chance(0.15)) {
+    const t = tileOf(s);
+    const x = t.x + sim.rng.int(3) - 1;
+    const y = t.y + sim.rng.int(3) - 1;
     if (sim.walkable(x, y) && sim.world.explored(x, y)) s.task = { kind: 'wander', x, y };
   }
 }
@@ -1220,6 +1242,7 @@ export function describeTask(sim: Simulation, s: Settler): string {
   if (s.awayOn !== null) return 'Away with a caravan';
   if (s.captive) return 'Held captive — home at peace';
   const t = s.task;
+  if (s.ruler && (!t || t.kind === 'wander')) return 'Watching over the realm';
   if (!t) return s.idleReason ? 'Idle' : 'Looking for work';
   const bname = (id: number) => {
     const b = sim.buildings.get(id);

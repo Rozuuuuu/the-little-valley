@@ -20,6 +20,7 @@ import { cancelTraining, demobilize, enlist, mobilizeCampaign, orderCompany } fr
 import { declareWar, evacuate, launchCampaign } from './combat';
 import { surveyDeposit, upgradeMine } from './mining';
 import { cancelUpgrade, startUpgrade } from './levels';
+import { rally, takeThrone } from './ruler';
 import { adoptDeliberateGrowth, cancelChildRequest, formHousehold, isChild, requestChild } from './households';
 import { fieldAction } from './farming';
 import { abortTask, findHaulFor } from './settlers';
@@ -58,6 +59,8 @@ export type Command =
   | { type: 'surveyDeposit'; settlerId: number; x: number; y: number }
   | { type: 'upgradeMine'; buildingId: number }
   | { type: 'upgradeBuilding'; buildingId: number }
+  | { type: 'rally' }
+  | { type: 'takeThrone'; name: string }
   | { type: 'cancelUpgrade'; buildingId: number }
   | { type: 'createRoute'; sourceId: number; destinationId: number; resource: ResourceId; target: number }
   | { type: 'setRouteTarget'; routeId: number; target: number }
@@ -143,8 +146,9 @@ function pickSettlers(sim: Simulation, ids: unknown): Settler[] {
 function pickWorkers(sim: Simulation, ids: unknown, what: string): Settler[] | string {
   const all = pickSettlers(sim, ids);
   if (all.length === 0) return 'Select a settler first';
-  const list = all.filter((s) => !isChild(s) && !s.military);
+  const list = all.filter((s) => !isChild(s) && !s.military && !s.ruler);
   if (list.length > 0) return list;
+  if (all.some((s) => s.ruler)) return `${all.find((s) => s.ruler)!.name} is the ruler — rulers give orders and inspire, but don't do chores. Right-click the ground to walk there.`;
   if (all.some((s) => s.military)) return `${all.find((s) => s.military)!.name} is a soldier — stand their company down first`;
   const who = all.length === 1 ? `${all[0].name} is a child` : 'These are children';
   return `${who} — children play near home and can't ${what} until they grow up`;
@@ -586,6 +590,10 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
       return surveyDeposit(sim, cmd.settlerId, cmd.x, cmd.y);
     case 'upgradeMine':
       return upgradeMine(sim, cmd.buildingId);
+    case 'rally':
+      return rally(sim);
+    case 'takeThrone':
+      return takeThrone(sim, cmd.name);
     case 'upgradeBuilding':
     case 'cancelUpgrade': {
       const b = sim.buildings.get(cmd.buildingId as number);

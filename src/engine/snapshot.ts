@@ -49,6 +49,8 @@ export interface SettlerInfo {
   name: string;
   /** For portraits. */
   appearance: Appearance;
+  /** The ruler: the player on the map. */
+  ruler: boolean;
   job: JobId;
   task: string;
   idleReason: string;
@@ -177,6 +179,8 @@ export interface UiSnapshot {
   overview: Overview | null;
   celebration: { id: MilestoneId; name: string; unlocks: string[]; next: { name: string; description: string; future: boolean }[] } | null;
   finds: { idle: number; waiting: number; sites: number; bridge: boolean };
+  /** The player's ruler on the map, if this world has one. */
+  ruler: { id: number; name: string; title: string; rallyIn: string } | null;
 }
 
 export function emptySnapshot(): UiSnapshot {
@@ -204,7 +208,7 @@ export function emptySnapshot(): UiSnapshot {
     milestone: { current: 'Camp', tier: 0, next: null }, mode: { kind: 'select' }, selection: [], building: null,
     settlers: [], idleCount: 0, toasts: [], tutorial: null, tutorialOutro: false, hover: null, saveStatus: '',
     unlocked: { buildings: [], locked: [], crops: [] }, worldName: '', explored: 0,
-    areas: [], selectedArea: null, overview: null, celebration: null, finds: { idle: 0, waiting: 0, sites: 0, bridge: false },
+    areas: [], selectedArea: null, overview: null, celebration: null, finds: { idle: 0, waiting: 0, sites: 0, bridge: false }, ruler: null,
   };
 }
 
@@ -225,7 +229,7 @@ export function settlerInfo(sim: Simulation, s: Settler): SettlerInfo {
   if (!home) bedNote = 'No free bed anywhere — rests by the campfire. Build a house.';
   else if (!isPermanentHome(home)) bedNote = home.type === 'townHall' ? 'Sleeps in a Town Hall bunk until a house bed is free.' : 'Sleeps in a camp bedroll until a house bed is free.';
   return {
-    id: s.id, name: s.name, appearance: s.appearance, job: s.job, task: describeTask(sim, s), idleReason: s.idleReason, idle,
+    id: s.id, name: s.name, appearance: s.appearance, ruler: !!s.ruler, job: s.job, task: describeTask(sim, s), idleReason: s.idleReason, idle,
     carrying: s.carrying ? { ...s.carrying } : null, hunger: Math.round(s.hunger), energy: Math.round(s.energy),
     home: home ? (isPermanentHome(home) ? `${BUILDINGS[home.type].name}` : home.type === 'townHall' ? 'Town Hall bunk' : 'Camp bedroll') : 'No bed',
     homeId: home?.id ?? null, bedNote,

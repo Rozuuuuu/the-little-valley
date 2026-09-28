@@ -111,6 +111,7 @@ export function appointCouncil(sim: Simulation, post: unknown, settlerId: unknow
   const s = sim.settler(settlerId as number);
   if (!s) return err('Choose a settler');
   if (isChild(s)) return err(`${s.name} is a child — only adults can serve on the council`);
+  if (s.ruler) return err(`${s.name} is the ruler — the council serves the ruler, not the other way round`);
   if (s.awayOn !== null) return err(`${s.name} is away`);
   for (const other of Object.keys(k.council) as CouncilPost[]) if (k.council[other] === s.id) k.council[other] = null;
   k.council[p] = s.id;

@@ -3,6 +3,7 @@ import { assignHomes, completeBuilding, placeBuilding } from './buildings';
 import { CURRENT_GEN } from '../world/worldgen';
 import type { HabitatId } from '../data/habitats';
 import { newPlayerKingdom } from './kingdoms';
+import { addRuler } from './ruler';
 import { FIRST_VISITOR_TICK } from '../data/kingdomBalance';
 import { Simulation, STARTING_SETTLERS } from './Simulation';
 
@@ -10,7 +11,12 @@ export const STARTING_GOODS = { food: 30, wood: 15, stone: 5 };
 const STARTING_JOBS: JobId[] = ['farmer', 'gatherer', 'builder', 'laborer', 'laborer'];
 
 /** A fresh valley: a Town Hall in the clearing, five settlers and a little food. */
-export function createNewGame(seed: number, genVersion = CURRENT_GEN, habitat: HabitatId = 'valley'): Simulation {
+export interface NewGameOptions {
+  /** The player's name: their ruler walks the map from the start. */
+  rulerName?: string;
+}
+
+export function createNewGame(seed: number, genVersion = CURRENT_GEN, habitat: HabitatId = 'valley', options: NewGameOptions = {}): Simulation {
   const sim = new Simulation(seed, undefined, genVersion, habitat);
   // New valleys grow through families and welcomed travellers.
   sim.growthMode = 'deliberate';
@@ -27,6 +33,7 @@ export function createNewGame(seed: number, genVersion = CURRENT_GEN, habitat: H
     const [x, y] = spots[i];
     sim.addSettler(x, y, STARTING_JOBS[i]);
   }
+  if (options.rulerName?.trim()) addRuler(sim, options.rulerName.trim().slice(0, 24), 0, 3);
   assignHomes(sim);
   sim.startSession();
   sim.drainEvents();

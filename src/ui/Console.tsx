@@ -26,6 +26,8 @@ interface Cmd {
   glyph?: string;
   /** Key shown on the button (KeyboardEvent.code). */
   hotkey?: string;
+  /** The card answers this hotkey itself (keys no other control uses). */
+  ownKey?: boolean;
   on?: boolean;
   disabled?: boolean;
   badge?: string | number;
@@ -105,6 +107,31 @@ function Portrait({ src, big }: { src: string; big?: boolean }) {
 
 function SettlerInfoPanel({ p, onMore }: { p: SettlerInfo; onMore: () => void }) {
   const { sprites } = useGame();
+  const s = useSnapshot();
+  if (p.ruler && s.ruler) {
+    return (
+      <div className="con-info-row">
+        <Portrait src={sprites.portrait(p.appearance, true)} big />
+        <div className="con-text">
+          <div className="con-title">
+            <strong>{p.name}</strong>
+            <span className="level-pip">You</span>
+            <span className="muted">{s.ruler.title}</span>
+          </div>
+          <div className="con-task">{p.task}</div>
+          <div className="con-bars">
+            <span>Fed</span> <Bar value={p.hunger / 100} kind="food" />
+            <span>Rested</span> <Bar value={p.energy / 100} kind="energy" />
+          </div>
+          <div className="muted con-line">Royal presence: everyone within 8 tiles works 20% faster.</div>
+          <div className="muted con-line">{s.ruler.rallyIn ? `Rally ready in ${s.ruler.rallyIn}` : 'Rally is ready (R): nearby people work 30% faster for an hour.'}</div>
+        </div>
+        <button className="btn small see-more" onClick={onMore}>
+          See more
+        </button>
+      </div>
+    );
+  }
   return (
     <div className="con-info-row">
       <Portrait src={sprites.portrait(p.appearance)} big />
@@ -148,7 +175,7 @@ function GroupInfoPanel({ list, onMore }: { list: SettlerInfo[]; onMore: () => v
         <div className="group-grid">
           {list.slice(0, 24).map((p) => (
             <button key={p.id} className={`group-cell${p.idle ? ' idle' : ''}`} onClick={() => game.selectSettlers([p.id], true)} title={`${p.name}: ${p.idle ? p.idleReason : p.task}`}>
-              <img className="px" src={sprites.portrait(p.appearance)} alt={p.name} />
+              <img className="px" src={sprites.portrait(p.appearance, p.ruler)} alt={p.name} />
               <i style={{ width: `${p.hunger}%` }} />
             </button>
           ))}
@@ -254,12 +281,38 @@ function ValleyInfoPanel({ onGoals }: { onGoals: () => void }) {
         ) : (
           <div className="con-task muted">Every milestone reached. Keep building.</div>
         )}
-        <div className="muted con-line">Select a settler or building to see it here. Right-click gives orders.</div>
+        {s.ruler ? (
+          <div className="muted con-line">Select a settler or building to see it here. Right-click gives orders. Press K to find {s.ruler.name}.</div>
+        ) : (
+          <TakeThrone />
+        )}
       </div>
       <button className="btn small see-more" onClick={onGoals}>
         See more
       </button>
     </div>
+  );
+}
+
+/** Older worlds: the player names their ruler, who then walks the map. */
+function TakeThrone() {
+  const { game } = useGame();
+  const [name, setName] = useState('');
+  return (
+    <form
+      className="con-line throne-form"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const res = game.dispatch({ type: 'takeThrone', name });
+        if (res.ok && res.id !== undefined) game.selectSettlers([res.id], true);
+      }}
+    >
+      <span>Where are you? Take the throne:</span>
+      <input type="text" value={name} maxLength={24} placeholder="Your name" onChange={(e) => setName(e.target.value)} aria-label="Your ruler's name" />
+      <button className="btn small primary" type="submit" disabled={!name.trim()}>
+        Crown me
+      </button>
+    </form>
   );
 }
 
@@ -382,6 +435,15 @@ function useCommands(menu: CardMenu, setMenu: (m: CardMenu) => void, openWindow:
   slots[6] = { id: 'all', label: 'Select all', glyph: '☺', hotkey: b.selectAll[0], tip: { title: 'Select every settler' }, run: () => game.selectAll() };
   slots[7] = { id: 'sites', label: 'Sites', glyph: '▲', badge: s.finds.sites || undefined, tip: { title: 'Construction sites', body: 'Jump to the next building under construction.' }, run: () => game.findNext('sites') };
   slots[8] = { id: 'waiting', label: 'Waiting', glyph: '…', badge: s.finds.waiting || undefined, tip: { title: 'Waiting buildings', body: 'Buildings short of materials or workers.' }, run: () => game.findNext('waiting') };
+  const ruler = s.ruler;
+  slots[10] = {
+    id: 'ruler', label: ruler ? 'You' : 'Throne', glyph: '♛', hotkey: 'KeyK', ownKey: true,
+    tip: ruler ? { title: `${ruler.name}, ${ruler.title}`, body: 'Select yourself and jump to where you stand.' } : { title: 'Take the throne', body: 'Name your ruler (you) to walk the realm, speed up work nearby and Rally your people.' },
+    run: () => {
+      if (ruler) game.selectSettlers([ruler.id], true);
+      else document.querySelector<HTMLInputElement>('.throne-form input')?.focus();
+    },
+  };
 
   const bi = s.building;
   if (bi && s.selection.length === 0) {
@@ -410,6 +472,13 @@ function useCommands(menu: CardMenu, setMenu: (m: CardMenu) => void, openWindow:
     }
   } else if (s.selection.length > 0) {
     const one = s.selection.length === 1 ? s.selection[0] : null;
+    if (one?.ruler && s.ruler) {
+      slots[9] = {
+        id: 'rally', label: 'Rally', glyph: '⚜', hotkey: 'KeyR', ownKey: true, disabled: !!s.ruler.rallyIn, badge: s.ruler.rallyIn ? '…' : undefined,
+        tip: { title: 'Rally the people', body: 'Everyone within 12 tiles works 30% faster for an hour. Once a day.', note: s.ruler.rallyIn ? `Ready again in ${s.ruler.rallyIn}` : undefined },
+        run: () => game.dispatch({ type: 'rally' }),
+      };
+    }
     if (one?.homeId != null) slots[7] = { id: 'home', label: 'Home', glyph: '⌂', tip: { title: 'Show home' }, run: () => game.focusBuildingById(one.homeId!) };
     slots[8] = { id: 'details', label: 'Details', glyph: 'ⓘ', tip: { title: 'See more', body: 'Job, work order, work area, bed and family.' }, run: openDetails };
     if (bi?.workers && bi.workers.people.length < bi.workers.max) {
@@ -429,14 +498,16 @@ function CommandCard({ menu, setMenu, openWindow, openDetails }: { menu: CardMen
   const latest = useRef(slots);
   latest.current = slots;
 
-  // Grid hotkeys while a build menu is open; they win over camera keys like WASD.
+  // Grid hotkeys while a build menu is open (they win over camera keys like WASD);
+  // at the root, only the card's own keys (ruler, rally).
   useEffect(() => {
-    if (!menu) return;
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
-      const i = e.code === 'Escape' ? BACK_SLOT : GRID_KEYS.indexOf(e.code);
+      const i = !menu
+        ? latest.current.findIndex((c) => c?.ownKey && c.hotkey === e.code)
+        : e.code === 'Escape' ? BACK_SLOT : GRID_KEYS.indexOf(e.code);
       if (i < 0) return;
       const c = latest.current[i];
       e.preventDefault();

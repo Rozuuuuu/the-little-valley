@@ -169,7 +169,7 @@ export function makeResourceIcons(): Record<ResourceId, Sprite> {
   return out;
 }
 
-export type UiIconId = 'people' | 'house' | 'sun' | 'moon' | 'rain' | 'star' | 'storage' | 'idle' | 'hungry' | 'warn' | 'drop' | 'axe' | 'pick' | 'basket' | 'zzz' | 'heart';
+export type UiIconId = 'people' | 'house' | 'sun' | 'moon' | 'rain' | 'star' | 'storage' | 'idle' | 'hungry' | 'warn' | 'drop' | 'axe' | 'pick' | 'basket' | 'zzz' | 'heart' | 'crown';
 
 export function makeUiIcons(): Record<UiIconId, Sprite> {
   const shirt = P.shirt[1];
@@ -271,6 +271,17 @@ export function makeUiIcons(): Record<UiIconId, Sprite> {
       p.rect(6, 2, 3, 3, P.berry);
       for (let y = 0; y < 4; y++) p.hline(1 + y, 8 - y, 4 + y, P.berry);
       p.px(2, 2, '#ff9aa6');
+    }),
+    crown: icon((p) => {
+      // Three gold points on a band, with a ruby in the middle.
+      p.rect(1, 5, 9, 3, '#e7b93c');
+      p.hline(1, 9, 7, '#b0842a');
+      for (const x of [1, 5, 9]) p.rect(x, 2, 1, 3, '#e7b93c');
+      p.rect(4, 3, 3, 2, '#e7b93c');
+      for (const x of [1, 5, 9]) p.px(x, 1, '#fff2a8');
+      p.px(5, 6, '#d8384a');
+      p.px(2, 6, '#5ab0e0');
+      p.px(8, 6, '#5ab0e0');
     }),
   };
 }

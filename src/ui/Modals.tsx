@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { MILESTONES } from '../game/data/progression';
 import { randomSeed } from '../game/core/rng';
+import { HABITAT_IDS, HABITATS, type HabitatId } from '../game/data/habitats';
 import type { SlotMeta } from '../game/save/storage';
 import { saveSettings, type Settings } from '../engine/settings';
 import { DEFAULT_BINDINGS, defaultBindings, keyLabel, type Action } from '../input/bindings';
@@ -200,25 +201,94 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-export function NewWorldModal({ onClose, onCreate }: { onClose: () => void; onCreate: (name: string, seed: string, tutorial: boolean) => void }) {
-  const [name, setName] = useState('Little Valley');
-  const [seed, setSeed] = useState(String(randomSeed()));
-  const [tutorial, setTutorial] = useState(true);
+/** What the player chose for a new world. */
+export interface NewWorldChoice {
+  rulerName: string;
+  worldName: string;
+  seed: string;
+  habitat: HabitatId;
+  tutorial: boolean;
+}
+
+const LAST_RULER = 'little-valley:last-ruler';
+
+function lastRulerName(): string {
+  try {
+    return localStorage.getItem(LAST_RULER) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+/** A tiny painted swatch of a habitat for its card. */
+function HabitatSwatch({ id }: { id: HabitatId }) {
+  const [a, b, c] = HABITATS[id].colors;
+  const mountains = id === 'highlands' ? 3 : 1;
   return (
-    <Modal title="A new valley" onClose={onClose}>
+    <svg className="habitat-swatch" viewBox="0 0 48 28" aria-hidden shapeRendering="crispEdges">
+      <rect width="48" height="28" fill={a} />
+      <rect y="18" width="48" height="10" fill={b} />
+      {Array.from({ length: mountains }, (_, i) => (
+        <polygon key={i} points={`${4 + i * 14},12 ${12 + i * 14},2 ${20 + i * 14},12`} fill="#8a8f96" stroke="#4a4f56" />
+      ))}
+      <polygon points="30,12 38,4 46,12" fill="#9aa0a6" stroke="#4a4f56" />
+      <rect x="6" y="20" width="10" height="4" fill={c} />
+      {id === 'forest' && [8, 18, 28, 38].map((x) => <rect key={x} x={x} y="14" width="5" height="7" fill="#1f4a2c" />)}
+      {id === 'marsh' && <rect x="24" y="16" width="18" height="6" fill={c} />}
+      {id === 'valley' && <rect x="36" y="12" width="4" height="16" fill={c} />}
+    </svg>
+  );
+}
+
+export function NewWorldModal({ onClose, onCreate }: { onClose: () => void; onCreate: (choice: NewWorldChoice) => void }) {
+  const [rulerName, setRulerName] = useState(lastRulerName);
+  const [worldName, setWorldName] = useState('Little Valley');
+  const [seed, setSeed] = useState(String(randomSeed()));
+  const [habitat, setHabitat] = useState<HabitatId>('valley');
+  const [tutorial, setTutorial] = useState(true);
+  const [tried, setTried] = useState(false);
+  const missingName = !rulerName.trim();
+  return (
+    <Modal title="A new world" onClose={onClose}>
       <form
-        className="stack"
+        className="stack new-world"
         onSubmit={(e) => {
           e.preventDefault();
-          onCreate(name.trim() || 'Little Valley', seed, tutorial);
+          setTried(true);
+          if (missingName) return;
+          try {
+            localStorage.setItem(LAST_RULER, rulerName.trim());
+          } catch {
+            // Remembering the name is only a convenience.
+          }
+          onCreate({ rulerName: rulerName.trim(), worldName: worldName.trim() || 'Little Valley', seed, habitat, tutorial });
         }}
       >
         <label className="field">
-          Name
-          <input type="text" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} autoFocus />
+          Your name — you will walk the map as its ruler
+          <input
+            type="text" value={rulerName} maxLength={24} onChange={(e) => setRulerName(e.target.value)} autoFocus
+            placeholder="Type your name" aria-invalid={tried && missingName} required
+          />
+          {tried && missingName && <span className="reason">Every new world needs its ruler's name.</span>}
         </label>
         <label className="field">
-          World seed (the same seed always makes the same land)
+          Name of your valley
+          <input type="text" value={worldName} maxLength={40} onChange={(e) => setWorldName(e.target.value)} />
+        </label>
+        <fieldset className="habitats">
+          <legend>Choose your land</legend>
+          {HABITAT_IDS.map((id) => (
+            <label key={id} className={`habitat-card${habitat === id ? ' on' : ''}`}>
+              <input type="radio" name="habitat" value={id} checked={habitat === id} onChange={() => setHabitat(id)} />
+              <HabitatSwatch id={id} />
+              <span className="hc-name">{HABITATS[id].name}</span>
+              <span className="hc-desc">{HABITATS[id].description}</span>
+            </label>
+          ))}
+        </fieldset>
+        <label className="field">
+          Seed (optional — the same seed and land always make the same world)
           <div style={{ display: 'flex', gap: 6 }}>
             <input type="text" value={seed} maxLength={40} onChange={(e) => setSeed(e.target.value)} style={{ flex: 1 }} />
             <button type="button" className="btn small" onClick={() => setSeed(String(randomSeed()))}>
@@ -235,7 +305,7 @@ export function NewWorldModal({ onClose, onCreate }: { onClose: () => void; onCr
             Back
           </button>
           <button type="submit" className="btn primary">
-            Settle the valley
+            Found the realm
           </button>
         </div>
       </form>

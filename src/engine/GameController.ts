@@ -1,5 +1,5 @@
 import { regionalInfo } from './snapshot';
-import { growthInfo } from './growthInfo';
+import { gameTime, growthInfo } from './growthInfo';
 import { logisticsInfo } from './tradeInfo';
 import { diplomacyInfo, kingdomInfo, newsInfo, warCouncilInfo, warInfo } from './kingdomSnapshot';
 import { armyInfo } from './militaryInfo';
@@ -949,8 +949,22 @@ export class GameController {
         sites: this.findList('sites').length,
         bridge: this.findList('bridge').length > 0,
       },
+      ruler: rulerInfo(sim),
     });
   }
+}
+
+/** The ruler's name, title and when Rally is ready, for the console. */
+function rulerInfo(sim: Simulation): UiSnapshot['ruler'] {
+  const r = sim.ruler();
+  if (!r) return null;
+  const k = sim.kingdoms.find((x) => x.player);
+  const wait = sim.rallyReadyAt - sim.tick;
+  return {
+    id: r.id, name: r.name,
+    title: k?.crowned ? `Sovereign of ${k.name}` : `Ruler of ${sim.settlements[0]?.name ?? 'the valley'}`,
+    rallyIn: wait > 0 ? gameTime(wait) : '',
+  };
 }
 
 export { TUTORIAL_OUTRO };

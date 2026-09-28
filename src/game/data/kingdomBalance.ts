@@ -40,3 +40,13 @@ export const ORCHARD_MAX_FRUIT = 40;
 export const ORCHARD_CARE_TICKS = DAY_TICKS;
 /** Pick once at least this many apples are ripe. */
 export const ORCHARD_PICK_MIN = 8;
+
+/** The ruler's presence: adults within AURA_RADIUS tiles work this much faster. */
+export const ROYAL_AURA = 1.2;
+export const AURA_RADIUS = 8;
+/** Rally: adults within RALLY_RADIUS tiles work RALLY_BOOST times faster for RALLY_TICKS. */
+export const RALLY_RADIUS = 12;
+export const RALLY_BOOST = 1.3;
+export const RALLY_TICKS = 600;
+/** Rally can be used again this long after the last one. */
+export const RALLY_COOLDOWN = DAY_TICKS;

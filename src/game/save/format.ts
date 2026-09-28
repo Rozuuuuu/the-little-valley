@@ -60,6 +60,9 @@ export interface SavedSettler {
   kingdomId: number;
   military: MilitaryService | null;
   captive: { by: number } | null;
+  /** v12+: the ruler, and a Rally boost in effect. */
+  ruler?: boolean;
+  boostUntil?: number;
 }
 
 export interface SavedBuilding {
@@ -214,6 +217,8 @@ export interface SaveFileV10 extends Omit<SaveFileV9, 'version' | 'sim'> {
   sim: SaveFileV9['sim'] & {
     /** Day the horses were last fed. */
     horseDay: number;
+    /** v12+: when the ruler can Rally again. */
+    rallyReadyAt?: number;
   };
 }
 

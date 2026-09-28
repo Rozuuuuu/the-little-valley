@@ -4,6 +4,7 @@ import { CHUNK, DUSK, MORNING, NIGHT_START, TILE, tileKey, keyX, keyY } from '..
 import { hash01 } from '../game/core/rng';
 import { BUILDINGS, type BuildingId } from '../game/data/buildings';
 import { lightOf } from '../game/sim/levels';
+import { AURA_RADIUS } from '../game/data/kingdomBalance';
 import { CROPS } from '../game/data/crops';
 import { fieldStage, WATER_THRESHOLD } from '../game/sim/farming';
 import { costOf, isPermanentHome, materialsComplete, workOf } from '../game/sim/buildings';
@@ -365,6 +366,7 @@ export class Renderer {
       const x = (s.px + (s.x - s.px) * st.alpha) * TILE;
       const y = (s.py + (s.y - s.py) * st.alpha) * TILE;
       if (x < tl.x - 32 || x > br.x + 32 || y < tl.y - 32 || y > br.y + 48) continue;
+      if (s.ruler && st.selected.has(s.id)) this.drawAura(x, y, st.time);
       if (st.selected.has(s.id) || st.hoverSettler === s.id) this.drawRing(x, y, st.selected.has(s.id));
       drawables.push({ y, draw: () => this.drawSettler(s, x, y, st.time) });
     }
@@ -775,6 +777,25 @@ export class Renderer {
     }
   }
 
+  /** The ruler's presence: a slowly turning dashed gold circle showing who works faster. */
+  private drawAura(x: number, y: number, time: number): void {
+    const ctx = this.ctx;
+    const cam = this.camera;
+    const sc = cam.scale;
+    const r = AURA_RADIUS * TILE * sc;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(236, 210, 126, 0.55)';
+    ctx.fillStyle = 'rgba(236, 210, 126, 0.06)';
+    ctx.lineWidth = Math.max(1, sc);
+    ctx.setLineDash([4 * sc, 4 * sc]);
+    ctx.lineDashOffset = -time * 6 * sc;
+    ctx.beginPath();
+    ctx.ellipse(x * sc + cam.tx, (y - 2) * sc + cam.ty, r, r, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
   private drawRing(x: number, y: number, selected: boolean): void {
     const ctx = this.ctx;
     const cam = this.camera;
@@ -896,6 +917,8 @@ export class Renderer {
     if (s.facing !== 1) toolAt();
 
     if (s.carrying) this.blit(this.sprites.resources[s.carrying.res], x, y - 20 + (phase % 2));
+    // The ruler wears a crown (a little higher while walking, so it bobs).
+    if (s.ruler && s.anim !== 'sleep') this.blit(this.sprites.ui.crown, x, y - 21 - (s.anim === 'walk' ? phase % 2 : 0));
     if (s.anim === 'sleep') {
       const t = (time * 0.6 + s.id * 0.3) % 1;
       this.ctx.globalAlpha = 1 - t;

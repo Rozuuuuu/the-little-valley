@@ -76,15 +76,28 @@ export class SpriteBank {
   }
 
   /** A head-and-shoulders portrait (front-facing idle frame) for the selection panel. */
-  portrait(a: Appearance): string {
-    const key = `portrait:${appearanceKey(a)}`;
+  portrait(a: Appearance, crown = false): string {
+    const key = `portrait:${appearanceKey(a)}:${crown ? 'c' : ''}`;
     const cached = this.previewCache.get(key);
     if (cached) return cached;
     const frame = this.settler(a)[0][0].canvas;
     const c = makeCanvas(18, 16);
     const ctx = c.getContext('2d')!;
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(frame, 0, 0, 18, 16, 0, 0, 18, 16);
+    if (crown) {
+      // Shift the figure down a little and set a small gold crown on the head.
+      ctx.drawImage(frame, 0, 0, 18, 13, 0, 3, 18, 13);
+      ctx.fillStyle = '#2a1c12';
+      ctx.fillRect(5, 1, 8, 4);
+      ctx.fillStyle = '#e7b93c';
+      ctx.fillRect(6, 2, 6, 2);
+      for (const x of [6, 8, 9, 11]) ctx.fillRect(x, 1, 1, 1);
+      ctx.fillStyle = '#fff2a8';
+      ctx.fillRect(6, 0, 1, 1);
+      ctx.fillRect(11, 0, 1, 1);
+      ctx.fillStyle = '#d8384a';
+      ctx.fillRect(8, 2, 2, 1);
+    } else ctx.drawImage(frame, 0, 0, 18, 16, 0, 0, 18, 16);
     const url = c.toDataURL();
     this.previewCache.set(key, url);
     return url;

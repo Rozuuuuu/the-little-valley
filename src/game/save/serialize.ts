@@ -72,6 +72,8 @@ export function serializeSim(sim: Simulation, extras: SerializeExtras): SaveFile
     lifeStage: s.lifeStage, ageTicks: s.ageTicks, householdId: s.householdId, awayOn: s.awayOn, kingdomId: s.kingdomId,
     military: s.military ? JSON.parse(JSON.stringify(s.military)) : null,
     captive: s.captive ? { ...s.captive } : null,
+    ...(s.ruler ? { ruler: true } : {}),
+    ...(s.boostUntil && s.boostUntil > sim.tick ? { boostUntil: s.boostUntil } : {}),
   }));
   const buildings: SavedBuilding[] = [...sim.buildings.values()].map((b) => {
     const sb: SavedBuilding = {
@@ -122,6 +124,7 @@ export function serializeSim(sim: Simulation, extras: SerializeExtras): SaveFile
       // Company walking paths are transient; they are rebuilt after loading.
       kingdoms: sim.kingdoms.map((k) => JSON.parse(JSON.stringify({ ...k, companies: k.companies.map((c) => ({ ...c, path: null })) })) as Kingdom),
       horseDay: sim.horseDay,
+      rallyReadyAt: sim.rallyReadyAt,
       war: JSON.parse(JSON.stringify({ states: [...sim.warStates], sieges: [...sim.sieges], occupationTimers: [...sim.occupationTimers] })),
       diplomacy: JSON.parse(JSON.stringify({
         worldEvents: sim.worldEvents,
@@ -187,6 +190,7 @@ export function deserializeSim(save: SaveFile): Simulation {
   sim.nextMerchant = d.nextMerchant;
   sim.kingdoms = d.kingdoms.map((k) => JSON.parse(JSON.stringify(k)) as Kingdom);
   sim.horseDay = d.horseDay;
+  sim.rallyReadyAt = d.rallyReadyAt ?? 0;
   sim.warStates = new Map(d.war.states);
   sim.sieges = new Map(d.war.sieges);
   sim.occupationTimers = new Map(d.war.occupationTimers);
@@ -257,6 +261,8 @@ export function deserializeSim(save: SaveFile): Simulation {
       lifeStage: ss.lifeStage, ageTicks: ss.ageTicks, householdId: ss.householdId, awayOn: ss.awayOn, kingdomId: ss.kingdomId,
       military: ss.military ? JSON.parse(JSON.stringify(ss.military)) : null,
       captive: ss.captive ? { ...ss.captive } : null,
+      ruler: ss.ruler === true ? true : undefined,
+      boostUntil: ss.boostUntil,
     };
     // Captives are held elsewhere until peace.
     if (s.captive) s.hidden = true;

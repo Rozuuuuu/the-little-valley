@@ -111,6 +111,10 @@ export function enlist(sim: Simulation, ids: unknown, unit: unknown, buildingId:
   const done: string[] = [];
   let problem = '';
   for (const s of people) {
+    if (s.ruler) {
+      problem ||= `${s.name} is the ruler and does not enlist`;
+      continue;
+    }
     if (s.military) {
       problem ||= `${s.name} is already a soldier`;
       continue;

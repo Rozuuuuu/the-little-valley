@@ -16,7 +16,8 @@ import { GameContext, useGame, type GameContextValue } from './context';
 import { HoverInfo, PausedBanner, SidePanel, Toasts, TopBar, Tutorial } from './Hud';
 import { Celebration, ValleyToday } from './Village';
 import { BottomConsole, type CardMenu, type WindowTab } from './Console';
-import { HelpModal, LoadModal, NewWorldModal, PauseMenu, SettingsModal } from './Modals';
+import { HelpModal, LoadModal, NewWorldModal, PauseMenu, SettingsModal, type NewWorldChoice } from './Modals';
+import { CURRENT_GEN } from '../game/world/worldgen';
 
 const ATTRACT_SEED = 20260927;
 
@@ -116,13 +117,18 @@ export function App() {
 
   const closeOverlay = useCallback(() => setOverlay(null), []);
 
-  const startNew = async (name: string, seedText: string, tutorial: boolean) => {
+  const startNew = async (choice: NewWorldChoice) => {
     if (!game) return;
     game.audio.unlock();
-    const seed = seedFromString(seedText);
+    const seed = seedFromString(choice.seed);
     const slot = `valley-${Date.now().toString(36)}`;
     game.attract = false;
-    game.start(createNewGame(seed), { slot, name, createdAt: Date.now() }, { tutorial });
+    const sim = createNewGame(seed, CURRENT_GEN, choice.habitat, { rulerName: choice.rulerName });
+    sim.settlements[0].name = choice.worldName;
+    sim.kingdoms[0].name = choice.worldName;
+    game.start(sim, { slot, name: choice.worldName, createdAt: Date.now() }, { tutorial: choice.tutorial });
+    const ruler = sim.ruler();
+    if (ruler) game.selectSettlers([ruler.id], true);
     setOverlay(null);
     setScreen('game');
     setLastSlot(slot);

@@ -8,8 +8,9 @@ import type { BedClaim, Building, CommandResult, Household, Settler } from './ty
 
 // ---- people ---------------------------------------------------------------------
 
+/** Adult settlers: the workforce. The ruler is not counted. */
 export function adults(sim: Simulation): Settler[] {
-  return sim.settlers.filter((s) => s.lifeStage === 'adult');
+  return sim.settlers.filter((s) => s.lifeStage === 'adult' && !s.ruler);
 }
 
 export function children(sim: Simulation): Settler[] {
@@ -170,6 +171,7 @@ export function formHousehold(sim: Simulation, ids: unknown): CommandResult {
   const b = sim.settler(ids[1] as number);
   if (!a || !b) return err('Those settlers are not here any more');
   if (isChild(a) || isChild(b)) return err('Only adults can start a household — a child must grow up first');
+  if (a.ruler || b.ruler) return err('The ruler stands apart from the households of the realm');
   const taken = [a, b].find((s) => s.householdId !== null);
   if (taken) return err(`${taken.name} is already part of a household`);
   if (a.settlementId !== b.settlementId) return err(`${a.name} and ${b.name} live in different settlements — move one of them first`);

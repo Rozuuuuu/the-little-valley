@@ -111,6 +111,10 @@ export interface Settler {
   military: MilitaryService | null;
   /** Held by another kingdom after a lost battle; home at peace. */
   captive?: { by: number } | null;
+  /** The ruler: the player on the map. Never works, enlists or fights. */
+  ruler?: boolean;
+  /** Works faster until this tick (the ruler's Rally). */
+  boostUntil?: number;
 }
 
 /** A war between two kingdoms and what it has cost each side. */
