@@ -98,10 +98,40 @@ be checked for resource conservation.
 ## A new kind of work area
 
 Area kinds live in `AreaKind` (`sim/types.ts`) and `AREA_LABELS` (`sim/commands.ts`).
+Self-staffing (`wanted`) and farm field layout (`crop`) live in `sim/areas.ts`.
 Add the kind, then teach `findAreaWork` in `sim/settlers.ts` what it means, returning
 a task or a plain-language reason. Give it a colour and a letter in `AREA_COLORS` and
 `AREA_SYMBOL` (`render/Renderer.ts`), and a status line in `areaInfo`
 (`engine/snapshot.ts`).
+
+## Building levels
+
+Add a `LevelDef[]` for the building in `LEVELS` (`data/buildings.ts`). Level 1 describes the
+building as built (cost and time ignored); each later level has a name, a cost paid up
+front, a time in ticks, an optional milestone, the stats it changes (`housing`, `storage`,
+`maxWorkers`, `lodging`, `trainingSlots`, `penCapacity`, `huntRadius`, `wellRadius`,
+`speed`, `light`, `reveal`) and `perks` in words for the command card. Stats a level leaves
+out carry over from the level below; read them with the helpers in `sim/levels.ts`
+(`housingOf`, `storageOf`, `workersOf`, `speedOf`, …), never from the definition directly.
+`becomes` rebuilds the building in place as another type (the old camp → Town Hall).
+
+## Animals, pens and hunting
+
+- A species: `SPECIES` in `data/animals.ts` (size class, speed, how far it flees, herd size,
+  the ground it lives on, what a hunt yields) and a sprite in `render/sprites/animals.ts`
+  (two walking frames, facing left).
+- Where it lives: add it with a weight to `WILDLIFE` for each habitat.
+- A pen: a building with `pen: { species, capacity, breedTicks, product?, cull? }`, a yard
+  sprite in `makePenSprites` (yard under the animals, front rail over them), and optionally
+  a `penCapacity` level.
+
+## Habitats
+
+`HABITATS` in `data/habitats.ts` holds each habitat's numbers (range distance and
+thickness, peaks and hills, forest and meadow bands, trees on grass, lakes and ponds,
+rocky ground, the great river). They are read only by generator 4, so changing them
+changes new worlds only — but it changes every generator-4 world, so treat shipped
+numbers like a shipped generator: add a new generator instead of editing them.
 
 ## Changing world generation
 

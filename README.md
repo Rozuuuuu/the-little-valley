@@ -1,9 +1,11 @@
 # Little Valley
 
-A cosy, top-down pixel-art farming and settlement game for the browser. Direct a
-small band of settlers, farm, gather, build, and grow a camp into a village that
-keeps expanding. There is no final screen and nothing to lose: shortages only slow
-growth, and time stands still while the game is closed.
+A cosy, top-down pixel-art farming and settlement game for the browser. You are the
+ruler, walking the map beside a small band of settlers: farm, gather, hunt, raise
+livestock and grow a Town Hall into a Keep, a Castle and a kingdom. Choose the land you
+settle — meadow valley, highlands, deep forest, grassland plains or lakes and marsh.
+There is no final screen and nothing to lose: shortages only slow growth, and time
+stands still while the game is closed. It plays offline once loaded.
 
 All art and sound are generated in code; the game loads no image or audio files.
 
@@ -18,6 +20,10 @@ npm test           # simulation, persistence and migration tests (Vitest)
 npm run build      # typecheck + production build into dist/
 npm run preview    # serve the production build
 ```
+
+The production build works offline: fonts are bundled and a service worker caches every
+file on the first visit. `npx tsx scripts/ui-shot.ts <out> [w] [h] [steps]` screenshots the
+built game in headless Chrome without starting a server.
 
 Handy scripts:
 
@@ -36,17 +42,20 @@ Handy scripts:
 | Pan | W A S D / arrow keys, middle-drag, optional screen-edge panning |
 | Zoom | Mouse wheel, `=` / `-` |
 | Pause / speeds 1×, 2×, 4× | Space, 1, 2, 3 |
-| Build menu | B |
+| Build menu (categories on the command card) | B, then Q W E R / A S D F / Z X C V for a category and a building; Esc goes back |
+| Find yourself, the ruler / Rally (ruler selected) | K / R |
 | Mark / unmark resources for harvest | H / U, then drag |
 | Demolish or cancel selected building | Delete or X |
 | Next idle settler / select everyone | `.` / E |
 | Save | F5 or Ctrl+S |
 | Cancel, deselect, then open the menu | Esc |
 | Controls help | F1 |
-| Draw a work area | Areas tab → + Farm area / Woodlot / Quarry / Building area, then drag |
+| Draw a work area | **Areas** window → + Farm area / Woodlot / Quarry / Forage / Hunting ground / Building area, then drag |
 | Plan a stone bridge | Build → Projects → Stone Bridge, then drag across the water from bank to bank |
 | Valley today (issues and ideas) | **Today** button, top right |
-| Jump to idle settlers, waiting buildings, sites, the bridge, home | Buttons under the minimap; click the minimap to move there |
+| Jump to idle settlers, waiting buildings, sites | Command card buttons; click the minimap to move there |
+| Upgrade a building | Select it → **Upgrade** on the command card (hover to see what it adds) |
+| Everything about the selection | **See more** in the bottom panel |
 
 Every keyboard action can be remapped in **Settings → Keys**. Bindings are stored
 in `localStorage`.
@@ -57,9 +66,10 @@ in `localStorage`.
    goods to storage and keep working nearby resources of the same kind.
 2. Open **Build → Field** and drag across fertile meadow. Farmers (and laborers)
    till, plant, water and harvest on their own. Rain waters fields too.
-3. Build a **House** or **Family Home** and plant an **Orchard**. New valleys grow
-   deliberately: a visitor comes by early on and settles for **50 apples** and a free
-   bed (welcome them in the **Families** tab). One traveller settles every two game
+3. Build a **House** or **Family Home** and lay out **Fields**. New valleys grow
+   deliberately: a visitor comes by early on and settles for **40 food** (keeping 20 in
+   store) and a free bed — the Town Hall's bunks will do (welcome them in the **Families**
+   window). One traveller settles every two game
    days. Two adults can start a **household** and ask for a child once there is a free
    bed in a real home and 20 food in store; the baby arrives after two steady game
    days and grows up after twelve. Children eat and sleep but don't work.
@@ -121,12 +131,44 @@ in `localStorage`.
      treaty can make it yours. Captives come home at peace.
    - **Village** needs 10 adults, 8 beds in real homes, and any **2** of:
      bake 30 food, run 2 staffed work areas, finish a stone bridge, lay 25 path tiles.
-8. **Beds:** houses have 2, family homes 3, cottages 4, and the camp has 5 temporary
-   bedrolls. A bed promised to an expected child or a traveller on the way is held
+8. **Beds:** houses have 2, family homes 3, cottages 4 (each gains beds when upgraded),
+   and the Town Hall has 10 bunks (14 as a Keep, 20 as a Castle; older worlds' camps have
+   5 bedrolls until raised into a Town Hall). A bed promised to an expected child or a traveller on the way is held
    and shown in the home's inspector. The Families tab shows bed use and exactly
    what a visitor or household is still waiting for. Valleys saved before this
    update keep automatic newcomer arrivals until you choose **Adopt deliberate
    growth** in the Families tab.
+
+## What's new in the Town Hall update
+
+- **You on the map.** Every new world asks for your name; your crowned ruler walks the map
+  from the start. People within 8 tiles work 20% faster, and once a day **Rally** (R) makes
+  everyone nearby work 30% faster for an hour. The ruler never does chores, enlists or
+  fights. Older worlds can **take the throne** from the bottom panel.
+- **Town Hall first.** The first building is a Town Hall (10 bunks, 600 goods), upgradable
+  to a **Keep** (at Hamlet) and a **Castle** (at Village; its whole town works 10% faster).
+  Older worlds' camps upgrade into a Town Hall in place.
+- **Building levels.** Homes, storehouses, workshops, mills, bakeries, kilns, smelters,
+  forges, quarries, pens, the inn, depot, barracks, range, stable, lodge, well, granary and
+  watchtower have upgrades, paid up front and finished on a timer while the building keeps
+  working. Cancelling returns everything.
+- **Travellers' Camp.** A stop by the road: visitors come more often, and your companies on
+  the march rest and restock there once a day.
+- **Habitats and mountains.** Pick the land for a new world (the seed is still there for the
+  details). Every new world has a mountain range and a peak in view from the start.
+- **Animals.** Rabbits, hares, deer, boar, foxes, wolves, bears, mountain goats, bison,
+  wild horses, ducks, beavers and moose live where they belong. A **Hunter's Lodge** or a
+  **hunting ground** brings in meat and hides; **pens** keep chickens (eggs), pigs, sheep
+  (wool), goats and cows (milk) and horses (for the stable), breeding up to their size.
+- **More buildings:** fisher's hut, well (fields nearby never need watering), granary,
+  tannery (hides → leather), weaver (wool → cloth), watchtower, stone walls.
+- **Useful work areas.** Areas staff themselves to the number of workers you want, farm
+  areas lay out their own fields, woodlots replant as they cut, and there are forage areas
+  and hunting grounds.
+- **A command HUD.** Stores along the top (Goods for the rest), windows and the clock; at
+  the bottom the minimap, the selection with **See more**, and a Warcraft-style command
+  card with build categories.
+- **Offline.** Fonts ship with the game and the production build caches itself.
 
 Settlers say why they are idle: the Settlers tab lists each reason (marked ⚠), and
 the inspector shows it when you select them. Buildings explain what they're waiting

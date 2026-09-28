@@ -1,5 +1,60 @@
 # Milestone reports
 
+## The Town Hall update — command HUD, the ruler, habitats, animals and building levels
+
+Built from the player's feedback of 2026-09-28 (plan:
+[2026-09-28-townhall-hud-habitats.md](superpowers/plans/2026-09-28-townhall-hud-habitats.md)).
+
+**What changed for the player**
+
+- Travellers settle for **food** (40, keeping 20 in store), not apples.
+- **Saving** no longer fails with "the database connection is closing": the store reopens
+  a connection the browser closed and retries once (a real IndexedDB test covers it).
+- **Offline:** fonts are bundled, a service worker caches the build, and the game has a web
+  manifest. Checked by loading the built game in headless Chrome, cutting the network and
+  reloading: the title screen and all three font weights came back.
+- **Command HUD:** a compact top bar (five key goods, a Goods drawer, windows, clock) and
+  a bottom console (minimap, selection portrait with **See more**, a 4×3 command card).
+  Building is by category on the card (Q W E R / A S D F / Z X C V), never one big grid.
+  Screenshots of the built game at 1366×768 and 1920×1080 show nothing cut off.
+- **The ruler:** every new world asks for the player's name; the crowned ruler walks the
+  map with an aura (+20% work within 8 tiles) and a daily **Rally** (+30% for an hour). K
+  finds them. Older worlds can take the throne. Coronation crowns the walking ruler.
+- **Town Hall first** (10 bunks, 600 goods) → **Keep** → **Castle** (+10% work in its town);
+  older camps upgrade into a Town Hall in place. The **Travellers' Camp** brings visitors
+  more often and rests and restocks marching companies once a day.
+- **Building levels** for 31 kinds of building (the camp and Town Hall included), paid up front and finished on a timer while
+  they keep working; cancel or demolish refunds all of it.
+- **Habitats** (generator 4): meadow valley, highlands, deep forest, grassland plains, lakes
+  and marsh, with an optional seed. Every new world has a near mountain range with passes
+  and a small peak in the opening view.
+- **Animals:** 13 wild species placed by habitat (researched from temperate European
+  wildlife), 6 kinds of livestock in pens; hunter's lodges and hunting grounds; herders
+  collect eggs, milk, wool and foals and cull full pens.
+- **New buildings:** hunter's lodge, fisher's hut, chicken coop, pigsty, sheep pen, goat pen,
+  cattle pasture, horse paddock, well, granary, tannery, weaver's cottage, watchtower,
+  stone wall, Town Hall, Travellers' Camp. **New goods:** hides, wool, leather, cloth.
+- **Work areas** staff themselves to a wanted number, lay out their own fields, replant
+  woodlots, and come in two new kinds (forage, hunting ground).
+
+**Saves:** version 12; every addition is optional, so v11 worlds load unchanged. A genuine
+v12 fixture (`tests/fixtures/v12-save.json`) loads and plays; the v2, v3, v4 and v11
+fixtures migrate through to v12; damaged v12 data (an unknown species) is refused without
+touching the file. Generators 1–3 are unchanged (18/18, 27/27, 27/27 fingerprints).
+
+**Tests:** 293 passing in 32 files. `npm run build` passes.
+
+**Performance (Node, same script as before):** the 100-settler village now measures a
+daytime p95 of about 1.9–2.2 ms. Measured the same afternoon, the previous branch gave
+1.96–2.14 ms on this machine (it measured 1.68 ms on an earlier, less loaded day), so the
+update costs little; animals add about 0.1–0.15 ms. The ≤10 ms p95 target is met.
+
+**Checked in a browser (headless Chrome on the built game, no server):** title, new-world
+screen, start view with the ruler selected, build categories and tooltips, a chicken coop
+built through the UI with its hens inside, See more, the People and Areas windows, the
+Goods drawer, Highlands at 1920×1080, and the offline reload. **Not done:** a human
+playtest (script in PLAYTEST.md), keyboard-only and contrast audits, and real-device sound.
+
 ## Integration, performance and playtesting (plan M8) — the families-to-kingdoms plan, complete in code
 
 **What exists now:** every milestone of the plan (M0–M8) is implemented in the

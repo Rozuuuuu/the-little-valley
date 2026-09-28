@@ -137,6 +137,18 @@ attention.
 - Check new art without a browser: `npx tsx scripts/render-preview.ts sprites out.png [ids]`
   and `... terrain out.png <seed> <gen> <cx> <cy> <n>`.
 
+## The Town Hall update
+
+- **The HUD** is a carved-oak frame with brass rivets around green felt (`src/ui/hud.css`):
+  Warcraft-like in layout (minimap, selection, command card) but warm and cozy in finish.
+  Command buttons are 4×3 with the hotkey in the corner and a tooltip above the card.
+- **The ruler** wears a small gold crown (drawn over the settler sprite) and, when
+  selected, a slowly turning dashed gold circle marks the aura.
+- **Animals** are side views facing left, 1px outlined like everything else, in three size
+  classes; birds get a ripple on water. Livestock stays inside pens drawn in two layers.
+- **Levels read at a glance:** timber hall → stone keep with slate wings → curtain wall,
+  cone-roofed towers and a tall keep.
+
 ## Seasons and settlements continuation
 
 Seasonal ground palettes retain 16-pixel tiles and existing geometry. Autumn oaks recolour the original canopy; winter oaks use original bare-branch pixel drawings, pines retain snow-tipped foliage, and depleted berry bushes become dormant. Winter precipitation falls slowly as snow. Waystations reuse the village hall sprite.

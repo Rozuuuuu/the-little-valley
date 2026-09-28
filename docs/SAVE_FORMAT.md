@@ -1,7 +1,7 @@
 # Save format
 
 Saves are JSON documents described by `src/game/save/format.ts`. The current version
-is **11** (`SAVE_VERSION`).
+is **12** (`SAVE_VERSION`).
 
 ## Version history
 
@@ -11,6 +11,7 @@ is **11** (`SAVE_VERSION`).
 | 2 | Milestone 1 | `meta` / `sim` / `world` sections, crafting stats, weather. |
 | 3 | Milestone 2 (Village) | World generator version, work areas, personal work orders, production workers, span building sizes, the chronicle and session marks, new stats. |
 | 4 | Seasons and settlements | `settlements`, settler `settlementId`, storage `wants` (stock targets). |
+| 12 | Town Hall, ruler, habitats and animals | Building `level`, an `upgrade` under way (target level, progress, what was paid), `pen` (breeding progress, products waiting); settler `ruler` and `boostUntil`; `sim.rallyReadyAt`, `sim.animals` (species, position, home spot, pen) and `sim.animalRng`; work area `wanted` and `crop`; `world.habitat`. Every field is optional, so a v11 world migrates by changing only the version. New worlds use generator 4. |
 | 11 | Frontier war, occupation and peace | `sim.war`: war records (sides, objective, start, routs, deployment timing), surrender meters, occupation timers; settler `captive`; company health, morale and regroup timers (inside kingdoms); combat stats. Occupied land is a claim entry whose `occupyingKingdom` differs from its `legalOwner`. |
 | 10 | Barracks, armory and armies | settler `military` (unit, training progress, company, gear held, prior job/order/area), the player's companies with members, field state, carried food, readiness and position (paths rebuilt), allied contingent timing on commitments, `horseDay`, equipment stats. |
 | 9 | Diplomacy, concern and news | `sim.diplomacy`: world events (internal truth), news reports (pending and delivered, with source, certainty, times, supersession and relay chain), summarised counts, stances, directional trust, wars, treaty offers (with escrow and reasons), incidents, warnings, concern states (band, score, warning dedupe, reassurance), war plans, coalition commitments (escrow, reserved company ids); kingdoms gain a temperament and companies. |
@@ -82,6 +83,13 @@ is **11** (`SAVE_VERSION`).
 - Generator **3** adds hills (new tile id 10) and mountain faces (id 11): a northern
   ridge with a pass every 48 tiles, lone massifs more than 40 tiles from the camp,
   and two starter outcrops. Existing tile ids are unchanged.
+
+- Generator **4** adds habitats: the player picks meadow valley, highlands, deep forest,
+  grassland plains or lakes and marsh (saved as `world.habitat`). Each has its own mix of
+  land, a near mountain range with passes, and a small peak by the hall. Starter outcrops
+  stay where generator 3 put them, and the range softens into foothills around them.
+  Generator 3 was fingerprinted in `tests/fixtures/gen-v3-fingerprint.json` (27 chunks)
+  before generator 4 was written.
 
 Every v2 save migrates to `genVersion: 1`. New worlds use `CURRENT_GEN`. To change
 generation later, add generator 4 alongside the others (never edit an old one), bump

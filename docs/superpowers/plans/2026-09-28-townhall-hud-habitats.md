@@ -62,6 +62,37 @@
    fields, woodlots that replant, hunting grounds, on-map labels.
 9. **Docs** and a final report.
 
+## Progress (2026-09-28)
+
+All nine phases are implemented, tested and committed on `townhall-hud-animals`
+(293 tests, save v12). See the Town Hall report in `docs/MILESTONES.md`.
+
+### Rulings taken while building
+
+- **R8 (revised):** one save version (12) for the whole update; every new field is optional
+  with a default, so saves made between commits still load.
+- **R9** Areas staff themselves only when given a `wanted` number (the UI sends 2 for new
+  areas when no settlers are selected); areas from commands or older saves stay manual,
+  so existing behaviour and tests are unchanged.
+- **R10** Old-world tests that depend on the five-bedroll camp use `legacyCampWorld`;
+  new-world tests use the Town Hall.
+- **R11** Generator-3 journeys and profiles are pinned to generator 3 so their coordinates
+  and timings stay comparable.
+- **R12** The fisher's hut reuses extraction (`extraction: 'fish'`, site rule `shore`).
+- **R13** Hunting uses the Gather work kind and herding the Farm work kind, with new Hunter
+  and Herder jobs; assigning a worker to a lodge or pen sets them.
+- **R14** A small "sentinel" peak by the hall guarantees mountains in the opening view in
+  every generator-4 world; the near range softens into foothills around the starter outcrops.
+- **R15** Screenshots use headless Chrome with request interception over `dist/`, so no
+  preview server has to run on this memory-constrained machine.
+
+### Deferred
+
+- Human playtest of the new HUD and systems (script ready).
+- Keyboard-only walkthrough of the command card and windows; contrast audit.
+- Predators are harmless by design; livestock needs no feed. Revisit if play wants more
+  challenge.
+
 ## Animal research (summary)
 
 Wild (Europe-like temperate habitats): rabbits and hares in grass and field edges; roe/red deer,

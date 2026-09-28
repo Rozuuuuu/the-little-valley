@@ -8,6 +8,13 @@ from other games. Fonts are loaded from Google Fonts (SIL Open Font License).
 
 | Asset | Generator | Notes |
 | --- | --- | --- |
+| Town Hall, Keep and Castle (day + lit night) | `buildings.ts` `makeTownHallSprites` | one per level |
+| Hunter's lodge, fisher's hut, well, granary, tannery, weaver's cottage, watchtower (day + night) | `buildings.ts` | Town Hall update |
+| Pen yards and front rails ×6 (coop, sty, sheep, goat, cattle, horses) | `buildings.ts` `makePenSprites` | animals walk between the two layers |
+| Stone wall ×16 join masks | `buildings.ts` `makeStoneWallSprites` | joins like fences |
+| Animals ×19 species, 2 walking frames each | `animals.ts` `makeAnimalSprites` | mirrored to face right |
+| Crown icon, crowned portrait | `icons.ts`, `index.ts` `portrait` | the ruler |
+| Hides, wool, leather, cloth icons | `icons.ts` | new goods |
 | Oak trees ×3 variants (trunk + canopy) | `props.ts` `makeOak` | canopy sways separately |
 | Pine trees ×2 | `props.ts` `makePine` | four stacked tiers |
 | Berry bush (full/picked) ×2 | `props.ts` `makeBerryBush` | |

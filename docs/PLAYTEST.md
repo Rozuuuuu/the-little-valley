@@ -82,20 +82,40 @@ failed clicks, and panels opened.
 For the kingdom systems (mining, trade, crown, diplomacy, war) see
 [KINGDOM_PLAYTEST.md](KINGDOM_PLAYTEST.md).
 
+## The Town Hall update (HUD, ruler, habitats, animals, levels)
+
+**Status:** prepared, **not yet run**. Start from a **new** world. Without coaching, watch
+whether players:
+
+1. Type their name and pick a habitat, and can later say why they chose it.
+2. Find themselves on the map (the crowned figure, K) and notice that people near them
+   work faster; use Rally.
+3. Build from the command card: open a category, place a building, and use the hotkeys
+   or the mouse without getting lost (Esc goes back).
+4. Read a building through **See more**, and upgrade the Town Hall or a house, saying
+   what the upgrade adds before paying.
+5. Spot wild animals, build a hunter's lodge or a chicken coop, and explain where the
+   food, hides or eggs went.
+6. Draw a work area and see it staff itself; change the wanted number and the crop.
+7. Find the mountains without being told.
+
+At 1366×768 and 1920×1080, note anything cut off, overlapping or hard to click. Record
+whether the command card felt quicker than the old build grid.
+
 ## Families and orchards (deliberate growth)
 
 **Status:** prepared, **not yet run**. Start 5–8 unfamiliar players from a **new**
 valley (not a prepared save). Without coaching, watch whether they:
 
 1. Notice the visitor toast or the Families tab badge, and say what the visitor wants.
-2. Plant an orchard, understand it needs two growing days, and see apples arrive.
-3. Welcome the visitor, and explain why a welcome was refused when it was (apples,
-   food or bed).
+2. Grow food (fields, berries, a hunter's lodge or a pen), and see the store rise.
+3. Welcome the visitor, and explain why a welcome was refused when it was (food or
+   bed).
 4. Start a household, ask for a child, and explain a pause (usually a missing bed).
 5. Explain in their own words why the child doesn't work yet.
 
-Record failed clicks on the Families tab, confusion between camp bedrolls and home
-beds, and whether waiting for apples or the child felt slow or satisfying. Rate
+Record failed clicks on the Families window, confusion between Town Hall bunks and
+home beds, and whether waiting for food or the child felt slow or satisfying. Rate
 pacing of growth 1–5 separately from the rest. For a legacy save, ask them to find
 and explain the "Adopt deliberate growth" choice before pressing it.
 

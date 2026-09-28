@@ -341,6 +341,33 @@ See [SAVE_FORMAT.md](SAVE_FORMAT.md). The controller autosaves every N minutes
 milestone, a newcomer), when the tab is hidden, and via a synchronous emergency copy
 when the page closes.
 
+## Town Hall update (levels, ruler, habitats, animals, areas, HUD)
+
+- **Levels** (`sim/levels.ts`): upgrades are paid up front (`startUpgrade`), tracked in
+  `sim.upgrading` and advanced each tick by `updateUpgrades`; cancelling or demolishing
+  refunds everything (a crate takes what the stores can't). Stats come from level-aware
+  helpers. `becomes` rebuilds a building in place, keeping its id (the camp → Town Hall).
+- **The ruler** (`sim/ruler.ts`) is a settler with `ruler: true`, found once per tick by
+  `sim.ruler()`; `workSpeed` applies the aura, a castle's town bonus and Rally boosts.
+- **Habitats** are generator 4 (`world/worldgen.ts`): separate functions, so generators
+  1–3 are untouched and fingerprinted. `World.habitat` is passed to generation, geology
+  and the painter.
+- **Animals** (`sim/animals.ts`) are light entities with their own random stream
+  (`sim.animalRng`), so they never change what settlers do. Wild herds spawn in view of the
+  settlements, wander near home and flee people; livestock wanders inside its pen. Hunting
+  (`hunt` tasks from lodges and hunting grounds) and herding (`herd` tasks at pens) are
+  ordinary settler tasks with reservations. `sim.workIndex()` caches lodges, pens and
+  assigned workers once per tick for the work finders.
+- **Work areas** (`sim/areas.ts`) staff themselves every 100 ticks to `wanted` and lay out
+  fields for their `crop`; woodlots replant in `runGather`.
+- **HUD** (`ui/Console.tsx`, `ui/hud.css`): the bottom console holds the minimap, the
+  selection panel (with **See more**, which opens the full cards from `ui/Hud.tsx`) and the
+  command card. The card is built per render from the snapshot; in build menus it captures
+  Q W E R / A S D F / Z X C V before the camera keys, and at the root it answers only its
+  own keys (K, R). Top-bar windows are the old side-panel tabs, one at a time.
+- **Offline** (`build/offline.ts`): a Vite plugin writes `sw.js` listing every built file;
+  `main.tsx` registers it in production. Fonts come from `@fontsource`.
+
 ## UI
 
 React components in `src/ui` read `useSnapshot()` and call controller methods. New panels: Valley today (`ui/Village.tsx`), the minimap with layer toggles and quick-find buttons (idle settlers, buildings waiting, sites, the bridge, home), the Areas tab, the work-order editor, and the celebration card. The minimap canvas is owned by `render/Minimap.ts` and drawn by the controller, never by React.

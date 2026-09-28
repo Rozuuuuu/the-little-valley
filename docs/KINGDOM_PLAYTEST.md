@@ -31,7 +31,7 @@ From the growth save:
 
 | # | Watch for | Success looks like |
 | --- | --- | --- |
-| 1 | Recruiting | Plants/uses the orchard and welcomes a visitor; can say what apples were for |
+| 1 | Recruiting | Grows food and welcomes a visitor; can say what the food was for |
 | 2 | Children | Starts a household, asks for a child, explains why the child doesn't work |
 
 From the realm save:
