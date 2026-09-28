@@ -16,7 +16,7 @@ export function Travelers() {
       {v ? (
         <>
           <p>
-            <strong>{v.name}</strong> would settle for {g.applesPrice} apples. They leave in {v.leavesIn}.
+            <strong>{v.name}</strong> would settle for {g.foodPrice} food. They leave in {v.leavesIn}.
           </p>
           {v.needs.length > 0 && (
             <ul className="needs">
@@ -41,10 +41,10 @@ export function Travelers() {
           <button
             className="btn small primary"
             disabled={!!v.blocked || target === undefined}
-            title={v.blocked || `Hand over ${g.applesPrice} apples and a bed`}
+            title={v.blocked || `Hand over ${g.foodPrice} food and a bed`}
             onClick={() => target !== undefined && game.dispatch({ type: 'acceptRecruit', offerId: v.id, settlementId: target })}
           >
-            Welcome {v.name} ({g.applesPrice} apples)
+            Welcome {v.name} ({g.foodPrice} food)
           </button>
         </>
       ) : (
@@ -54,7 +54,7 @@ export function Travelers() {
         <div key={r.id} className="row">
           <span>
             {r.name}: {r.state}
-            {r.apples ? ` · ${r.apples} apples held` : ''}
+            {r.food ? ` · ${r.food} food held` : ''}
           </span>
           {!r.state.startsWith('Returning') && (
             <button className="btn small" onClick={() => game.dispatch({ type: 'cancelRecruit', recruitId: r.id })}>
@@ -63,7 +63,7 @@ export function Travelers() {
           )}
         </div>
       ))}
-      <p className="muted">Plant an orchard: apples are the welcome package. One traveller settles every two days.</p>
+      <p className="muted">Travellers settle for a welcome package of food (fields, orchards, hunting and fishing all help). One traveller settles every two days.</p>
     </section>
   );
 }

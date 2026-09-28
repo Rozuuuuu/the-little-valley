@@ -185,7 +185,7 @@ export function emptySnapshot(): UiSnapshot {
     },
     growth: {
       mode: 'deliberate', adoption: '', adults: 0, children: 0, beds: { homeUsed: 0, held: 0, homeTotal: 0, bedrollsUsed: 0, bedrolls: 0 },
-      households: [], unpaired: [], visitor: null, nextVisitorIn: '', recruits: [], settlements: [], applesPrice: 0,
+      households: [], unpaired: [], visitor: null, nextVisitorIn: '', recruits: [], settlements: [], foodPrice: 0,
     },
     running: false, paused: false, speed: 1, day: 1, clock: '', period: '', isNight: false, raining: false,
     resources, storage: { used: 0, capacity: 0 }, population: 0, housing: 0, beds: '', populationStatus: '', wellEquipped: false,

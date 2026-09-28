@@ -49,7 +49,7 @@ export const TUTORIAL: TutorialStep[] = [
   },
   {
     title: 'A home and an orchard',
-    text: 'From Build, place a House or Family Home near camp, and an Orchard on the meadow. Visiting travellers settle for 50 apples and a free bed: welcome them in the Families tab.',
+    text: 'From Build, place a House or Family Home near camp, and Fields on the meadow. Visiting travellers settle for 40 food and a free bed: welcome them in the Families tab.',
     done: (c) => builtCount(c.sim, 'house') + builtCount(c.sim, 'familyHome') >= 1 && count(c.sim, 'orchard') >= 1,
   },
   {

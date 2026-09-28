@@ -17,8 +17,8 @@ export const FAMILY_COOLDOWN = 4 * DAY_TICKS;
 /** Updates run this often (ticks); pending growth advances in these steps. */
 export const GROWTH_STEP = 50;
 
-/** Apples a traveller asks for as their welcome package. */
-export const RECRUIT_APPLES = 50;
+/** Food a traveller asks for as their welcome package (on top of the reserve the settlement keeps). */
+export const RECRUIT_FOOD = 40;
 /** At most one traveller settles per this many ticks. */
 export const RECRUIT_COOLDOWN = 2 * DAY_TICKS;
 /** A visitor waits this long for an answer before moving on. */

@@ -1,6 +1,6 @@
 import { DAY_TICKS } from '../game/core/constants';
 import { BUILDINGS } from '../game/data/buildings';
-import { CHILD_STABLE_TICKS, RECRUIT_APPLES } from '../game/data/kingdomBalance';
+import { CHILD_STABLE_TICKS, RECRUIT_FOOD } from '../game/data/kingdomBalance';
 import { bedsOf, isPermanentHome } from '../game/sim/buildings';
 import { daysToAdult } from '../game/sim/households';
 import { recruitNeeds, recruitProblem } from '../game/sim/travelers';
@@ -41,9 +41,9 @@ export interface GrowthInfo {
   unpaired: { id: number; name: string; settlement: string }[];
   visitor: { id: number; name: string; leavesIn: string; needs: string[]; blocked: string } | null;
   nextVisitorIn: string;
-  recruits: { id: number; name: string; state: string; blocked: string; apples: number }[];
+  recruits: { id: number; name: string; state: string; blocked: string; food: number }[];
   settlements: { id: number; name: string }[];
-  applesPrice: number;
+  foodPrice: number;
 }
 
 export function growthInfo(sim: Simulation): GrowthInfo {
@@ -90,7 +90,7 @@ export function growthInfo(sim: Simulation): GrowthInfo {
   return {
     mode: sim.growthMode,
     adoption: sim.growthMode === 'legacy'
-      ? 'This valley still draws newcomers automatically whenever a bed and spare food are free. Adopting deliberate growth means new people come only from households that ask for children and from visiting travellers you welcome with apples. Everyone already here stays; this can’t be undone.'
+      ? 'This valley still draws newcomers automatically whenever a bed and spare food are free. Adopting deliberate growth means new people come only from households that ask for children and from visiting travellers you welcome with food. Everyone already here stays; this can’t be undone.'
       : '',
     adults: sim.settlers.filter((s) => s.lifeStage === 'adult').length,
     children: sim.settlers.filter((s) => s.lifeStage === 'child').length,
@@ -101,10 +101,10 @@ export function growthInfo(sim: Simulation): GrowthInfo {
     nextVisitorIn: offer || sim.growthMode !== 'deliberate' ? '' : gameTime(sim.nextVisitor - sim.tick),
     recruits: sim.recruits.map((r) => ({
       id: r.id, name: r.name,
-      state: r.state === 'refunding' ? 'Returning the apples (stores are full)' : r.blocked || `On the way to ${settlementName(sim, r.settlementId)}`,
-      blocked: r.blocked, apples: r.escrow.apples ?? 0,
+      state: r.state === 'refunding' ? 'Returning the welcome food (stores are full)' : r.blocked || `On the way to ${settlementName(sim, r.settlementId)}`,
+      blocked: r.blocked, food: r.escrow.food ?? 0,
     })),
     settlements: sim.settlements.map((s) => ({ id: s.id, name: s.name })),
-    applesPrice: RECRUIT_APPLES,
+    foodPrice: RECRUIT_FOOD,
   };
 }

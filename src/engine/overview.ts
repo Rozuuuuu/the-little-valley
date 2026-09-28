@@ -6,7 +6,7 @@ import { builtCount, campOf, costOf, permanentBeds } from '../game/sim/buildings
 import { invEntries } from '../game/sim/inventory';
 import { adults } from '../game/sim/households';
 import { recruitProblem } from '../game/sim/travelers';
-import { RECRUIT_APPLES } from '../game/data/kingdomBalance';
+import { GROWTH_MIN_FOOD, RECRUIT_FOOD } from '../game/data/kingdomBalance';
 import { currentMilestone, nextMilestone, requirementProgress, type RequirementProgress } from '../game/sim/progression';
 import type { Simulation } from '../game/sim/Simulation';
 import type { Building, SessionMark } from '../game/sim/types';
@@ -162,10 +162,10 @@ function goals(sim: Simulation): OverviewItem[] {
   // Deliberate growth: a visitor who can be welcomed now, then the orchard that pays for them.
   const home = sim.settlements[0]?.id;
   if (sim.growthMode === 'deliberate' && sim.offer && home !== undefined && !recruitProblem(sim, home)) {
-    out.push({ text: `Welcome ${sim.offer.name}, who is visiting`, detail: `Families tab: they settle for ${RECRUIT_APPLES} apples and a free bed.`, target: campT });
+    out.push({ text: `Welcome ${sim.offer.name}, who is visiting`, detail: `Families tab: they settle for ${RECRUIT_FOOD} food and a free bed.`, target: campT });
   }
-  if (sim.growthMode === 'deliberate' && byType('orchard').length === 0) {
-    out.push({ text: 'Plant an orchard', detail: `Travellers settle for ${RECRUIT_APPLES} apples. An orchard bears them after two growing days.`, target: campT });
+  if (sim.growthMode === 'deliberate' && sim.storedTotal('food') < RECRUIT_FOOD + GROWTH_MIN_FOOD) {
+    out.push({ text: 'Grow food for travellers', detail: `Travellers settle for ${RECRUIT_FOOD} food (keeping ${GROWTH_MIN_FOOD} in store). Fields, orchards, hunting and berries all help.`, target: campT });
   }
   if (!reached('hamlet')) {
     const next = MILESTONES.hamlet.requirements.map((r) => requirementProgress(sim, r)).filter((r) => !r.done);

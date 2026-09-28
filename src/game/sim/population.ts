@@ -6,7 +6,7 @@ import type { Building } from './types';
 import { settlementAt } from './settlements';
 import { committedPopulation } from './households';
 import { recruitNeeds } from './travelers';
-import { RECRUIT_APPLES } from '../data/kingdomBalance';
+import { RECRUIT_FOOD } from '../data/kingdomBalance';
 
 /** Food that must be in storage before a newcomer will settle. */
 export const ARRIVAL_FOOD = 20;
@@ -103,10 +103,10 @@ function deliberateStatus(sim: Simulation): string {
     const home = sim.settlements[0]?.id;
     const needs = home !== undefined ? recruitNeeds(sim, home) : [];
     const tail = needs.length ? ` — still needed: ${needs.join(', ')}` : ' — welcome them in the People panel';
-    parts.push(`A visitor, ${sim.offer.name}, would settle for ${RECRUIT_APPLES} apples${tail}`);
+    parts.push(`A visitor, ${sim.offer.name}, would settle for ${RECRUIT_FOOD} food${tail}`);
   }
   if (parts.length) return `${parts.join('; ')}.`;
-  return 'New people come from households (People panel) and from visitors you welcome with apples.';
+  return 'New people come from households (People panel) and from visitors you welcome with food.';
 }
 
 /**

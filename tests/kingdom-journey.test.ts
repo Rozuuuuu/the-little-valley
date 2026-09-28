@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DAY_TICKS } from '../src/game/core/constants';
-import { RECRUIT_APPLES } from '../src/game/data/kingdomBalance';
+import { GROWTH_MIN_FOOD, RECRUIT_FOOD } from '../src/game/data/kingdomBalance';
 import { UNITS } from '../src/game/data/units';
 import { migrate } from '../src/game/save/migrations';
 import { deserializeSim, serializeSim } from '../src/game/save/serialize';
@@ -56,7 +56,7 @@ describe('kingdom journey', () => {
       cmd(sim, { type: 'place', building: 'familyHome', x: hp.x, y: hp.y });
       const sp = clearSpot(sim, 3, 2, { x: 7, y: 4 });
       cmd(sim, { type: 'place', building: 'storehouse', x: sp.x, y: sp.y });
-      runUntil(sim, () => sim.storedTotal('apples') >= RECRUIT_APPLES && sim.offer !== null, DAY_TICKS * 10);
+      runUntil(sim, () => sim.storedTotal('food') >= RECRUIT_FOOD + GROWTH_MIN_FOOD && sim.offer !== null, DAY_TICKS * 10);
       cmd(sim, { type: 'acceptRecruit', offerId: sim.offer!.id, settlementId: sim.settlements[0].id });
       runUntil(sim, () => sim.settlers.length === 6, DAY_TICKS);
     });

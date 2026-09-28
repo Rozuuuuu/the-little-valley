@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DAY_TICKS } from '../src/game/core/constants';
 import { SEASON_DAYS } from '../src/game/data/seasons';
 import {
-  FIRST_VISITOR_TICK, OFFER_LIFETIME, ORCHARD_ESTABLISH_TICKS, RECRUIT_APPLES, RECRUIT_COOLDOWN, RECRUIT_TRAVEL_TICKS, VISITOR_INTERVAL,
+  FIRST_VISITOR_TICK, GROWTH_MIN_FOOD, OFFER_LIFETIME, ORCHARD_ESTABLISH_TICKS, RECRUIT_FOOD, RECRUIT_COOLDOWN, RECRUIT_TRAVEL_TICKS, VISITOR_INTERVAL,
 } from '../src/game/data/kingdomBalance';
 import { migrate } from '../src/game/save/migrations';
 import { deserializeSim, serializeSim } from '../src/game/save/serialize';
@@ -21,12 +21,18 @@ function reload(sim: Simulation): Simulation {
   return deserializeSim(migrate(JSON.parse(JSON.stringify(serializeSim(sim, extras)))));
 }
 
-/** Every apple anywhere: stores, hands, sites, orchards' ripe fruit excluded, plus escrow. */
-function applesHeld(sim: Simulation): number {
-  let n = accountedFor(sim, 'apples');
-  for (const r of sim.recruits) n += r.escrow.apples ?? 0;
-  return n;
+/** Food in escrow for travellers on the way. */
+function escrowFood(sim: Simulation): number {
+  return sim.recruits.reduce((n, r) => n + (r.escrow.food ?? 0), 0);
 }
+
+/** Nobody eats for a while, so food totals only move by what the scene does. */
+function feedEveryone(sim: Simulation): void {
+  for (const s of sim.settlers) s.hunger = 100;
+}
+
+/** The smallest store of food that welcomes a traveller: the welcome plus the reserve. */
+const ENOUGH = RECRUIT_FOOD + GROWTH_MIN_FOOD;
 
 /** Sends a new home's residents back to their camp bedrolls, so its beds are free for the scene. */
 function emptyHome(sim: Simulation, home: Building): Building {
@@ -34,12 +40,14 @@ function emptyHome(sim: Simulation, home: Building): Building {
   return home;
 }
 
-/** A new valley with an empty family home, a visitor waiting and the given apples in the camp. */
-function visitorWorld(apples: number, seed = 5150) {
+/** A new valley with an empty family home, a visitor waiting and the given food in the hall. */
+function visitorWorld(food: number, seed = 5150) {
   const sim = createNewGame(seed);
-  campOf(sim)!.inventory = { food: 120, wood: 40, stone: 20, apples };
+  campOf(sim)!.inventory = { food: 120, wood: 40, stone: 20 };
   const home = emptyHome(sim, instant(sim, 'familyHome', { x: 4, y: -5 }));
   runUntil(sim, () => sim.offer !== null, FIRST_VISITOR_TICK + 100);
+  campOf(sim)!.inventory.food = food;
+  feedEveryone(sim);
   return { sim, home, offer: sim.offer!, hall: campOf(sim)! };
 }
 
@@ -71,25 +79,25 @@ describe('visitors', () => {
 });
 
 describe('recruitment', () => {
-  it('49 apples are refused; food is never substituted; nothing is charged', () => {
-    const { sim, offer } = visitorWorld(RECRUIT_APPLES - 1);
-    const before = { apples: sim.storedTotal('apples'), food: sim.storedTotal('food') };
+  it('one food short of the welcome plus the reserve is refused; nothing is charged', () => {
+    const { sim, offer } = visitorWorld(ENOUGH - 1);
+    const before = sim.storedTotal('food');
     const res = accept(sim, offer.id);
     expect(res.ok).toBe(false);
-    expect(res.message).toMatch(/apples/);
-    expect(sim.storedTotal('apples')).toBe(before.apples);
-    expect(sim.storedTotal('food')).toBe(before.food);
+    expect(res.message).toMatch(/food/);
+    expect(res.message).not.toMatch(/apple/);
+    expect(sim.storedTotal('food')).toBe(before);
     expect(sim.recruits).toHaveLength(0);
     expect(sim.bedClaims).toHaveLength(0);
   });
 
-  it('50 apples welcome exactly one adult; repeated clicks and a reload cannot duplicate them or the charge', () => {
-    const { sim, offer, home } = visitorWorld(RECRUIT_APPLES + 7);
-    const total = applesHeld(sim);
+  it('a food welcome brings exactly one adult; repeated clicks and a reload cannot duplicate them or the charge', () => {
+    const { sim, offer, home } = visitorWorld(ENOUGH + 7);
     const res = accept(sim, offer.id);
     expect(res.ok, res.message).toBe(true);
-    expect(sim.storedTotal('apples')).toBe(7);
-    expect(applesHeld(sim)).toBe(total);
+    expect(res.message).toMatch(/food/);
+    expect(sim.storedTotal('food')).toBe(GROWTH_MIN_FOOD + 7);
+    expect(escrowFood(sim)).toBe(RECRUIT_FOOD);
     expect(sim.offer).toBeNull();
     expect(sim.bedClaims).toHaveLength(1);
     expect(sim.bedClaims[0].homeId).toBe(home.id);
@@ -107,7 +115,7 @@ describe('recruitment', () => {
       expect(newcomer.homeId).toBe(home.id);
       expect(world.recruits).toHaveLength(0);
       expect(world.bedClaims).toHaveLength(0);
-      expect(world.storedTotal('apples')).toBe(7);
+      expect(escrowFood(world)).toBe(0);
       expect(world.stats.arrivals).toBe(1);
       assertReservationsConsistent(world);
     }
@@ -115,15 +123,17 @@ describe('recruitment', () => {
 
   it('needs a free bed (real homes first, bedrolls will do), food in store, and one settled traveller per two days', () => {
     const sim = createNewGame(5151);
-    campOf(sim)!.inventory = { food: 120, apples: 200 };
+    campOf(sim)!.inventory = { food: 200 };
     runUntil(sim, () => sim.offer !== null, FIRST_VISITOR_TICK + 100);
-    // Every bedroll is taken and there is no home yet.
+    // Every bed in the hall is taken and there is no home yet.
+    feedEveryone(sim);
+    const food = sim.storedTotal('food');
     expect(accept(sim, sim.offer!.id).message).toMatch(/bed/);
-    expect(sim.storedTotal('apples')).toBe(200);
+    expect(sim.storedTotal('food')).toBe(food);
     instant(sim, 'familyHome', { x: 4, y: -5 });
     campOf(sim)!.inventory.food = 10;
     expect(accept(sim, sim.offer!.id).message).toMatch(/food/);
-    campOf(sim)!.inventory.food = 120;
+    campOf(sim)!.inventory.food = 200;
     expect(accept(sim, sim.offer!.id).ok).toBe(true);
     runUntil(sim, () => sim.offer !== null, DAY_TICKS);
     // Another visitor while the first is still walking in, and after they settled.
@@ -134,27 +144,28 @@ describe('recruitment', () => {
     expect(accept(sim, sim.offer!.id).ok).toBe(true);
   });
 
-  it('cancelling returns every apple; a full store keeps them safe until there is room', () => {
-    const { sim, offer, hall } = visitorWorld(RECRUIT_APPLES);
-    const total = applesHeld(sim);
+  it('cancelling returns all the food; a full store keeps it safe until there is room', () => {
+    const { sim, offer, hall } = visitorWorld(ENOUGH);
+    const total = sim.storedTotal('food');
     expect(accept(sim, offer.id).ok).toBe(true);
     const r = sim.recruits[0];
     // Fill the camp so the refund can't fit.
     hall.inventory.stone = sim.storageCapacity(hall) - sim.storageUsed(hall);
     expect(applyCommand(sim, { type: 'cancelRecruit', recruitId: r.id }).ok).toBe(true);
     expect(sim.bedClaims).toHaveLength(0);
-    expect(applesHeld(sim)).toBe(total);
+    expect(sim.storedTotal('food') + escrowFood(sim)).toBe(total);
     expect(sim.recruits[0]?.state).toBe('refunding');
     hall.inventory.stone = 0;
+    feedEveryone(sim);
     run(sim, 100);
     expect(sim.recruits).toHaveLength(0);
-    expect(sim.storedTotal('apples')).toBe(total);
+    expect(sim.storedTotal('food')).toBe(total);
     run(sim, RECRUIT_TRAVEL_TICKS);
     expect(sim.settlers).toHaveLength(5);
   });
 
   it('a traveller whose bed is demolished waits for another, and never arrives without one', () => {
-    const { sim, offer, home } = visitorWorld(RECRUIT_APPLES);
+    const { sim, offer, home } = visitorWorld(ENOUGH);
     expect(accept(sim, offer.id).ok).toBe(true);
     expect(applyCommand(sim, { type: 'remove', buildingId: home.id }).ok).toBe(true);
     expect(sim.bedClaims).toHaveLength(0);
@@ -240,8 +251,8 @@ describe('deliberate growth journey', () => {
     const hsp = clearSpot(sim, 2, 2, { x: 9, y: -4 });
     expect(applyCommand(sim, { type: 'place', building: 'house', x: hsp.x, y: hsp.y }).ok).toBe(true);
     runUntil(sim, () => home.built, DAY_TICKS * 3);
-    // Wait for 50 apples, then welcome whoever is visiting.
-    runUntil(sim, () => sim.storedTotal('apples') >= RECRUIT_APPLES && sim.offer !== null, DAY_TICKS * 10);
+    // Wait for enough food, then welcome whoever is visiting.
+    runUntil(sim, () => sim.storedTotal('food') >= ENOUGH && sim.offer !== null, DAY_TICKS * 10);
     const res = accept(sim, sim.offer!.id);
     expect(res.ok, res.message).toBe(true);
     runUntil(sim, () => adults(sim).length === 6, DAY_TICKS);
@@ -271,11 +282,12 @@ describe('families panel snapshot', () => {
   it('publishes the visitor and what they still need, households, pending children, and bed use', async () => {
     const { growthInfo } = await import('../src/engine/growthInfo');
     const { settlerInfo } = await import('../src/engine/snapshot');
-    const { sim, offer } = visitorWorld(10);
+    const { sim, offer } = visitorWorld(GROWTH_MIN_FOOD + 10);
     let info = growthInfo(sim);
+    expect(info.visitor!.needs.join(' ')).not.toMatch(/apple/);
     expect(info.mode).toBe('deliberate');
     expect(info.visitor!.name).toBe(offer.name);
-    expect(info.visitor!.needs.join(' ')).toMatch(/apples/);
+    expect(info.visitor!.needs.join(' ')).toMatch(/food/);
     expect(info.visitor!.leavesIn).toMatch(/day|min|h/);
     expect(info.adults).toBe(5);
     const [a, b] = sim.settlers;
@@ -304,13 +316,13 @@ describe('families panel snapshot', () => {
 });
 
 describe('Valley today with deliberate growth', () => {
-  it('suggests an orchard, points at a waiting visitor, flags a paused family and recaps births', async () => {
+  it('suggests growing food, points at a waiting visitor, flags a paused family and recaps births', async () => {
     const { buildOverview } = await import('../src/engine/overview');
     const { sim, offer } = visitorWorld(0);
     const mark = { startTick: sim.tick, startStats: { ...sim.stats }, startPopulation: sim.settlers.length };
     let o = buildOverview(sim, null);
-    expect(o.goals.map((g) => g.text).join(' | ')).toMatch(/orchard/i);
-    campOf(sim)!.inventory.apples = RECRUIT_APPLES;
+    expect(o.goals.map((g) => g.text).join(' | ')).toMatch(/food for travellers/i);
+    campOf(sim)!.inventory.food = ENOUGH;
     o = buildOverview(sim, null);
     expect(o.goals.map((g) => g.text).join(' | ')).toContain(offer.name);
     const [a, b] = sim.settlers;

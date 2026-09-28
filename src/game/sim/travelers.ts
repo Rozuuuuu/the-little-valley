@@ -1,5 +1,5 @@
 import {
-  GROWTH_MIN_FOOD, OFFER_LIFETIME, RECRUIT_APPLES, RECRUIT_COOLDOWN, RECRUIT_TRAVEL_TICKS, VISITOR_INTERVAL,
+  GROWTH_MIN_FOOD, OFFER_LIFETIME, RECRUIT_FOOD, RECRUIT_COOLDOWN, RECRUIT_TRAVEL_TICKS, VISITOR_INTERVAL,
 } from '../data/kingdomBalance';
 import { DAY_TICKS } from '../core/constants';
 import { BUILDINGS } from '../data/buildings';
@@ -59,10 +59,9 @@ export function recruitProblem(sim: Simulation, settlementId: number): string | 
 /** Everything a settlement still lacks to welcome a traveller (empty when ready). */
 export function recruitNeeds(sim: Simulation, settlementId: number): string[] {
   const out: string[] = [];
-  const apples = localAvailable(sim, settlementId, 'apples');
-  if (apples < RECRUIT_APPLES) out.push(`${RECRUIT_APPLES} apples in store (${apples} now — orchards grow them)`);
   const food = localAvailable(sim, settlementId, 'food');
-  if (food < GROWTH_MIN_FOOD) out.push(`${GROWTH_MIN_FOOD} food in store (${food} now)`);
+  const need = RECRUIT_FOOD + GROWTH_MIN_FOOD;
+  if (food < need) out.push(`${need} food in store: ${RECRUIT_FOOD} to welcome them and ${GROWTH_MIN_FOOD} to keep (${food} now)`);
   const multi = sim.settlements.length > 1;
   const bed = findFreeBed(sim, bedUseCounts(sim), false, settlementId);
   if (!bed || (multi && settlementOfBuilding(sim, bed)?.id !== settlementId)) out.push('a free bed (build a house or family home)');
@@ -71,8 +70,8 @@ export function recruitNeeds(sim: Simulation, settlementId: number): string[] {
 
 /**
  * Welcomes the waiting traveller to a settlement. The bed is claimed and the
- * apples go into escrow in the same step, so repeated clicks, a second visitor
- * or a reload can never promise the same bed or spend the same apples twice.
+ * food goes into escrow in the same step, so repeated clicks, a second visitor
+ * or a reload can never promise the same bed or spend the same food twice.
  */
 export function acceptRecruit(sim: Simulation, offerId: unknown, settlementId: unknown): CommandResult {
   const offer = sim.offer;
@@ -85,10 +84,10 @@ export function acceptRecruit(sim: Simulation, offerId: unknown, settlementId: u
   // Real homes first; a free camp bedroll will do for a newcomer.
   const claim = claimBed(sim, { kind: 'recruit', id }, st.id, null, false);
   if (!claim) return err(`No free bed in ${st.name} — build a house or family home so the traveller has somewhere to sleep`);
-  const taken = withdrawLocal(sim, st.id, 'apples', RECRUIT_APPLES);
+  const taken = withdrawLocal(sim, st.id, 'food', RECRUIT_FOOD);
   const r: Recruitment = {
     id, name: offer.name, appearance: { ...offer.appearance }, settlementId: st.id, claimId: claim.id,
-    state: 'travelling', escrow: { apples: taken }, arrivesTick: sim.tick + RECRUIT_TRAVEL_TICKS, blocked: '',
+    state: 'travelling', escrow: { food: taken }, arrivesTick: sim.tick + RECRUIT_TRAVEL_TICKS, blocked: '',
   };
   sim.recruits.push(r);
   sim.offer = null;
@@ -96,10 +95,10 @@ export function acceptRecruit(sim: Simulation, offerId: unknown, settlementId: u
   const home = sim.buildings.get(claim.homeId)!;
   const bed = isPermanentHome(home) ? `a bed in the ${BUILDINGS[home.type].name.toLowerCase()}` : 'a camp bedroll';
   sim.emit({ type: 'important' });
-  return ok(`${r.name} accepted ${RECRUIT_APPLES} apples and is fetching their things. They will settle in ${st.name} shortly, in ${bed}.`, id);
+  return ok(`${r.name} accepted ${RECRUIT_FOOD} food and is fetching their things. They will settle in ${st.name} shortly, in ${bed}.`, id);
 }
 
-/** Calls off a traveller who hasn't arrived: the bed is freed and every apple goes back. */
+/** Calls off a traveller who hasn't arrived: the bed is freed and all the food goes back. */
 export function cancelRecruit(sim: Simulation, recruitId: unknown): CommandResult {
   const r = sim.recruits.find((x) => x.id === recruitId);
   if (!r || r.state !== 'travelling') return err('That traveller is not on the way');
@@ -108,7 +107,7 @@ export function cancelRecruit(sim: Simulation, recruitId: unknown): CommandResul
   r.state = 'refunding';
   r.blocked = '';
   refund(sim, r);
-  return ok(`${r.name} will not settle after all. ${r.state === 'refunding' ? 'Their apples wait at the gate until the stores have room.' : 'The apples are back in storage.'}`);
+  return ok(`${r.name} will not settle after all. ${r.state === 'refunding' ? 'Their welcome food waits at the gate until the stores have room.' : 'The food is back in storage.'}`);
 }
 
 /** Returns escrowed goods to the settlement's stores (anything that doesn't fit stays in escrow). */
@@ -165,7 +164,7 @@ function newVisitor(sim: Simulation): void {
   let name = sim.pickName();
   for (let i = 0; i < 5 && used.has(name); i++) name = sim.pickName();
   sim.offer = { id: sim.allocId(), name, appearance: sim.randomAppearance(), arrivedTick: sim.tick, expiresTick: sim.tick + OFFER_LIFETIME };
-  sim.toast(`A traveller, ${name}, is visiting. They would settle for ${RECRUIT_APPLES} apples — see the People panel.`, 'info');
+  sim.toast(`A traveller, ${name}, is visiting. They would settle for ${RECRUIT_FOOD} food — see the People panel.`, 'info');
   sim.emit({ type: 'important' });
 }
 

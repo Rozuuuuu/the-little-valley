@@ -46,12 +46,12 @@ export type MilestoneId = 'camp' | 'hamlet' | 'village' | 'town' | 'region' | 'c
 export const MILESTONES: Record<MilestoneId, MilestoneDef> = {
   camp: {
     id: 'camp', name: 'Camp', tier: 0,
-    description: 'Direct your settlers by hand, secure food, and plant an orchard: its apples welcome travellers.',
+    description: 'Direct your settlers by hand, and secure food: spare food welcomes travellers who want to settle.',
     requirements: [], unlocks: ['House, Family Home, Field, Orchard, Storehouse, Workshop, Path, Fence, Flower Bed'],
   },
   hamlet: {
     id: 'hamlet', name: 'Hamlet', tier: 1,
-    description: 'Six adults and a real home: welcome a traveller with apples, then organise housing, storage and work areas.',
+    description: 'Six adults and a real home: welcome a traveller with food, then organise housing, storage and work areas.',
     requirements: [
       { kind: 'population', count: 6 },
       { kind: 'beds', count: 2 },

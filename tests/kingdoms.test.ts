@@ -107,7 +107,7 @@ describe('the kingdom', () => {
     run(sim, 1);
     expect(k.trust).toBe(t0 + 2 * POLICIES.high.trustPerDay + POLICIES.none.trustPerDay);
     k.trust = 10;
-    campOf(sim)!.inventory.apples = 60;
+    campOf(sim)!.inventory.food = 200;
     instant(sim, 'house', { x: 5, y: -5 });
     runUntil(sim, () => sim.offer !== null, DAY_TICKS);
     expect(applyCommand(sim, { type: 'acceptRecruit', offerId: sim.offer!.id, settlementId: sim.settlements[0].id }).message).toMatch(/trust|tax/i);
