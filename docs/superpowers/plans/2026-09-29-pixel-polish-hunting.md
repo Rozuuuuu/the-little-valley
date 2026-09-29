@@ -69,3 +69,10 @@ The player didn't like the sand boxes: the skin is now **dirt inside, grass outs
 on soil, a grass frame with blades along the top), and **See more** docks on top of the bottom
 panel over the selection column instead of growing the panel. Text contrast on dirt: 4.8:1 or
 better everywhere.
+
+Second follow-up: the boxes now use real pixel textures painted at startup from the game palette
+(`src/ui/hudTextures.ts`): a 16×16 dirt tile (soil browns, damp patches, clods, pebbles) shown 2×,
+and a grass frame with 2–8 px blades (two-blade clumps, dark roots, bright tips, the odd flower),
+a turf band with grass hanging into the dirt, grassy sides and a soil edge. The top bar, tooltips
+and toasts use the same art at 1×. The title screen now circles over a revealed valley instead of
+drifting into the fog.

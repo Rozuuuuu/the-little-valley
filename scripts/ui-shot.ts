@@ -49,7 +49,8 @@ try {
   });
   page.on('pageerror', (e) => console.log(`[pageerror] ${e}`));
   await page.goto(url, { waitUntil: 'load', timeout: 60000 });
-  await new Promise((r) => setTimeout(r, 800));
+  await page.waitForSelector('.title-screen .menu, .console', { timeout: 60000 }).catch(() => {});
+  await new Promise((r) => setTimeout(r, 500));
   let n = 0;
   const shot = async (name = String(++n)) => {
     const file = `${out}-${name}.png`;

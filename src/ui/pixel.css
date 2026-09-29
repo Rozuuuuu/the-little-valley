@@ -35,15 +35,16 @@
   color: var(--text-light);
 }
 .panel, .console .con-map, .console .con-info, .console .con-card {
+  /* Game-style pixel dirt (a 16×16 tile painted at startup, shown 2×) in a grass frame with
+     real blades along the top (hudTextures.ts). */
   background-color: var(--dirt);
-  /* Soil: light pebbles and dark crumbs. */
-  background-image:
-    radial-gradient(#8a6440 1px, transparent 1.4px),
-    radial-gradient(#4e331c 1px, transparent 1.4px);
-  background-size: 9px 7px, 5px 6px;
-  background-position: 0 0, 2px 3px;
-  border: 8px solid transparent;
-  border-image: var(--grass-frame) 4 / 8px / 0 stretch;
+  background-image: var(--dirt-tile);
+  background-size: 32px 32px;
+  background-repeat: repeat;
+  border-style: solid;
+  border-color: transparent;
+  border-width: 28px 10px 10px 10px;
+  border-image: var(--grass-frame) 14 5 5 5 / 28px 10px 10px 10px / 0 round;
   image-rendering: pixelated;
   box-shadow: 0 3px 0 rgba(20, 30, 16, 0.4);
   border-radius: 0;
@@ -162,3 +163,23 @@ body[data-edge="nw"]:not([data-paused="1"]) * { cursor: nw-resize !important; }
 body[data-edge="ne"]:not([data-paused="1"]) * { cursor: ne-resize !important; }
 body[data-edge="sw"]:not([data-paused="1"]) * { cursor: sw-resize !important; }
 body[data-edge="se"]:not([data-paused="1"]) * { cursor: se-resize !important; }
+
+/* The top bar stays compact: the same ground at 1× scale. */
+:root { --top-h: 62px; --console-h: 204px; }
+.hud-top .panel {
+  border-width: 14px 5px 5px 5px;
+  border-image: var(--grass-frame) 14 5 5 5 / 14px 5px 5px 5px / 0 round;
+  background-size: 16px 16px;
+}
+.hud-top { height: calc(var(--top-h) - 8px); }
+/* Small boxes (tooltips, toasts, the hover line) use 1× too, so their text keeps its room. */
+.cmd-tip, .toast, .hover-info, .paused-banner {
+  border-width: 14px 5px 5px 5px;
+  border-image: var(--grass-frame) 14 5 5 5 / 14px 5px 5px 5px / 0 round;
+  background-size: 16px 16px;
+}
+.console { padding-top: 4px; }
+
+/* A one-pixel dark shadow keeps text crisp over lighter clods of dirt. */
+.panel, .console .con-map, .console .con-info, .console .con-card { text-shadow: 0 1px 0 rgba(24, 12, 4, 0.75); }
+.panel input, .panel select, .console input, .console select { text-shadow: none; }

@@ -804,7 +804,7 @@ export function SidePanel({ tab, setTab }: { tab: WindowTab | null; setTab: (t: 
             {s.settlers.map((p) => (
               <button key={p.id} className={`settler-row${selected.has(p.id) ? ' sel' : ''}`} onClick={() => game.selectSettlers([p.id], true)}>
                 <span className="nm">{p.name}</span>
-                <span className="jb">{p.child ? 'Child' : p.areaName || JOBS[p.job].name}</span>
+                <span className="jb">{p.ruler ? 'Ruler (you)' : p.child ? 'Child' : p.areaName || JOBS[p.job].name}</span>
                 <span className={`tk${p.idle ? ' idle' : ''}`}>{p.idle ? `⚠ ${p.idleReason}` : p.task}</span>
               </button>
             ))}

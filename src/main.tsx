@@ -7,9 +7,13 @@ import '@fontsource/pixelify-sans/latin-400.css';
 import '@fontsource/pixelify-sans/latin-600.css';
 import '@fontsource/pixelify-sans/latin-700.css';
 import { App } from './ui/App';
+import { installHudTextures } from './ui/hudTextures';
 import './ui/styles.css';
 import './ui/hud.css';
 import './ui/pixel.css';
+
+// Pixel dirt and grass for the HUD, painted from the game's palette.
+installHudTextures();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
