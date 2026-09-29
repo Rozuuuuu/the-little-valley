@@ -6,7 +6,7 @@ import { IndexedDbStore, localEmergencyStore, MemoryStore } from '../game/save/s
 import { applyCommand } from '../game/sim/commands';
 import { createNewGame } from '../game/sim/newGame';
 import { GameController } from '../engine/GameController';
-import { loadSettings } from '../engine/settings';
+import { loadSettings, renderDpr } from '../engine/settings';
 import { useStore } from '../engine/store';
 import { InputController } from '../input/InputController';
 import { MouseLock } from '../input/MouseLock';
@@ -86,12 +86,14 @@ export function App() {
     if (import.meta.env.DEV || import.meta.env.MODE === 'development') (window as unknown as { __game: GameController }).__game = game;
 
     const resize = () => {
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = renderDpr(game.settings);
       renderer.resize(Math.round(canvas.clientWidth * dpr), Math.round(canvas.clientHeight * dpr));
     };
     resize();
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
+    // Sharp graphics changes the canvas density; Settings sends a resize when it is toggled.
+    window.addEventListener('resize', resize);
 
     startAttract(game);
 
@@ -114,6 +116,7 @@ export function App() {
 
     return () => {
       ro.disconnect();
+      window.removeEventListener('resize', resize);
       input.dispose();
       mouseLock.dispose();
       game.stop();

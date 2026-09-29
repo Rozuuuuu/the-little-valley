@@ -149,6 +149,18 @@ in `localStorage`.
    update keep automatic newcomer arrivals until you choose **Adopt deliberate
    growth** in the Families tab.
 
+## What's new in the smooth-play update
+
+- **Smoother.** The fog of war is softened once per change instead of every frame (in a
+  software-rendered test this took the game from about 36 to a steady 60 frames a second). The map
+  is drawn at one canvas pixel per screen pixel on high-DPI screens (Settings → Sharp graphics
+  turns full density back on). The held mouse passes on one move per frame, however fast the
+  mouse reports. If frames still run slow for two seconds, water ripples, chimney smoke and
+  other building effects pause until play is smooth again.
+- **A clear cursor.** A big white pixel arrow with a dark outline, the same whether or not the
+  mouse is held in the game.
+- **Pokémon-style dirt** in the HUD: flat warm brown with small scuff marks, no blocks.
+
 ## What's new in the Warcraft commands update
 
 - **Install it as an app.** On the title screen, **Install app** (when the browser offers it)

@@ -30,6 +30,8 @@ export class MouseLock {
   private pressed: Element | null = null;
   private buttons = 0;
   private clicking = false;
+  private moved = false;
+  private frames = 0;
   private readonly cursor: HTMLDivElement;
   private raf = 0;
 
@@ -79,8 +81,18 @@ export class MouseLock {
 
   private frame = (): void => {
     this.raf = requestAnimationFrame(this.frame);
-    if (this.locked && !this.host.wanted()) this.release();
+    if (!this.locked) return;
+    this.flushMove();
+    // Checked ten times a second, soon enough to free the mouse as play pauses.
+    if (++this.frames % 6 === 0 && !this.host.wanted()) this.release();
   };
+
+  private flushMove(): void {
+    if (!this.moved) return;
+    this.moved = false;
+    this.place();
+    this.emitMove();
+  }
 
   private onLockChange = (): void => {
     const now = document.pointerLockElement === document.documentElement;
@@ -124,16 +136,19 @@ export class MouseLock {
     const m = e as MouseEvent;
     switch (e.type) {
       case 'mousemove':
+        // Gaming mice report up to 1000 moves a second: add them up and pass one move on per
+        // frame (see frame), instead of hit-testing the page on every one.
         this.x = Math.max(0, Math.min(window.innerWidth - 1, this.x + m.movementX));
         this.y = Math.max(0, Math.min(window.innerHeight - 1, this.y + m.movementY));
-        this.place();
-        this.emitMove();
+        this.moved = true;
         break;
       case 'mousedown':
+        this.flushMove();
         this.buttons = m.buttons;
         this.emitButton('down', m);
         break;
       case 'mouseup':
+        this.flushMove();
         this.buttons = m.buttons;
         this.emitButton('up', m);
         break;

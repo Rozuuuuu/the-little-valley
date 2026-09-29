@@ -147,6 +147,8 @@ interface Drawable {
   draw: () => void;
 }
 
+/** Fog is smoothed once into a copy this many times the chunk's tile size. */
+const FOG_UP = 4;
 /** How long a fallen animal stays on screen (seconds). */
 const CORPSE_SECONDS = 2.2;
 const FOG = '#17131f';
@@ -157,7 +159,7 @@ export class Renderer {
   readonly ctx: CanvasRenderingContext2D;
   readonly particles = new Particles();
   private ground = new Map<number, { canvas: HTMLCanvasElement; version: number; season: SeasonId; used: number }>();
-  private fog = new Map<number, { canvas: HTMLCanvasElement; version: number }>();
+  private fog = new Map<number, { canvas: HTMLCanvasElement; big: HTMLCanvasElement; version: number }>();
   private light: HTMLCanvasElement;
   private lightCtx: CanvasRenderingContext2D;
   private ghostCache = new Map<string, HTMLCanvasElement>();
@@ -171,6 +173,8 @@ export class Renderer {
   /** Chunks painted this frame; painting is expensive, so it is spread out. */
   private paintBudget = 0;
   stats = { drawables: 0, chunks: 0, paintMs: 0 };
+  /** Lite mode on slow machines: decorative effects are skipped (set by the game controller). */
+  lite = false;
   private worker: Worker | null = null;
   private pending = new Map<number, { key: number; version: number; season: SeasonId; gen: number }>();
   private pendingKeys = new Set<number>();
@@ -288,7 +292,7 @@ export class Renderer {
   private fogFor(sim: Simulation, c: Chunk): HTMLCanvasElement {
     const k = chunkKey(c.cx, c.cy);
     const e = this.fog.get(k);
-    if (e && e.version === c.fogVersion) return e.canvas;
+    if (e && e.version === c.fogVersion) return e.big;
     const canvas = e?.canvas ?? makeCanvas(CHUNK + 2, CHUNK + 2);
     const ctx = canvas.getContext('2d')!;
     const img = ctx.createImageData(CHUNK + 2, CHUNK + 2);
@@ -305,8 +309,14 @@ export class Renderer {
       }
     }
     ctx.putImageData(img, 0, 0);
-    this.fog.set(k, { canvas, version: c.fogVersion });
-    return canvas;
+    // Smooth the edge once, into a 4× copy, instead of scaling with smoothing every frame.
+    const big = e?.big ?? makeCanvas(CHUNK * FOG_UP, CHUNK * FOG_UP);
+    const bctx = big.getContext('2d')!;
+    bctx.clearRect(0, 0, big.width, big.height);
+    bctx.imageSmoothingEnabled = true;
+    bctx.drawImage(canvas, 0, 0, CHUNK + 2, CHUNK + 2, -FOG_UP, -FOG_UP, (CHUNK + 2) * FOG_UP, (CHUNK + 2) * FOG_UP);
+    this.fog.set(k, { canvas, big, version: c.fogVersion });
+    return big;
   }
 
   // ---- helpers ------------------------------------------------------------
@@ -481,7 +491,7 @@ export class Renderer {
 
     // Ambient emitters
     this.smokeTimer += dt;
-    if (this.smokeTimer > 0.45) {
+    if (this.smokeTimer > 0.45 && !this.lite) {
       this.smokeTimer = 0;
       for (const b of sim.buildings.values()) {
         if (!b.built || b.x > tx1 || b.x + b.w < tx0 || b.y > ty1 || b.y < ty0 - 3) continue;
@@ -495,18 +505,16 @@ export class Renderer {
     this.drawOverlays(st, tx0, ty0, tx1, ty1);
     this.drawHighlight(st);
 
-    // Fog of war
-    ctx.imageSmoothingEnabled = true;
+    // Fog of war (pre-smoothed per chunk; see fogFor).
     for (let cy = cy0; cy <= cy1; cy++) {
       for (let cx = cx0; cx <= cx1; cx++) {
         const c = world.peekChunk(cx, cy);
         if (!c || c.exploredCount === 0) continue;
         if (c.exploredCount === CHUNK * CHUNK && this.neighboursExplored(sim, c)) continue;
         const f = this.fogFor(sim, c);
-        ctx.drawImage(f, 1, 1, CHUNK, CHUNK, Math.round(cx * CHUNK_PX * sc + cam.tx), Math.round(cy * CHUNK_PX * sc + cam.ty), Math.round(CHUNK_PX * sc), Math.round(CHUNK_PX * sc));
+        ctx.drawImage(f, Math.round(cx * CHUNK_PX * sc + cam.tx), Math.round(cy * CHUNK_PX * sc + cam.ty), Math.round(CHUNK_PX * sc), Math.round(CHUNK_PX * sc));
       }
     }
-    ctx.imageSmoothingEnabled = false;
 
     this.drawLighting(sim, st, light);
     this.drawWeather(sim, st.time, dt, light.dark);
@@ -524,6 +532,7 @@ export class Renderer {
   }
 
   private drawWater(sim: Simulation, time: number, tx0: number, ty0: number, tx1: number, ty1: number): void {
+    if (this.lite) return;
     const ctx = this.ctx;
     const cam = this.camera;
     const sc = cam.scale;
@@ -1001,7 +1010,7 @@ export class Renderer {
   /** Smoke, sparks and work effects for one visible building. */
   private animateBuilding(b: Building, wx: number, wy: number): void {
     const life = BUILDING_LIFE[b.type];
-    if (!life) return;
+    if (!life || this.lite) return;
     const sim = this.lastSim;
     const busy = sim ? this.isWorking(sim, b.id) : false;
     // Homes smoke at breakfast and supper time, workshops while they work, some always.

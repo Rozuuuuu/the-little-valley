@@ -2,8 +2,8 @@ import { P } from '../render/palette';
 
 /**
  * Pixel textures for the HUD, painted once at startup and set as CSS variables on :root:
- *  - --dirt-tile: the inside of every box. A rich loam with clear pixel clods, pebbles and
- *    roots, warmer and more speckled than the map's soil so the HUD never blends into it.
+ *  - --dirt-tile: the inside of every box. Flat Pokémon-style brown with small scuff marks,
+ *    lighter and smoother than the map's soil so the HUD never blends into it.
  *  - --grass-frame: the edge of every box, grass on all four sides with no dark outline:
  *    short-to-medium blades along the top, tufts poking out left and right, and a turf hem
  *    with little blades hanging from the bottom. Used as a CSS border image.
@@ -20,18 +20,22 @@ function hash(x: number, y: number, seed: number): number {
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 
-/** HUD loam: a warm reddish-brown with distinct 2×2 clods, light specks, pebbles and roots. */
-const LOAM = { base: '#7a4f2f', dark: '#5e3a20', deep: '#48291a', light: '#94643b', speck: '#b3824f', pebble: '#a39a8c', pebbleDark: '#6f675c', root: '#c9a36a' };
+/**
+ * HUD dirt in the style of a Pokémon route: a flat, warm brown with a few small scuff marks
+ * (a short dark dash with a light pixel below it), evenly spread. No blocks or clods.
+ */
+const DIRT = { base: '#8f6137', dark: '#79512d', light: '#a4744a' };
+/** Where the dashes start on the 16×16 tile. */
+const DASHES: [number, number][] = [[2, 2], [10, 1], [6, 7], [13, 9], [1, 11], [9, 13]];
+const DIRT_MARKS = new Map<number, string>();
+for (const [x, y] of DASHES) {
+  DIRT_MARKS.set(y * 16 + x, DIRT.dark);
+  DIRT_MARKS.set(y * 16 + ((x + 1) & 15), DIRT.dark);
+  DIRT_MARKS.set(((y + 1) & 15) * 16 + ((x + 1) & 15), DIRT.light);
+}
 
 function loam(x: number, y: number): string {
-  const clod = hash(x >> 1, y >> 1, 23);
-  const r = hash(x, y, 11);
-  if (hash(Math.floor(x / 3), Math.floor(y / 3), 31) > 0.95) return (x + y) % 3 === 0 ? LOAM.pebbleDark : LOAM.pebble;
-  if (clod > 0.82) return r > 0.35 ? LOAM.light : LOAM.speck;
-  if (clod < 0.16) return r > 0.5 ? LOAM.dark : LOAM.deep;
-  if (r > 0.93) return LOAM.speck;
-  if (r < 0.1) return LOAM.dark;
-  return LOAM.base;
+  return DIRT_MARKS.get((y & 15) * 16 + (x & 15)) ?? DIRT.base;
 }
 
 function canvas(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContext2D] {
@@ -49,13 +53,6 @@ export function dirtTile(): HTMLCanvasElement {
       ctx.fillStyle = loam(x, y);
       ctx.fillRect(x, y, 1, 1);
     }
-  }
-  // A thin pale root wandering across the tile (wraps, so tiles join up).
-  let ry = 5;
-  for (let x = 2; x < 11; x++) {
-    if (hash(x, 3, 91) > 0.6) ry += hash(x, 4, 93) > 0.5 ? 1 : -1;
-    ctx.fillStyle = LOAM.root;
-    ctx.fillRect(x, ((ry % S) + S) % S, 1, 1);
   }
   return c;
 }
@@ -143,6 +140,38 @@ export function grassEdge(): HTMLCanvasElement {
   return c;
 }
 
+/** The game's pointer: a classic arrow, white with a dark outline and a gold edge, drawn at 2×. */
+const ARROW = [
+  'X',
+  'XX',
+  'XGX',
+  'XG.X',
+  'XG..X',
+  'XG...X',
+  'XG....X',
+  'XG.....X',
+  'XG......X',
+  'XG.......X',
+  'XG....XXXXX',
+  'XG.X..X',
+  'XGXX..X',
+  'XX  X..X',
+  'X   X..X',
+  '     XX',
+];
+
+export function cursorArrow(): HTMLCanvasElement {
+  const [c, ctx] = canvas(32, 32);
+  const colors: Record<string, string> = { X: '#1a1208', '.': '#fffaf0', G: '#f4cf5a' };
+  ARROW.forEach((row, y) => [...row].forEach((ch, x) => {
+    const col = colors[ch];
+    if (!col) return;
+    ctx.fillStyle = col;
+    ctx.fillRect(x * 2, y * 2, 2, 2);
+  }));
+  return c;
+}
+
 /** Paints the textures and publishes them as CSS variables. */
 export function installHudTextures(): void {
   try {
@@ -150,6 +179,9 @@ export function installHudTextures(): void {
     root.setProperty('--dirt-tile', `url(${dirtTile().toDataURL()})`);
     root.setProperty('--grass-frame', `url(${grassFrame().toDataURL()})`);
     root.setProperty('--grass-edge', `url(${grassEdge().toDataURL()})`);
+    const arrow = cursorArrow().toDataURL();
+    root.setProperty('--cursor-img', `url(${arrow})`);
+    root.setProperty('--cursor', `url(${arrow}) 1 1, default`);
   } catch {
     // No canvas (tests or a very old browser): the plain colours in pixel.css still apply.
   }

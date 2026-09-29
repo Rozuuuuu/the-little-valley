@@ -19,8 +19,19 @@ export interface Settings {
   bindingsVersion: number;
   /** Keep the mouse inside the game while it runs (Warcraft-style); it is let go while paused. */
   lockMouse: boolean;
+  /** Draw the map at the screen's full pixel density (sharper, but much more work on high-DPI screens). */
+  sharpGraphics: boolean;
   /** Minutes between autosaves. */
   autosaveMinutes: number;
+}
+
+/**
+ * Canvas pixels per CSS pixel for the map. Pixel art doesn't need the extra density of a
+ * high-DPI screen, and drawing at 1× is 2–4 times less work there; Sharp graphics opts back in.
+ */
+export function renderDpr(s: Pick<Settings, 'sharpGraphics'>): number {
+  const d = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+  return s.sharpGraphics ? d : Math.min(d, 1);
 }
 
 const KEY = 'little-valley:settings';
@@ -29,7 +40,7 @@ export function defaultSettings(): Settings {
   return {
     masterVolume: 0.8, musicVolume: 0.5, sfxVolume: 0.7, muted: false,
     edgePan: true, edgeSpeed: 1, healthBars: 'always', detailsInHud: true, showGrid: false, bindings: defaultBindings(), bindingsVersion: BINDINGS_VERSION,
-    lockMouse: true, autosaveMinutes: 2,
+    lockMouse: true, sharpGraphics: false, autosaveMinutes: 2,
   };
 }
 
@@ -61,6 +72,7 @@ export function loadSettings(): Settings {
       bindings,
       bindingsVersion: BINDINGS_VERSION,
       lockMouse: typeof s.lockMouse === 'boolean' ? s.lockMouse : d.lockMouse,
+      sharpGraphics: typeof s.sharpGraphics === 'boolean' ? s.sharpGraphics : d.sharpGraphics,
     };
   } catch {
     return d;

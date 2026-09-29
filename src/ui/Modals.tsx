@@ -147,7 +147,18 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
         </Select>
       </div>
       <div className="row">
-        <span>Show the tile grid (G)</span>
+        <span>Sharp graphics on high-resolution screens (slower)</span>
+        <input
+          type="checkbox"
+          checked={s.sharpGraphics}
+          onChange={(e) => {
+            update({ ...s, sharpGraphics: e.target.checked });
+            window.dispatchEvent(new Event('resize'));
+          }}
+        />
+      </div>
+      <div className="row">
+        <span>Show the tile grid (`)</span>
         <input type="checkbox" checked={s.showGrid} onChange={(e) => update({ ...s, showGrid: e.target.checked })} />
       </div>
       <div className="row">

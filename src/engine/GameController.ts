@@ -24,7 +24,7 @@ import { OBJECTS } from '../game/world/tiles';
 import { actionFor, keyLabel, type Action } from '../input/bindings';
 import type { Camera } from '../render/Camera';
 import type { Marker, PlacementPreview, Renderer, RenderState } from '../render/Renderer';
-import { saveSettings, type Settings } from './settings';
+import { renderDpr, saveSettings, type Settings } from './settings';
 import {
   areaInfo, buildingInfo, celebrationInfo, chiefInfo, clockOf, emptySnapshot, hoverText, housingOf, milestoneInfo, selectionRoles, settlerInfo, unlockedSets,
   type Mode, type Toast, type UiSnapshot,
@@ -141,7 +141,7 @@ export class GameController {
     this.lastSaveTick = sim.tick;
     this.lastSaveAt = performance.now();
     this.renderer.clearCaches();
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = renderDpr(this.settings);
     if (opts.view) {
       this.camera.centerOn(opts.view.camX, opts.view.camY);
       this.camera.setZoom(opts.view.zoom);
@@ -173,8 +173,33 @@ export class GameController {
     }
   };
 
+  /** Smoothed frame time (ms) and how long it has been slow or fast, for the lite mode. */
+  private frameMs = 16;
+  private slowFor = 0;
+  private fastFor = 0;
+
+  /**
+   * On a slow machine, drop purely decorative effects (water ripples, smoke, building life)
+   * after two slow seconds, and bring them back after ten smooth ones.
+   */
+  private adaptQuality(dtMs: number): void {
+    if (dtMs > 250) return; // a hitch (tab switch, save), not a slow machine
+    this.frameMs += (dtMs - this.frameMs) * 0.05;
+    const r = this.renderer;
+    if (this.frameMs > 28) {
+      this.slowFor += dtMs;
+      this.fastFor = 0;
+      if (!r.lite && this.slowFor > 2000) r.lite = true;
+    } else if (this.frameMs < 19) {
+      this.fastFor += dtMs;
+      this.slowFor = 0;
+      if (r.lite && this.fastFor > 10000) r.lite = false;
+    }
+  }
+
   private tickFrame(now: number): void {
     const dt = Math.min(0.25, (now - this.lastFrame) / 1000);
+    this.adaptQuality(now - this.lastFrame);
     this.lastFrame = now;
     const halted = this.paused || this.menuOpen || this.celebration !== null || this.advice !== null;
     if (!halted) {
@@ -229,7 +254,7 @@ export class GameController {
 
   private updateCamera(dt: number): void {
     const cam = this.camera;
-    const speed = (520 * dt * (window.devicePixelRatio || 1)) / cam.scale;
+    const speed = (520 * dt * renderDpr(this.settings)) / cam.scale;
     let dx = 0;
     let dy = 0;
     if (this.pressed.has('panLeft')) dx -= 1;
