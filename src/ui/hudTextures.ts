@@ -24,7 +24,7 @@ function hash(x: number, y: number, seed: number): number {
  * HUD dirt in the style of a Pokémon route: a flat, warm brown with a few small scuff marks
  * (a short dark dash with a light pixel below it), evenly spread. No blocks or clods.
  */
-const DIRT = { base: '#8f6137', dark: '#79512d', light: '#a4744a' };
+const DIRT = { base: '#7c5230', dark: '#684427', light: '#8f6039' };
 /** Where the dashes start on the 16×16 tile. */
 const DASHES: [number, number][] = [[2, 2], [10, 1], [6, 7], [13, 9], [1, 11], [9, 13]];
 const DIRT_MARKS = new Map<number, string>();

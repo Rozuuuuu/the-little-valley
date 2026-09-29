@@ -254,20 +254,22 @@ export class GameController {
 
   private updateCamera(dt: number): void {
     const cam = this.camera;
-    const speed = (520 * dt * renderDpr(this.settings)) / cam.scale;
+    // Screen pixels per second, turned into world pixels at the current zoom. A slow frame
+    // moves the camera at most a 30th of a second's worth, so a hitch never jumps the view.
+    const step = (Math.min(dt, 1 / 30) * renderDpr(this.settings)) / cam.scale;
     let dx = 0;
     let dy = 0;
-    if (this.pressed.has('panLeft')) dx -= 1;
-    if (this.pressed.has('panRight')) dx += 1;
-    if (this.pressed.has('panUp')) dy -= 1;
-    if (this.pressed.has('panDown')) dy += 1;
+    if (this.pressed.has('panLeft')) dx -= KEY_SCROLL;
+    if (this.pressed.has('panRight')) dx += KEY_SCROLL;
+    if (this.pressed.has('panUp')) dy -= KEY_SCROLL;
+    if (this.pressed.has('panDown')) dy += KEY_SCROLL;
     const held = this.paused || this.menuOpen;
     const flag = held ? '1' : '';
     if (typeof document !== 'undefined' && document.body.dataset.paused !== flag) document.body.dataset.paused = flag;
     // Edge scrolling pauses with the game (keys and middle-drag still move the view).
     if ((this.edge.x || this.edge.y) && !this.paused && !this.menuOpen) {
-      dx += this.edge.x * this.settings.edgeSpeed;
-      dy += this.edge.y * this.settings.edgeSpeed;
+      dx += this.edge.x * EDGE_SCROLL * this.settings.edgeSpeed;
+      dy += this.edge.y * EDGE_SCROLL * this.settings.edgeSpeed;
     }
     if (this.attract) {
       // The title screen circles slowly over the valley instead of drifting off into the fog.
@@ -277,7 +279,7 @@ export class GameController {
       cam.update(dt);
       return;
     }
-    if (dx || dy) cam.pan(dx * speed, dy * speed);
+    if (dx || dy) cam.pan(dx * step, dy * step);
     cam.update(dt);
   }
 
@@ -1185,6 +1187,10 @@ function rulerInfo(sim: Simulation): UiSnapshot['ruler'] {
     rallyIn: wait > 0 ? gameTime(wait) : '',
   };
 }
+
+/** Camera scroll speeds in screen pixels per second: the arrow keys, and the screen edge (× the Settings speed). */
+const KEY_SCROLL = 700;
+const EDGE_SCROLL = 900;
 
 /** Title-screen camera: a slow loop (radians per second) this far from the centre (art pixels). */
 const ATTRACT_ORBIT_SPEED = 0.05;

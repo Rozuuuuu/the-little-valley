@@ -123,6 +123,18 @@ export function computePixels(seed: number, cx: number, cy: number, terr: Uint8A
   const cls = new Uint8Array(BW * BW);
   const baseX = ox * TILE;
   const baseY = oy * TILE;
+  // A tile none of whose eight neighbours outranks it can't be crept into, so every pixel of it
+  // shows its own terrain: skip the border noise there (most tiles).
+  const settled = new Uint8Array(G * G);
+  for (let ty = 0; ty < CHUNK; ty++) {
+    for (let tx = 0; tx < CHUNK; tx++) {
+      const i = (ty + 1) * G + tx + 1;
+      const p = PRIORITY[terr[i]];
+      let ok = 1;
+      for (let dy = -1; dy <= 1 && ok; dy++) for (let dx = -1; dx <= 1; dx++) if (PRIORITY[terr[i + dy * G + dx]] > p) { ok = 0; break; }
+      settled[i] = ok;
+    }
+  }
   for (let py = -M; py < S + M; py++) {
     const ty = Math.floor(py / TILE);
     const ly = py - ty * TILE;
@@ -132,11 +144,11 @@ export function computePixels(seed: number, cx: number, cy: number, terr: Uint8A
     const rowN = (ty + ey + 1) * G + 1;
     const wy = baseY + py;
     for (let px = -M; px < S + M; px++) {
-      const tx = Math.floor(px / TILE);
-      const lx = px - tx * TILE;
+      const tx = px >> 4; // TILE is 16: a shift floors negatives too
+      const lx = px & 15;
       const t = terr[rowT + tx];
       let best = t;
-      if (t !== T.Bridge && t !== T.StoneBridge) {
+      if (t !== T.Bridge && t !== T.StoneBridge && !settled[rowT + tx]) {
         const ex = lx < 8 ? -1 : 1;
         const dx = lx < 8 ? lx : 15 - lx;
         const wx = baseX + px;
@@ -167,12 +179,16 @@ export function computePixels(seed: number, cx: number, cy: number, terr: Uint8A
   for (let j = 0; j < PS; j++) for (let i = 0; i < PS; i++) patches[j * PS + i] = valueNoise((baseX + i * 4) / 28, (baseY + j * 4) / 28, seed ^ 0x55);
 
   // Pass 2: colour.
+  // Colours as locals: the palette is a big lookup table, too slow to consult per pixel.
+  const { cliff0, cliff1, cliff2, cliff3, deep0, deep1, dirt0, dirt1, dirt2, dirt3, foam, forest0, forest1, forest2, forestLeaf, grass0, grass1, grass2, grass3, hill0, hill1, hill2, hill3, meadow0, meadow1, meadow2, meadow3, rock1, rock2, rock3, sand0, sand1, sand2, sand3, snowcap, stone0, stone1, stone2, stone3, water0, water1, water2, water3, wood0, wood1, wood2, wood3 } = C;
   const out = new Uint32Array(S * S);
   for (let py = 0; py < S; py++) {
     const wy = oy * TILE + py;
+    // Index of (0, py) in the class grid; neighbours are a fixed offset away.
+    const rc = (py + M) * BW + M;
     for (let px = 0; px < S; px++) {
       const wx = ox * TILE + px;
-      const c = clsAt(px, py);
+      const c = cls[rc + px];
       const h = hash01(wx, wy, seed ^ 0x99);
       const patch = patches[(py >> 2) * PS + (px >> 2)];
       let col: number;
@@ -182,53 +198,53 @@ export function computePixels(seed: number, cx: number, cy: number, terr: Uint8A
           const deep = c === T.DeepWater;
           let shore = 9;
           for (let r = 1; r <= 3 && shore === 9; r++) {
-            if (!isWater(clsAt(px - r, py)) || !isWater(clsAt(px + r, py)) || !isWater(clsAt(px, py - r)) || !isWater(clsAt(px, py + r))) shore = r;
+            if (!isWater(cls[rc + px - r]) || !isWater(cls[rc + px + r]) || !isWater(cls[rc + px - r * BW]) || !isWater(cls[rc + px + r * BW])) shore = r;
           }
           // Land directly above casts a 2px shadow onto the water; other edges get foam.
-          const shadow = !isWater(clsAt(px, py - 1)) || (!isWater(clsAt(px, py - 2)) && (wx & 1) === 0);
-          if (shadow) col = deep ? C.deep0 : C.water0;
-          else if (shore === 1) col = C.foam;
-          else if (shore === 2) col = (wx + wy) % 2 === 0 ? C.water3 : C.water2;
-          else if (shore === 3) col = C.water2;
-          else if (deep) col = patch > 0.6 ? C.deep1 : C.deep0;
-          else col = patch > 0.62 ? C.water2 : patch < 0.3 ? C.water0 : C.water1;
+          const shadow = !isWater(cls[rc + px - BW]) || (!isWater(cls[rc + px - 2 * BW]) && (wx & 1) === 0);
+          if (shadow) col = deep ? deep0 : water0;
+          else if (shore === 1) col = foam;
+          else if (shore === 2) col = (wx + wy) % 2 === 0 ? water3 : water2;
+          else if (shore === 3) col = water2;
+          else if (deep) col = patch > 0.6 ? deep1 : deep0;
+          else col = patch > 0.62 ? water2 : patch < 0.3 ? water0 : water1;
           break;
         }
         case T.Sand:
-          col = h < 0.05 ? C.sand2 : h > 0.95 ? C.sand0 : patch > 0.6 ? C.sand2 : C.sand1;
+          col = h < 0.05 ? sand2 : h > 0.95 ? sand0 : patch > 0.6 ? sand2 : sand1;
           break;
         case T.Grass:
-          col = h < 0.035 ? C.grass3 : h > 0.975 ? C.grass0 : patch > 0.56 ? C.grass2 : C.grass1;
+          col = h < 0.035 ? grass3 : h > 0.975 ? grass0 : patch > 0.56 ? grass2 : grass1;
           break;
         case T.Meadow:
-          col = h < 0.05 ? C.meadow3 : h > 0.975 ? C.meadow0 : patch > 0.5 ? C.meadow2 : C.meadow1;
+          col = h < 0.05 ? meadow3 : h > 0.975 ? meadow0 : patch > 0.5 ? meadow2 : meadow1;
           break;
         case T.Forest:
-          col = h < 0.015 ? C.forestLeaf : h < 0.06 ? C.forest0 : patch > 0.5 ? C.forest1 : C.forest2;
+          col = h < 0.015 ? forestLeaf : h < 0.06 ? forest0 : patch > 0.5 ? forest1 : forest2;
           break;
         case T.Rocky:
-          col = h < 0.04 ? C.rock2 : h > 0.95 ? C.rock3 : patch > 0.55 ? C.rock2 : C.rock1;
+          col = h < 0.04 ? rock2 : h > 0.95 ? rock3 : patch > 0.55 ? rock2 : rock1;
           break;
         case T.Hill: {
           // Soft contour lines follow the slope; they wobble with the colour patches.
           const contour = (wy + Math.floor(patch * 12)) % 11 === 0;
-          col = contour ? C.hill0 : h < 0.035 ? C.hill3 : patch > 0.55 ? C.hill2 : C.hill1;
+          col = contour ? hill0 : h < 0.035 ? hill3 : patch > 0.55 ? hill2 : hill1;
           break;
         }
         case T.Mountain: {
           // A lit rim along the top, a dark foot, and slanted strata between.
-          const top = clsAt(px, py - 1) !== T.Mountain || clsAt(px, py - 2) !== T.Mountain;
-          const foot = clsAt(px, py + 1) !== T.Mountain || clsAt(px, py + 2) !== T.Mountain || clsAt(px, py + 3) !== T.Mountain;
-          if (top) col = C.cliff3;
-          else if (foot) col = C.cliff0;
-          else if (((wx + wy * 2) >> 2) % 7 === 0) col = C.cliff1;
-          else col = h < 0.06 ? C.cliff3 : patch > 0.5 ? C.cliff2 : C.cliff1;
-          if (winter && !foot && h < 0.25) col = C.snowcap;
+          const top = cls[rc + px - BW] !== T.Mountain || cls[rc + px - 2 * BW] !== T.Mountain;
+          const foot = cls[rc + px + BW] !== T.Mountain || cls[rc + px + 2 * BW] !== T.Mountain || cls[rc + px + 3 * BW] !== T.Mountain;
+          if (top) col = cliff3;
+          else if (foot) col = cliff0;
+          else if (((wx + wy * 2) >> 2) % 7 === 0) col = cliff1;
+          else col = h < 0.06 ? cliff3 : patch > 0.5 ? cliff2 : cliff1;
+          if (winter && !foot && h < 0.25) col = snowcap;
           break;
         }
         case T.Road: {
-          const edge = clsAt(px - 1, py) !== T.Road || clsAt(px + 1, py) !== T.Road || clsAt(px, py - 1) !== T.Road || clsAt(px, py + 1) !== T.Road;
-          col = edge ? C.dirt0 : h < 0.06 ? C.dirt2 : h > 0.96 ? C.dirt3 : C.dirt1;
+          const edge = cls[rc + px - 1] !== T.Road || cls[rc + px + 1] !== T.Road || cls[rc + px - BW] !== T.Road || cls[rc + px + BW] !== T.Road;
+          col = edge ? dirt0 : h < 0.06 ? dirt2 : h > 0.96 ? dirt3 : dirt1;
           break;
         }
         case T.StoneBridge: {
@@ -240,10 +256,10 @@ export function computePixels(seed: number, cx: number, cy: number, terr: Uint8A
           const along = horiz ? lx + tx * TILE : ly + ty * TILE;
           const across = horiz ? ly : lx;
           // Parapets on both sides, dressed stone slabs between.
-          if (across <= 1 || across >= 14) col = across === 0 || across === 15 ? C.stone0 : (along % 6 === 0 ? C.stone0 : C.stone1);
-          else if (across === 2 || across === 13) col = C.stone0;
-          else if (along % 8 === 0 || (across === 8 && along % 8 === 4)) col = C.stone1;
-          else col = h < 0.06 ? C.stone3 : across < 6 ? C.stone3 : C.stone2;
+          if (across <= 1 || across >= 14) col = across === 0 || across === 15 ? stone0 : (along % 6 === 0 ? stone0 : stone1);
+          else if (across === 2 || across === 13) col = stone0;
+          else if (along % 8 === 0 || (across === 8 && along % 8 === 4)) col = stone1;
+          else col = h < 0.06 ? stone3 : across < 6 ? stone3 : stone2;
           break;
         }
         case T.Bridge: {
@@ -254,19 +270,19 @@ export function computePixels(seed: number, cx: number, cy: number, terr: Uint8A
           const horiz = !isWater(tAt(tx - 1, ty)) || !isWater(tAt(tx + 1, ty));
           const along = horiz ? lx : ly;
           const across = horiz ? ly : lx;
-          if (across <= 1 || across >= 14) col = across === 0 || across === 15 ? C.wood0 : C.wood1;
-          else if (along % 4 === 3) col = C.wood1;
-          else col = (Math.floor(along / 4) + (horiz ? tx : ty)) % 2 ? C.wood3 : C.wood2;
-          if (across === 2) col = C.wood1;
+          if (across <= 1 || across >= 14) col = across === 0 || across === 15 ? wood0 : wood1;
+          else if (along % 4 === 3) col = wood1;
+          else col = (Math.floor(along / 4) + (horiz ? tx : ty)) % 2 ? wood3 : wood2;
+          if (across === 2) col = wood1;
           break;
         }
         default:
-          col = C.grass1;
+          col = grass1;
       }
       // Land lip above water: a darker edge so banks read as raised.
-      if (!isWater(c) && c !== T.Bridge && c !== T.StoneBridge && isWater(clsAt(px, py + 1))) col = c === T.Sand ? C.sand3 : C.grass0;
+      if (!isWater(c) && c !== T.Bridge && c !== T.StoneBridge && isWater(cls[rc + px + BW])) col = c === T.Sand ? sand3 : grass0;
       // Cliffs cast a short shadow onto the ground below them.
-      if (c !== T.Mountain && !isWater(c) && (clsAt(px, py - 1) === T.Mountain || clsAt(px, py - 2) === T.Mountain)) col = c === T.Hill ? C.hill0 : C.grass0;
+      if (c !== T.Mountain && !isWater(c) && (cls[rc + px - BW] === T.Mountain || cls[rc + px - 2 * BW] === T.Mountain)) col = c === T.Hill ? hill0 : grass0;
       out[py * S + px] = col;
     }
   }

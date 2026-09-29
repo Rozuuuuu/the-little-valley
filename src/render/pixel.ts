@@ -10,6 +10,25 @@ export interface Sprite {
   h: number;
 }
 
+const bitmaps = new WeakMap<HTMLCanvasElement, ImageBitmap | null>();
+
+/**
+ * What to draw for a finished sprite canvas. Chrome sends the pixels of a plain canvas to the GPU
+ * process again every time it is drawn onto the game canvas, which with hundreds of sprites a
+ * frame swamps the GPU (panning then stutters). An ImageBitmap is uploaded once and reused, so
+ * the first draw starts making one and later draws use it. Only for canvases that never change
+ * after they are made: a canvas that is redrawn needs a new canvas (or no bitmap).
+ */
+export function gpuImage(c: HTMLCanvasElement): CanvasImageSource {
+  const b = bitmaps.get(c);
+  if (b) return b;
+  if (b === undefined && typeof createImageBitmap === 'function') {
+    bitmaps.set(c, null);
+    createImageBitmap(c).then((bmp) => bitmaps.set(c, bmp), () => undefined);
+  }
+  return c;
+}
+
 export function makeCanvas(w: number, h: number): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = Math.max(1, w);

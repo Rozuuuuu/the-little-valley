@@ -149,6 +149,22 @@ in `localStorage`.
    update keep automatic newcomer arrivals until you choose **Adopt deliberate
    growth** in the Families tab.
 
+## What's new in the smooth-panning update
+
+- **Panning without stutter.** Measured on a real graphics card, the worst hitches came from the
+  ruler's dashed aura circle, which the GPU had to redraw from scratch twice a frame. It is now a
+  ring of pixel dots drawn like a sprite. Over already-explored land, the slowest 5% of frames
+  dropped from about 83 ms to 37 ms.
+- **New land paints faster** (54 ms per chunk instead of 128, same picture). One ring of chunks
+  past the screen edge is painted ahead of time, and painted ground goes to the GPU once as a
+  bitmap instead of being copied on the main thread.
+- **Edge scrolling like Warcraft III:** the map scrolls while the cursor touches the screen edge
+  (over the HUD too), at one fixed speed set in Settings. Warcraft III needs the cursor kept
+  in the window (players use a ClipCursor tool in windowed mode); the game holds the mouse for
+  you while you play. If the mouse isn't held and leaves through an edge (e.g. into the browser's
+  tab bar), the map keeps scrolling that way until it comes back.
+- The HUD dirt is a shade darker.
+
 ## What's new in the smooth-play update
 
 - **Smoother.** The fog of war is softened once per change instead of every frame (in a

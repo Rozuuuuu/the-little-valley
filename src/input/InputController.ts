@@ -1,8 +1,9 @@
 import { BUILDINGS } from '../game/data/buildings';
 import type { GameController } from '../engine/GameController';
 
-/** CSS pixels from a window edge that scroll the map. */
-const EDGE_MARGIN = 14;
+/** CSS pixels from a window edge that scroll the map (the mouse free, and held in the game). */
+const EDGE_MARGIN = 8;
+const EDGE_LOCKED = 3;
 const DRAG_THRESHOLD = 5;
 
 /**
@@ -27,34 +28,48 @@ export class InputController {
     window.addEventListener('keydown', this.keyDown);
     window.addEventListener('keyup', this.keyUp);
     window.addEventListener('blur', this.blur);
+    window.addEventListener('blur', this.windowBlur);
     window.addEventListener('mousemove', this.edgeMove);
     document.addEventListener('mouseout', this.edgeOut);
   }
 
   /**
-   * Warcraft-style edge scrolling: the whole window's edge is the scroll zone (over the HUD
-   * too), corners scroll diagonally, and the closer to the edge the faster it goes.
+   * Edge scrolling as in Warcraft III: the map scrolls while the cursor touches the edge of the
+   * screen (over the HUD too), at one fixed speed set in Settings (WC3's "Mouse Scroll"),
+   * diagonally in the corners. WC3 relies on the cursor being kept inside the window (players
+   * use a ClipCursor tool in windowed mode); here MouseLock does that, so the cursor can rest
+   * right on the edge. Without the lock the zone is a little wider, since a browser window's
+   * edge is easy to overshoot.
    */
   private edgeMove = (e: MouseEvent): void => {
     const g = this.game;
     // The edge is tracked even while paused, so a pointer resting at the edge scrolls again as
     // soon as play resumes; the camera itself holds still while paused (see updateCamera).
     if (!g.settings.edgePan || g.attract) return this.setEdge(0, 0, 1);
-    const m = EDGE_MARGIN;
+    const m = document.body.classList.contains('mouse-locked') ? EDGE_LOCKED : EDGE_MARGIN;
     const w = window.innerWidth;
     const h = window.innerHeight;
     const ex = e.clientX < m ? -1 : e.clientX > w - 1 - m ? 1 : 0;
     const ey = e.clientY < m ? -1 : e.clientY > h - 1 - m ? 1 : 0;
-    const depth = Math.max(
-      ex < 0 ? m - e.clientX : ex > 0 ? e.clientX - (w - 1 - m) : 0,
-      ey < 0 ? m - e.clientY : ey > 0 ? e.clientY - (h - 1 - m) : 0,
-    );
-    this.setEdge(ex, ey, 1 + Math.min(1, depth / m));
+    this.setEdge(ex, ey, 1);
   };
 
   private edgeOut = (e: MouseEvent): void => {
-    // The pointer left the window.
-    if (!e.relatedTarget) this.setEdge(0, 0, 1);
+    if (e.relatedTarget) return;
+    // The pointer left the window. If it went out through an edge (e.g. into the browser's tab
+    // bar or the taskbar), act as if it were pinned there, as a clipped cursor would be: keep
+    // scrolling that way until it comes back in or the window loses focus.
+    const g = this.game;
+    if (!g.settings.edgePan || g.attract || !document.hasFocus()) return this.setEdge(0, 0, 1);
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const ex = e.clientX <= EDGE_MARGIN ? -1 : e.clientX >= w - 1 - EDGE_MARGIN ? 1 : 0;
+    const ey = e.clientY <= EDGE_MARGIN ? -1 : e.clientY >= h - 1 - EDGE_MARGIN ? 1 : 0;
+    this.setEdge(ex, ey, 1);
+  };
+
+  private windowBlur = (): void => {
+    this.setEdge(0, 0, 1);
   };
 
   private setEdge(x: number, y: number, strength: number): void {
@@ -74,6 +89,7 @@ export class InputController {
     window.removeEventListener('keydown', this.keyDown);
     window.removeEventListener('keyup', this.keyUp);
     window.removeEventListener('blur', this.blur);
+    window.removeEventListener('blur', this.windowBlur);
     window.removeEventListener('mousemove', this.edgeMove);
     document.removeEventListener('mouseout', this.edgeOut);
   }
@@ -186,8 +202,8 @@ export class InputController {
   private pointerLeave = (): void => {
     this.game.hoverWorld = null;
     this.game.hoverSettler = null;
-    this.game.edge.x = 0;
-    this.game.edge.y = 0;
+    // Edge scrolling is decided by the whole window (edgeMove/edgeOut), not by the map canvas:
+    // moving onto the HUD at the screen edge must keep scrolling.
   };
 
   private wheel = (e: WheelEvent): void => {

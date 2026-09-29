@@ -31,7 +31,7 @@ import { chunkKey } from '../game/world/World';
 import type { Camera } from './Camera';
 import { P } from './palette';
 import { Particles } from './particles';
-import { makeCanvas, tinted, type Sprite } from './pixel';
+import { gpuImage, makeCanvas, tinted, type Sprite } from './pixel';
 import { FRAME } from './sprites/characters';
 import type { SpriteBank } from './sprites';
 import { paintChunk, pixelsToCanvas, terrainGrid } from './terrainPainter';
@@ -147,6 +147,45 @@ interface Drawable {
   draw: () => void;
 }
 
+/** The ruler's aura ring: rotation steps, and how many steps it turns per second. */
+const AURA_PHASES = 8;
+const AURA_STEPS_PER_SECOND = 6;
+
+/** The aura ring in art pixels: a faint gold disc edged with 2×2 dots, turned by `phase`. */
+function auraImage(phase: number): HTMLCanvasElement {
+  const R = AURA_RADIUS * TILE;
+  const size = R * 2 + 4;
+  const c = makeCanvas(size, size);
+  const g = c.getContext('2d')!;
+  const mid = size / 2;
+  // The faint fill, one row at a time (no paths).
+  g.fillStyle = 'rgba(236, 210, 126, 0.06)';
+  for (let y = -R; y < R; y++) {
+    const w = Math.floor(Math.sqrt(R * R - (y + 0.5) * (y + 0.5)));
+    g.fillRect(mid - w, mid + y, w * 2, 1);
+  }
+  // Solid gold dots (a darker lower half, so they stand out from flowers) every 8 art pixels
+  // round the edge, shifted a little each phase so the ring turns.
+  const n = Math.round((2 * Math.PI * R) / 8);
+  for (let i = 0; i < n; i++) {
+    const a = ((i + phase / AURA_PHASES) / n) * Math.PI * 2;
+    const dx = Math.round(mid + Math.cos(a) * R) - 1;
+    const dy = Math.round(mid + Math.sin(a) * R) - 1;
+    g.fillStyle = '#ffe07a';
+    g.fillRect(dx, dy, 2, 1);
+    g.fillStyle = '#b8862a';
+    g.fillRect(dx, dy + 1, 2, 1);
+  }
+  return c;
+}
+
+/** Chunks of ground the worker may be painting at once. */
+const MAX_PAINTING = 6;
+/** A painted chunk of ground: a bitmap from the worker, or a canvas painted on the main thread. */
+type GroundImage = HTMLCanvasElement | ImageBitmap;
+function closeImage(img: GroundImage): void {
+  if (typeof ImageBitmap !== 'undefined' && img instanceof ImageBitmap) img.close();
+}
 /** Fog is smoothed once into a copy this many times the chunk's tile size. */
 const FOG_UP = 4;
 /** How long a fallen animal stays on screen (seconds). */
@@ -158,7 +197,7 @@ const MAX_CHUNK_CACHE = 48;
 export class Renderer {
   readonly ctx: CanvasRenderingContext2D;
   readonly particles = new Particles();
-  private ground = new Map<number, { canvas: HTMLCanvasElement; version: number; season: SeasonId; used: number }>();
+  private ground = new Map<number, { canvas: GroundImage; version: number; season: SeasonId; used: number }>();
   private fog = new Map<number, { canvas: HTMLCanvasElement; big: HTMLCanvasElement; version: number }>();
   private light: HTMLCanvasElement;
   private lightCtx: CanvasRenderingContext2D;
@@ -191,7 +230,7 @@ export class Renderer {
     this.lightCtx = this.light.getContext('2d')!;
     try {
       this.worker = new Worker(new URL('./terrainWorker.ts', import.meta.url), { type: 'module' });
-      this.worker.onmessage = (e: MessageEvent<{ id: number; pixels: Uint32Array }>) => this.onPainted(e.data.id, e.data.pixels);
+      this.worker.onmessage = (e: MessageEvent<{ id: number; pixels?: Uint32Array; bitmap?: ImageBitmap }>) => this.onPainted(e.data.id, e.data.bitmap ?? e.data.pixels!);
       this.worker.onerror = () => {
         // Fall back to painting on the main thread.
         this.worker = null;
@@ -203,13 +242,19 @@ export class Renderer {
     }
   }
 
-  private onPainted(id: number, pixels: Uint32Array): void {
+  private onPainted(id: number, image: ImageBitmap | Uint32Array): void {
     const info = this.pending.get(id);
     this.pending.delete(id);
-    if (!info) return;
+    const bitmap = image instanceof Uint32Array ? null : image;
+    if (!info || info.gen !== this.cacheGen) {
+      bitmap?.close();
+      if (info) this.pendingKeys.delete(info.key);
+      return;
+    }
     this.pendingKeys.delete(info.key);
-    if (info.gen !== this.cacheGen) return;
-    this.ground.set(info.key, { canvas: pixelsToCanvas(pixels), version: info.version, season: info.season, used: this.frame });
+    const old = this.ground.get(info.key);
+    if (old && old.canvas !== bitmap) closeImage(old.canvas);
+    this.ground.set(info.key, { canvas: bitmap ?? pixelsToCanvas(image as Uint32Array), version: info.version, season: info.season, used: this.frame });
     this.evictGround();
   }
 
@@ -221,7 +266,10 @@ export class Renderer {
       oldest = key;
       oldestUsed = v.used;
     }
-    if (oldest !== null) this.ground.delete(oldest);
+    if (oldest !== null) {
+      closeImage(this.ground.get(oldest)!.canvas);
+      this.ground.delete(oldest);
+    }
   }
 
   resize(w: number, h: number): void {
@@ -245,6 +293,7 @@ export class Renderer {
     this.cacheGen++;
     this.pending.clear();
     this.pendingKeys.clear();
+    for (const g of this.ground.values()) closeImage(g.canvas);
     this.ground.clear();
     this.fog.clear();
     this.particles.list = [];
@@ -260,7 +309,7 @@ export class Renderer {
     };
   }
 
-  private groundFor(sim: Simulation, c: Chunk, force = false): HTMLCanvasElement | null {
+  private groundFor(sim: Simulation, c: Chunk, force = false): GroundImage | null {
     const season = seasonOf(sim).id;
     const k = chunkKey(c.cx, c.cy);
     const e = this.ground.get(k);
@@ -271,11 +320,11 @@ export class Renderer {
     if (e) e.used = this.frame;
     if (!force && this.worker) {
       // Paint off-thread; keep showing the old image (if any) meanwhile.
-      if (!this.pendingKeys.has(k) && this.pending.size < 4) {
+      if (!this.pendingKeys.has(k) && this.pending.size < MAX_PAINTING) {
         const id = ++this.reqId;
         this.pending.set(id, { key: k, version: c.terrainVersion, season, gen: this.cacheGen });
         this.pendingKeys.add(k);
-        this.worker.postMessage({ id, season, seed: sim.seed, cx: c.cx, cy: c.cy, terr: terrainGrid(sim.world, c) });
+        this.worker.postMessage({ id, season, seed: sim.seed, cx: c.cx, cy: c.cy, terr: terrainGrid(sim.world, c), size: CHUNK_PX });
       }
       return e?.canvas ?? null;
     }
@@ -286,6 +335,14 @@ export class Renderer {
     this.stats.paintMs = performance.now() - t0;
     this.ground.set(k, { canvas, version: c.terrainVersion, season, used: this.frame });
     this.evictGround();
+    // Swap in a bitmap when it is ready: a plain canvas may be re-sent to the GPU every frame.
+    if (typeof createImageBitmap === 'function') {
+      createImageBitmap(canvas).then((bmp) => {
+        const entry = this.ground.get(k);
+        if (entry && entry.canvas === canvas) entry.canvas = bmp;
+        else bmp.close();
+      }, () => undefined);
+    }
     return canvas;
   }
 
@@ -310,9 +367,9 @@ export class Renderer {
     }
     ctx.putImageData(img, 0, 0);
     // Smooth the edge once, into a 4× copy, instead of scaling with smoothing every frame.
-    const big = e?.big ?? makeCanvas(CHUNK * FOG_UP, CHUNK * FOG_UP);
+    // A new canvas each time (not a reused one), so it can be handed to the GPU once (gpuImage).
+    const big = makeCanvas(CHUNK * FOG_UP, CHUNK * FOG_UP);
     const bctx = big.getContext('2d')!;
-    bctx.clearRect(0, 0, big.width, big.height);
     bctx.imageSmoothingEnabled = true;
     bctx.drawImage(canvas, 0, 0, CHUNK + 2, CHUNK + 2, -FOG_UP, -FOG_UP, (CHUNK + 2) * FOG_UP, (CHUNK + 2) * FOG_UP);
     this.fog.set(k, { canvas, big, version: c.fogVersion });
@@ -328,7 +385,7 @@ export class Renderer {
     const y = Math.round((wy - s.ay) * sc + cam.ty);
     if (x > cam.width || y > cam.height || x + s.w * sc < 0 || y + s.h * sc < 0) return;
     if (alpha !== 1) this.ctx.globalAlpha = alpha;
-    this.ctx.drawImage(s.canvas, x, y, Math.round(s.w * sc), Math.round(s.h * sc));
+    this.ctx.drawImage(gpuImage(s.canvas), x, y, Math.round(s.w * sc), Math.round(s.h * sc));
     if (alpha !== 1) this.ctx.globalAlpha = 1;
   }
 
@@ -394,6 +451,15 @@ export class Renderer {
       }
     }
     this.stats.chunks = chunks;
+    // Paint one ring of chunks beyond the view ahead of time, so panning moves onto ground that
+    // is already painted instead of waiting for it.
+    for (let cy = cy0 - 1; cy <= cy1 + 1; cy++) {
+      for (let cx = cx0 - 1; cx <= cx1 + 1; cx++) {
+        if (cx >= cx0 && cx <= cx1 && cy >= cy0 && cy <= cy1) continue;
+        const c = sim.world.peekChunk(cx, cy);
+        if (c && c.exploredCount > 0) this.groundFor(sim, c);
+      }
+    }
     this.drawWater(sim, st.time, tx0, ty0, tx1, ty1);
 
     // Flat things: fields, path/bridge sites, selection rings
@@ -512,7 +578,7 @@ export class Renderer {
         if (!c || c.exploredCount === 0) continue;
         if (c.exploredCount === CHUNK * CHUNK && this.neighboursExplored(sim, c)) continue;
         const f = this.fogFor(sim, c);
-        ctx.drawImage(f, Math.round(cx * CHUNK_PX * sc + cam.tx), Math.round(cy * CHUNK_PX * sc + cam.ty), Math.round(CHUNK_PX * sc), Math.round(CHUNK_PX * sc));
+        ctx.drawImage(gpuImage(f), Math.round(cx * CHUNK_PX * sc + cam.tx), Math.round(cy * CHUNK_PX * sc + cam.ty), Math.round(CHUNK_PX * sc), Math.round(CHUNK_PX * sc));
       }
     }
 
@@ -657,11 +723,11 @@ export class Renderer {
       const y = Math.round((wy - sprite.ay) * sc + cam.ty);
       const ghost = this.ghost(sprite, `${b.type}:${lit}`);
       this.ctx.globalAlpha = 0.35;
-      this.ctx.drawImage(ghost, x, y, sprite.w * sc, sprite.h * sc);
+      this.ctx.drawImage(gpuImage(ghost), x, y, sprite.w * sc, sprite.h * sc);
       this.ctx.globalAlpha = 1;
       if (f > 0) {
         const cut = Math.floor(sprite.h * (1 - f));
-        this.ctx.drawImage(sprite.canvas, 0, cut, sprite.w, sprite.h - cut, x, y + cut * sc, sprite.w * sc, (sprite.h - cut) * sc);
+        this.ctx.drawImage(gpuImage(sprite.canvas), 0, cut, sprite.w, sprite.h - cut, x, y + cut * sc, sprite.w * sc, (sprite.h - cut) * sc);
       }
     }
     // Scaffold poles
@@ -944,7 +1010,7 @@ export class Renderer {
     ctx.scale(c.facing === 3 ? -1 : 1, Math.abs(flip) < 0.15 ? Math.sign(flip || 1) * 0.15 : flip);
     ctx.translate(0, pivot * sc);
     ctx.globalAlpha = alpha;
-    ctx.drawImage(sprite.canvas, Math.round(-sprite.ax * sc), Math.round(-sprite.ay * sc), Math.round(sprite.w * sc), Math.round(sprite.h * sc));
+    ctx.drawImage(gpuImage(sprite.canvas), Math.round(-sprite.ax * sc), Math.round(-sprite.ay * sc), Math.round(sprite.w * sc), Math.round(sprite.h * sc));
     ctx.restore();
   }
 
@@ -1076,24 +1142,23 @@ export class Renderer {
     this.ctx.globalAlpha = 1;
   }
 
-  /** The ruler's presence: a slowly turning dashed gold circle showing who works faster. */
+  /**
+   * The ruler's presence: a slowly turning ring of gold pixel dots showing who works faster.
+   * Painted once per rotation step into a cached image (in art pixels) and drawn like a sprite:
+   * a dashed, animated circle path had to be re-rasterised and uploaded by the GPU every frame,
+   * which made panning stutter while the ruler was selected.
+   */
   private drawAura(x: number, y: number, time: number): void {
-    const ctx = this.ctx;
+    const phase = Math.floor(time * AURA_STEPS_PER_SECOND) % AURA_PHASES;
+    let img = this.auraCache[phase];
+    if (!img) img = this.auraCache[phase] = auraImage(phase);
     const cam = this.camera;
     const sc = cam.scale;
-    const r = AURA_RADIUS * TILE * sc;
-    ctx.save();
-    ctx.strokeStyle = 'rgba(236, 210, 126, 0.55)';
-    ctx.fillStyle = 'rgba(236, 210, 126, 0.06)';
-    ctx.lineWidth = Math.max(1, sc);
-    ctx.setLineDash([4 * sc, 4 * sc]);
-    ctx.lineDashOffset = -time * 6 * sc;
-    ctx.beginPath();
-    ctx.ellipse(x * sc + cam.tx, (y - 2) * sc + cam.ty, r, r, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
+    const half = img.width / 2;
+    this.ctx.drawImage(gpuImage(img), Math.round((x - half) * sc + cam.tx), Math.round((y - 2 - half) * sc + cam.ty), img.width * sc, img.height * sc);
   }
+
+  private auraCache: HTMLCanvasElement[] = [];
 
   private drawRing(x: number, y: number, selected: boolean): void {
     const ctx = this.ctx;
@@ -1516,7 +1581,7 @@ export class Renderer {
           ctx.globalAlpha = 0.7;
           const g = pl.ok ? set.day.canvas : this.redGhost(set.day, pl.type);
           const p = cam.worldToScreen(pl.x * TILE - set.day.ax, pl.y * TILE - set.day.ay);
-          ctx.drawImage(g, Math.round(p.x), Math.round(p.y), set.day.w * sc, set.day.h * sc);
+          ctx.drawImage(gpuImage(g), Math.round(p.x), Math.round(p.y), set.day.w * sc, set.day.h * sc);
           ctx.globalAlpha = 1;
         }
       }

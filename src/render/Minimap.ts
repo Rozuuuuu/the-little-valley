@@ -7,7 +7,7 @@ import { chunkKey } from '../game/world/World';
 import type { Camera } from './Camera';
 import { AREA_COLORS } from './Renderer';
 import { P } from './palette';
-import { hexToRgb, makeCanvas } from './pixel';
+import { gpuImage, hexToRgb, makeCanvas } from './pixel';
 
 export interface MinimapLayers {
   settlers: boolean;
@@ -51,7 +51,8 @@ export class Minimap {
     const k = chunkKey(c.cx, c.cy);
     const hit = this.cache.get(k);
     if (hit && hit.key === key) return hit.canvas;
-    const canvas = hit?.canvas ?? makeCanvas(CHUNK, CHUNK);
+    // A fresh canvas per change, so each one goes to the GPU only once (see gpuImage).
+    const canvas = makeCanvas(CHUNK, CHUNK);
     const ctx = canvas.getContext('2d')!;
     const img = ctx.createImageData(CHUNK, CHUNK);
     const out = new Uint32Array(img.data.buffer);
@@ -99,7 +100,7 @@ export class Minimap {
       for (let cx = c0x; cx <= c1x; cx++) {
         const c = sim.world.peekChunk(cx, cy);
         if (!c || c.exploredCount === 0) continue;
-        ctx.drawImage(this.chunkImage(c), toX(cx * CHUNK), toY(cy * CHUNK), CHUNK * s, CHUNK * s);
+        ctx.drawImage(gpuImage(this.chunkImage(c)), toX(cx * CHUNK), toY(cy * CHUNK), CHUNK * s, CHUNK * s);
       }
     }
     if (this.layers.areas) {

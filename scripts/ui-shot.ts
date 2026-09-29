@@ -29,7 +29,8 @@ export async function clickText(page: Page, text: string): Promise<void> {
 const browser = await puppeteer.launch({
   executablePath: CHROMES.find((p) => existsSync(p)),
   headless: true,
-  args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
+  // GPU=1 uses the real graphics card (closer to a player's machine for performance checks).
+  args: process.env.GPU ? ['--use-angle=d3d11', '--ignore-gpu-blocklist', '--enable-gpu-rasterization'] : ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
 });
 try {
   const page = await browser.newPage();

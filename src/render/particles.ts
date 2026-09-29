@@ -1,6 +1,6 @@
 import type { FxKind } from '../game/sim/types';
 import { P } from './palette';
-import type { Sprite } from './pixel';
+import { gpuImage, type Sprite } from './pixel';
 
 /** World-space particles in art pixels. Purely cosmetic; never saved. */
 export interface Particle {
@@ -174,7 +174,7 @@ export class Particles {
       }
       if (p.kind === 'icon' && p.icon) {
         ctx.globalAlpha = 1 - t * t;
-        ctx.drawImage(p.icon.canvas, sx - p.icon.ax * scale, sy - p.icon.ay * scale, p.icon.w * scale, p.icon.h * scale);
+        ctx.drawImage(gpuImage(p.icon.canvas), sx - p.icon.ax * scale, sy - p.icon.ay * scale, p.icon.w * scale, p.icon.h * scale);
         continue;
       }
       if (p.kind === 'butterfly') {
