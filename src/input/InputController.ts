@@ -87,7 +87,12 @@ export class InputController {
   private pointerDown = (e: PointerEvent): void => {
     this.game.audio.unlock();
     const { sx, sy } = this.pos(e);
-    this.canvas.setPointerCapture(e.pointerId);
+    try {
+      this.canvas.setPointerCapture(e.pointerId);
+    } catch {
+      // While the mouse is locked to the game, presses are replayed (see MouseLock), which
+      // keeps them on the canvas itself.
+    }
     if (e.button === 1) {
       e.preventDefault();
       this.panFrom = { sx, sy, cx: this.game.camera.x, cy: this.game.camera.y };
@@ -124,7 +129,11 @@ export class InputController {
   private pointerUp = (e: PointerEvent): void => {
     const { sx, sy } = this.pos(e);
     const g = this.game;
-    if (this.canvas.hasPointerCapture(e.pointerId)) this.canvas.releasePointerCapture(e.pointerId);
+    try {
+      if (this.canvas.hasPointerCapture(e.pointerId)) this.canvas.releasePointerCapture(e.pointerId);
+    } catch {
+      // See pointerDown.
+    }
     if (this.panFrom && e.button === 1) {
       this.panFrom = null;
       return;
@@ -142,6 +151,10 @@ export class InputController {
     if (d.button !== 0) return;
     if (mode.kind === 'place') {
       g.commitPlacement(d.tile, sx, sy, e.shiftKey);
+      return;
+    }
+    if (mode.kind === 'order') {
+      g.orderAt(sx, sy, e.shiftKey);
       return;
     }
     if (mode.kind === 'survey') {

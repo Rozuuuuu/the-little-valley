@@ -263,6 +263,8 @@ export const MIGRATIONS: Record<number, (save: AnyRecord) => AnyRecord> = {
   12: (v12) => ({ ...v12, version: 13 }),
   /** v13 → v14: roles trained at the Town Hall and the Assistant Chief; nobody is training yet. */
   13: (v13) => ({ ...v13, version: 14 }),
+  /** v14 → v15: side jobs and Hold; nobody has either yet. */
+  14: (v14) => ({ ...v14, version: 15 }),
 };
 
 export function migrate(raw: unknown): SaveFile {
@@ -439,6 +441,8 @@ export function validateSave(save: AnyRecord): void {
   for (const s of sim.settlers as AnyRecord[]) {
     const t = s.training as AnyRecord | undefined;
     check(t === undefined || (t && isJobId(t.role) && isInt(t.hall) && isNum(t.progress) && (t.progress as number) >= 0), `settler ${s.id} training`);
+    check(s.sideJob === undefined || isJobId(s.sideJob), `settler ${s.id} side job`);
+    check(s.hold === undefined || typeof s.hold === 'boolean', `settler ${s.id} hold`);
   }
   const chief = sim.chief as AnyRecord | undefined;
   check(chief === undefined || (chief && isNum(chief.nextAt) && typeof chief.adviceReady === 'boolean' && typeof chief.advice === 'string'), 'assistant chief');

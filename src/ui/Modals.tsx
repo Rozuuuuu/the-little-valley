@@ -1,3 +1,5 @@
+import { ShellButtons } from './ShellButtons';
+import { Select } from './Select';
 import { useEffect, useState } from 'react';
 import { MILESTONES } from '../game/data/progression';
 import { randomSeed } from '../game/core/rng';
@@ -61,7 +63,8 @@ export function PauseMenu({ onClose, onSettings, onHelp, onQuit }: { onClose: ()
           Save and return to title
         </button>
       </div>
-      <p className="muted">The valley autosaves every {game.settings.autosaveMinutes} minutes and after big moments.</p>
+      <ShellButtons />
+      <p className="muted">The valley autosaves every {game.settings.autosaveMinutes} minutes and after big moments. While paused the mouse is free; resume to keep it in the game again.</p>
     </Modal>
   );
 }
@@ -104,7 +107,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
     </label>
   );
 
-  const groups = ['Camera', 'Time', 'Tools', 'Other'] as const;
+  const groups = ['Orders', 'Camera', 'Time', 'Tools', 'Windows', 'Other'] as const;
   return (
     <Modal title="Settings" onClose={() => !listening && onClose()}>
       <h3>Sound</h3>
@@ -120,6 +123,10 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
         <span>Scroll when the mouse touches the screen edge (Warcraft-style)</span>
         <input type="checkbox" checked={s.edgePan} onChange={(e) => update({ ...s, edgePan: e.target.checked })} />
       </div>
+      <div className="row">
+        <span>Keep the mouse inside the game while playing (let go while paused or in a menu)</span>
+        <input type="checkbox" checked={s.lockMouse} onChange={(e) => update({ ...s, lockMouse: e.target.checked })} />
+      </div>
       <label className="slider">
         <span>Edge scroll speed</span>
         <input type="range" min={0.5} max={2} step={0.25} value={s.edgeSpeed} disabled={!s.edgePan} onChange={(e) => update({ ...s, edgeSpeed: Number(e.target.value) })} />
@@ -127,17 +134,17 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
       </label>
       <div className="row">
         <span>Health bars</span>
-        <select value={s.healthBars} onChange={(e) => update({ ...s, healthBars: e.target.value as 'always' | 'hurt' })}>
+        <Select value={s.healthBars} onChange={(e) => update({ ...s, healthBars: e.target.value as 'always' | 'hurt' })}>
           <option value="always">Over everyone</option>
           <option value="hurt">Only when hurt</option>
-        </select>
+        </Select>
       </div>
       <div className="row">
         <span>"See more" details</span>
-        <select value={s.detailsInHud ? 'hud' : 'float'} onChange={(e) => update({ ...s, detailsInHud: e.target.value === 'hud' })}>
-          <option value="hud">Docked on the bottom panel</option>
+        <Select value={s.detailsInHud ? 'hud' : 'float'} onChange={(e) => update({ ...s, detailsInHud: e.target.value === 'hud' })}>
+          <option value="hud">Inside the bottom panel, beside the selection</option>
           <option value="float">In a floating window</option>
-        </select>
+        </Select>
       </div>
       <div className="row">
         <span>Show the tile grid (G)</span>
@@ -145,13 +152,13 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
       </div>
       <div className="row">
         <span>Autosave every</span>
-        <select value={s.autosaveMinutes} onChange={(e) => update({ ...s, autosaveMinutes: Number(e.target.value) })}>
+        <Select value={s.autosaveMinutes} onChange={(e) => update({ ...s, autosaveMinutes: Number(e.target.value) })}>
           {[1, 2, 5, 10].map((m) => (
             <option key={m} value={m}>
               {m} min
             </option>
           ))}
-        </select>
+        </Select>
       </div>
       <h3 style={{ marginTop: 12 }}>Keys</h3>
       <p className="muted">Click a key, then press the new one. Esc cancels.</p>
@@ -200,9 +207,18 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
         <span>Select a settler or building</span><span>Left-click</span>
         <span>Select a group (or fields)</span><span>Left-drag</span>
         <span>Add to selection</span><span>Shift + click</span>
-        <span>Order: move, chop, mine, farm, build</span><span>Right-click</span>
+        <span>Smart order: move, chop, mine, farm, build, hunt an animal</span><span>Right-click</span>
         <span>Pan the camera</span><span>Middle-drag</span>
         <span>Zoom</span><span>Wheel</span>
+        <h4>Orders (people selected, like Warcraft III)</h4>
+        <span>Move, then click a spot</span><span>{k('move')}</span>
+        <span>Stop</span><span>{k('stop')}</span>
+        <span>Hold position</span><span>{k('hold')}</span>
+        <span>Attack (hunt), then click an animal</span><span>{k('attack')}</span>
+        <span>Gather, then click a tree, rock or bush</span><span>{k('harvest')}</span>
+        <span>Build / Return goods / Train a main job</span><span>{k('build')} / {k('returnGoods')} / {k('trainRole')}</span>
+        <span>Keep the order for another click</span><span>Shift + click</span>
+        <span>With a building selected: Upgrade / Pause / Demolish</span><span>U / P / {k('demolish')}</span>
         <h4>Keyboard</h4>
         <span>Pan</span><span>{k('panUp')}, {k('panLeft')}, {k('panDown')}, {k('panRight')}</span>
         <span>Pause</span><span>{k('pause')}</span>
@@ -217,7 +233,8 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
         <span>All goods / Valley today / See more</span><span>{k('goods')} / {k('today')} / {k('seeMore')}</span>
         <span>Tile grid / health bars</span><span>{k('toggleGrid')} / {k('healthBars')}</span>
         <span>Scroll the map</span><span>Touch any screen edge with the mouse</span>
-        <span>Mark / unmark for harvest</span><span>{k('harvest')} / {k('unmark')}</span>
+        <span>Mark / unmark for harvest (nobody selected)</span><span>{k('harvest')} / {k('unmark')}</span>
+        <span>Full screen</span><span>{k('fullscreen')}</span>
         <span>Demolish selected building</span><span>{k('demolish')}</span>
         <span>Next idle settler</span><span>{k('nextIdle')}</span>
         <span>Select everyone</span><span>{k('selectAll')}</span>

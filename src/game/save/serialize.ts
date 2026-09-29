@@ -76,6 +76,8 @@ export function serializeSim(sim: Simulation, extras: SerializeExtras): SaveFile
     ...(s.hp !== undefined && s.hp < 100 ? { hp: s.hp } : {}),
     ...(s.boostUntil && s.boostUntil > sim.tick ? { boostUntil: s.boostUntil } : {}),
     ...(s.training ? { training: { ...s.training } } : {}),
+    ...(s.sideJob ? { sideJob: s.sideJob } : {}),
+    ...(s.hold ? { hold: true } : {}),
   }));
   const buildings: SavedBuilding[] = [...sim.buildings.values()].map((b) => {
     const sb: SavedBuilding = {
@@ -278,6 +280,8 @@ export function deserializeSim(save: SaveFile): Simulation {
       hp: ss.hp,
       boostUntil: ss.boostUntil,
       training: ss.training ? { ...ss.training } : null,
+      sideJob: ss.sideJob ?? null,
+      hold: ss.hold === true ? true : undefined,
     };
     // Captives are held elsewhere until peace.
     if (s.captive) s.hidden = true;

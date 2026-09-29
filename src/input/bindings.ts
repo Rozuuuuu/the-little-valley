@@ -10,19 +10,32 @@ export type Action =
   | 'build' | 'harvest' | 'unmark' | 'demolish' | 'cancel'
   | 'nextIdle' | 'selectAll' | 'save' | 'help'
   | 'survey' | 'homeView' | 'findRuler' | 'rally' | 'trainRole' | 'advice' | 'toggleGrid' | 'healthBars' | 'goods' | 'today' | 'seeMore'
-  | 'winPeople' | 'winAreas' | 'winTowns' | 'winFamilies' | 'winRealm' | 'winGoals';
+  | 'winPeople' | 'winAreas' | 'winTowns' | 'winFamilies' | 'winRealm' | 'winGoals'
+  | 'move' | 'stop' | 'hold' | 'attack' | 'returnGoods' | 'fullscreen';
+
+/**
+ * Version of the default layout. Settings saved with an older version get the new defaults:
+ * v2 is the Warcraft III layout (arrows pan; A attack, S stop, H hold, M move, G gather...).
+ */
+export const BINDINGS_VERSION = 2;
 
 export interface ActionDef {
   label: string;
-  group: 'Camera' | 'Time' | 'Tools' | 'Windows' | 'Other';
+  group: 'Camera' | 'Time' | 'Orders' | 'Tools' | 'Windows' | 'Other';
   keys: string[];
 }
 
 export const DEFAULT_BINDINGS: Record<Action, ActionDef> = {
-  panUp: { label: 'Pan up', group: 'Camera', keys: ['KeyW', 'ArrowUp'] },
-  panDown: { label: 'Pan down', group: 'Camera', keys: ['KeyS', 'ArrowDown'] },
-  panLeft: { label: 'Pan left', group: 'Camera', keys: ['KeyA', 'ArrowLeft'] },
-  panRight: { label: 'Pan right', group: 'Camera', keys: ['KeyD', 'ArrowRight'] },
+  // Warcraft III: the arrow keys (and the screen edge) move the camera; letters are commands.
+  panUp: { label: 'Pan up', group: 'Camera', keys: ['ArrowUp'] },
+  panDown: { label: 'Pan down', group: 'Camera', keys: ['ArrowDown'] },
+  panLeft: { label: 'Pan left', group: 'Camera', keys: ['ArrowLeft'] },
+  panRight: { label: 'Pan right', group: 'Camera', keys: ['ArrowRight'] },
+  move: { label: 'Move (then click a spot)', group: 'Orders', keys: ['KeyM'] },
+  stop: { label: 'Stop', group: 'Orders', keys: ['KeyS'] },
+  hold: { label: 'Hold position', group: 'Orders', keys: ['KeyH'] },
+  attack: { label: 'Attack — hunt (then click an animal)', group: 'Orders', keys: ['KeyA'] },
+  returnGoods: { label: 'Return goods to storage', group: 'Orders', keys: ['KeyC'] },
   zoomIn: { label: 'Zoom in', group: 'Camera', keys: ['Equal', 'NumpadAdd'] },
   zoomOut: { label: 'Zoom out', group: 'Camera', keys: ['Minus', 'NumpadSubtract'] },
   pause: { label: 'Pause / resume', group: 'Time', keys: ['Space'] },
@@ -30,7 +43,7 @@ export const DEFAULT_BINDINGS: Record<Action, ActionDef> = {
   speed2: { label: 'Fast speed', group: 'Time', keys: ['Digit2'] },
   speed3: { label: 'Fastest speed', group: 'Time', keys: ['Digit3'] },
   build: { label: 'Build menu', group: 'Tools', keys: ['KeyB'] },
-  harvest: { label: 'Mark for harvest', group: 'Tools', keys: ['KeyH'] },
+  harvest: { label: 'Gather: mark for harvest (people selected: click what to gather)', group: 'Orders', keys: ['KeyG'] },
   unmark: { label: 'Unmark harvest', group: 'Tools', keys: ['KeyU'] },
   demolish: { label: 'Demolish selected', group: 'Tools', keys: ['Delete', 'KeyX'] },
   cancel: { label: 'Cancel / close', group: 'Tools', keys: ['Escape'] },
@@ -42,12 +55,13 @@ export const DEFAULT_BINDINGS: Record<Action, ActionDef> = {
   homeView: { label: 'Jump to the Town Hall', group: 'Camera', keys: ['Backspace', 'Home'] },
   findRuler: { label: 'Find yourself (the ruler)', group: 'Camera', keys: ['KeyK'] },
   rally: { label: 'Rally the people (ruler selected)', group: 'Tools', keys: ['KeyR'] },
-  trainRole: { label: 'Train a role at the Town Hall (people selected)', group: 'Tools', keys: ['KeyJ'] },
+  trainRole: { label: 'Train a role at the Town Hall (people selected)', group: 'Orders', keys: ['KeyT'] },
   advice: { label: "Hear the Assistant Chief's advice (or find them)", group: 'Other', keys: ['KeyO'] },
-  toggleGrid: { label: 'Show or hide the tile grid', group: 'Other', keys: ['KeyG'] },
+  toggleGrid: { label: 'Show or hide the tile grid', group: 'Other', keys: ['Backquote'] },
+  fullscreen: { label: 'Full screen on / off', group: 'Other', keys: ['KeyF'] },
   healthBars: { label: 'Health bars: everyone / only the hurt', group: 'Other', keys: ['KeyL'] },
   goods: { label: 'All goods', group: 'Windows', keys: ['KeyI'] },
-  today: { label: 'Valley today', group: 'Windows', keys: ['KeyT'] },
+  today: { label: 'Valley today (like the Quests log)', group: 'Windows', keys: ['F9'] },
   seeMore: { label: 'See more about the selection', group: 'Windows', keys: ['KeyV'] },
   winPeople: { label: 'People window', group: 'Windows', keys: ['F2'] },
   winAreas: { label: 'Work areas window', group: 'Windows', keys: ['F3'] },
@@ -76,7 +90,7 @@ export function keyLabel(code: string): string {
   if (code.startsWith('Digit')) return code.slice(5);
   const names: Record<string, string> = {
     ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→', Space: 'Space', Escape: 'Esc',
-    Equal: '=', Minus: '-', NumpadAdd: 'Num +', NumpadSubtract: 'Num -', Period: '.', Delete: 'Del', Backspace: 'Bksp', Home: 'Home',
+    Equal: '=', Minus: '-', NumpadAdd: 'Num +', NumpadSubtract: 'Num -', Period: '.', Delete: 'Del', Backspace: 'Bksp', Home: 'Home', Backquote: '`',
   };
   return names[code] ?? code;
 }

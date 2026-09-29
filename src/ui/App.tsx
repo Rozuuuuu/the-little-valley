@@ -9,6 +9,9 @@ import { GameController } from '../engine/GameController';
 import { loadSettings } from '../engine/settings';
 import { useStore } from '../engine/store';
 import { InputController } from '../input/InputController';
+import { MouseLock } from '../input/MouseLock';
+import { isInstalled, toggleFullscreen } from './appShell';
+import { ShellButtons } from './ShellButtons';
 import { Camera } from '../render/Camera';
 import { Renderer } from '../render/Renderer';
 import { SpriteBank } from '../render/sprites';
@@ -70,6 +73,15 @@ export function App() {
     const game = new GameController(renderer, camera, audio, new SaveManager(makeStore(), localEmergencyStore), settings);
     game.onFatal = (e) => setError(`Something went wrong: ${e instanceof Error ? e.message : String(e)}. Your last save is safe; reload the page to continue.`);
     const input = new InputController(canvas, game);
+    // Warcraft-style: the mouse stays inside the game while it runs, and is let go while paused.
+    const mouseLock = new MouseLock({
+      wanted: () =>
+        screenRef.current === 'game' && !game.attract && !game.paused && !game.menuOpen && game.settings.lockMouse && document.hasFocus() && !document.querySelector('.scrim'),
+      releasedByUser: () => {
+        if (!game.paused) game.togglePause();
+      },
+    });
+    (window as unknown as { __mouseLock: MouseLock }).__mouseLock = mouseLock;
     // Development builds (the dev server, or `vite build --mode development` for scripted screenshots).
     if (import.meta.env.DEV || import.meta.env.MODE === 'development') (window as unknown as { __game: GameController }).__game = game;
 
@@ -103,6 +115,7 @@ export function App() {
     return () => {
       ro.disconnect();
       input.dispose();
+      mouseLock.dispose();
       game.stop();
       audio.dispose();
       document.removeEventListener('visibilitychange', onVisibility);
@@ -275,6 +288,7 @@ function InputBridge({ screen, overlay, setOverlay, buildOpen, setBuildOpen, win
         if (b.goods.includes(e.code)) window.dispatchEvent(new Event('lv:goods'));
         else if (b.seeMore.includes(e.code)) window.dispatchEvent(new Event('lv:see-more'));
         else if (b.trainRole.includes(e.code)) window.dispatchEvent(new Event('lv:train'));
+        else if (b.fullscreen.includes(e.code)) void toggleFullscreen();
         else if (b.today.includes(e.code)) game.openOverview();
         else if (b.findRuler.includes(e.code)) {
           const r = game.ui.get().ruler;
@@ -290,6 +304,8 @@ function InputBridge({ screen, overlay, setOverlay, buildOpen, setBuildOpen, win
   }, [ctx, screen, overlay, buildOpen, setBuildOpen, setOverlay, win, setWin]);
   const canvas = document.querySelector('.game-canvas');
   if (canvas) canvas.className = `game-canvas mode-${snap.mode.kind}`;
+  const order = snap.mode.kind === 'order' ? snap.mode.order : '';
+  if (document.body.dataset.order !== order) document.body.dataset.order = order;
   return null;
 }
 
@@ -318,6 +334,12 @@ function Title({ hasSave, onContinue, onNew, onLoad, onSettings }: { hasSave: bo
           Settings
         </button>
       </div>
+      <ShellButtons />
+      <p className="shell-note">
+        {isInstalled()
+          ? 'Playing as an app: the mouse stays in the game while it runs; pause to let it go.'
+          : 'Tip: install it as an app (or play full screen) so the mouse can’t slip off the top or bottom edge while scrolling.'}
+      </p>
       <div className="credit">All art and sound are generated in code. Saved in this browser.</div>
     </div>
   );

@@ -1,3 +1,4 @@
+import { Select } from './Select';
 import { useState } from 'react';
 import { useGame, useSnapshot } from './context';
 
@@ -56,21 +57,21 @@ export function War() {
           <div className="route-form">
             <label>
               On{' '}
-              <select value={pick.id} onChange={(e) => setTarget(Number(e.target.value))}>
+              <Select value={pick.id} onChange={(e) => setTarget(Number(e.target.value))}>
                 {w.previews.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label>
               Objective{' '}
-              <select value={objective} onChange={(e) => setObjective(e.target.value)}>
+              <Select value={objective} onChange={(e) => setObjective(e.target.value)}>
                 <option value="raid">Raid their frontier</option>
                 <option value="capture">Capture frontier land</option>
                 <option value="defend">Defend (they struck first)</option>
-              </select>
+              </Select>
             </label>
           </div>
           {pick.preview.blockers.map((b) => (
@@ -97,23 +98,23 @@ export function War() {
           <div className="route-form">
             <label>
               From{' '}
-              <select value={from ?? w.settlements[1].id} onChange={(e) => setFrom(Number(e.target.value))}>
+              <Select value={from ?? w.settlements[1].id} onChange={(e) => setFrom(Number(e.target.value))}>
                 {w.settlements.map((q) => (
                   <option key={q.id} value={q.id}>
                     {q.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label>
               To{' '}
-              <select value={to ?? w.settlements[0].id} onChange={(e) => setTo(Number(e.target.value))}>
+              <Select value={to ?? w.settlements[0].id} onChange={(e) => setTo(Number(e.target.value))}>
                 {w.settlements.map((q) => (
                   <option key={q.id} value={q.id}>
                     {q.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <button className="btn small" onClick={() => game.dispatch({ type: 'evacuate', from: from ?? w.settlements[1].id, to: to ?? w.settlements[0].id })}>
               Move civilians out

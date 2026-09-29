@@ -45,6 +45,8 @@ export type Mode =
   | { kind: 'unmark' }
   | { kind: 'area'; areaKind: AreaKind; editId: number | null }
   | { kind: 'survey' }
+  /** A Warcraft-style targeted order from the command card, waiting for a click. */
+  | { kind: 'order'; order: 'move' | 'attack' | 'gather' }
   | { kind: 'claim' }
   | { kind: 'march'; companyId: number; supplyDays: number };
 
@@ -80,6 +82,10 @@ export interface SettlerInfo {
   partner: string;
   /** Learning a new role at the Town Hall. */
   training: { role: JobId; pct: number } | null;
+  /** Side job: done whenever the main job has nothing. */
+  sideJob: JobId | null;
+  /** Holding position (Hold). */
+  hold: boolean;
 }
 
 /** What the Town Hall can teach, for the Train menu and the hall's panel. */
@@ -274,6 +280,8 @@ export function settlerInfo(sim: Simulation, s: Settler): SettlerInfo {
     child: s.lifeStage === 'child',
     partner: partnerOf(sim, s),
     training: s.training ? { role: s.training.role, pct: Math.min(100, Math.floor((s.training.progress / ROLE_TRAIN_TICKS) * 100)) } : null,
+    sideJob: s.sideJob ?? null,
+    hold: !!s.hold,
   };
 }
 

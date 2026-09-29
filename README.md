@@ -38,20 +38,23 @@ Handy scripts:
 | Select settler / building | Left-click |
 | Select a group (or fields, if no settlers are in the box) | Left-drag |
 | Add to selection | Shift + click / drag |
-| Contextual order (move, chop, mine, pick, farm, build, deliver, craft, move in) | Right-click |
-| Pan | W A S D / arrow keys, middle-drag, optional screen-edge panning |
+| Smart order (move, chop, mine, pick, farm, build, deliver, craft, move in, hunt an animal) | Right-click |
+| **Orders, like Warcraft III** (people selected) | **M** move, **S** stop, **H** hold position, **A** attack (hunt), **G** gather, **B** build, **C** return goods, **T** train a main job; then click the target (Shift keeps the order) |
+| With a building selected | **U** upgrade, **P** pause, **X** demolish |
+| Pan | Arrow keys, middle-drag, the screen edge (the letters are commands, as in Warcraft III) |
 | Zoom | Mouse wheel, `=` / `-` |
 | Pause / speeds 1×, 2×, 4× | Space, 1, 2, 3 |
 | Build menu (categories on the command card) | B, then Q W E R / A S D F / Z X C V for a category and a building; Esc goes back |
 | Find yourself, the ruler / Rally (ruler selected) | K / R |
-| Train a role at the Town Hall (people selected) | J, then Q W E R / A S D F / Z X C for the role |
+| Train a main job at the Town Hall (people selected) | T, then Q W E R / A S D F / Z X C for the role |
 | Hear the Assistant Chief's advice (or find them) | O, or click the gold “?” over them |
 | Windows: People, Areas, Towns, Families, Realm, Goals | F2, F3, F4, F6, F7, F8 |
-| All goods / Valley today / See more about the selection | I / T / V |
+| All goods / Valley today / See more about the selection | I / F9 / V |
+| Full screen | F (or the Full screen button on the title screen and in the menu) |
 | Survey / jump to the Town Hall | Y / Backspace |
-| Tile grid / health bars (everyone or only the hurt) | G / L |
-| Scroll the map | Touch any edge of the window with the mouse (Warcraft-style; speed in Settings), W A S D / arrows, middle-drag |
-| Mark / unmark resources for harvest | H / U, then drag |
+| Tile grid / health bars (everyone or only the hurt) | ` / L |
+| Scroll the map | Touch any edge of the screen with the mouse (Warcraft-style; speed in Settings), arrows, middle-drag. While playing, the mouse is held inside the game; pause (Space or Esc) to let it go |
+| Mark / unmark resources for harvest (nobody selected) | G / U, then drag |
 | Demolish or cancel selected building | Delete or X |
 | Next idle settler / select everyone | `.` / E |
 | Save | F5 or Ctrl+S |
@@ -145,6 +148,29 @@ in `localStorage`.
    what a visitor or household is still waiting for. Valleys saved before this
    update keep automatic newcomer arrivals until you choose **Adopt deliberate
    growth** in the Families tab.
+
+## What's new in the Warcraft commands update
+
+- **Install it as an app.** On the title screen, **Install app** (when the browser offers it)
+  adds Little Valley as an app that opens full screen, so the screen's edges are the map's
+  edges. There's also a **Full screen** button (and the F key).
+- **The mouse stays in the game** while you play, like Warcraft III: it can't slip off the
+  top or bottom of the window, so edge scrolling works on all four sides. Pause (Space), press
+  Esc or open a menu and the mouse is free again. You can turn this off in Settings.
+- **Warcraft III commands.** With people selected the command card is a unit card: **M**ove,
+  **S**top, **H**old position, **A**ttack (click a wild animal to hunt it, bare-handed unless
+  they work at a lodge), **G**ather, **B**uild, **C** return goods, **T**rain. Right-clicking an
+  animal hunts it. A building's card has **U**pgrade, **P**ause and **X** demolish. The card's
+  keys follow what is selected, as in Warcraft. The camera moves with the arrow keys and the
+  screen edge. Older key settings are moved to this layout once.
+- **Main job and side job.** Pick both on the person's card (See more). A new main job is
+  learned at the Town Hall; the **side job** changes at once, and they do it whenever the main
+  job has nothing to do. A traveller with nowhere left to explore works at their side job.
+- **See more sits inside the bottom panel**, in the free space beside the selection, and
+  starts open.
+- **Every screen is pixel art:** pixel font everywhere, pixel drop-downs, sliders, check boxes
+  and scroll bars. Boxes are edged with grass on all four sides (no dark border lines), and the
+  HUD dirt is a warm speckled loam that stands apart from the map's soil.
 
 ## What's new in the roles update
 

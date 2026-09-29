@@ -504,6 +504,71 @@ export class GameController {
   }
 
   /** Right-click: the contextual order for whatever is under the cursor. */
+  /** The animal under a screen point, if any. */
+  animalAtScreen(sx: number, sy: number): number | null {
+    const w = this.camera.screenToWorld(sx, sy);
+    let best: number | null = null;
+    let bestD = 12;
+    for (const a of this.sim.animals) {
+      if (!this.sim.world.explored(Math.floor(a.x), Math.floor(a.y))) continue;
+      const d = Math.hypot(a.x * TILE - w.x, (a.y * TILE - 6 - w.y) * 0.8);
+      if (d < bestD) {
+        bestD = d;
+        best = a.id;
+      }
+    }
+    return best;
+  }
+
+  /** Warcraft-style targeted orders from the command card: Move (M), Attack (A), Gather (G). */
+  startOrder(order: 'move' | 'attack' | 'gather'): void {
+    if (this.selected.size === 0) {
+      if (order === 'gather') this.setMode({ kind: 'mark' });
+      else this.toast('Select people first, then give the order.', 'info');
+      return;
+    }
+    this.setMode({ kind: 'order', order });
+  }
+
+  /** Completes a targeted order where the player clicked. Shift keeps the order for another click. */
+  orderAt(sx: number, sy: number, keep: boolean): void {
+    if (this.mode.kind !== 'order') return;
+    const order = this.mode.order;
+    const ids = [...this.selected];
+    const t = this.worldTile(sx, sy);
+    let res: CommandResult;
+    if (order === 'attack') {
+      const animal = this.animalAtScreen(sx, sy);
+      if (animal === null) {
+        this.toast('Click a wild animal to hunt it.', 'info');
+        this.marker(t.x, t.y, 'bad');
+        return;
+      }
+      res = this.dispatch({ type: 'hunt', ids, animalId: animal });
+      if (res.ok) this.marker(t.x, t.y, 'attack');
+    } else if (order === 'gather') {
+      res = this.dispatch({ type: 'gather', ids, x: t.x, y: t.y });
+      if (res.ok) this.marker(t.x, t.y, 'work');
+    } else {
+      res = this.dispatch({ type: 'move', ids, x: t.x, y: t.y });
+      if (res.ok) this.marker(t.x, t.y, 'move');
+    }
+    if (!res.ok) {
+      this.marker(t.x, t.y, 'bad');
+      return;
+    }
+    this.audio.play('command');
+    if (!keep) this.setMode({ kind: 'select' });
+  }
+
+  /** Stop, Hold and Return goods for the selection. */
+  orderNow(type: 'stop' | 'hold' | 'returnGoods'): void {
+    const ids = [...this.selected];
+    if (!ids.length) return this.toast('Select people first, then give the order.', 'info');
+    const res = this.dispatch({ type, ids }, type !== 'hold');
+    if (res.ok) this.audio.play('command');
+  }
+
   commandAt(sx: number, sy: number): void {
     const t = this.worldTile(sx, sy);
     const ids = [...this.selected];
@@ -512,8 +577,13 @@ export class GameController {
       return;
     }
     const b = this.sim.buildingAt(t.x, t.y);
+    const animal = this.animalAtScreen(sx, sy);
     let res: CommandResult;
-    if (b) {
+    // Warcraft's smart order: right-clicking wild game attacks (hunts) it.
+    if (animal !== null && this.sim.animals.find((a) => a.id === animal)?.penId === null) {
+      res = this.dispatch({ type: 'hunt', ids, animalId: animal });
+      if (res.ok) this.marker(t.x, t.y, 'attack');
+    } else if (b) {
       res = this.dispatch({ type: 'work', ids, buildingId: b.id });
       if (res.ok) this.marker(t.x, t.y, 'work');
     } else if (OBJECTS[this.sim.world.obj(t.x, t.y)].resource && this.sim.world.amount(t.x, t.y) > 0) {
@@ -832,7 +902,24 @@ export class GameController {
         this.setSpeed(2);
         break;
       case 'harvest':
-        this.setMode(this.mode.kind === 'mark' ? { kind: 'select' } : { kind: 'mark' });
+        // Gather (G): with people selected, click what to gather; otherwise mark for harvest.
+        if (this.selected.size) this.startOrder('gather');
+        else this.setMode(this.mode.kind === 'mark' ? { kind: 'select' } : { kind: 'mark' });
+        break;
+      case 'move':
+        this.startOrder('move');
+        break;
+      case 'attack':
+        this.startOrder('attack');
+        break;
+      case 'stop':
+        this.orderNow('stop');
+        break;
+      case 'hold':
+        this.orderNow('hold');
+        break;
+      case 'returnGoods':
+        this.orderNow('returnGoods');
         break;
       case 'unmark':
         this.setMode(this.mode.kind === 'unmark' ? { kind: 'select' } : { kind: 'unmark' });
@@ -1000,7 +1087,10 @@ export class GameController {
     const step = !t.done ? TUTORIAL[t.step] : null;
     const chiefNow = adviceShowing(sim);
     const onAdvice = !!chiefNow && !!this.hoverWorld && Math.abs(this.hoverWorld.x - chiefNow.x * TILE) <= 10 && Math.abs(this.hoverWorld.y - (chiefNow.y * TILE - 34)) <= 12;
-    const hover = onAdvice ? `${chiefNow!.name} has advice — click to hear it` : this.hoverWorld ? hoverText(sim, this.hoverWorld.x, this.hoverWorld.y, this.mode.kind === 'claim') : null;
+    const orderHint = this.mode.kind === 'order'
+      ? { move: 'Move: click where to go (Shift keeps the order, right-click or Esc cancels)', attack: 'Attack: click a wild animal to hunt it', gather: 'Gather: click a tree, rock or bush' }[this.mode.order]
+      : null;
+    const hover = orderHint ?? (onAdvice ? `${chiefNow!.name} has advice — click to hear it` : null) ?? (this.hoverWorld ? hoverText(sim, this.hoverWorld.x, this.hoverWorld.y, this.mode.kind === 'claim') : null);
     this.ui.set({
       region: regionalInfo(sim),
       growth: growthInfo(sim),

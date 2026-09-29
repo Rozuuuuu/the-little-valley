@@ -1,3 +1,4 @@
+import { Select } from './Select';
 import { useState } from 'react';
 import { useGame, useSnapshot } from './context';
 
@@ -28,20 +29,20 @@ export function KingdomPanel() {
             </label>
             <label>
               Banner{' '}
-              <select value={color} onChange={(e) => setColor(e.target.value)}>
+              <Select value={color} onChange={(e) => setColor(e.target.value)}>
                 {k.bannerColors.map((c) => (
                   <option key={c} value={c}>
                     {c}
                   </option>
                 ))}
-              </select>{' '}
-              <select value={emblem} onChange={(e) => setEmblem(e.target.value)}>
+              </Select>{' '}
+              <Select value={emblem} onChange={(e) => setEmblem(e.target.value)}>
                 {k.emblems.map((e) => (
                   <option key={e} value={e}>
                     {e}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <p className="muted">Crowning fixes your protected homeland: {k.homelandPreview} sectors (the lands around the camp plus every sector holding a building now). Building later never grows it.</p>
             <button className="btn small primary" onClick={() => game.dispatch({ type: 'coronate', rulerName: ruler, kingdomName: realm, banner: { color, emblem } })}>

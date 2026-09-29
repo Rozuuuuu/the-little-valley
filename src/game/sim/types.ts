@@ -48,7 +48,7 @@ export type Task =
   | { kind: 'train'; site: number; stage: 'walk' | 'drill' }
   | { kind: 'extract'; site: number; slot: number; amount: number; stage: 'walk' | 'work'; timer: number }
   | { kind: 'craft'; ws: number; stage: 'walk' | 'work' }
-  | { kind: 'hunt'; lodge: number | null; area?: number; animal: number; stage: 'stalk' | 'aim'; timer: number; tx: number; ty: number }
+  | { kind: 'hunt'; lodge: number | null; area?: number; direct?: boolean; animal: number; stage: 'stalk' | 'aim'; timer: number; tx: number; ty: number }
   | { kind: 'herd'; pen: number; stage: 'walk' | 'work'; timer: number }
   | { kind: 'eat'; src: number }
   | { kind: 'sleep'; home: number | null; stage: 'walk' | 'sleep' }
@@ -125,6 +125,12 @@ export interface Settler {
   boostUntil?: number;
   /** Learning a new role at the Town Hall (saved). */
   training?: RoleTraining | null;
+  /** Side job: its work comes right after the main job's own (saved; absent means none). */
+  sideJob?: JobId | null;
+  /** Holding position (Warcraft's Hold): takes no work until another order (saved). */
+  hold?: boolean;
+  /** Stopped (Warcraft's Stop): stands still until this tick (transient). */
+  stoppedUntil?: number;
 }
 
 /** A role being learned at a Town Hall: study ticks so far out of ROLE_TRAIN_TICKS. */

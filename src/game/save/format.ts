@@ -15,7 +15,7 @@ import type {
  * Save file format. Bump SAVE_VERSION whenever this shape changes and add a
  * migration in migrations.ts so older worlds keep loading.
  */
-export const SAVE_VERSION = 14;
+export const SAVE_VERSION = 15;
 
 export interface SaveMeta {
   name: string;
@@ -68,6 +68,9 @@ export interface SavedSettler {
   boostUntil?: number;
   /** v14+: a role being learned at the Town Hall. */
   training?: { role: JobId; hall: number; progress: number };
+  /** v15+: side job, and holding position. */
+  sideJob?: JobId;
+  hold?: boolean;
 }
 
 export interface SavedBuilding {
@@ -276,7 +279,12 @@ export interface SaveFileV14 extends Omit<SaveFileV13, 'version'> {
   version: 14;
 }
 
-export type SaveFile = SaveFileV14;
+/** v15: side jobs and Hold (optional, so v14 worlds load unchanged). */
+export interface SaveFileV15 extends Omit<SaveFileV14, 'version'> {
+  version: 15;
+}
+
+export type SaveFile = SaveFileV15;
 
 export class SaveError extends Error {
   constructor(message: string) {

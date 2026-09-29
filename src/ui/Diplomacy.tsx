@@ -1,3 +1,4 @@
+import { Select } from './Select';
 import { useState } from 'react';
 import { useGame, useSnapshot } from './context';
 
@@ -95,23 +96,23 @@ export function Diplomacy() {
         <div className="route-form">
           <label>
             To{' '}
-            <select value={target} onChange={(e) => setTo(Number(e.target.value))}>
+            <Select value={target} onChange={(e) => setTo(Number(e.target.value))}>
               {d.kingdoms.map((k) => (
                 <option key={k.id} value={k.id}>
                   {k.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <label>
             Treaty{' '}
-            <select value={kind} onChange={(e) => setKind(e.target.value)}>
+            <Select value={kind} onChange={(e) => setKind(e.target.value)}>
               {d.treatyKinds.map((k) => (
                 <option key={k.id} value={k.id}>
                   {k.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           {def && <p className="muted">Benefits: {def.benefits} Obligations: {def.obligations} Breaking it: {def.breach}</p>}
           <label>

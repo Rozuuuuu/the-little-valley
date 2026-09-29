@@ -6,10 +6,10 @@
    ===================================================================================== */
 :root {
   --grass-frame: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' shape-rendering='crispEdges'><rect x='1' y='0' width='1' height='1' fill='%23a8e070'/><rect x='4' y='0' width='1' height='1' fill='%23a8e070'/><rect x='7' y='0' width='1' height='1' fill='%23a8e070'/><rect x='10' y='0' width='1' height='1' fill='%23a8e070'/><rect x='1' y='1' width='1' height='1' fill='%23a8e070'/><rect x='2' y='1' width='1' height='1' fill='%237cc050'/><rect x='3' y='1' width='1' height='1' fill='%237cc050'/><rect x='4' y='1' width='1' height='1' fill='%23a8e070'/><rect x='5' y='1' width='1' height='1' fill='%237cc050'/><rect x='6' y='1' width='1' height='1' fill='%237cc050'/><rect x='7' y='1' width='1' height='1' fill='%23a8e070'/><rect x='8' y='1' width='1' height='1' fill='%237cc050'/><rect x='9' y='1' width='1' height='1' fill='%237cc050'/><rect x='10' y='1' width='1' height='1' fill='%23a8e070'/><rect x='0' y='2' width='1' height='1' fill='%231c3416'/><rect x='1' y='2' width='1' height='1' fill='%234f8a3c'/><rect x='2' y='2' width='1' height='1' fill='%234f8a3c'/><rect x='3' y='2' width='1' height='1' fill='%234f8a3c'/><rect x='4' y='2' width='1' height='1' fill='%234f8a3c'/><rect x='5' y='2' width='1' height='1' fill='%234f8a3c'/><rect x='6' y='2' width='1' height='1' fill='%237cc050'/><rect x='7' y='2' width='1' height='1' fill='%234f8a3c'/><rect x='8' y='2' width='1' height='1' fill='%234f8a3c'/><rect x='9' y='2' width='1' height='1' fill='%234f8a3c'/><rect x='10' y='2' width='1' height='1' fill='%237cc050'/><rect x='11' y='2' width='1' height='1' fill='%231c3416'/><rect x='0' y='3' width='1' height='1' fill='%231c3416'/><rect x='1' y='3' width='1' height='1' fill='%237cc050'/><rect x='2' y='3' width='1' height='1' fill='%234f8a3c'/><rect x='3' y='3' width='1' height='1' fill='%233a2414'/><rect x='4' y='3' width='1' height='1' fill='%233a2414'/><rect x='5' y='3' width='1' height='1' fill='%233a2414'/><rect x='6' y='3' width='1' height='1' fill='%233a2414'/><rect x='7' y='3' width='1' height='1' fill='%233a2414'/><rect x='8' y='3' width='1' height='1' fill='%233a2414'/><rect x='9' y='3' width='1' height='1' fill='%237cc050'/><rect x='10' y='3' width='1' height='1' fill='%234f8a3c'/><rect x='11' y='3' width='1' height='1' fill='%231c3416'/><rect x='0' y='4' width='1' height='1' fill='%231c3416'/><rect x='1' y='4' width='1' height='1' fill='%234f8a3c'/><rect x='2' y='4' width='1' height='1' fill='%237cc050'/><rect x='3' y='4' width='1' height='1' fill='%233a2414'/><rect x='8' y='4' width='1' height='1' fill='%233a2414'/><rect x='9' y='4' width='1' height='1' fill='%234f8a3c'/><rect x='10' y='4' width='1' height='1' fill='%234f8a3c'/><rect x='11' y='4' width='1' height='1' fill='%231c3416'/><rect x='0' y='5' width='1' height='1' fill='%231c3416'/><rect x='1' y='5' width='1' height='1' fill='%234f8a3c'/><rect x='2' y='5' width='1' height='1' fill='%234f8a3c'/><rect x='3' y='5' width='1' height='1' fill='%233a2414'/><rect x='8' y='5' width='1' height='1' fill='%233a2414'/><rect x='9' y='5' width='1' height='1' fill='%234f8a3c'/><rect x='10' y='5' width='1' height='1' fill='%234f8a3c'/><rect x='11' y='5' width='1' height='1' fill='%231c3416'/><rect x='0' y='6' width='1' height='1' fill='%231c3416'/><rect x='1' y='6' width='1' height='1' fill='%234f8a3c'/><rect x='2' y='6' width='1' height='1' fill='%234f8a3c'/><rect x='3' y='6' width='1' height='1' fill='%233a2414'/><rect x='8' y='6' width='1' height='1' fill='%233a2414'/><rect x='9' y='6' width='1' height='1' fill='%234f8a3c'/><rect x='10' y='6' width='1' height='1' fill='%237cc050'/><rect x='11' y='6' width='1' height='1' fill='%231c3416'/><rect x='0' y='7' width='1' height='1' fill='%231c3416'/><rect x='1' y='7' width='1' height='1' fill='%237cc050'/><rect x='2' y='7' width='1' height='1' fill='%234f8a3c'/><rect x='3' y='7' width='1' height='1' fill='%233a2414'/><rect x='8' y='7' width='1' height='1' fill='%233a2414'/><rect x='9' y='7' width='1' height='1' fill='%234f8a3c'/><rect x='10' y='7' width='1' height='1' fill='%234f8a3c'/><rect x='11' y='7' width='1' height='1' fill='%231c3416'/><rect x='0' y='8' width='1' height='1' fill='%231c3416'/><rect x='1' y='8' width='1' height='1' fill='%234f8a3c'/><rect x='2' y='8' width='1' height='1' fill='%234f8a3c'/><rect x='3' y='8' width='1' height='1' fill='%233a2414'/><rect x='4' y='8' width='1' height='1' fill='%233a2414'/><rect x='5' y='8' width='1' height='1' fill='%233a2414'/><rect x='6' y='8' width='1' height='1' fill='%233a2414'/><rect x='7' y='8' width='1' height='1' fill='%233a2414'/><rect x='8' y='8' width='1' height='1' fill='%233a2414'/><rect x='9' y='8' width='1' height='1' fill='%237cc050'/><rect x='10' y='8' width='1' height='1' fill='%234f8a3c'/><rect x='11' y='8' width='1' height='1' fill='%231c3416'/><rect x='0' y='9' width='1' height='1' fill='%231c3416'/><rect x='1' y='9' width='1' height='1' fill='%234f8a3c'/><rect x='2' y='9' width='1' height='1' fill='%237cc050'/><rect x='3' y='9' width='1' height='1' fill='%234f8a3c'/><rect x='4' y='9' width='1' height='1' fill='%234f8a3c'/><rect x='5' y='9' width='1' height='1' fill='%234f8a3c'/><rect x='6' y='9' width='1' height='1' fill='%234f8a3c'/><rect x='7' y='9' width='1' height='1' fill='%237cc050'/><rect x='8' y='9' width='1' height='1' fill='%234f8a3c'/><rect x='9' y='9' width='1' height='1' fill='%234f8a3c'/><rect x='10' y='9' width='1' height='1' fill='%234f8a3c'/><rect x='11' y='9' width='1' height='1' fill='%231c3416'/><rect x='0' y='10' width='1' height='1' fill='%231c3416'/><rect x='1' y='10' width='1' height='1' fill='%234f8a3c'/><rect x='2' y='10' width='1' height='1' fill='%237cc050'/><rect x='3' y='10' width='1' height='1' fill='%234f8a3c'/><rect x='4' y='10' width='1' height='1' fill='%234f8a3c'/><rect x='5' y='10' width='1' height='1' fill='%234f8a3c'/><rect x='6' y='10' width='1' height='1' fill='%237cc050'/><rect x='7' y='10' width='1' height='1' fill='%234f8a3c'/><rect x='8' y='10' width='1' height='1' fill='%234f8a3c'/><rect x='9' y='10' width='1' height='1' fill='%234f8a3c'/><rect x='10' y='10' width='1' height='1' fill='%237cc050'/><rect x='11' y='10' width='1' height='1' fill='%231c3416'/><rect x='1' y='11' width='1' height='1' fill='%231c3416'/><rect x='2' y='11' width='1' height='1' fill='%231c3416'/><rect x='3' y='11' width='1' height='1' fill='%231c3416'/><rect x='4' y='11' width='1' height='1' fill='%231c3416'/><rect x='5' y='11' width='1' height='1' fill='%231c3416'/><rect x='6' y='11' width='1' height='1' fill='%231c3416'/><rect x='7' y='11' width='1' height='1' fill='%231c3416'/><rect x='8' y='11' width='1' height='1' fill='%231c3416'/><rect x='9' y='11' width='1' height='1' fill='%231c3416'/><rect x='10' y='11' width='1' height='1' fill='%231c3416'/></svg>");
-  --dirt: #6b4a2e;
-  --dirt-2: #7c5836;
-  --dirt-3: #563a22;
-  --dirt-edge: #3a2414;
+  --dirt: #7a4f2f;
+  --dirt-2: #8a5a35;
+  --dirt-3: #5e3a20;
+  --dirt-edge: #48291a;
   --text-light: #f6ead0;
   --text-muted: #dcc7a0;
   --accent: #f4cf5a;
@@ -43,8 +43,8 @@
   background-repeat: repeat;
   border-style: solid;
   border-color: transparent;
-  border-width: 28px 10px 10px 10px;
-  border-image: var(--grass-frame) 14 5 5 5 / 28px 10px 10px 10px / 0 round;
+  border-width: 28px 12px 12px 12px;
+  border-image: var(--grass-frame) 14 6 6 6 / 28px 12px 12px 12px / 0 round;
   image-rendering: pixelated;
   box-shadow: 0 3px 0 rgba(20, 30, 16, 0.4);
   border-radius: 0;
@@ -167,15 +167,15 @@ body[data-edge="se"]:not([data-paused="1"]) * { cursor: se-resize !important; }
 /* The top bar stays compact: the same ground at 1× scale. */
 :root { --top-h: 62px; --console-h: 204px; }
 .hud-top .panel {
-  border-width: 14px 5px 5px 5px;
-  border-image: var(--grass-frame) 14 5 5 5 / 14px 5px 5px 5px / 0 round;
+  border-width: 14px 6px 6px 6px;
+  border-image: var(--grass-frame) 14 6 6 6 / 14px 6px 6px 6px / 0 round;
   background-size: 16px 16px;
 }
 .hud-top { height: calc(var(--top-h) - 8px); }
 /* Small boxes (tooltips, toasts, the hover line) use 1× too, so their text keeps its room. */
 .cmd-tip, .toast, .hover-info, .paused-banner {
-  border-width: 14px 5px 5px 5px;
-  border-image: var(--grass-frame) 14 5 5 5 / 14px 5px 5px 5px / 0 round;
+  border-width: 14px 6px 6px 6px;
+  border-image: var(--grass-frame) 14 6 6 6 / 14px 6px 6px 6px / 0 round;
   background-size: 16px 16px;
 }
 .console { padding-top: 4px; }
@@ -183,3 +183,155 @@ body[data-edge="se"]:not([data-paused="1"]) * { cursor: se-resize !important; }
 /* A one-pixel dark shadow keeps text crisp over lighter clods of dirt. */
 .panel, .console .con-map, .console .con-info, .console .con-card { text-shadow: 0 1px 0 rgba(24, 12, 4, 0.75); }
 .panel input, .panel select, .console input, .console select { text-shadow: none; }
+
+/* =====================================================================================
+   Every screen in pixel style (not just the HUD): pixel font everywhere, pixel controls
+   (drop-downs, sliders, check boxes, text boxes, scroll bars), and no dark border lines —
+   boxes are edged with grass on all four sides.
+   ===================================================================================== */
+:root { --body: 'Pixelify Sans', 'Trebuchet MS', sans-serif; }
+body { font-family: var(--pixel); letter-spacing: 0.01em; }
+button, select, input, textarea { font-family: var(--pixel); }
+kbd, .card-btn kbd, .corner-key, .tip-title kbd, .keybtn, .speed .btn, .res, .res small, .clock .sub, .badge, .order-list .btn, .mm-row.find .btn { font-family: var(--pixel) !important; }
+
+/* The bottom console: a grass verge whose top edge is a row of blades, not a line. */
+.console { border-top: none; box-shadow: none; }
+.console::before {
+  display: block; content: ""; position: absolute; left: 0; right: 0; top: -16px; height: 16px; width: auto;
+  background: var(--grass-edge) repeat-x; background-size: 96px 16px; image-rendering: pixelated;
+  border: none; border-radius: 0; pointer-events: none;
+}
+.console::after { display: none; }
+.portrait { box-shadow: none; border: 3px solid var(--grass); }
+.minimap-canvas { border: 2px solid var(--grass); }
+.card-btn { box-shadow: 0 2px 0 var(--grass-dark); }
+.bar { border: none; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25); }
+
+/* See more inside the panel: the summary on the left, the full card scrolling beside it. */
+.con-info { display: flex; }
+.con-summary { flex: 1; min-width: 0; height: 100%; }
+.con-info.split { display: grid; grid-template-columns: minmax(330px, 44%) minmax(0, 1fr); gap: 10px; }
+.con-details {
+  min-height: 0; height: 100%; overflow: auto; padding: 2px 8px 4px 10px;
+  background: rgba(40, 22, 10, 0.28); box-shadow: inset 3px 0 0 var(--grass-dark);
+  columns: 2 260px; column-gap: 16px; font-size: 13px;
+}
+.con-details > * { break-inside: avoid; }
+.con-details > h2:first-child { display: none; }
+.con-details .row { margin: 2px 0; }
+.con-info.split .see-more { display: none; }
+.con-info.split .con-bars { grid-template-columns: auto 1fr auto 1fr; }
+@media (max-width: 1100px) {
+  .con-info.split { grid-template-columns: minmax(250px, 46%) minmax(0, 1fr); }
+  .con-details { columns: 1; }
+}
+
+/* Main job / side job. */
+.job-pickers { display: flex; flex-direction: column; gap: 2px; margin: 2px 0 4px; }
+.job-pickers .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.job-pickers .px-select { min-width: 150px; }
+
+/* The pixel drop-down (Select.tsx). */
+.px-select {
+  display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 110px; max-width: 100%;
+  padding: 3px 6px 3px 8px; cursor: pointer; text-align: left; font-size: 14px; line-height: 1.2;
+  background: var(--dirt-3); color: var(--text-light); border: 2px solid var(--grass); border-radius: 0;
+  box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.25), 0 2px 0 var(--grass-dark); text-shadow: none;
+}
+.px-select:hover, .px-select.open { border-color: var(--grass-hi); background: var(--dirt-2); }
+.px-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.px-select:disabled { opacity: 0.5; cursor: default; }
+.px-select-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.px-select-arrow { color: var(--accent); flex: none; }
+.px-select-list {
+  position: fixed; z-index: 50; overflow: auto; display: flex; flex-direction: column; padding: 3px;
+  background: var(--dirt) var(--dirt-tile); background-size: 32px 32px; image-rendering: pixelated;
+  border: 3px solid var(--grass); box-shadow: 0 0 0 2px var(--grass-dark), 0 4px 0 rgba(0, 0, 0, 0.35);
+}
+.px-select-opt {
+  text-align: left; padding: 4px 8px; font-size: 14px; background: none; border: none; color: var(--text-light); cursor: pointer;
+  text-shadow: 0 1px 0 rgba(24, 12, 4, 0.75);
+}
+.px-select-opt:hover:not(:disabled), .px-select-opt:focus-visible { background: var(--grass-dark); color: #fffbe8; outline: none; }
+.px-select-opt.on { color: var(--accent); }
+.px-select-opt:disabled { opacity: 0.5; cursor: default; }
+
+/* Text boxes, sliders and check boxes. */
+input[type="text"], input[type="number"], textarea {
+  background: var(--dirt-3) !important; color: var(--text-light) !important; border: 2px solid var(--grass) !important; border-radius: 0 !important;
+  box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.3); padding: 4px 8px; font-family: var(--pixel);
+}
+input[type="range"] { -webkit-appearance: none; appearance: none; height: 16px; background: transparent; cursor: pointer; }
+input[type="range"]::-webkit-slider-runnable-track { height: 8px; background: var(--dirt-3); border: 2px solid var(--grass); }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 16px; margin-top: -6px; background: var(--accent); border: 2px solid #6a5014; border-radius: 0; }
+input[type="range"]::-moz-range-track { height: 8px; background: var(--dirt-3); border: 2px solid var(--grass); }
+input[type="range"]::-moz-range-thumb { width: 12px; height: 16px; background: var(--accent); border: 2px solid #6a5014; border-radius: 0; }
+input[type="checkbox"], input[type="radio"] {
+  -webkit-appearance: none; appearance: none; width: 16px; height: 16px; margin: 0 4px 0 0; vertical-align: middle; cursor: pointer;
+  background: var(--dirt-3); border: 2px solid var(--grass); border-radius: 0; display: inline-grid; place-content: center;
+}
+input[type="checkbox"]:checked::after, input[type="radio"]:checked::after { content: ""; width: 8px; height: 8px; background: var(--accent); }
+input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Pixel scroll bars. */
+* { scrollbar-width: thin; scrollbar-color: var(--grass) var(--dirt-3); }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--dirt-3); }
+::-webkit-scrollbar-thumb { background: var(--grass); border: 2px solid var(--dirt-3); }
+::-webkit-scrollbar-thumb:hover { background: var(--grass-hi); }
+
+/* Title screen: pixel buttons in grass-edged dirt, and a pixel-shadowed logo. */
+.title-screen .menu .btn { border: 3px solid var(--grass); box-shadow: 0 3px 0 var(--grass-dark); font-size: 20px; }
+.title-screen .tagline { font-size: 18px; }
+.title-screen .credit { font-size: 13px; }
+.title-screen .extra { display: flex; gap: 8px; margin-top: 14px; }
+.title-screen .extra .btn { font-size: 15px; padding: 5px 10px; }
+
+/* Buttons outside boxes (e.g. on the title screen) get the same ground look. */
+.btn { border-radius: 0; }
+.modal .buttons .btn, .modal .btn { border-radius: 0; }
+
+/* Order modes: a targeting cursor, red for Attack. */
+.game-canvas.mode-order { cursor: crosshair; }
+body[data-order="attack"] .game-canvas { cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' shape-rendering='crispEdges'><rect x='11' y='2' width='2' height='7' fill='%23ff5040'/><rect x='11' y='15' width='2' height='7' fill='%23ff5040'/><rect x='2' y='11' width='7' height='2' fill='%23ff5040'/><rect x='15' y='11' width='7' height='2' fill='%23ff5040'/><rect x='10' y='10' width='4' height='4' fill='none' stroke='%23ffffff'/></svg>") 12 12, crosshair; }
+
+/* The mouse held inside the game (MouseLock.ts): a pixel arrow drawn by the page. */
+.soft-cursor {
+  position: fixed; left: 0; top: 0; width: 24px; height: 24px; z-index: 10000; pointer-events: none; display: none;
+  image-rendering: pixelated; background-repeat: no-repeat; background-size: 24px 24px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' shape-rendering='crispEdges'><path d='M0 0h1v1h-1zM0 1h2v1h-2zM0 2h3v1h-3zM0 3h4v1h-4zM0 4h5v1h-5zM0 5h6v1h-6zM0 6h7v1h-7zM0 7h4v1h-4zM0 8h2v1h-2zM4 8h2v1h-2zM0 9h1v1h-1zM5 9h2v1h-2z' fill='%231c3416'/><path d='M1 2h1v1h-1zM1 3h2v1h-2zM1 4h3v1h-3zM1 5h4v1h-4zM1 6h2v1h-2z' fill='%23f4cf5a'/></svg>");
+}
+body.mouse-locked .soft-cursor { display: block; }
+/* At the edges it becomes an arrow pointing the way the map scrolls. */
+body.mouse-locked:not([data-paused="1"])[data-edge="n"] .soft-cursor,
+body.mouse-locked:not([data-paused="1"])[data-edge="s"] .soft-cursor,
+body.mouse-locked:not([data-paused="1"])[data-edge="w"] .soft-cursor,
+body.mouse-locked:not([data-paused="1"])[data-edge="e"] .soft-cursor,
+body.mouse-locked:not([data-paused="1"])[data-edge="nw"] .soft-cursor,
+body.mouse-locked:not([data-paused="1"])[data-edge="ne"] .soft-cursor,
+body.mouse-locked:not([data-paused="1"])[data-edge="sw"] .soft-cursor,
+body.mouse-locked:not([data-paused="1"])[data-edge="se"] .soft-cursor {
+  margin: -12px 0 0 -12px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' shape-rendering='crispEdges'><path d='M5 0h2v1h-2zM4 1h4v1h-4zM3 2h6v1h-6zM2 3h8v1h-8zM4 4h4v6h-4z' fill='%23f4cf5a' stroke='%231c3416' stroke-width='0.5'/></svg>");
+}
+body.mouse-locked[data-order="attack"] .soft-cursor, body.mouse-locked[data-order="move"] .soft-cursor, body.mouse-locked[data-order="gather"] .soft-cursor {
+  margin: -12px 0 0 -12px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' shape-rendering='crispEdges'><rect x='11' y='2' width='2' height='7' fill='%23ff5040'/><rect x='11' y='15' width='2' height='7' fill='%23ff5040'/><rect x='2' y='11' width='7' height='2' fill='%23ff5040'/><rect x='15' y='11' width='7' height='2' fill='%23ff5040'/></svg>");
+}
+body.mouse-locked[data-order="move"] .soft-cursor, body.mouse-locked[data-order="gather"] .soft-cursor { filter: hue-rotate(90deg) saturate(1.4); }
+/* Hover stand-in while the mouse is held (real :hover doesn't follow the drawn cursor). */
+.card-btn.lv-hover { border-color: var(--grass-hi); filter: brightness(1.12); }
+.btn.lv-hover, .win-btn.lv-hover, .px-select.lv-hover { border-color: var(--grass-hi); filter: brightness(1.12); }
+.px-select-opt.lv-hover { background: var(--grass-dark); color: #fffbe8; }
+
+.shell-note { max-width: 42ch; font-size: 13px; color: var(--straw); text-shadow: 0 2px 0 #1a1420; margin: 10px 0 0; }
+body.mouse-locked[data-edge="ne"] .soft-cursor { rotate: 45deg; }
+body.mouse-locked[data-edge="e"] .soft-cursor { rotate: 90deg; }
+body.mouse-locked[data-edge="se"] .soft-cursor { rotate: 135deg; }
+body.mouse-locked[data-edge="s"] .soft-cursor { rotate: 180deg; }
+body.mouse-locked[data-edge="sw"] .soft-cursor { rotate: 225deg; }
+body.mouse-locked[data-edge="w"] .soft-cursor { rotate: 270deg; }
+body.mouse-locked[data-edge="nw"] .soft-cursor { rotate: 315deg; }
+body.mouse-locked[data-paused="1"] .soft-cursor { rotate: none; }
+/* The details card inside the panel is not the old floating inspector. */
+.con-details.inspector { position: static; left: auto; bottom: auto; width: auto; max-height: none; }

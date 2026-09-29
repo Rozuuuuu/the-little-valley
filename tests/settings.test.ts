@@ -25,6 +25,23 @@ describe('settings', () => {
     expect(s.masterVolume).toBe(0.5);
   });
 
+  it('moves older key bindings to the Warcraft layout: arrows pan, letters are commands', () => {
+    withStorage({ edgePan: true, edgeSpeed: 1, bindings: { panLeft: ['KeyA', 'ArrowLeft'], panDown: ['KeyS', 'ArrowDown'], harvest: ['KeyH'] } });
+    const s = loadSettings();
+    expect(s.bindings.panLeft).toEqual(['ArrowLeft']);
+    expect(s.bindings.panDown).toEqual(['ArrowDown']);
+    expect(s.bindings.attack).toEqual(['KeyA']);
+    expect(s.bindings.stop).toEqual(['KeyS']);
+    expect(s.bindings.hold).toEqual(['KeyH']);
+    expect(s.bindings.harvest).toEqual(['KeyG']);
+    expect(s.lockMouse).toBe(true);
+  });
+
+  it('keeps bindings the player changed after the Warcraft layout', () => {
+    withStorage({ bindingsVersion: 2, bindings: { stop: ['KeyQ'] } });
+    expect(loadSettings().bindings.stop).toEqual(['KeyQ']);
+  });
+
   it('keeps edge scrolling off once the player has chosen that in the new settings', () => {
     withStorage({ edgePan: false, edgeSpeed: 1.5 });
     const s = loadSettings();

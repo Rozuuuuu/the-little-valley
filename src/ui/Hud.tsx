@@ -1,6 +1,8 @@
+import { Select } from './Select';
 import { useEffect, useState } from 'react';
 import { CROPS, type CropId } from '../game/data/crops';
-import { HALL_LEVEL_NAMES, JOBS, JOB_IDS } from '../game/data/jobs';
+import { HALL_LEVEL_NAMES, JOBS, JOB_IDS, type JobId } from '../game/data/jobs';
+import { SIDE_JOBS } from '../game/sim/orders';
 import { RECIPES } from '../game/data/recipes';
 import { RESOURCE_IDS, RESOURCES, type ResourceId } from '../game/data/resources';
 import { invEntries } from '../game/sim/inventory';
@@ -223,37 +225,67 @@ function Bar({ value, kind }: { value: number; kind?: string }) {
   );
 }
 
-/** Roles are learned at the Town Hall: this opens the Train menu on the command card. */
-function TrainButton({ label = 'Train…' }: { label?: string }) {
+/**
+ * Main job and side job pickers. A new main job is learned at the Town Hall (they walk there
+ * and train); the side job is done whenever the main job has nothing, and changes at once.
+ */
+function JobPickers({ list }: { list: SettlerInfo[] }) {
   const { game } = useGame();
+  const s = useSnapshot();
+  const teaches = s.roles?.teaches ?? JOB_IDS.filter((j) => JOBS[j].hallLevel === 1);
+  const ids = list.map((p) => p.id);
+  const same = <T,>(f: (p: SettlerInfo) => T): T | '' => (list.every((p) => f(p) === f(list[0])) ? f(list[0]) : '');
+  const main = same((p) => p.training?.role ?? p.job);
+  const side = same((p) => p.sideJob ?? 'none');
+  const need = (j: JobId) => (teaches.includes(j) ? '' : ` — needs a ${HALL_LEVEL_NAMES[JOBS[j].hallLevel]}`);
+  const setMain = (v: string) => {
+    const role = v as JobId;
+    // Choosing their current job again stops any training.
+    const back = list.filter((p) => p.training && p.job === role);
+    for (const p of back) game.dispatch({ type: 'cancelRoleTraining', settlerId: p.id });
+    const go = list.filter((p) => p.job !== role);
+    if (go.length) game.dispatch({ type: 'trainRole', ids: go.map((p) => p.id), role });
+  };
   return (
-    <button className="btn small" onClick={() => window.dispatchEvent(new Event('lv:train'))} title="Choose a role to learn at the Town Hall">
-      {label} <kbd className="corner-key">{keyLabel(game.settings.bindings.trainRole[0] ?? 'KeyJ')}</kbd>
-    </button>
-  );
-}
-
-function RoleRow({ s }: { s: SettlerInfo }) {
-  const { game } = useGame();
-  return (
-    <>
-      <div className="row">
-        <span>
-          Role <strong>{JOBS[s.job].name}</strong>
-        </span>
-        {!s.child && <TrainButton />}
-      </div>
-      {s.training && (
+    <div className="job-pickers">
+      <label className="row">
+        <span>Main job</span>
+        <Select value={main} onChange={(e) => setMain(e.target.value)} aria-label="Main job">
+          {main === '' && <option value="">Mixed</option>}
+          {JOB_IDS.map((j) => (
+            <option key={j} value={j} disabled={!teaches.includes(j)}>
+              {JOBS[j].name}
+              {need(j)}
+            </option>
+          ))}
+        </Select>
+      </label>
+      <label className="row">
+        <span>Side job</span>
+        <Select value={side} onChange={(e) => game.dispatch({ type: 'setSideJob', ids, job: e.target.value === 'none' ? null : (e.target.value as JobId) })} aria-label="Side job">
+          {side === '' && <option value="">Mixed</option>}
+          <option value="none">None — helps wherever needed</option>
+          {SIDE_JOBS.map((j) => (
+            <option key={j} value={j} disabled={!teaches.includes(j) || list.every((p) => p.job === j)}>
+              {JOBS[j].name}
+              {need(j)}
+            </option>
+          ))}
+        </Select>
+      </label>
+      {list.length === 1 && list[0].training && (
         <div className="row">
-          <span className="muted">Training as {JOBS[s.training.role].name}</span>
-          <Bar value={s.training.pct / 100} />
-          <button className="btn small" onClick={() => game.dispatch({ type: 'cancelRoleTraining', settlerId: s.id })}>
+          <span className="muted">Training as {JOBS[list[0].training.role].name}</span>
+          <Bar value={list[0].training.pct / 100} />
+          <button className="btn small" onClick={() => game.dispatch({ type: 'cancelRoleTraining', settlerId: list[0].id })}>
             Stop
           </button>
         </div>
       )}
-      <div className="muted">{JOBS[s.job].description}</div>
-    </>
+      <div className="muted">
+        {list.length === 1 ? `${JOBS[list[0].job].description} ` : ''}A new main job is learned at the Town Hall (about half a minute); the side job is done whenever the main job has nothing to do.
+      </div>
+    </div>
   );
 }
 
@@ -346,7 +378,7 @@ function AreaSelect({ ids, value }: { ids: number[]; value: number | null | '' }
   const { game } = useGame();
   const s = useSnapshot();
   return (
-    <select
+    <Select
       value={value === null ? 'none' : String(value)}
       onChange={(e) => game.dispatch({ type: 'assignArea', ids, areaId: e.target.value === 'none' ? null : Number(e.target.value) })}
       aria-label="Work area"
@@ -358,7 +390,7 @@ function AreaSelect({ ids, value }: { ids: number[]; value: number | null | '' }
           {a.name} ({a.kindName}, {a.workers.length}/{a.max})
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 
@@ -371,7 +403,7 @@ export function SettlerCard({ s }: { s: SettlerInfo }) {
         <div className="row muted">Your ruler: no chores, no army. People within 8 tiles work faster; Rally makes everyone nearby faster still.</div>
       ) : (
         <>
-          <RoleRow s={s} />
+          {s.child ? <div className="row muted">A child: plays near home and takes no job yet.</div> : <JobPickers list={[s]} />}
           <div className="row">
             Work area <AreaSelect ids={[s.id]} value={s.areaId} />
           </div>
@@ -417,17 +449,12 @@ export function SettlerCard({ s }: { s: SettlerInfo }) {
 
 export function GroupCard({ list }: { list: SettlerInfo[] }) {
   const { game } = useGame();
-  const job = list.every((s) => s.job === list[0].job) ? list[0].job : '';
   const area = list.every((s) => s.areaId === list[0].areaId) ? list[0].areaId : '';
+  const workers = list.filter((p) => !p.child && !p.ruler);
   return (
     <>
       <h2>{list.length} settlers</h2>
-      <div className="row">
-        <span>
-          Roles <strong>{job ? JOBS[job].name : 'mixed'}</strong>
-        </span>
-        <TrainButton label="Train all…" />
-      </div>
+      {workers.length > 0 && <JobPickers list={workers} />}
       <div className="row">
         Work area <AreaSelect ids={list.map((s) => s.id)} value={area} />
       </div>
@@ -490,14 +517,14 @@ export function BuildingCard({ info }: { info: BuildingInfo }) {
           <div className="row muted">{info.status}</div>
           <div className="row">
             Crop
-            <select value={info.field.crop ?? ''} onChange={(e) => game.setCrop(info.ids, (e.target.value || null) as CropId | null)} aria-label="Crop">
+            <Select value={info.field.crop ?? ''} onChange={(e) => game.setCrop(info.ids, (e.target.value || null) as CropId | null)} aria-label="Crop">
               <option value="">Leave fallow</option>
               {s.unlocked.crops.map((c) => (
                 <option key={c} value={c}>
                   {CROPS[c].name} ({invEntries(CROPS[c].yield).map(([r, n]) => `${n} ${r}`).join(', ')})
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           {info.ids.length === 1 && <div className="muted">Drag a box over fields to select many.</div>}
         </>
@@ -613,14 +640,14 @@ export function BuildingCard({ info }: { info: BuildingInfo }) {
         <>
           <div className="row">
             Recipe
-            <select value={info.workshop.recipe ?? ''} onChange={(e) => game.setRecipe(info.ids[0], (e.target.value || null) as never)} aria-label="Recipe">
+            <Select value={info.workshop.recipe ?? ''} onChange={(e) => game.setRecipe(info.ids[0], (e.target.value || null) as never)} aria-label="Recipe">
               <option value="">None</option>
               {info.workshop.recipes.map((r) => (
                 <option key={r} value={r}>
                   {RECIPES[r].name}: {invEntries(RECIPES[r].inputs).map(([res, n]) => `${n} ${res}`).join(' + ')} → {invEntries(RECIPES[r].outputs).map(([res, n]) => `${n} ${res}`).join(', ')}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div className="row">
             Progress <Bar value={info.workshop.progress} />
@@ -748,14 +775,14 @@ function AreasTab() {
               {a.kind === 'farm' && (
                 <div className="row">
                   <span>Crop to plant</span>
-                  <select value={a.crop ?? ''} onChange={(e) => game.dispatch({ type: 'updateArea', areaId: a.id, crop: (e.target.value || null) as CropId | null })} aria-label="Crop for this farm area">
+                  <Select value={a.crop ?? ''} onChange={(e) => game.dispatch({ type: 'updateArea', areaId: a.id, crop: (e.target.value || null) as CropId | null })} aria-label="Crop for this farm area">
                     <option value="">Only fields I place</option>
                     {s.unlocked.crops.map((c) => (
                       <option key={c} value={c}>
                         {CROPS[c].name}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
               )}
               <div className="muted">Workers: {a.workers.map((w) => w.name).join(', ') || 'none'}</div>
@@ -784,13 +811,13 @@ function AreasTab() {
                 <button className="btn small" onClick={() => game.startArea(a.kind, a.id)}>
                   Redraw
                 </button>
-                <select value={a.kind} onChange={(e) => game.dispatch({ type: 'updateArea', areaId: a.id, kind: e.target.value as AreaKind })} aria-label="Area kind">
+                <Select value={a.kind} onChange={(e) => game.dispatch({ type: 'updateArea', areaId: a.id, kind: e.target.value as AreaKind })} aria-label="Area kind">
                   {kinds.map((k) => (
                     <option key={k} value={k}>
                       {AREA_LABELS[k].name}
                     </option>
                   ))}
-                </select>
+                </Select>
                 <button className="btn small danger" onClick={() => game.dispatch({ type: 'deleteArea', areaId: a.id })}>
                   Remove
                 </button>

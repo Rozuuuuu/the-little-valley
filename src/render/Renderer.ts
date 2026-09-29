@@ -48,7 +48,7 @@ export interface PlacementPreview {
 export interface Marker {
   x: number;
   y: number;
-  kind: 'move' | 'work' | 'bad';
+  kind: 'move' | 'work' | 'attack' | 'bad';
   t0: number;
 }
 
@@ -1326,7 +1326,7 @@ export class Renderer {
       const t = (st.time - m.t0) / 0.6;
       // Guard against clock skew (e.g. a marker stamped after this frame's time).
       if (t > 1 || t < 0) continue;
-      const color = m.kind === 'move' ? P.uiGood : m.kind === 'work' ? P.uiWarn : P.uiBad;
+      const color = m.kind === 'move' ? P.uiGood : m.kind === 'work' ? P.uiWarn : m.kind === 'attack' ? '#ff5040' : P.uiBad;
       ctx.globalAlpha = 1 - t;
       ctx.strokeStyle = color;
       ctx.lineWidth = sc;

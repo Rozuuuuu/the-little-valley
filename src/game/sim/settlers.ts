@@ -29,6 +29,7 @@ import { animalHp, huntRadiusOf, penAnimals, penCapacity, preyNear, removeAnimal
 import { HEAL_ASLEEP, HEAL_AWAKE, HUNT_BREAK_OFF, HUNT_HEALED, SPECIES, WEAPONS } from '../data/animals';
 import type { Animal } from './types';
 import { chiefRoutine, learnTask, runLearn, travelerRoutine } from './roles';
+import { DIRECT_HUNT_RANGE } from './orders';
 import { JOBS, ROLE_TRAIN_TICKS } from '../data/jobs';
 
 /** A woodlot sapling grows into a tree this fast. */
@@ -876,6 +877,19 @@ export function assignTask(sim: Simulation, s: Settler): void {
     soldierRoutine(sim, s);
     return;
   }
+  // Warcraft-style Stop and Hold: stand still (needs above still come first).
+  if (s.stoppedUntil !== undefined) {
+    if (s.stoppedUntil > sim.tick) {
+      s.nextThink = s.stoppedUntil;
+      return;
+    }
+    s.stoppedUntil = undefined;
+  }
+  if (s.hold) {
+    s.idleReason = 'Holding position — give any order to release';
+    s.nextThink = sim.tick + IDLE_BACKOFF * 3;
+    return;
+  }
   if (s.ruler) {
     rulerRoutine(sim, s);
     return;
@@ -904,10 +918,8 @@ export function assignTask(sim: Simulation, s: Settler): void {
     chiefRoutine(sim, s);
     return;
   }
-  if (s.job === 'traveler') {
-    travelerRoutine(sim, s);
-    return;
-  }
+  // Travellers explore; with nowhere left to go they do their side job's work.
+  if (s.job === 'traveler' && travelerRoutine(sim, s)) return;
   let reason: string | null = null;
   const area = sim.area(s.areaId);
   if (area) {
@@ -1202,11 +1214,12 @@ function runHunt(sim: Simulation, s: Settler, t: Extract<Task, { kind: 'hunt' }>
   const lodge = t.lodge !== null ? sim.buildings.get(t.lodge) : undefined;
   const ground = t.area !== undefined ? sim.area(t.area) : undefined;
   const a = sim.animals.find((x) => x.id === t.animal);
-  if ((!lodge && !ground) || !a || a.penId !== null || s.carrying) return abortTask(sim, s);
+  if ((!lodge && !ground && !t.direct) || !a || a.penId !== null || s.carrying) return abortTask(sim, s);
   const sp = SPECIES[a.species];
   const weapon = WEAPONS[weaponOfLodge(lodge)];
   const d = Math.hypot(a.x - s.x, a.y - s.y);
-  const range = lodge ? huntRadiusOf(lodge) + 12 : ground ? Math.max(ground.x1 - ground.x0, ground.y1 - ground.y0) + 12 : 0;
+  // A direct order (Attack) follows the quarry farther than a lodge's hunters would.
+  const range = t.direct ? DIRECT_HUNT_RANGE : lodge ? huntRadiusOf(lodge) + 12 : ground ? Math.max(ground.x1 - ground.x0, ground.y1 - ground.y0) + 12 : 0;
   if (d > range) return abortTask(sim, s, 'The quarry got away');
   // Dangerous animals hit back at anyone close enough.
   if (sp.fightsBack && d <= 1.8 && (sim.tick + a.id) % sp.fightsBack.every === 0) {

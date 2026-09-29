@@ -1,3 +1,4 @@
+import { Select } from './Select';
 import { useState } from 'react';
 import { useGame, useSnapshot } from './context';
 
@@ -24,21 +25,21 @@ export function WarCouncil() {
         <div className="route-form">
           <label>
             Target{' '}
-            <select value={tgt} onChange={(e) => setTarget(Number(e.target.value))}>
+            <Select value={tgt} onChange={(e) => setTarget(Number(e.target.value))}>
               {d.kingdoms.map((k) => (
                 <option key={k.id} value={k.id}>
                   {k.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <label>
             Objective{' '}
-            <select value={objective} onChange={(e) => setObjective(e.target.value)}>
+            <Select value={objective} onChange={(e) => setObjective(e.target.value)}>
               <option value="raid">Raid their frontier</option>
               <option value="capture">Capture frontier land</option>
               <option value="defend">Defend against them</option>
-            </select>
+            </Select>
           </label>
           <button className="btn small" disabled={tgt === undefined} onClick={() => tgt !== undefined && game.dispatch({ type: 'createWarPlan', target: tgt, objective })}>
             Draft the plan
@@ -78,13 +79,13 @@ export function WarCouncil() {
             <div className="route-form">
               <label>
                 Ask{' '}
-                <select value={al} onChange={(e) => setAlly(Number(e.target.value))}>
+                <Select value={al} onChange={(e) => setAlly(Number(e.target.value))}>
                   {w.allies.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.name} (can spare {a.spare})
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
               <label>
                 Companies <input type="number" min={1} value={companies} onChange={(e) => setCompanies(Number(e.target.value))} style={{ width: 44 }} />
@@ -97,11 +98,11 @@ export function WarCouncil() {
               </label>
               <label>
                 Supplies paid by{' '}
-                <select value={supply} onChange={(e) => setSupply(e.target.value as typeof supply)}>
+                <Select value={supply} onChange={(e) => setSupply(e.target.value as typeof supply)}>
                   <option value="requester">you</option>
                   <option value="shared">both (half each)</option>
                   <option value="contributor">them</option>
-                </select>
+                </Select>
               </label>
               <p className="muted">The fee is held when they agree and paid when their soldiers reach your staging ground; it isn't refunded for service already given.</p>
               <button

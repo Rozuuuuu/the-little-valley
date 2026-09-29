@@ -1,3 +1,4 @@
+import { Select } from './Select';
 import { useState } from 'react';
 import { useGame, useSnapshot } from './context';
 
@@ -28,13 +29,13 @@ export function Travelers() {
           {g.settlements.length > 1 && (
             <label>
               Settle in{' '}
-              <select value={target} onChange={(e) => setDest(Number(e.target.value))}>
+              <Select value={target} onChange={(e) => setDest(Number(e.target.value))}>
                 {g.settlements.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
           )}
           {v.blocked && <div className="reason">⚠ {v.blocked}</div>}

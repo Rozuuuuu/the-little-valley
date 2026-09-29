@@ -185,16 +185,20 @@ function frontierSpot(sim: Simulation, s: Settler): { x: number; y: number } | n
   return null;
 }
 
-export function travelerRoutine(sim: Simulation, s: Settler): void {
+/** Sends a traveller to the edge of the fog. False when there is nowhere left to explore. */
+export function travelerRoutine(sim: Simulation, s: Settler): boolean {
   s.nextThink = sim.tick + 10;
   const spot = frontierSpot(sim, s);
   if (!spot) {
-    s.idleReason = 'Nowhere left to explore within a day’s walk';
+    // With a side job they work at that instead (the caller carries on).
+    if (s.sideJob) return false;
+    s.idleReason = 'Nowhere left to explore within a day’s walk — give them a side job';
     s.nextThink = sim.tick + 200;
-    return;
+    return true;
   }
   s.idleReason = '';
   s.task = { kind: 'move', x: spot.x, y: spot.y };
+  return true;
 }
 
 // ---- the Assistant Chief ----------------------------------------------------------

@@ -1,4 +1,4 @@
-import { defaultBindings, type Action, type Bindings } from '../input/bindings';
+import { BINDINGS_VERSION, defaultBindings, type Action, type Bindings } from '../input/bindings';
 
 export interface Settings {
   masterVolume: number;
@@ -15,6 +15,10 @@ export interface Settings {
   /** A faint tile grid over the map. */
   showGrid: boolean;
   bindings: Bindings;
+  /** Which default key layout the bindings were saved under (see BINDINGS_VERSION). */
+  bindingsVersion: number;
+  /** Keep the mouse inside the game while it runs (Warcraft-style); it is let go while paused. */
+  lockMouse: boolean;
   /** Minutes between autosaves. */
   autosaveMinutes: number;
 }
@@ -24,7 +28,8 @@ const KEY = 'little-valley:settings';
 export function defaultSettings(): Settings {
   return {
     masterVolume: 0.8, musicVolume: 0.5, sfxVolume: 0.7, muted: false,
-    edgePan: true, edgeSpeed: 1, healthBars: 'always', detailsInHud: true, showGrid: false, bindings: defaultBindings(), autosaveMinutes: 2,
+    edgePan: true, edgeSpeed: 1, healthBars: 'always', detailsInHud: true, showGrid: false, bindings: defaultBindings(), bindingsVersion: BINDINGS_VERSION,
+    lockMouse: true, autosaveMinutes: 2,
   };
 }
 
@@ -35,7 +40,9 @@ export function loadSettings(): Settings {
     if (!raw) return d;
     const s = JSON.parse(raw) as Partial<Settings>;
     const bindings = { ...d.bindings };
-    for (const [k, v] of Object.entries(s.bindings ?? {})) {
+    // Keys saved under an older default layout (WASD panning) give way to the Warcraft layout.
+    const current = (s.bindingsVersion ?? 1) >= BINDINGS_VERSION;
+    for (const [k, v] of Object.entries(current ? s.bindings ?? {} : {})) {
       if (k in bindings && Array.isArray(v) && v.every((x) => typeof x === 'string')) bindings[k as Action] = v;
     }
     const num = (v: unknown, fallback: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : fallback);
@@ -52,6 +59,8 @@ export function loadSettings(): Settings {
       showGrid: typeof s.showGrid === 'boolean' ? s.showGrid : d.showGrid,
       autosaveMinutes: typeof s.autosaveMinutes === 'number' && s.autosaveMinutes >= 1 ? s.autosaveMinutes : d.autosaveMinutes,
       bindings,
+      bindingsVersion: BINDINGS_VERSION,
+      lockMouse: typeof s.lockMouse === 'boolean' ? s.lockMouse : d.lockMouse,
     };
   } catch {
     return d;

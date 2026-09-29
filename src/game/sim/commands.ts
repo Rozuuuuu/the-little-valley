@@ -23,6 +23,7 @@ import { cancelUpgrade, startUpgrade } from './levels';
 import { layOutFields } from './areas';
 import { rally, takeThrone } from './ruler';
 import { cancelRoleTraining, hearAdvice, trainRole } from './roles';
+import { hold, huntAnimal, returnGoods, setSideJob, stop } from './orders';
 import { adoptDeliberateGrowth, cancelChildRequest, formHousehold, isChild, requestChild } from './households';
 import { fieldAction } from './farming';
 import { abortTask, findHaulFor } from './settlers';
@@ -65,6 +66,11 @@ export type Command =
   | { type: 'trainRole'; ids: number[]; role: JobId }
   | { type: 'cancelRoleTraining'; settlerId: number }
   | { type: 'hearAdvice' }
+  | { type: 'stop'; ids: number[] }
+  | { type: 'hold'; ids: number[] }
+  | { type: 'hunt'; ids: number[]; animalId: number }
+  | { type: 'returnGoods'; ids: number[] }
+  | { type: 'setSideJob'; ids: number[]; job: JobId | null }
   | { type: 'takeThrone'; name: string }
   | { type: 'cancelUpgrade'; buildingId: number }
   | { type: 'createRoute'; sourceId: number; destinationId: number; resource: ResourceId; target: number }
@@ -165,6 +171,8 @@ function pickWorkers(sim: Simulation, ids: unknown, what: string): Settler[] | s
 function takeOrder(sim: Simulation, s: Settler): void {
   abortTask(sim, s);
   s.focus = null;
+  s.hold = false;
+  s.stoppedUntil = undefined;
   s.idleReason = '';
 }
 
@@ -367,6 +375,37 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
 
     case 'hearAdvice':
       return hearAdvice(sim);
+
+    case 'stop': {
+      const list = pickSettlers(sim, cmd.ids);
+      if (list.length === 0) return err('Select someone first');
+      return stop(sim, list);
+    }
+
+    case 'hold': {
+      const list = pickSettlers(sim, cmd.ids);
+      if (list.length === 0) return err('Select someone first');
+      return hold(sim, list);
+    }
+
+    case 'hunt': {
+      const list = pickWorkers(sim, cmd.ids, 'hunt');
+      if (typeof list === 'string') return err(list);
+      return huntAnimal(sim, list, cmd.animalId);
+    }
+
+    case 'returnGoods': {
+      const list = pickSettlers(sim, cmd.ids);
+      if (list.length === 0) return err('Select someone first');
+      return returnGoods(sim, list);
+    }
+
+    case 'setSideJob': {
+      if (cmd.job !== null && !isJobId(cmd.job)) return err('Unknown job');
+      const list = pickWorkers(sim, cmd.ids, 'take a side job');
+      if (typeof list === 'string') return err(list);
+      return setSideJob(sim, list, cmd.job);
+    }
 
     case 'setJob': {
       if (!isJobId(cmd.job)) return err('Unknown job');

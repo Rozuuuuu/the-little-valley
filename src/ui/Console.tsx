@@ -153,7 +153,12 @@ function SettlerInfoPanel({ p, onMore }: { p: SettlerInfo; onMore: () => void })
       <div className="con-text">
         <div className="con-title">
           <strong>{p.name}</strong>
-          <span className="muted">{p.child ? 'Child' : JOBS[p.job].name}{p.areaName ? ` · ${p.areaName}` : ''}</span>
+          <span className="muted">
+            {p.child ? 'Child' : JOBS[p.job].name}
+            {p.sideJob ? ` (side: ${JOBS[p.sideJob].name})` : ''}
+            {p.areaName ? ` · ${p.areaName}` : ''}
+            {p.hold ? ' · holding' : ''}
+          </span>
         </div>
         {p.training && (
           <div className="con-task">
@@ -468,56 +473,86 @@ function useCommands(menu: CardMenu, setMenu: (m: CardMenu) => void, openWindow:
     return slots;
   }
 
-  // Root card: the valley's tools, plus whatever the selection can do.
-  slots[0] = { id: 'build', label: 'Build', glyph: '⚒', hotkey: b.build[0], tip: { title: 'Build', body: 'Choose a category, then a building. Construction waits until haulers bring the materials.' }, run: () => setMenu('build') };
-  slots[1] = {
-    id: 'harvest', label: 'Harvest', glyph: '🪓', hotkey: b.harvest[0], on: mode.kind === 'mark',
-    tip: { title: 'Mark for harvest', body: 'Drag over trees, rocks and bushes to mark them. Gatherers and labourers collect them.' },
-    run: () => game.setMode(mode.kind === 'mark' ? { kind: 'select' } : { kind: 'mark' }),
-  };
-  slots[2] = {
-    id: 'unmark', label: 'Unmark', glyph: '⊘', hotkey: b.unmark[0], on: mode.kind === 'unmark',
-    tip: { title: 'Remove harvest marks', body: 'Drag to take marks off.' },
-    run: () => game.setMode(mode.kind === 'unmark' ? { kind: 'select' } : { kind: 'unmark' }),
-  };
-  slots[3] = {
-    id: 'survey', label: 'Survey', glyph: '⛏', hotkey: b.survey[0], on: mode.kind === 'survey', disabled: s.selection.length === 0,
-    tip: { title: 'Survey for ore', body: 'With an adult selected, click rocky ground or a hill face: they survey the 16×16 area around it for ore.', note: s.selection.length ? undefined : 'Select an adult first' },
-    run: () => game.setMode(mode.kind === 'survey' ? { kind: 'select' } : { kind: 'survey' }),
-  };
-  slots[4] = { id: 'areas', label: 'Areas', glyph: '▦', hotkey: b.winAreas[0], tip: { title: 'Work areas', body: 'Draw woodlots, farm areas, quarries and building areas, then assign workers.' }, run: () => openWindow('areas') };
-  slots[5] = { id: 'idle', label: 'Next idle', glyph: '💤', hotkey: b.nextIdle[0], badge: s.finds.idle || undefined, tip: { title: 'Next idle settler', body: 'Jump to someone with nothing to do.' }, run: () => game.findNext('idle') };
-  slots[6] = { id: 'all', label: 'Select all', glyph: '☺', hotkey: b.selectAll[0], tip: { title: 'Select every settler' }, run: () => game.selectAll() };
-  slots[7] = { id: 'sites', label: 'Sites', glyph: '▲', badge: s.finds.sites || undefined, tip: { title: 'Construction sites', body: 'Jump to the next building under construction.' }, run: () => game.findNext('sites') };
-  slots[8] = { id: 'waiting', label: 'Waiting', glyph: '…', badge: s.finds.waiting || undefined, tip: { title: 'Waiting buildings', body: 'Buildings short of materials or workers.' }, run: () => game.findNext('waiting') };
-  const ruler = s.ruler;
-  slots[10] = {
-    id: 'ruler', label: ruler ? 'You' : 'Throne', glyph: '♛', hotkey: b.findRuler[0],
-    tip: ruler ? { title: `${ruler.name}, ${ruler.title}`, body: 'Select yourself and jump to where you stand.' } : { title: 'Take the throne', body: 'Name your ruler (you) to walk the realm, speed up work nearby and Rally your people.' },
-    run: () => {
-      if (ruler) game.selectSettlers([ruler.id], true);
-      else document.querySelector<HTMLInputElement>('.throne-form input')?.focus();
-    },
-  };
-
   const bi = s.building;
-  if (bi && s.selection.length === 0) {
+  const ruler = s.ruler;
+  const details: Cmd = { id: 'details', label: 'See more', glyph: 'ⓘ', hotkey: b.seeMore[0], tip: { title: 'See more', body: 'Everything about the selection, beside it in the panel.' }, run: openDetails };
+  const ordering = (o: 'move' | 'attack' | 'gather') => mode.kind === 'order' && mode.order === o;
+
+  if (s.selection.length > 0) {
+    // A Warcraft-style unit card: Move, Stop, Hold, Attack on top; work orders below.
+    const one = s.selection.length === 1 ? s.selection[0] : null;
+    const people = s.selection.filter(trainable);
+    const onlyRuler = people.length === 0 && !!one?.ruler;
+    slots[0] = {
+      id: 'move', label: 'Move', glyph: '➜', hotkey: b.move[0], on: ordering('move'),
+      tip: { title: 'Move', body: 'Then click where to go. Right-clicking the ground does the same at once.' }, run: () => game.startOrder('move'),
+    };
+    slots[1] = { id: 'stop', label: 'Stop', glyph: '■', hotkey: b.stop[0], tip: { title: 'Stop', body: 'Drop the current task and stand still for a moment, then carry on with their work.' }, run: () => game.orderNow('stop') };
+    slots[2] = {
+      id: 'hold', label: 'Hold', glyph: '⛨', hotkey: b.hold[0], on: s.selection.every((p) => p.hold),
+      tip: { title: 'Hold position', body: 'Stay right here and take no work until you give another order (they still eat and sleep).' }, run: () => game.orderNow('hold'),
+    };
+    if (onlyRuler && s.ruler) {
+      slots[3] = {
+        id: 'rally', label: 'Rally', glyph: '⚜', hotkey: b.rally[0], disabled: !!s.ruler.rallyIn, badge: s.ruler.rallyIn ? '…' : undefined,
+        tip: { title: 'Rally the people', body: 'Everyone within 12 tiles works 30% faster for an hour. Once a day.', note: s.ruler.rallyIn ? `Ready again in ${s.ruler.rallyIn}` : undefined },
+        run: () => game.dispatch({ type: 'rally' }),
+      };
+      slots[4] = { id: 'build', label: 'Build', glyph: '⚒', hotkey: b.build[0], tip: { title: 'Build', body: 'Choose a category, then a building.' }, run: () => setMenu('build') };
+      if (s.chief) slots[5] = { id: 'advice', label: 'Advice', glyph: '?', hotkey: b.advice[0], on: s.chief.ready, tip: { title: `Advice from ${s.chief.name}`, body: s.chief.ready ? 'Your Assistant Chief is waiting with advice.' : 'Find your Assistant Chief.' }, run: () => game.keyDown(b.advice[0], { ctrl: false, shift: false }) };
+    } else {
+      slots[3] = {
+        id: 'attack', label: 'Attack', glyph: '⚔', hotkey: b.attack[0], on: ordering('attack'), disabled: people.length === 0,
+        tip: { title: 'Attack (hunt)', body: 'Then click a wild animal: they hunt it with what their lodge gives them — bare hands, a knife or a bow. Right-clicking an animal does the same.' },
+        run: () => game.startOrder('attack'),
+      };
+      slots[4] = {
+        id: 'gather', label: 'Gather', glyph: '🪓', hotkey: b.harvest[0], on: ordering('gather'), disabled: people.length === 0,
+        tip: { title: 'Gather', body: 'Then click a tree, rock or bush: they harvest it and the ones around it.' }, run: () => game.startOrder('gather'),
+      };
+      slots[5] = { id: 'build', label: 'Build', glyph: '⚒', hotkey: b.build[0], tip: { title: 'Build', body: 'Choose a category, then a building. Selected people can then be sent to build it.' }, run: () => setMenu('build') };
+      const carrying = s.selection.some((p) => p.carrying);
+      slots[6] = {
+        id: 'return', label: 'Return', glyph: '📦', hotkey: b.returnGoods[0], disabled: !carrying,
+        tip: { title: 'Return goods', body: 'Carry what they hold to the nearest store.', note: carrying ? undefined : 'Nobody selected is carrying anything' }, run: () => game.orderNow('returnGoods'),
+      };
+      slots[7] = {
+        id: 'train', label: 'Train', glyph: '🎓', hotkey: b.trainRole[0], disabled: people.length === 0,
+        tip: { title: 'Train a new main job', body: 'Choose a role: they walk to the Town Hall and learn it. The Keep teaches crafters, hunters, herders, travellers and messengers; the Castle an Assistant Chief.' },
+        run: () => setMenu('train'),
+      };
+      slots[8] = {
+        id: 'survey', label: 'Survey', glyph: '⛏', hotkey: b.survey[0], on: mode.kind === 'survey', disabled: people.length === 0,
+        tip: { title: 'Survey for ore', body: 'Then click rocky ground or a hill face: they survey the 16×16 area around it for ore.' },
+        run: () => game.setMode(mode.kind === 'survey' ? { kind: 'select' } : { kind: 'survey' }),
+      };
+      const learning = people.filter((p) => p.training);
+      if (learning.length) {
+        slots[9] = {
+          id: 'stop-train', label: 'No train', glyph: '✕', tip: { title: 'Stop training', body: 'They keep their current main job.' },
+          run: () => learning.forEach((p) => game.dispatch({ type: 'cancelRoleTraining', settlerId: p.id })),
+        };
+      } else if (one?.homeId != null) slots[9] = { id: 'home', label: 'Home', glyph: '⌂', tip: { title: 'Show home' }, run: () => game.focusBuildingById(one.homeId!) };
+    }
+    slots[10] = details;
+  } else if (bi) {
+    // A building card.
     const id = bi.ids[0];
     if (bi.level?.next && bi.ids.length === 1) {
       const nx = bi.level.next;
-      slots[4] = {
-        id: 'upgrade', label: bi.level.upgrading ? 'Upgrading' : `Upgrade`, glyph: '⬆', disabled: !!bi.level.upgrading || !!nx.blocked, on: !!bi.level.upgrading,
+      slots[0] = {
+        id: 'upgrade', label: bi.level.upgrading ? 'Upgrading' : 'Upgrade', glyph: '⬆', hotkey: 'KeyU', disabled: !!bi.level.upgrading || !!nx.blocked, on: !!bi.level.upgrading,
         tip: { title: `Upgrade to ${nx.name}`, body: nx.perks.join(' · '), cost: nx.cost, note: bi.level.upgrading ? `${Math.round(bi.level.upgrading.progress * 100)}% done` : nx.blocked ?? `Takes about ${nx.time}` },
         run: () => game.dispatch({ type: 'upgradeBuilding', buildingId: id }),
       };
     }
     if (bi.level?.upgrading) {
-      slots[5] = { id: 'cancel-up', label: 'Cancel', glyph: '✕', tip: { title: 'Cancel the upgrade', body: 'Everything paid is returned to the stores.' }, run: () => game.dispatch({ type: 'cancelUpgrade', buildingId: id }) };
+      slots[1] = { id: 'cancel-up', label: 'Cancel', glyph: '✕', hotkey: 'KeyN', tip: { title: 'Cancel the upgrade', body: 'Everything paid is returned to the stores.' }, run: () => game.dispatch({ type: 'cancelUpgrade', buildingId: id }) };
     }
     if (bi.workshop) {
-      slots[6] = { id: 'pause', label: bi.workshop.paused ? 'Resume' : 'Pause', glyph: bi.workshop.paused ? '▶' : '❚❚', tip: { title: bi.workshop.paused ? 'Resume work' : 'Pause work' }, run: () => game.toggleWorkshop(id) };
+      slots[2] = { id: 'pause', label: bi.workshop.paused ? 'Resume' : 'Pause', glyph: bi.workshop.paused ? '▶' : '❚❚', hotkey: 'KeyP', tip: { title: bi.workshop.paused ? 'Resume work' : 'Pause work' }, run: () => game.toggleWorkshop(id) };
     }
-    slots[8] = { id: 'details', label: 'Details', glyph: 'ⓘ', tip: { title: 'See more', body: 'Everything about this building.' }, run: openDetails };
+    slots[3] = details;
     if (bi.canRemove) {
       slots[BACK_SLOT] = {
         id: 'demolish', label: bi.built ? 'Demolish' : 'Cancel', glyph: '✖', hotkey: b.demolish[0],
@@ -525,40 +560,36 @@ function useCommands(menu: CardMenu, setMenu: (m: CardMenu) => void, openWindow:
         run: () => game.removeBuildings(bi.ids),
       };
     }
-  } else if (s.selection.length > 0) {
-    const one = s.selection.length === 1 ? s.selection[0] : null;
-    if (one?.ruler && s.ruler) {
-      slots[9] = {
-        id: 'rally', label: 'Rally', glyph: '⚜', hotkey: b.rally[0], disabled: !!s.ruler.rallyIn, badge: s.ruler.rallyIn ? '…' : undefined,
-        tip: { title: 'Rally the people', body: 'Everyone within 12 tiles works 30% faster for an hour. Once a day.', note: s.ruler.rallyIn ? `Ready again in ${s.ruler.rallyIn}` : undefined },
-        run: () => game.dispatch({ type: 'rally' }),
-      };
-    }
-    const people = s.selection.filter(trainable);
-    if (people.length) {
-      slots[4] = {
-        id: 'train', label: 'Train', glyph: '🎓', hotkey: b.trainRole[0],
-        tip: { title: 'Train a new role', body: 'Choose a role: they walk to the Town Hall and learn it. The Keep teaches crafters, hunters, herders, travellers and messengers; the Castle an Assistant Chief.' },
-        run: () => setMenu('train'),
-      };
-      const learning = people.filter((p) => p.training);
-      if (learning.length) {
-        slots[5] = {
-          id: 'stop-train', label: 'Stop', glyph: '✕', tip: { title: 'Stop training', body: 'They keep their current role.' },
-          run: () => learning.forEach((p) => game.dispatch({ type: 'cancelRoleTraining', settlerId: p.id })),
-        };
-      }
-    }
-    if (one?.homeId != null) slots[7] = { id: 'home', label: 'Home', glyph: '⌂', tip: { title: 'Show home' }, run: () => game.focusBuildingById(one.homeId!) };
-    slots[8] = { id: 'details', label: 'Details', glyph: 'ⓘ', tip: { title: 'See more', body: 'Job, work order, work area, bed and family.' }, run: openDetails };
-    if (bi?.workers && bi.workers.people.length < bi.workers.max) {
-      slots[9] = {
-        id: 'assign', label: 'Assign', glyph: '⚑', tip: { title: `Assign to the ${bi.name}`, body: 'Make the selected settlers work here.' },
-        run: () => game.dispatch({ type: 'assignWorker', buildingId: bi.ids[0], ids: s.selection.map((x) => x.id) }),
-      };
-    }
+  } else {
+    // Nothing selected: the valley's tools.
+    slots[0] = { id: 'build', label: 'Build', glyph: '⚒', hotkey: b.build[0], tip: { title: 'Build', body: 'Choose a category, then a building. Construction waits until haulers bring the materials.' }, run: () => setMenu('build') };
+    slots[1] = {
+      id: 'harvest', label: 'Harvest', glyph: '🪓', hotkey: b.harvest[0], on: mode.kind === 'mark',
+      tip: { title: 'Mark for harvest', body: 'Drag over trees, rocks and bushes to mark them. Gatherers and labourers collect them.' },
+      run: () => game.setMode(mode.kind === 'mark' ? { kind: 'select' } : { kind: 'mark' }),
+    };
+    slots[2] = {
+      id: 'unmark', label: 'Unmark', glyph: '⊘', hotkey: b.unmark[0], on: mode.kind === 'unmark',
+      tip: { title: 'Remove harvest marks', body: 'Drag to take marks off.' },
+      run: () => game.setMode(mode.kind === 'unmark' ? { kind: 'select' } : { kind: 'unmark' }),
+    };
+    slots[3] = { id: 'areas', label: 'Areas', glyph: '▦', hotkey: b.winAreas[0], tip: { title: 'Work areas', body: 'Draw woodlots, farm areas, quarries and building areas, then assign workers.' }, run: () => openWindow('areas') };
+    slots[4] = { id: 'idle', label: 'Next idle', glyph: '💤', hotkey: b.nextIdle[0], badge: s.finds.idle || undefined, tip: { title: 'Next idle settler', body: 'Jump to someone with nothing to do.' }, run: () => game.findNext('idle') };
+    slots[5] = { id: 'all', label: 'Select all', glyph: '☺', hotkey: b.selectAll[0], tip: { title: 'Select every settler' }, run: () => game.selectAll() };
+    slots[6] = { id: 'sites', label: 'Sites', glyph: '▲', badge: s.finds.sites || undefined, tip: { title: 'Construction sites', body: 'Jump to the next building under construction.' }, run: () => game.findNext('sites') };
+    slots[7] = { id: 'waiting', label: 'Waiting', glyph: '…', badge: s.finds.waiting || undefined, tip: { title: 'Waiting buildings', body: 'Buildings short of materials or workers.' }, run: () => game.findNext('waiting') };
+    slots[8] = { id: 'today', label: 'Today', glyph: '☀', hotkey: b.today[0], tip: { title: 'Valley today', body: 'What needs attention and what to do next (like the Quests log).' }, run: () => game.openOverview() };
+    if (s.chief) slots[9] = { id: 'advice', label: 'Advice', glyph: '?', hotkey: b.advice[0], on: s.chief.ready, tip: { title: `Advice from ${s.chief.name}`, body: s.chief.ready ? 'Your Assistant Chief is waiting with advice.' : 'Find your Assistant Chief.' }, run: () => game.keyDown(b.advice[0], { ctrl: false, shift: false }) };
+    slots[10] = {
+      id: 'ruler', label: ruler ? 'You' : 'Throne', glyph: '♛', hotkey: b.findRuler[0],
+      tip: ruler ? { title: `${ruler.name}, ${ruler.title}`, body: 'Select yourself and jump to where you stand.' } : { title: 'Take the throne', body: 'Name your ruler (you) to walk the realm, speed up work nearby and Rally your people.' },
+      run: () => {
+        if (ruler) game.selectSettlers([ruler.id], true);
+        else document.querySelector<HTMLInputElement>('.throne-form input')?.focus();
+      },
+    };
   }
-  if (mode.kind !== 'select') slots[BACK_SLOT] = { id: 'done', label: 'Done', glyph: '✓', hotkey: 'Escape', tip: { title: 'Back to selecting' }, run: () => game.setMode({ kind: 'select' }) };
+  if (mode.kind !== 'select') slots[BACK_SLOT] = { id: 'done', label: 'Cancel', glyph: '✓', hotkey: 'Escape', tip: { title: 'Cancel the order', body: 'Back to selecting (right-click does the same).' }, run: () => game.setMode({ kind: 'select' }) };
   return slots;
 }
 
@@ -568,24 +599,34 @@ function CommandCard({ menu, setMenu, openWindow, openDetails }: { menu: CardMen
   const latest = useRef(slots);
   latest.current = slots;
 
-  // Grid hotkeys while a build menu is open (they win over camera keys like WASD).
-  // At the root, keys go through the remappable bindings instead.
+  // Warcraft-style card hotkeys: whatever the card shows answers to its own key first (A is
+  // Attack with people selected, U is Upgrade with a building selected...). In the build and
+  // train menus the grid positions (Q W E R / A S D F / Z X C V) pick the slots.
+  const { game } = useGame();
   useEffect(() => {
-    if (!menu) return;
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) return;
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
-      const i = e.code === 'Escape' ? BACK_SLOT : GRID_KEYS.indexOf(e.code);
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+      if (game.menuOpen || document.querySelector('.scrim')) return;
+      const list = latest.current;
+      let i = -1;
+      if (menu) i = e.code === 'Escape' ? BACK_SLOT : GRID_KEYS.indexOf(e.code);
+      if (i < 0) i = list.findIndex((c) => !!c && c.hotkey === e.code);
       if (i < 0) return;
-      const c = latest.current[i];
+      const c = list[i];
+      // At the root, Esc belongs to the game (deselect, then the menu) unless the card offers it.
+      if (!menu && e.code === 'Escape' && !c) return;
       e.preventDefault();
       e.stopImmediatePropagation();
-      if (c && !c.disabled) c.run();
+      if (c && !c.disabled) {
+        game.audio.play('ui');
+        c.run();
+      } else if (c) game.audio.play('error');
     };
     window.addEventListener('keydown', onKey, { capture: true });
     return () => window.removeEventListener('keydown', onKey, { capture: true });
-  }, [menu]);
+  }, [menu, game]);
 
   useEffect(() => setHover(null), [menu]);
   const tip = hover && slots.find((c) => c?.id === hover.id) ? hover : null;
@@ -667,36 +708,20 @@ function DetailsWindow({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** "See more" docked on top of the console, over the selection: the full card, scrolling. The console keeps its size. */
-function HudDetails({ onClose }: { onClose: () => void }) {
+/**
+ * "See more" inside the bottom panel: the full card fills the free space to the right of the
+ * selection summary and scrolls there. The console keeps its size and nothing covers the map.
+ */
+function HudDetails() {
   const s = useSnapshot();
-  const { game } = useGame();
   let body: React.ReactNode = null;
   if (s.selection.length === 1) body = <SettlerCard s={s.selection[0]} />;
   else if (s.selection.length > 1) body = <GroupCard list={s.selection} />;
   else if (s.building) body = <BuildingCard info={s.building} />;
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.code !== 'Escape') return;
-      const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) return;
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      onClose();
-    };
-    window.addEventListener('keydown', onKey, { capture: true });
-    return () => window.removeEventListener('keydown', onKey, { capture: true });
-  }, [onClose]);
-  const title = s.selection.length === 1 ? s.selection[0].name : s.selection.length > 1 ? `${s.selection.length} selected` : s.building?.name ?? '';
+  if (!body) return null;
   return (
-    <div className="panel hud-details-dock inspector" role="dialog" aria-label="Details">
-      <div className="hud-details-bar">
-        <h3>{title}</h3>
-        <button className="btn small" onClick={onClose}>
-          Close <kbd>{keyLabel(game.settings.bindings.seeMore[0])}</kbd>
-        </button>
-      </div>
-      <div className="hud-details-body">{body}</div>
+    <div className="con-details inspector" role="region" aria-label="See more">
+      {body}
     </div>
   );
 }
@@ -706,7 +731,8 @@ function HudDetails({ onClose }: { onClose: () => void }) {
 export function BottomConsole({ menu, setMenu, openWindow }: { menu: CardMenu; setMenu: (m: CardMenu) => void; openWindow: (w: WindowTab) => void }) {
   const { game } = useGame();
   const s = useSnapshot();
-  const [details, setDetails] = useState(false);
+  // In the HUD, See more starts open: it uses the panel's free space and covers nothing.
+  const [details, setDetails] = useState(() => game.settings.detailsInHud);
   const hasSelection = s.selection.length > 0 || !!s.building;
   // The See more key (V) toggles the details.
   useEffect(() => {
@@ -741,10 +767,12 @@ export function BottomConsole({ menu, setMenu, openWindow }: { menu: CardMenu; s
   return (
     <>
       {showDetails && !inHud && <DetailsWindow onClose={() => setDetails(false)} />}
-      {showDetails && inHud && <HudDetails onClose={() => setDetails(false)} />}
       <div className="console" aria-label="Command console">
         <ConsoleMinimap />
-        <div className="con-info">{info}</div>
+        <div className={`con-info${showDetails && inHud ? ' split' : ''}`}>
+          <div className="con-summary">{info}</div>
+          {showDetails && inHud && <HudDetails />}
+        </div>
         <CommandCard menu={menu} setMenu={setMenu} openWindow={openWindow} openDetails={() => setDetails(true)} />
       </div>
     </>

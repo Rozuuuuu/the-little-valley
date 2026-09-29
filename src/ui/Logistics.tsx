@@ -1,3 +1,4 @@
+import { Select } from './Select';
 import { useState } from 'react';
 import type { ResourceId } from '../game/data/resources';
 import { useGame, useSnapshot } from './context';
@@ -42,33 +43,33 @@ export function Routes() {
         <div className="route-form">
           <label>
             From{' '}
-            <select value={src} onChange={(e) => setFrom(Number(e.target.value))}>
+            <Select value={src} onChange={(e) => setFrom(Number(e.target.value))}>
               {l.stores.map((x) => (
                 <option key={x.id} value={x.id}>
                   {x.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <label>
             To{' '}
-            <select value={dst} onChange={(e) => setTo(Number(e.target.value))}>
+            <Select value={dst} onChange={(e) => setTo(Number(e.target.value))}>
               {l.stores.map((x) => (
                 <option key={x.id} value={x.id}>
                   {x.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <label>
             Goods{' '}
-            <select value={res} onChange={(e) => setRes(e.target.value as ResourceId)}>
+            <Select value={res} onChange={(e) => setRes(e.target.value as ResourceId)}>
               {l.resources.map((x) => (
                 <option key={x.id} value={x.id}>
                   {x.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <label>
             Keep <input type="number" min={1} max={500} value={target} onChange={(e) => setTarget(Number(e.target.value))} style={{ width: 56 }} />
@@ -120,24 +121,24 @@ export function InnPanel() {
           <div className="row">
             Take
             <input type="number" min={1} value={takeN} onChange={(e) => setTakeN(Math.max(1, Number(e.target.value)))} style={{ width: 46 }} />
-            <select value={takeItem.res} onChange={(e) => setTake(e.target.value as ResourceId)}>
+            <Select value={takeItem.res} onChange={(e) => setTake(e.target.value as ResourceId)}>
               {g.stock.map((x) => (
                 <option key={x.res} value={x.res}>
                   {x.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div className="row">
             Give
             <input type="number" min={1} value={giveN} onChange={(e) => setGiveN(Math.max(1, Number(e.target.value)))} style={{ width: 46 }} />
-            <select value={giveItem.res} onChange={(e) => setGive(e.target.value as ResourceId)}>
+            <Select value={giveItem.res} onChange={(e) => setGive(e.target.value as ResourceId)}>
               {g.buys.map((x) => (
                 <option key={x.res} value={x.res}>
                   {x.name} ({x.price})
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div className={offered >= asked ? 'muted' : 'reason'}>
             They ask {asked}; you offer {offered}.
