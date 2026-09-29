@@ -48,7 +48,8 @@ try {
     if (m.type() === 'error' || m.type() === 'warn') console.log(`[${m.type()}] ${m.text()}`);
   });
   page.on('pageerror', (e) => console.log(`[pageerror] ${e}`));
-  await page.goto(url, { waitUntil: 'networkidle0' });
+  await page.goto(url, { waitUntil: 'load', timeout: 60000 });
+  await new Promise((r) => setTimeout(r, 800));
   let n = 0;
   const shot = async (name = String(++n)) => {
     const file = `${out}-${name}.png`;

@@ -241,14 +241,20 @@ export class GameController {
       dy += this.edge.y * this.settings.edgeSpeed;
     }
     if (this.attract) {
-      dx = 0.05;
-      dy = 0.02;
+      // The title screen circles slowly over the valley instead of drifting off into the fog.
+      this.attractT += dt;
+      const a = this.attractT * ATTRACT_ORBIT_SPEED;
+      cam.centerOn(8 + Math.cos(a) * ATTRACT_ORBIT_PX, 8 + Math.sin(a) * ATTRACT_ORBIT_PX * 0.6);
+      cam.update(dt);
+      return;
     }
     if (dx || dy) cam.pan(dx * speed, dy * speed);
     cam.update(dt);
   }
 
   edge = { x: 0, y: 0 };
+  /** Seconds the title screen has been circling. */
+  private attractT = 0;
 
   // ---- events -----------------------------------------------------------------
 
@@ -997,5 +1003,9 @@ function rulerInfo(sim: Simulation): UiSnapshot['ruler'] {
     rallyIn: wait > 0 ? gameTime(wait) : '',
   };
 }
+
+/** Title-screen camera: a slow loop (radians per second) this far from the centre (art pixels). */
+const ATTRACT_ORBIT_SPEED = 0.05;
+const ATTRACT_ORBIT_PX = 96;
 
 export { TUTORIAL_OUTRO };

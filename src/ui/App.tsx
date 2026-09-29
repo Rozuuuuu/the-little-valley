@@ -26,6 +26,8 @@ type Overlay = null | 'pause' | 'settings' | 'help' | 'new' | 'load';
 /** The title screen shows a valley that tends itself. */
 function startAttract(game: GameController): void {
   const sim = createNewGame(ATTRACT_SEED);
+  // Light up everything the title camera can see as it circles.
+  sim.world.reveal(0, 0, 40);
   applyCommand(sim, { type: 'designate', x0: -14, y0: -14, x1: 14, y1: 14, on: true });
   applyCommand(sim, { type: 'placeArea', building: 'field', x0: -9, y0: 3, x1: -6, y1: 6, crop: 'wheat' });
   sim.drainEvents();
@@ -297,7 +299,7 @@ function Title({ hasSave, onContinue, onNew, onLoad, onSettings }: { hasSave: bo
         Little
         <span className="second">Valley</span>
       </h1>
-      <p className="tagline">Clear a meadow, plant the first rows, and grow a camp into a village one season at a time.</p>
+      <p className="tagline">Clear a meadow, plant the first rows, and grow a Town Hall into a kingdom one season at a time.</p>
       <div className="menu">
         {hasSave && (
           <button className="btn primary" onClick={onContinue} autoFocus>
