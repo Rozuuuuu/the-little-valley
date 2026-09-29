@@ -41,7 +41,9 @@ export interface SessionInfo {
 }
 
 export const SPEEDS = [1, 2, 4];
-const UI_INTERVAL = 250;
+/** Background HUD refresh (ms). Each refresh makes the browser redraw parts of the HUD; twice a second
+ * is plenty for clocks and stocks, and anything the player does publishes at once. */
+const UI_INTERVAL = 500;
 const IMPORTANT_SAVE_DELAY = 6000;
 const MIN_SAVE_GAP = 20000;
 

@@ -149,6 +149,18 @@ in `localStorage`.
    update keep automatic newcomer arrivals until you choose **Adopt deliberate
    growth** in the Families tab.
 
+## What's new in the smooth-scrolling update
+
+- **The map is its own layer on the page.** Each frame is drawn off-screen and handed to a
+  canvas under the HUD without copying; the browser's compositor scales it up and slides it, so
+  panning never makes the page repaint the map or wait for the graphics card.
+- **Trees are one picture each** (shadow, trunk and canopy baked together, with their sway),
+  which cut the map's drawing time by more than half.
+- **The HUD refreshes twice a second** in the background (anything you do still shows at once),
+  so the HUD redrawing no longer steals frames.
+- Measured on the development PC's graphics card: panning across fresh land and standing still
+  both held 60 frames a second with no frame over 50 ms in the final runs.
+
 ## What's new in the steady-frames update
 
 - **The map is drawn at its art resolution** (one art pixel per pixel) on a small canvas and

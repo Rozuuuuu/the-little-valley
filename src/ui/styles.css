@@ -24,6 +24,11 @@ button, select, input { font: inherit; color: inherit; }
 img.px, canvas { image-rendering: pixelated; }
 
 .game-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; outline: none; cursor: default; }
+/* The map at art resolution, under the game canvas; the compositor scales and moves it (Renderer). */
+.game-art {
+  position: fixed; left: 0; top: 0; display: none; pointer-events: none;
+  transform-origin: 0 0; will-change: transform; image-rendering: pixelated; background: #17131f;
+}
 .game-canvas.mode-place, .game-canvas.mode-mark, .game-canvas.mode-unmark, .game-canvas.mode-survey, .game-canvas.mode-claim, .game-canvas.mode-march { cursor: crosshair; }
 
 /* ---- panels: hard pixel-stepped frame, no blur ---- */

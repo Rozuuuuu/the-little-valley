@@ -232,7 +232,8 @@ export class Renderer {
     readonly sprites: SpriteBank,
     public camera: Camera,
   ) {
-    this.ctx = canvas.getContext('2d', { alpha: false })!;
+    // Transparent: the map shows through from the art layer underneath (see render).
+    this.ctx = canvas.getContext('2d')!;
     this.light = makeCanvas(1, 1);
     this.lightCtx = this.light.getContext('2d', { willReadFrequently: true })!;
     try {
@@ -494,7 +495,7 @@ export class Renderer {
       view.y = h / 2 - oy;
       this.camera = view;
       this.ctx = this.artCtx;
-      gpuImages.enabled = false;
+      gpuImages.enabled = this.artOnGpu;
       try {
         this.drawWorld(st, dt);
       } finally {
@@ -502,18 +503,69 @@ export class Renderer {
         this.ctx = main;
         gpuImages.enabled = true;
       }
-      main.imageSmoothingEnabled = false;
-      main.drawImage(this.art, 0, 0, w, h, dx, dy, w * S, h * S);
+      // The finished frame is handed to a canvas on the page under the screen canvas (a
+      // 'bitmaprenderer' canvas takes it without copying); the browser's compositor scales it up
+      // (pixelated) and moves it by the sub-pixel offset. The main thread neither copies nor
+      // repaints it, and never waits for the graphics card. The screen canvas above it is cleared
+      // and holds only night, rain and the planning layers.
+      this.presentArt();
+      this.placeArtLayer(w, h, S, dx, dy);
+      main.clearRect(0, 0, screen.width, screen.height);
     } else {
+      this.hideArtLayer();
       this.drawWorld(st, dt);
     }
     this.drawScreen(st, dt, light);
   }
 
+  private artLayerKey = '';
+
+  /** Shows the art frame just drawn: hands the offscreen frame over, or (fallback) it is already the page element. */
+  private presentArt(): void {
+    if (!this.artShow || !(this.art instanceof OffscreenCanvas)) return;
+    this.artShow.transferFromImageBitmap(this.art.transferToImageBitmap());
+  }
+
+  /** Sizes and moves the art layer on the page, in CSS pixels (the canvases may be denser). */
+  private placeArtLayer(w: number, h: number, S: number, dx: number, dy: number): void {
+    const el = this.artView;
+    if (!el.isConnected) {
+      el.className = 'game-art';
+      el.setAttribute('aria-hidden', 'true');
+      this.canvas.before(el);
+    }
+    const perCss = this.canvas.width / Math.max(1, this.canvas.clientWidth);
+    const key = `${w}x${h}@${S}/${perCss}`;
+    if (key !== this.artLayerKey) {
+      this.artLayerKey = key;
+      el.style.display = 'block';
+      el.style.width = `${(w * S) / perCss}px`;
+      el.style.height = `${(h * S) / perCss}px`;
+    }
+    el.style.transform = `translate3d(${dx / perCss}px, ${dy / perCss}px, 0)`;
+  }
+
+  private hideArtLayer(): void {
+    if (this.artLayerKey === 'hidden') return;
+    this.artLayerKey = 'hidden';
+    this.artView.style.display = 'none';
+  }
+
   /** Map drawing in art pixels on the art canvas, or straight to the screen without the art pass. */
   artPass = true;
-  private art = makeCanvas(1, 1);
-  private artCtx = this.art.getContext('2d', { alpha: false, willReadFrequently: true })!;
+  /**
+   * Where the art pass draws: an OffscreenCanvas on the CPU whose frames are handed to artView
+   * (a 'bitmaprenderer' canvas on the page), or, without OffscreenCanvas, artView itself.
+   */
+  private artView = makeCanvas(1, 1);
+  private artShow = typeof OffscreenCanvas === 'function' ? this.artView.getContext('bitmaprenderer') : null;
+  private art: HTMLCanvasElement | OffscreenCanvas = this.artShow ? new OffscreenCanvas(1, 1) : this.artView;
+  /**
+   * Whether the art pass is drawn by the graphics card (an accelerated OffscreenCanvas) rather than
+   * the CPU. Measured about the same on a weak GPU; the CPU is the steadier choice there.
+   */
+  private artOnGpu = false;
+  private artCtx = this.art.getContext('2d', { alpha: false, willReadFrequently: !this.artOnGpu }) as unknown as CanvasRenderingContext2D;
   private artCamera = new Camera();
 
   /** Everything that belongs to the map: ground, water, buildings, people, animals, effects, fog. */
@@ -1021,11 +1073,8 @@ export class Renderer {
         if (o === O.Oak && this.season === 'winter') { this.blit(this.sprites.winterOaks[v % 3], x, y); return; }
         const tree = o === O.Oak ? (this.season === 'autumn' ? this.sprites.autumnOaks : this.sprites.oaks)[v % 3] : (this.season === 'winter' ? this.sprites.winterPines : this.sprites.pines)[v % 2];
         const sway = Math.round(Math.sin(time * 1.3 + tx * 0.9 + ty * 0.4) * 0.7);
-        this.ctx.globalAlpha = 0.25;
-        this.rectW(x - 7, y - 3, 14, 3, '#10241a');
-        this.ctx.globalAlpha = 1;
-        this.blit(tree.trunk, x, y);
-        this.blit(tree.canopy, x + sway, y);
+        // One ready-made picture per tree, sway and all (was three drawings a tree, every frame).
+        this.blit(this.bakedTree(tree, sway), x, y);
         return;
       }
       case O.Berry:
@@ -1047,6 +1096,34 @@ export class Renderer {
         this.blit(this.sprites.sapling, x, y - 2);
         return;
     }
+  }
+
+  private treeCache = new Map<Sprite, Sprite[]>();
+
+  /** A tree's shadow, trunk and canopy (shifted by `sway`, -1..1) flattened into one sprite. */
+  private bakedTree(tree: { trunk: Sprite; canopy: Sprite }, sway: number): Sprite {
+    let set = this.treeCache.get(tree.canopy);
+    if (!set) {
+      set = [-1, 0, 1].map((s) => {
+        const { trunk, canopy } = tree;
+        // Everything relative to the tree's foot at (0, 0), as drawObject placed it.
+        const x0 = Math.min(-7, -trunk.ax, s - canopy.ax);
+        const y0 = Math.min(-3, -trunk.ay, -canopy.ay);
+        const x1 = Math.max(7, trunk.w - trunk.ax, s + canopy.w - canopy.ax);
+        const y1 = Math.max(0, trunk.h - trunk.ay, canopy.h - canopy.ay);
+        const c = makeCanvas(x1 - x0, y1 - y0);
+        const g = c.getContext('2d', { willReadFrequently: true })!;
+        g.globalAlpha = 0.25;
+        g.fillStyle = '#10241a';
+        g.fillRect(-7 - x0, -3 - y0, 14, 3);
+        g.globalAlpha = 1;
+        g.drawImage(trunk.canvas, -trunk.ax - x0, -trunk.ay - y0);
+        g.drawImage(canopy.canvas, s - canopy.ax - x0, -canopy.ay - y0);
+        return { canvas: c, ax: -x0, ay: -y0, w: c.width, h: c.height };
+      });
+      this.treeCache.set(tree.canopy, set);
+    }
+    return set[Math.max(-1, Math.min(1, sway)) + 1];
   }
 
   private drawAnimal(a: Animal, x: number, y: number, time: number): void {
