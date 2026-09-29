@@ -1,4 +1,4 @@
-import { keyX, keyY, tileKey } from '../core/constants';
+import { DAY_TICKS, keyX, keyY, tileKey } from '../core/constants';
 import { BUILDINGS } from '../data/buildings';
 import { CHUNK_AREA } from '../world/Chunk';
 import { chunkKey } from '../world/World';
@@ -75,6 +75,7 @@ export function serializeSim(sim: Simulation, extras: SerializeExtras): SaveFile
     ...(s.ruler ? { ruler: true } : {}),
     ...(s.hp !== undefined && s.hp < 100 ? { hp: s.hp } : {}),
     ...(s.boostUntil && s.boostUntil > sim.tick ? { boostUntil: s.boostUntil } : {}),
+    ...(s.training ? { training: { ...s.training } } : {}),
   }));
   const buildings: SavedBuilding[] = [...sim.buildings.values()].map((b) => {
     const sb: SavedBuilding = {
@@ -127,6 +128,7 @@ export function serializeSim(sim: Simulation, extras: SerializeExtras): SaveFile
       kingdoms: sim.kingdoms.map((k) => JSON.parse(JSON.stringify({ ...k, companies: k.companies.map((c) => ({ ...c, path: null })) })) as Kingdom),
       horseDay: sim.horseDay,
       rallyReadyAt: sim.rallyReadyAt,
+      chief: { nextAt: sim.chief.nextAt, adviceReady: sim.chief.adviceReady, advice: sim.chief.advice },
       animals: sim.animals.map((a) => ({ id: a.id, species: a.species, x: a.x, y: a.y, homeX: a.homeX, homeY: a.homeY, penId: a.penId, facing: a.facing, ...(a.hp !== undefined ? { hp: a.hp } : {}) })),
       animalRng: sim.animalRng.state,
       war: JSON.parse(JSON.stringify({ states: [...sim.warStates], sieges: [...sim.sieges], occupationTimers: [...sim.occupationTimers] })),
@@ -195,6 +197,7 @@ export function deserializeSim(save: SaveFile): Simulation {
   sim.kingdoms = d.kingdoms.map((k) => JSON.parse(JSON.stringify(k)) as Kingdom);
   sim.horseDay = d.horseDay;
   sim.rallyReadyAt = d.rallyReadyAt ?? 0;
+  if (d.chief) sim.chief = { ...d.chief, waitUntil: d.chief.adviceReady ? sim.tick + DAY_TICKS / 4 : 0 };
   if (d.animalRng !== undefined) sim.animalRng.state = d.animalRng;
   sim.animals = (d.animals ?? []).map((a) => ({
     id: a.id, species: a.species, x: a.x, y: a.y, px: a.x, py: a.y, homeX: a.homeX, homeY: a.homeY,
@@ -274,6 +277,7 @@ export function deserializeSim(save: SaveFile): Simulation {
       ruler: ss.ruler === true ? true : undefined,
       hp: ss.hp,
       boostUntil: ss.boostUntil,
+      training: ss.training ? { ...ss.training } : null,
     };
     // Captives are held elsewhere until peace.
     if (s.captive) s.hidden = true;

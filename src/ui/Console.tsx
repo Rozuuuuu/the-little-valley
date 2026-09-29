@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { BUILDINGS, CATEGORY_INFO, CATEGORY_ORDER, type BuildingCategory, type BuildingId } from '../game/data/buildings';
 import { CROPS } from '../game/data/crops';
-import { JOBS } from '../game/data/jobs';
+import { HALL_LEVEL_NAMES, JOBS, JOB_IDS, type JobId } from '../game/data/jobs';
 import { RESOURCES, type Inventory } from '../game/data/resources';
 import { invEntries } from '../game/sim/inventory';
 import { keyLabel } from '../input/bindings';
@@ -12,7 +12,18 @@ import { ResIcon } from './Icon';
 import { BuildingCard, GroupCard, SettlerCard } from './Hud';
 
 /** What the command card shows: its own commands, the build categories, or one category. */
-export type CardMenu = null | 'build' | BuildingCategory;
+export type CardMenu = null | 'build' | 'train' | BuildingCategory;
+
+/** A glyph for each role on the Train menu. */
+const ROLE_GLYPH: Record<JobId, string> = {
+  laborer: '⚒', farmer: '🌾', gatherer: '🧺', builder: '🔨', hauler: '📦', crafter: '⚙',
+  hunter: '🏹', herder: '🐑', traveler: '🧭', messenger: '✉', chief: '🎖',
+};
+
+/** Whether people can be sent to learn a role: adults who aren't soldiers or the ruler. */
+function trainable(p: SettlerInfo): boolean {
+  return !p.child && !p.ruler;
+}
 export type WindowTab = 'people' | 'areas' | 'towns' | 'families' | 'realm' | 'goals';
 
 /** The command card's 4×3 grid answers to these keys while a build menu is open (Warcraft-style). */
@@ -144,6 +155,11 @@ function SettlerInfoPanel({ p, onMore }: { p: SettlerInfo; onMore: () => void })
           <strong>{p.name}</strong>
           <span className="muted">{p.child ? 'Child' : JOBS[p.job].name}{p.areaName ? ` · ${p.areaName}` : ''}</span>
         </div>
+        {p.training && (
+          <div className="con-task">
+            Training as {JOBS[p.training.role].name} — {p.training.pct}%
+          </div>
+        )}
         <div className={p.idle ? 'reason' : 'con-task'}>{p.idle ? `⚠ ${p.idleReason}` : p.task}</div>
         <div className="con-bars">
           <span>Health</span> <Bar value={p.hp / 100} kind="hp" />
@@ -200,6 +216,8 @@ function buildingHeadline(b: BuildingInfo): string {
   if (b.extraction) return b.extraction.status;
   if (b.field) return b.field.state;
   if (b.orchard) return b.orchard;
+  if (b.hall?.training.length) return `Training: ${b.hall.training.map((t) => `${t.name} → ${JOBS[t.role].name} ${t.pct}%`).join(', ')}`;
+  if (b.hall) return `${b.residents ? `${b.residents.people.length}/${b.residents.capacity} bunks · ` : ''}Teaches ${b.hall.teaches.length} roles · select people and press Train`;
   if (b.residents) return `${b.residents.people.length}/${b.residents.capacity} ${b.residents.temporary ? 'bunks' : 'beds'} taken`;
   return b.status || b.description;
 }
@@ -388,6 +406,34 @@ function useCommands(menu: CardMenu, setMenu: (m: CardMenu) => void, openWindow:
     return slots;
   }
 
+  if (menu === 'train') {
+    const people = s.selection.filter(trainable);
+    const hall = s.roles;
+    JOB_IDS.forEach((j, i) => {
+      const def = JOBS[j];
+      const taught = !!hall && hall.teaches.includes(j);
+      const all = people.length > 0 && people.every((p) => p.job === j);
+      const full = !!hall && hall.training.length >= hall.places;
+      slots[i] = {
+        id: `role-${j}`, label: def.name, glyph: ROLE_GLYPH[j], hotkey: GRID_KEYS[i], disabled: !taught || all || people.length === 0, on: all,
+        tip: {
+          title: `Train as ${def.name}`, body: def.description,
+          note: !hall ? 'Needs a Town Hall'
+            : !taught ? `Needs a ${HALL_LEVEL_NAMES[def.hallLevel]} — upgrade the Town Hall`
+            : all ? 'Already their role'
+            : full ? `The ${hall.levelName} is full (${hall.places} training places) — wait for someone to finish`
+            : `They walk to the ${hall.levelName} and train for about half a minute · ${hall.training.length}/${hall.places} places taken`,
+        },
+        run: () => {
+          game.dispatch({ type: 'trainRole', ids: people.map((p) => p.id), role: j });
+          setMenu(null);
+        },
+      };
+    });
+    slots[BACK_SLOT] = { ...back, tip: { title: 'Back', body: 'Close the Train menu.' }, run: () => setMenu(null) };
+    return slots;
+  }
+
   if (menu === 'build') {
     CATEGORY_ORDER.forEach((cat, i) => {
       const ids = [...s.unlocked.buildings, ...s.unlocked.locked.map((l) => l.id)].filter((id) => BUILDINGS[id].category === cat);
@@ -440,7 +486,7 @@ function useCommands(menu: CardMenu, setMenu: (m: CardMenu) => void, openWindow:
     run: () => game.setMode(mode.kind === 'survey' ? { kind: 'select' } : { kind: 'survey' }),
   };
   slots[4] = { id: 'areas', label: 'Areas', glyph: '▦', hotkey: b.winAreas[0], tip: { title: 'Work areas', body: 'Draw woodlots, farm areas, quarries and building areas, then assign workers.' }, run: () => openWindow('areas') };
-  slots[5] = { id: 'idle', label: 'Next idle', glyph: '?', hotkey: b.nextIdle[0], badge: s.finds.idle || undefined, tip: { title: 'Next idle settler', body: 'Jump to someone with nothing to do.' }, run: () => game.findNext('idle') };
+  slots[5] = { id: 'idle', label: 'Next idle', glyph: '💤', hotkey: b.nextIdle[0], badge: s.finds.idle || undefined, tip: { title: 'Next idle settler', body: 'Jump to someone with nothing to do.' }, run: () => game.findNext('idle') };
   slots[6] = { id: 'all', label: 'Select all', glyph: '☺', hotkey: b.selectAll[0], tip: { title: 'Select every settler' }, run: () => game.selectAll() };
   slots[7] = { id: 'sites', label: 'Sites', glyph: '▲', badge: s.finds.sites || undefined, tip: { title: 'Construction sites', body: 'Jump to the next building under construction.' }, run: () => game.findNext('sites') };
   slots[8] = { id: 'waiting', label: 'Waiting', glyph: '…', badge: s.finds.waiting || undefined, tip: { title: 'Waiting buildings', body: 'Buildings short of materials or workers.' }, run: () => game.findNext('waiting') };
@@ -488,6 +534,21 @@ function useCommands(menu: CardMenu, setMenu: (m: CardMenu) => void, openWindow:
         run: () => game.dispatch({ type: 'rally' }),
       };
     }
+    const people = s.selection.filter(trainable);
+    if (people.length) {
+      slots[4] = {
+        id: 'train', label: 'Train', glyph: '🎓', hotkey: b.trainRole[0],
+        tip: { title: 'Train a new role', body: 'Choose a role: they walk to the Town Hall and learn it. The Keep teaches crafters, hunters, herders, travellers and messengers; the Castle an Assistant Chief.' },
+        run: () => setMenu('train'),
+      };
+      const learning = people.filter((p) => p.training);
+      if (learning.length) {
+        slots[5] = {
+          id: 'stop-train', label: 'Stop', glyph: '✕', tip: { title: 'Stop training', body: 'They keep their current role.' },
+          run: () => learning.forEach((p) => game.dispatch({ type: 'cancelRoleTraining', settlerId: p.id })),
+        };
+      }
+    }
     if (one?.homeId != null) slots[7] = { id: 'home', label: 'Home', glyph: '⌂', tip: { title: 'Show home' }, run: () => game.focusBuildingById(one.homeId!) };
     slots[8] = { id: 'details', label: 'Details', glyph: 'ⓘ', tip: { title: 'See more', body: 'Job, work order, work area, bed and family.' }, run: openDetails };
     if (bi?.workers && bi.workers.people.length < bi.workers.max) {
@@ -529,9 +590,9 @@ function CommandCard({ menu, setMenu, openWindow, openDetails }: { menu: CardMen
   useEffect(() => setHover(null), [menu]);
   const tip = hover && slots.find((c) => c?.id === hover.id) ? hover : null;
   return (
-    <div className="con-card" role="toolbar" aria-label={menu ? (menu === 'build' ? 'Build categories' : `${CATEGORY_INFO[menu].name} buildings`) : 'Commands'}>
+    <div className="con-card" role="toolbar" aria-label={menu ? (menu === 'build' ? 'Build categories' : menu === 'train' ? 'Roles to train' : `${CATEGORY_INFO[menu].name} buildings`) : 'Commands'}>
       {tip && <CommandTip c={tip} />}
-      <div className="card-head">{menu === 'build' ? 'Build' : menu ? CATEGORY_INFO[menu].name : 'Commands'}</div>
+      <div className="card-head">{menu === 'build' ? 'Build' : menu === 'train' ? 'Train a role' : menu ? CATEGORY_INFO[menu].name : 'Commands'}</div>
       <div className="card-grid">
         {slots.map((c, i) =>
           c ? (
@@ -653,6 +714,22 @@ export function BottomConsole({ menu, setMenu, openWindow }: { menu: CardMenu; s
     window.addEventListener('lv:see-more', toggle);
     return () => window.removeEventListener('lv:see-more', toggle);
   }, []);
+  // The Train key (J) and the Train buttons open the role menu for the selected people.
+  useEffect(() => {
+    const open = () => {
+      const people = game.ui.get().selection.filter(trainable);
+      if (people.length) {
+        setMenu('train');
+        game.audio.play('uiOpen');
+      } else game.toast('Select the people you want to train first.', 'info');
+    };
+    window.addEventListener('lv:train', open);
+    return () => window.removeEventListener('lv:train', open);
+  }, [game, setMenu]);
+  // Nobody left to train: close the role menu.
+  useEffect(() => {
+    if (menu === 'train' && !s.selection.some(trainable)) setMenu(null);
+  }, [menu, s.selection, setMenu]);
   const inHud = game.settings.detailsInHud;
   const showDetails = details && hasSelection && s.mode.kind !== 'place';
   let info: React.ReactNode;

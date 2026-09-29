@@ -261,6 +261,8 @@ export const MIGRATIONS: Record<number, (save: AnyRecord) => AnyRecord> = {
 
   /** v12 → v13: health for settlers and animals; everyone starts at full health. */
   12: (v12) => ({ ...v12, version: 13 }),
+  /** v13 → v14: roles trained at the Town Hall and the Assistant Chief; nobody is training yet. */
+  13: (v13) => ({ ...v13, version: 14 }),
 };
 
 export function migrate(raw: unknown): SaveFile {
@@ -433,6 +435,13 @@ export function validateSave(save: AnyRecord): void {
   }
   check((sim.settlers as AnyRecord[]).filter((s) => s.ruler === true).length <= 1, 'more than one ruler');
   check(sim.rallyReadyAt === undefined || isNum(sim.rallyReadyAt), 'rally');
+  // v14 additions: role training and the Assistant Chief.
+  for (const s of sim.settlers as AnyRecord[]) {
+    const t = s.training as AnyRecord | undefined;
+    check(t === undefined || (t && isJobId(t.role) && isInt(t.hall) && isNum(t.progress) && (t.progress as number) >= 0), `settler ${s.id} training`);
+  }
+  const chief = sim.chief as AnyRecord | undefined;
+  check(chief === undefined || (chief && isNum(chief.nextAt) && typeof chief.adviceReady === 'boolean' && typeof chief.advice === 'string'), 'assistant chief');
   if (sim.animals !== undefined) {
     check(Array.isArray(sim.animals), 'animals');
     const buildingIds = new Set((sim.buildings as AnyRecord[]).map((b) => b.id));

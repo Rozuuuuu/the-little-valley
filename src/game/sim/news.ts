@@ -1,4 +1,5 @@
 import { EVENT_LIMIT, INBOX_LIMIT } from '../data/treaties';
+import { hasMessenger } from './roles';
 import type { Simulation } from './Simulation';
 import type { Certainty, ClaimSector, NewsReport, WorldEvent, WorldEventKind } from './types';
 
@@ -47,7 +48,9 @@ export function recordObservation(
   const prior = sim.reports.filter((r) => r.recipientKingdomId === observer && r.eventId === eventId && !r.superseded);
   const best = prior.sort((a, b) => RANK[b.certainty] - RANK[a.certainty])[0];
   if (best && RANK[best.certainty] >= RANK[certainty]) return best.id;
-  const delay = opts.delay === undefined ? 0 : opts.delay;
+  let delay = opts.delay === undefined ? 0 : opts.delay;
+  // A messenger brings news home twice as fast.
+  if (observer === 0 && delay && delay > 0 && hasMessenger(sim)) delay = Math.round(delay / 2);
   const r: NewsReport = {
     id: sim.allocId(), eventId, kind, sourceKingdomId: opts.sourceKingdomId ?? null, sourceKind: opts.source ?? 'scout',
     subjectKingdomId: subject, recipientKingdomId: observer, certainty,

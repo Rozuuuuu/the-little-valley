@@ -9,7 +9,7 @@ export type Action =
   | 'pause' | 'speed1' | 'speed2' | 'speed3'
   | 'build' | 'harvest' | 'unmark' | 'demolish' | 'cancel'
   | 'nextIdle' | 'selectAll' | 'save' | 'help'
-  | 'survey' | 'homeView' | 'findRuler' | 'rally' | 'toggleGrid' | 'healthBars' | 'goods' | 'today' | 'seeMore'
+  | 'survey' | 'homeView' | 'findRuler' | 'rally' | 'trainRole' | 'advice' | 'toggleGrid' | 'healthBars' | 'goods' | 'today' | 'seeMore'
   | 'winPeople' | 'winAreas' | 'winTowns' | 'winFamilies' | 'winRealm' | 'winGoals';
 
 export interface ActionDef {
@@ -42,6 +42,8 @@ export const DEFAULT_BINDINGS: Record<Action, ActionDef> = {
   homeView: { label: 'Jump to the Town Hall', group: 'Camera', keys: ['Backspace', 'Home'] },
   findRuler: { label: 'Find yourself (the ruler)', group: 'Camera', keys: ['KeyK'] },
   rally: { label: 'Rally the people (ruler selected)', group: 'Tools', keys: ['KeyR'] },
+  trainRole: { label: 'Train a role at the Town Hall (people selected)', group: 'Tools', keys: ['KeyJ'] },
+  advice: { label: "Hear the Assistant Chief's advice (or find them)", group: 'Other', keys: ['KeyO'] },
   toggleGrid: { label: 'Show or hide the tile grid', group: 'Other', keys: ['KeyG'] },
   healthBars: { label: 'Health bars: everyone / only the hurt', group: 'Other', keys: ['KeyL'] },
   goods: { label: 'All goods', group: 'Windows', keys: ['KeyI'] },

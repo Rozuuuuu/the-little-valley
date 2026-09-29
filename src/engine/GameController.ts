@@ -21,15 +21,16 @@ import { applyCommand, type Command } from '../game/sim/commands';
 import type { Simulation } from '../game/sim/Simulation';
 import type { CommandResult, SimEvent } from '../game/sim/types';
 import { OBJECTS } from '../game/world/tiles';
-import { actionFor, type Action } from '../input/bindings';
+import { actionFor, keyLabel, type Action } from '../input/bindings';
 import type { Camera } from '../render/Camera';
 import type { Marker, PlacementPreview, Renderer, RenderState } from '../render/Renderer';
 import { saveSettings, type Settings } from './settings';
 import {
-  areaInfo, buildingInfo, celebrationInfo, clockOf, emptySnapshot, hoverText, housingOf, milestoneInfo, settlerInfo, unlockedSets,
+  areaInfo, buildingInfo, celebrationInfo, chiefInfo, clockOf, emptySnapshot, hoverText, housingOf, milestoneInfo, selectionRoles, settlerInfo, unlockedSets,
   type Mode, type Toast, type UiSnapshot,
 } from './snapshot';
 import { Store } from './store';
+import { adviceShowing, chiefOf } from '../game/sim/roles';
 import { bedSummary } from '../game/sim/population';
 import { TUTORIAL, TUTORIAL_OUTRO } from './tutorial';
 
@@ -93,6 +94,8 @@ export class GameController {
   overview: Overview | null = null;
   overviewOpen = false;
   celebration: MilestoneId | null = null;
+  /** The Assistant Chief's advice, open on screen (the game waits while it is read). */
+  advice: UiSnapshot['advice'] = null;
   private pendingOverview: { previous: SessionMark | null; at: number } | null = null;
   minimap: Minimap | null = null;
   private lastMinimap = 0;
@@ -120,6 +123,7 @@ export class GameController {
     this.selectedArea = null;
     this.highlight = null;
     this.celebration = null;
+    this.advice = null;
     // Summarise the previous session before this one starts overwriting the mark.
     // Settlers pick their work during the first second, so issues are gathered a moment later.
     const previous = sim.session;
@@ -172,7 +176,7 @@ export class GameController {
   private tickFrame(now: number): void {
     const dt = Math.min(0.25, (now - this.lastFrame) / 1000);
     this.lastFrame = now;
-    const halted = this.paused || this.menuOpen || this.celebration !== null;
+    const halted = this.paused || this.menuOpen || this.celebration !== null || this.advice !== null;
     if (!halted) {
       this.acc += dt * 1000 * this.speed;
       let steps = 0;
@@ -278,6 +282,17 @@ export class GameController {
         case 'important':
           this.pendingImportant ||= performance.now();
           break;
+        case 'death':
+          this.renderer.addCorpse(e.species, e.x, e.y, e.facing);
+          this.renderer.particles.fx('dust', e.x, e.y, this.renderer.sprites.ui);
+          break;
+        case 'advice': {
+          if (this.attract) break;
+          const c = this.sim.settler(e.settlerId);
+          if (c) this.toast(`${c.name}, your Assistant Chief, has advice — click the “?” over them (or press ${keyLabel(this.settings.bindings.advice[0] ?? 'KeyO')}).`, 'info');
+          this.audio.play('uiOpen');
+          break;
+        }
         case 'milestone':
           if (!this.attract && MILESTONES[e.id].tier >= 2) {
             // A short, quiet celebration: bunting sparkles around the camp and a card with what's next.
@@ -374,7 +389,43 @@ export class GameController {
     return { x: Math.floor(w.x / TILE), y: Math.floor(w.y / TILE) };
   }
 
+  /** Whether a screen point is on the Assistant Chief's "?" (or on the chief while it shows). */
+  adviceAt(sx: number, sy: number): boolean {
+    const c = adviceShowing(this.sim);
+    if (!c) return false;
+    const w = this.camera.screenToWorld(sx, sy);
+    const bx = c.x * TILE;
+    const by = c.y * TILE - 34;
+    return (Math.abs(w.x - bx) <= 10 && Math.abs(w.y - by) <= 12) || this.settlerAtScreen(sx, sy) === c.id;
+  }
+
+  /** Hears the Assistant Chief out: their advice opens in a message box. */
+  hearAdvice(): void {
+    const c = chiefOf(this.sim);
+    const text = this.sim.chief.advice;
+    const res = applyCommand(this.sim, { type: 'hearAdvice' });
+    if (!res.ok || !c) {
+      this.audio.play('error');
+      if (res.message) this.toast(res.message, 'bad');
+      this.publish(true);
+      return;
+    }
+    this.advice = { name: c.name, text, appearance: { ...c.appearance } };
+    this.audio.play('uiOpen');
+    this.publish(true);
+  }
+
+  closeAdvice(): void {
+    this.advice = null;
+    this.audio.play('uiClose');
+    this.publish(true);
+  }
+
   clickSelect(sx: number, sy: number, additive: boolean): void {
+    if (!additive && this.adviceAt(sx, sy)) {
+      this.hearAdvice();
+      return;
+    }
     const id = this.settlerAtScreen(sx, sy);
     if (!additive) {
       this.selected.clear();
@@ -804,6 +855,17 @@ export class GameController {
       case 'homeView':
         this.findNext('home');
         break;
+      case 'advice': {
+        if (adviceShowing(this.sim)) this.hearAdvice();
+        else {
+          const c = chiefOf(this.sim);
+          if (c) {
+            this.selectSettlers([c.id], true);
+            this.toast(this.sim.chief.adviceReady ? `${c.name} is on the way to you with advice.` : `${c.name} has no advice just now — they will come to you when they do.`, 'info');
+          } else this.toast('You have no Assistant Chief yet — upgrade the Town Hall to a Castle and train one there.', 'info');
+        }
+        break;
+      }
       case 'toggleGrid':
         this.settings = { ...this.settings, showGrid: !this.settings.showGrid };
         saveSettings(this.settings);
@@ -936,7 +998,9 @@ export class GameController {
     const settlers = sim.settlers.map((s) => settlerInfo(sim, s));
     const t = this.tutorial;
     const step = !t.done ? TUTORIAL[t.step] : null;
-    const hover = this.hoverWorld ? hoverText(sim, this.hoverWorld.x, this.hoverWorld.y, this.mode.kind === 'claim') : null;
+    const chiefNow = adviceShowing(sim);
+    const onAdvice = !!chiefNow && !!this.hoverWorld && Math.abs(this.hoverWorld.x - chiefNow.x * TILE) <= 10 && Math.abs(this.hoverWorld.y - (chiefNow.y * TILE - 34)) <= 12;
+    const hover = onAdvice ? `${chiefNow!.name} has advice — click to hear it` : this.hoverWorld ? hoverText(sim, this.hoverWorld.x, this.hoverWorld.y, this.mode.kind === 'claim') : null;
     this.ui.set({
       region: regionalInfo(sim),
       growth: growthInfo(sim),
@@ -987,6 +1051,9 @@ export class GameController {
         bridge: this.findList('bridge').length > 0,
       },
       ruler: rulerInfo(sim),
+      roles: selectionRoles(sim, [...this.selected].map((id) => sim.settler(id)!).filter(Boolean)),
+      chief: chiefInfo(sim),
+      advice: this.advice,
     });
   }
 }

@@ -28,6 +28,8 @@ import { speedOf, workersOf } from './levels';
 import { animalHp, huntRadiusOf, penAnimals, penCapacity, preyNear, removeAnimal, startle, weaponOfLodge } from './animals';
 import { HEAL_ASLEEP, HEAL_AWAKE, HUNT_BREAK_OFF, HUNT_HEALED, SPECIES, WEAPONS } from '../data/animals';
 import type { Animal } from './types';
+import { chiefRoutine, learnTask, runLearn, travelerRoutine } from './roles';
+import { JOBS, ROLE_TRAIN_TICKS } from '../data/jobs';
 
 /** A woodlot sapling grows into a tree this fast. */
 const REPLANT_TICKS = Math.round(DAY_TICKS * 0.75);
@@ -118,7 +120,7 @@ function face(s: Settler, tx: number, ty: number): void {
   else if (dy !== 0) s.facing = dy < 0 ? 1 : 0;
 }
 
-function faceRect(s: Settler, x: number, y: number, w: number, h: number): void {
+export function faceRect(s: Settler, x: number, y: number, w: number, h: number): void {
   const tx = Math.max(x, Math.min(x + w, s.x));
   const ty = Math.max(y, Math.min(y + h, s.y));
   face(s, tx, ty);
@@ -878,6 +880,12 @@ export function assignTask(sim: Simulation, s: Settler): void {
     rulerRoutine(sim, s);
     return;
   }
+  // Learning a new role at the Town Hall comes before any work.
+  const learn = learnTask(s);
+  if (learn) {
+    set(learn);
+    return;
+  }
   const post = councilPostOf(sim, s);
   if (post) {
     s.idleReason = `Serving on the council as ${COUNCIL_POSTS[post].name} — not available for other work`;
@@ -891,6 +899,14 @@ export function assignTask(sim: Simulation, s: Settler): void {
       return;
     }
     s.focus = null;
+  }
+  if (s.job === 'chief') {
+    chiefRoutine(sim, s);
+    return;
+  }
+  if (s.job === 'traveler') {
+    travelerRoutine(sim, s);
+    return;
   }
   let reason: string | null = null;
   const area = sim.area(s.areaId);
@@ -1465,6 +1481,8 @@ export function runTask(sim: Simulation, s: Settler): void {
       return runEat(sim, s, t);
     case 'sleep':
       return runSleep(sim, s, t);
+    case 'learn':
+      return runLearn(sim, s, t);
   }
 }
 
@@ -1500,6 +1518,7 @@ export function describeTask(sim: Simulation, s: Settler): string {
   if (s.captive) return 'Held captive — home at peace';
   const t = s.task;
   if (s.ruler && (!t || t.kind === 'wander')) return 'Watching over the realm';
+  if (s.job === 'chief' && !t) return sim.chief.adviceReady ? 'Waiting to give you advice — click the “?”' : 'Watching over the people';
   if (!t) return s.idleReason ? 'Idle' : 'Looking for work';
   const bname = (id: number) => {
     const b = sim.buildings.get(id);
@@ -1507,7 +1526,14 @@ export function describeTask(sim: Simulation, s: Settler): string {
   };
   switch (t.kind) {
     case 'move':
+      if (s.job === 'traveler') return 'Exploring beyond the known land';
+      if (s.job === 'chief') return sim.chief.adviceReady ? 'Bringing advice to the ruler' : 'Walking among the people, watching them work';
       return 'Walking';
+    case 'learn': {
+      const role = s.training ? JOBS[s.training.role].name : 'a new role';
+      if (t.stage === 'walk') return `Going to the Town Hall to train as ${role}`;
+      return `Training as ${role} (${Math.floor(((s.training?.progress ?? 0) / ROLE_TRAIN_TICKS) * 100)}%)`;
+    }
     case 'wander':
       return 'Idle';
     case 'gather': {

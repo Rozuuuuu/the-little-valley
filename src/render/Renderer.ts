@@ -23,6 +23,8 @@ import { invEntries } from '../game/sim/inventory';
 import type { AreaKind } from '../game/sim/types';
 import type { Simulation } from '../game/sim/Simulation';
 import type { Animal, Building, Settler } from '../game/sim/types';
+import type { SpeciesId } from '../game/data/animals';
+import { adviceShowing } from '../game/sim/roles';
 import type { Chunk } from '../game/world/Chunk';
 import { O, OBJECTS, T } from '../game/world/tiles';
 import { chunkKey } from '../game/world/World';
@@ -145,6 +147,8 @@ interface Drawable {
   draw: () => void;
 }
 
+/** How long a fallen animal stays on screen (seconds). */
+const CORPSE_SECONDS = 2.2;
 const FOG = '#17131f';
 const CHUNK_PX = CHUNK * TILE;
 const MAX_CHUNK_CACHE = 48;
@@ -442,6 +446,15 @@ export class Renderer {
       if (st.selected.has(s.id) || st.hoverSettler === s.id) this.drawRing(x, y, st.selected.has(s.id));
       drawables.push({ y, draw: () => this.drawSettler(s, x, y, st.time) });
     }
+    const now = performance.now() / 1000;
+    this.corpses = this.corpses.filter((c) => now - c.t0 < CORPSE_SECONDS);
+    for (const c of this.corpses) {
+      const x = c.x * TILE;
+      const y = c.y * TILE;
+      if (x < tl.x - 32 || x > br.x + 32 || y < tl.y - 32 || y > br.y + 48) continue;
+      drawables.push({ y, draw: () => this.drawCorpse(c, x, y, now) });
+    }
+    this.advising = adviceShowing(sim)?.id ?? null;
     for (const a of sim.animals) {
       const x = (a.px + (a.x - a.px) * st.alpha) * TILE;
       const y = (a.py + (a.y - a.py) * st.alpha) * TILE;
@@ -880,6 +893,77 @@ export class Renderer {
     if (this.healthBars === 'always' || hp < sp.hp) this.drawHpBar(x, y - [0, 13, 18, 23][sp.size], hp / sp.hp, a.penId !== null ? 'tame' : sp.fightsBack ? 'danger' : 'wild');
   }
 
+  /** Animals that just died: they flash, topple over, lie still a moment and fade. */
+  private corpses: { species: SpeciesId; x: number; y: number; facing: 2 | 3; t0: number; landed: boolean }[] = [];
+
+  addCorpse(species: SpeciesId, x: number, y: number, facing: 2 | 3): void {
+    this.corpses.push({ species, x, y, facing, t0: performance.now() / 1000, landed: false });
+    if (this.corpses.length > 40) this.corpses.shift();
+  }
+
+  private drawCorpse(c: (typeof this.corpses)[number], x: number, y: number, now: number): void {
+    const age = now - c.t0;
+    const frames = this.sprites.animals[c.species];
+    let sprite = frames[4];
+    if (age < 0.18 || (age < 0.32 && Math.floor(age * 30) % 2 === 0)) sprite = this.flash(sprite);
+    // Keel over onto its back in a third of a second (legs up), tilting as it goes, with a little bounce.
+    const k = Math.min(1, age / 0.34);
+    const ease = k * k;
+    const bounce = age > 0.34 && age < 0.5 ? Math.sin(((age - 0.34) / 0.16) * Math.PI) * 1.5 : 0;
+    const dir = c.facing === 3 ? -1 : 1;
+    const flip = Math.cos(Math.PI * ease);
+    const tilt = dir * Math.sin(Math.PI * ease) * 0.45;
+    if (!c.landed && k >= 1) {
+      c.landed = true;
+      this.particles.fx('dust', c.x, c.y, this.sprites.ui);
+      this.particles.fx('dust', c.x + dir * 0.4, c.y, this.sprites.ui);
+    }
+    const alpha = age < CORPSE_SECONDS - 0.7 ? 1 : Math.max(0, (CORPSE_SECONDS - age) / 0.7);
+    if (!SPECIES[c.species].swims) {
+      this.ctx.globalAlpha = 0.25 * alpha;
+      this.rectW(x - sprite.w / 4 - (sprite.h / 3) * ease, y - 1, sprite.w / 2 + (sprite.h / 1.5) * ease, 2, '#140e1c');
+      this.ctx.globalAlpha = 1;
+    }
+    const cam = this.camera;
+    const sc = cam.scale;
+    const ctx = this.ctx;
+    ctx.save();
+    // Roll about the middle of the visible body, so the back ends up on the ground.
+    const pivot = (sprite.ay - this.topPad(frames[4])) / 2;
+    ctx.translate(Math.round(x * sc + cam.tx), Math.round((y - pivot - bounce) * sc + cam.ty));
+    ctx.rotate(tilt);
+    ctx.scale(c.facing === 3 ? -1 : 1, Math.abs(flip) < 0.15 ? Math.sign(flip || 1) * 0.15 : flip);
+    ctx.translate(0, pivot * sc);
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(sprite.canvas, Math.round(-sprite.ax * sc), Math.round(-sprite.ay * sc), Math.round(sprite.w * sc), Math.round(sprite.h * sc));
+    ctx.restore();
+  }
+
+  private padCache = new Map<Sprite, number>();
+
+  /** Empty rows above a sprite's first opaque pixel. */
+  private topPad(s: Sprite): number {
+    let pad = this.padCache.get(s);
+    if (pad === undefined) {
+      pad = 0;
+      try {
+        const d = s.canvas.getContext('2d')!.getImageData(0, 0, s.w, s.h).data;
+        const opaqueRow = (y: number) => {
+          for (let x = 0; x < s.w; x++) if (d[(y * s.w + x) * 4 + 3] > 40) return true;
+          return false;
+        };
+        while (pad < s.h && !opaqueRow(pad)) pad++;
+      } catch {
+        pad = 0;
+      }
+      this.padCache.set(s, pad);
+    }
+    return pad;
+  }
+
+  /** The Assistant Chief while their "?" shows (set each frame). */
+  private advising: number | null = null;
+
   /** A faint line along every tile edge (toggle with G). */
   private drawGrid(tx0: number, ty0: number, tx1: number, ty1: number): void {
     const ctx = this.ctx;
@@ -1128,7 +1212,13 @@ export class Renderer {
     if (s.carrying) this.blit(this.sprites.resources[s.carrying.res], x, y - 20 + (phase % 2));
     // The ruler wears a crown (a little higher while walking, so it bobs).
     if (s.ruler && s.anim !== 'sleep') this.blit(this.sprites.ui.crown, x, y - 21 - (s.anim === 'walk' ? phase % 2 : 0));
-    if (s.anim === 'sleep') {
+    // The Assistant Chief wears a feathered cap.
+    if (s.job === 'chief' && s.anim !== 'sleep') this.blit(this.sprites.ui.chiefCap, x, y - 20 - (s.anim === 'walk' ? phase % 2 : 0));
+    if (this.advising === s.id) {
+      // Advice ready: a big gold "?" that bobs and pulses, to be clicked.
+      const bob = Math.round(Math.sin(time * 4) * 1.5);
+      this.blit(this.sprites.ui.advice, x, y - 25 + bob, 0.85 + 0.15 * Math.sin(time * 6));
+    } else if (s.anim === 'sleep') {
       const t = (time * 0.6 + s.id * 0.3) % 1;
       this.ctx.globalAlpha = 1 - t;
       this.blit(this.sprites.ui.zzz, x + 4 + t * 3, y - 25 - t * 8);

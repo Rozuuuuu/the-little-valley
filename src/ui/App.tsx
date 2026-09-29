@@ -14,7 +14,7 @@ import { Renderer } from '../render/Renderer';
 import { SpriteBank } from '../render/sprites';
 import { GameContext, useGame, type GameContextValue } from './context';
 import { HoverInfo, PausedBanner, SidePanel, Toasts, TopBar, Tutorial } from './Hud';
-import { Celebration, ValleyToday } from './Village';
+import { Celebration, ChiefAdvice, ValleyToday } from './Village';
 import { BottomConsole, type CardMenu, type WindowTab } from './Console';
 import { HelpModal, LoadModal, NewWorldModal, PauseMenu, SettingsModal, type NewWorldChoice } from './Modals';
 import { CURRENT_GEN } from '../game/world/worldgen';
@@ -198,6 +198,7 @@ export function App() {
               <BottomConsole menu={cardMenu} setMenu={setCardMenu} openWindow={setWin} />
               <ValleyToday />
               <Celebration />
+              <ChiefAdvice />
             </>
           )}
           {overlay === 'pause' && <PauseMenu onClose={closeOverlay} onSettings={() => setOverlay('settings')} onHelp={() => setOverlay('help')} onQuit={quitToTitle} />}
@@ -273,6 +274,7 @@ function InputBridge({ screen, overlay, setOverlay, buildOpen, setBuildOpen, win
         }
         if (b.goods.includes(e.code)) window.dispatchEvent(new Event('lv:goods'));
         else if (b.seeMore.includes(e.code)) window.dispatchEvent(new Event('lv:see-more'));
+        else if (b.trainRole.includes(e.code)) window.dispatchEvent(new Event('lv:train'));
         else if (b.today.includes(e.code)) game.openOverview();
         else if (b.findRuler.includes(e.code)) {
           const r = game.ui.get().ruler;

@@ -16,6 +16,8 @@ import { invEntries } from '../game/sim/inventory';
 import { effectivePriorities } from '../game/sim/priorities';
 import { currentMilestone, nextMilestone, requirementProgress, type RequirementProgress } from '../game/sim/progression';
 import { describeTask } from '../game/sim/settlers';
+import { HALL_LEVEL_NAMES, ROLE_TRAIN_TICKS } from '../game/data/jobs';
+import { adviceShowing, chiefOf, hallFor, rolesAt, trainingAt, trainingPlaces } from '../game/sim/roles';
 import type { Simulation } from '../game/sim/Simulation';
 import type { Appearance, AreaKind, BedClaim, Building, Settler } from '../game/sim/types';
 import { daysToAdult, householdOf } from '../game/sim/households';
@@ -76,6 +78,18 @@ export interface SettlerInfo {
   child: boolean;
   /** The other adult in their household, if any. */
   partner: string;
+  /** Learning a new role at the Town Hall. */
+  training: { role: JobId; pct: number } | null;
+}
+
+/** What the Town Hall can teach, for the Train menu and the hall's panel. */
+export interface HallRoles {
+  hallId: number;
+  level: number;
+  levelName: string;
+  places: number;
+  training: { id: number; name: string; role: JobId; pct: number }[];
+  teaches: JobId[];
 }
 
 export interface BuildingInfo {
@@ -103,6 +117,8 @@ export interface BuildingInfo {
   permanent: boolean;
   /** Pens and pastures. */
   pen?: { species: string; count: number; capacity: number; status: string; ready: number; product: string | null };
+  /** Town Halls: the roles taught here and who is training. */
+  hall?: HallRoles;
   /** Hunter's lodges. */
   hunting?: { prey: number; radius: number; kinds: string; weapon: string };
   /** Upgrade levels, for buildings that have them. */
@@ -192,6 +208,12 @@ export interface UiSnapshot {
   finds: { idle: number; waiting: number; sites: number; bridge: boolean };
   /** The player's ruler on the map, if this world has one. */
   ruler: { id: number; name: string; title: string; rallyIn: string } | null;
+  /** The Town Hall the selection would train at. */
+  roles: HallRoles | null;
+  /** The Assistant Chief, and whether their "?" is showing. */
+  chief: { id: number; name: string; ready: boolean } | null;
+  /** The advice the player just opened. */
+  advice: { name: string; text: string; appearance: Appearance } | null;
 }
 
 export function emptySnapshot(): UiSnapshot {
@@ -220,6 +242,7 @@ export function emptySnapshot(): UiSnapshot {
     settlers: [], idleCount: 0, toasts: [], tutorial: null, tutorialOutro: false, hover: null, saveStatus: '',
     unlocked: { buildings: [], locked: [], crops: [] }, worldName: '', explored: 0,
     areas: [], selectedArea: null, overview: null, celebration: null, finds: { idle: 0, waiting: 0, sites: 0, bridge: false }, ruler: null,
+    roles: null, chief: null, advice: null,
   };
 }
 
@@ -250,7 +273,29 @@ export function settlerInfo(sim: Simulation, s: Settler): SettlerInfo {
     age: s.lifeStage === 'child' ? `Child · grows up in ${daysToAdult(s)} day${daysToAdult(s) === 1 ? '' : 's'}` : 'Adult',
     child: s.lifeStage === 'child',
     partner: partnerOf(sim, s),
+    training: s.training ? { role: s.training.role, pct: Math.min(100, Math.floor((s.training.progress / ROLE_TRAIN_TICKS) * 100)) } : null,
   };
+}
+
+export function hallRoles(sim: Simulation, hall: Building): HallRoles {
+  const level = levelOf(hall);
+  return {
+    hallId: hall.id, level, levelName: HALL_LEVEL_NAMES[Math.min(3, level)], places: trainingPlaces(hall),
+    training: trainingAt(sim, hall).map((s) => ({ id: s.id, name: s.name, role: s.training!.role, pct: Math.min(100, Math.floor((s.training!.progress / ROLE_TRAIN_TICKS) * 100)) })),
+    teaches: rolesAt(level),
+  };
+}
+
+/** The hall the selected people would train at (the first town's when nobody is selected). */
+export function selectionRoles(sim: Simulation, selected: Settler[]): HallRoles | null {
+  const hall = selected[0] ? hallFor(sim, selected[0]) : null;
+  const h = hall ?? [...sim.buildings.values()].find((b) => b.type === 'townHall' && b.built) ?? null;
+  return h ? hallRoles(sim, h) : null;
+}
+
+export function chiefInfo(sim: Simulation): UiSnapshot['chief'] {
+  const c = chiefOf(sim);
+  return c ? { id: c.id, name: c.name, ready: adviceShowing(sim) !== null } : null;
 }
 
 function partnerOf(sim: Simulation, s: Settler): string {
@@ -337,6 +382,7 @@ export function buildingInfo(sim: Simulation, list: Building[]): BuildingInfo | 
     info.status = prey.length ? `${prey.length} game animals within ${huntRadiusOf(b)} tiles: ${kinds.join(', ')}` : 'No game nearby — wild animals roam back in time';
   }
   if (def.training && b.built) info.training = trainingInfo(sim, b);
+  if (b.type === 'townHall' && b.built) info.hall = hallRoles(sim, b);
   if (def.extraction && b.built) {
     const d = mineDeposit(sim, b);
     const next = b.mine && b.mine.level < 3 ? MINE_UPGRADES[(b.mine.level + 1) as 2 | 3] : null;

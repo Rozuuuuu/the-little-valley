@@ -22,6 +22,7 @@ import { surveyDeposit, upgradeMine } from './mining';
 import { cancelUpgrade, startUpgrade } from './levels';
 import { layOutFields } from './areas';
 import { rally, takeThrone } from './ruler';
+import { cancelRoleTraining, hearAdvice, trainRole } from './roles';
 import { adoptDeliberateGrowth, cancelChildRequest, formHousehold, isChild, requestChild } from './households';
 import { fieldAction } from './farming';
 import { abortTask, findHaulFor } from './settlers';
@@ -61,6 +62,9 @@ export type Command =
   | { type: 'upgradeMine'; buildingId: number }
   | { type: 'upgradeBuilding'; buildingId: number }
   | { type: 'rally' }
+  | { type: 'trainRole'; ids: number[]; role: JobId }
+  | { type: 'cancelRoleTraining'; settlerId: number }
+  | { type: 'hearAdvice' }
   | { type: 'takeThrone'; name: string }
   | { type: 'cancelUpgrade'; buildingId: number }
   | { type: 'createRoute'; sourceId: number; destinationId: number; resource: ResourceId; target: number }
@@ -351,10 +355,25 @@ function applyCommandInner(sim: Simulation, cmd: Command): CommandResult {
       return ok(removeBuilding(sim, b));
     }
 
+    case 'trainRole': {
+      if (!isJobId(cmd.role)) return err('Unknown role');
+      const list = pickWorkers(sim, cmd.ids, 'train for a role');
+      if (typeof list === 'string') return err(list);
+      return trainRole(sim, list, cmd.role);
+    }
+
+    case 'cancelRoleTraining':
+      return cancelRoleTraining(sim, sim.settler(cmd.settlerId));
+
+    case 'hearAdvice':
+      return hearAdvice(sim);
+
     case 'setJob': {
       if (!isJobId(cmd.job)) return err('Unknown job');
       const list = pickWorkers(sim, cmd.ids, 'take a job');
       if (typeof list === 'string') return err(list);
+      const limit = JOBS[cmd.job].limit;
+      if (limit !== undefined && sim.settlers.filter((o) => o.job === cmd.job).length + list.length > limit) return err(`Only ${limit} ${JOBS[cmd.job].name} at a time`);
       for (const s of list) {
         if (s.job === cmd.job && s.priorities === null) continue;
         s.job = cmd.job;

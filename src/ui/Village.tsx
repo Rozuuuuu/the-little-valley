@@ -176,6 +176,44 @@ export function MinimapPanel() {
 }
 
 /** A brief, quiet card when the settlement reaches a new tier. */
+/** The Assistant Chief's advice, opened by clicking the "?" over them. The game waits while it is read. */
+export function ChiefAdvice() {
+  const { game, sprites } = useGame();
+  const s = useSnapshot();
+  const a = s.advice;
+  useEffect(() => {
+    if (!a) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== 'Escape' && e.code !== 'Enter' && e.code !== 'Space') return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      game.closeAdvice();
+    };
+    window.addEventListener('keydown', onKey, { capture: true });
+    return () => window.removeEventListener('keydown', onKey, { capture: true });
+  }, [a, game]);
+  if (!a) return null;
+  return (
+    <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && game.closeAdvice()}>
+      <div className="panel modal advice" role="dialog" aria-label={`Advice from ${a.name}`}>
+        <div className="advice-head">
+          <img className="px portrait" src={sprites.portrait(a.appearance)} alt="" />
+          <div>
+            <h2>{a.name}</h2>
+            <div className="muted">Your Assistant Chief</div>
+          </div>
+        </div>
+        <p className="advice-text">“{a.text}”</p>
+        <div className="buttons">
+          <button className="btn primary" onClick={() => game.closeAdvice()} autoFocus>
+            Thank you
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function Celebration() {
   const { game } = useGame();
   const s = useSnapshot();

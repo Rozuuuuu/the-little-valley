@@ -40,7 +40,10 @@ export function addAnimal(sim: Simulation, species: SpeciesId, x: number, y: num
 
 export function removeAnimal(sim: Simulation, a: Animal): void {
   const i = sim.animals.indexOf(a);
-  if (i >= 0) sim.animals.splice(i, 1);
+  if (i >= 0) {
+    sim.animals.splice(i, 1);
+    sim.emit({ type: 'death', species: a.species, id: a.id, x: a.x, y: a.y, facing: a.facing });
+  }
   if (a.huntedBy !== null) sim.release(`hunt:${a.id}`, a.huntedBy);
 }
 

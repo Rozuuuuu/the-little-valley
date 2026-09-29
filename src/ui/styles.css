@@ -291,3 +291,13 @@ select, input[type='text'] {
 .warn-card { border-left: 3px solid var(--wheat); padding-left: 6px; }
 .row.wrap { flex-wrap: wrap; gap: 4px; }
 .news-rumor { opacity: 0.85; font-style: italic; }
+
+/* Roles and the Assistant Chief */
+.role-chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; }
+.role-chips .chip { cursor: default; font-size: 13px; padding: 1px 6px; }
+.role-chips .chip.off { opacity: 0.55; }
+.modal.advice { max-width: 440px; text-align: left; }
+.advice-head { display: flex; gap: 12px; align-items: center; }
+.advice-head h2 { margin: 0; }
+.advice-head .portrait { width: 64px; height: 64px; image-rendering: pixelated; }
+.advice-text { font-size: 18px; line-height: 1.45; margin: 12px 0 14px; }

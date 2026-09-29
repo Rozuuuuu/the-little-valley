@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { CROPS, type CropId } from '../game/data/crops';
-import { JOBS, JOB_IDS, type JobId } from '../game/data/jobs';
+import { HALL_LEVEL_NAMES, JOBS, JOB_IDS } from '../game/data/jobs';
 import { RECIPES } from '../game/data/recipes';
 import { RESOURCE_IDS, RESOURCES, type ResourceId } from '../game/data/resources';
 import { invEntries } from '../game/sim/inventory';
@@ -223,17 +223,74 @@ function Bar({ value, kind }: { value: number; kind?: string }) {
   );
 }
 
-function JobSelect({ ids, value }: { ids: number[]; value: JobId | '' }) {
+/** Roles are learned at the Town Hall: this opens the Train menu on the command card. */
+function TrainButton({ label = 'Train…' }: { label?: string }) {
   const { game } = useGame();
   return (
-    <select value={value} onChange={(e) => game.setJob(ids, e.target.value as JobId)} aria-label="Job">
-      {value === '' && <option value="">Mixed jobs</option>}
-      {JOB_IDS.map((j) => (
-        <option key={j} value={j}>
-          {JOBS[j].name}
-        </option>
+    <button className="btn small" onClick={() => window.dispatchEvent(new Event('lv:train'))} title="Choose a role to learn at the Town Hall">
+      {label} <kbd className="corner-key">{keyLabel(game.settings.bindings.trainRole[0] ?? 'KeyJ')}</kbd>
+    </button>
+  );
+}
+
+function RoleRow({ s }: { s: SettlerInfo }) {
+  const { game } = useGame();
+  return (
+    <>
+      <div className="row">
+        <span>
+          Role <strong>{JOBS[s.job].name}</strong>
+        </span>
+        {!s.child && <TrainButton />}
+      </div>
+      {s.training && (
+        <div className="row">
+          <span className="muted">Training as {JOBS[s.training.role].name}</span>
+          <Bar value={s.training.pct / 100} />
+          <button className="btn small" onClick={() => game.dispatch({ type: 'cancelRoleTraining', settlerId: s.id })}>
+            Stop
+          </button>
+        </div>
+      )}
+      <div className="muted">{JOBS[s.job].description}</div>
+    </>
+  );
+}
+
+/** A Town Hall's roles: what it teaches at this level, and who is training. */
+function HallRolesPanel({ info }: { info: NonNullable<BuildingInfo['hall']> }) {
+  const { game } = useGame();
+  const locked = JOB_IDS.filter((j) => !info.teaches.includes(j));
+  return (
+    <div className="section">
+      <div className="row">
+        <strong>Roles taught here</strong>
+        <span className="muted">
+          {info.training.length}/{info.places} training
+        </span>
+      </div>
+      <div className="role-chips">
+        {info.teaches.map((j) => (
+          <span key={j} className="chip" title={JOBS[j].description}>
+            {JOBS[j].name}
+          </span>
+        ))}
+        {locked.map((j) => (
+          <span key={j} className="chip off" title={`${JOBS[j].description} Needs a ${HALL_LEVEL_NAMES[JOBS[j].hallLevel]}.`}>
+            🔒 {JOBS[j].name}
+          </span>
+        ))}
+      </div>
+      {info.training.map((t) => (
+        <div key={t.id} className="row">
+          <span>
+            {t.name} → {JOBS[t.role].name}
+          </span>
+          <Bar value={t.pct / 100} />
+        </div>
       ))}
-    </select>
+      <div className="muted">Select people and press Train ({keyLabel(game.settings.bindings.trainRole[0] ?? 'KeyJ')}) to send them here to learn a new role.</div>
+    </div>
   );
 }
 
@@ -314,9 +371,7 @@ export function SettlerCard({ s }: { s: SettlerInfo }) {
         <div className="row muted">Your ruler: no chores, no army. People within 8 tiles work faster; Rally makes everyone nearby faster still.</div>
       ) : (
         <>
-          <div className="row">
-            Job <JobSelect ids={[s.id]} value={s.job} />
-          </div>
+          <RoleRow s={s} />
           <div className="row">
             Work area <AreaSelect ids={[s.id]} value={s.areaId} />
           </div>
@@ -368,7 +423,10 @@ export function GroupCard({ list }: { list: SettlerInfo[] }) {
     <>
       <h2>{list.length} settlers</h2>
       <div className="row">
-        Set job for all <JobSelect ids={list.map((s) => s.id)} value={job} />
+        <span>
+          Roles <strong>{job ? JOBS[job].name : 'mixed'}</strong>
+        </span>
+        <TrainButton label="Train all…" />
       </div>
       <div className="row">
         Work area <AreaSelect ids={list.map((s) => s.id)} value={area} />
@@ -474,6 +532,7 @@ export function BuildingCard({ info }: { info: BuildingInfo }) {
           <div className="reason">{info.pen.status}</div>
         </div>
       )}
+      {info.hall && <HallRolesPanel info={info.hall} />}
       {info.hunting && (
         <div className="residents">
           <div className="row">

@@ -44,6 +44,8 @@ Handy scripts:
 | Pause / speeds 1×, 2×, 4× | Space, 1, 2, 3 |
 | Build menu (categories on the command card) | B, then Q W E R / A S D F / Z X C V for a category and a building; Esc goes back |
 | Find yourself, the ruler / Rally (ruler selected) | K / R |
+| Train a role at the Town Hall (people selected) | J, then Q W E R / A S D F / Z X C for the role |
+| Hear the Assistant Chief's advice (or find them) | O, or click the gold “?” over them |
 | Windows: People, Areas, Towns, Families, Realm, Goals | F2, F3, F4, F6, F7, F8 |
 | All goods / Valley today / See more about the selection | I / T / V |
 | Survey / jump to the Town Hall | Y / Backspace |
@@ -143,6 +145,25 @@ in `localStorage`.
    what a visitor or household is still waiting for. Valleys saved before this
    update keep automatic newcomer arrivals until you choose **Adopt deliberate
    growth** in the Families tab.
+
+## What's new in the roles update
+
+- **Everyone has a role**, and you change it by training at the **Town Hall**. Select
+  people and press **Train** (J): they walk to the hall and study for about half a minute.
+  The Town Hall teaches labourers, farmers, gatherers, builders and haulers with 2 places at
+  a time. The **Keep** adds crafters, hunters, herders, **travellers** and **messengers** (3
+  places), and the **Castle** adds the **Assistant Chief** (4 places, one chief).
+- **Travellers** roam past the edge of the known land and lift the fog, coming home to eat
+  and sleep.
+- **Messengers**: while you have one, letters and news reach you twice as fast. In between,
+  they run errands (hauling).
+- **The Assistant Chief** walks among your people and puts idle hands to work at a
+  workshop, lodge or pen that has nobody. Every so often they walk up to you. When they are
+  close, a gold **?** pops up over them; click it (or press O) to hear their advice about
+  food, storage, beds, idle people, roles to train, or what the next milestone still needs.
+- **Animal deaths** are animated: the animal flashes, rolls onto its back in a puff of
+  dust, and fades away.
+- Idle people now show a “…” bubble, so the “?” belongs to the chief alone.
 
 ## What's new in the pixel polish update
 

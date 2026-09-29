@@ -51,7 +51,8 @@ export type Task =
   | { kind: 'hunt'; lodge: number | null; area?: number; animal: number; stage: 'stalk' | 'aim'; timer: number; tx: number; ty: number }
   | { kind: 'herd'; pen: number; stage: 'walk' | 'work'; timer: number }
   | { kind: 'eat'; src: number }
-  | { kind: 'sleep'; home: number | null; stage: 'walk' | 'sleep' };
+  | { kind: 'sleep'; home: number | null; stage: 'walk' | 'sleep' }
+  | { kind: 'learn'; hall: number; stage: 'walk' | 'study' };
 
 export type FieldAction = 'till' | 'plant' | 'water' | 'harvest';
 export type OrchardAction = 'tend' | 'pick';
@@ -122,6 +123,27 @@ export interface Settler {
   ruler?: boolean;
   /** Works faster until this tick (the ruler's Rally). */
   boostUntil?: number;
+  /** Learning a new role at the Town Hall (saved). */
+  training?: RoleTraining | null;
+}
+
+/** A role being learned at a Town Hall: study ticks so far out of ROLE_TRAIN_TICKS. */
+export interface RoleTraining {
+  role: JobId;
+  hall: number;
+  progress: number;
+}
+
+/** The Assistant Chief's advice for the ruler. */
+export interface ChiefState {
+  /** Earliest tick the chief comes to the ruler with the next piece of advice. */
+  nextAt: number;
+  /** The chief is beside the ruler with advice: the "?" shows over them. */
+  adviceReady: boolean;
+  /** What they will say when asked. */
+  advice: string;
+  /** Tick the chief gave up waiting and went back to work (transient). */
+  waitUntil: number;
 }
 
 /** A war between two kingdoms and what it has cost each side. */
@@ -655,7 +677,9 @@ export type SimEvent =
   | { type: 'milestone'; id: MilestoneId }
   | { type: 'arrival'; settlerId: number }
   | { type: 'important' }
-  | { type: 'season'; id: SeasonId };
+  | { type: 'season'; id: SeasonId }
+  | { type: 'death'; species: SpeciesId; id: number; x: number; y: number; facing: 2 | 3 }
+  | { type: 'advice'; settlerId: number };
 
 export type SfxName =
   | 'chop' | 'mine' | 'pick' | 'dig' | 'plant' | 'water' | 'harvest' | 'hammer' | 'saw'

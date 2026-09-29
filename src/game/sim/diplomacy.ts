@@ -6,6 +6,7 @@ import { evaluateConcern, updateConcern } from './concern';
 import { kingdomById, playerKingdom, PLAYER_KINGDOM } from './kingdoms';
 import { deliverMerchantNews, recordEvent, recordObservation } from './news';
 import { ownerOf, sectorOf } from './territory';
+import { hasMessenger } from './roles';
 import { applyPeace, peaceScore, unmetRewards } from './combat';
 import type { Simulation } from './Simulation';
 import type { ClaimSector, CommandResult, Company, Incident, Kingdom, Stance, TreatyOffer } from './types';
@@ -43,7 +44,10 @@ export function seatOf(sim: Simulation, id: number): { x: number; y: number } {
 export function letterTicks(sim: Simulation, a: number, b: number): number {
   const p = seatOf(sim, a);
   const q = seatOf(sim, b);
-  return Math.max(60, Math.round(Math.hypot(p.x - q.x, p.y - q.y) / ROAD_SPEED));
+  const t = Math.round(Math.hypot(p.x - q.x, p.y - q.y) / ROAD_SPEED);
+  // A messenger carries the player's letters twice as fast.
+  const fast = (a === PLAYER_KINGDOM || b === PLAYER_KINGDOM) && hasMessenger(sim);
+  return Math.max(60, fast ? Math.round(t / 2) : t);
 }
 
 export function activeTreaty(sim: Simulation, a: number, b: number, kind: TreatyKind): TreatyOffer | undefined {

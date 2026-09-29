@@ -195,7 +195,7 @@ export function makeResourceIcons(): Record<ResourceId, Sprite> {
   return out;
 }
 
-export type UiIconId = 'people' | 'house' | 'sun' | 'moon' | 'rain' | 'star' | 'storage' | 'idle' | 'hungry' | 'warn' | 'drop' | 'axe' | 'pick' | 'basket' | 'zzz' | 'heart' | 'crown';
+export type UiIconId = 'people' | 'house' | 'sun' | 'moon' | 'rain' | 'star' | 'storage' | 'idle' | 'hungry' | 'warn' | 'drop' | 'axe' | 'pick' | 'basket' | 'zzz' | 'heart' | 'crown' | 'advice' | 'chiefCap';
 
 export function makeUiIcons(): Record<UiIconId, Sprite> {
   const shirt = P.shirt[1];
@@ -239,13 +239,11 @@ export function makeUiIcons(): Record<UiIconId, Sprite> {
       p.hline(0, 9, 6, P.wood1);
       p.vline(5, 3, 9, P.wood1);
     }),
+    // Idle: a "…" thought bubble (the "?" belongs to the Assistant Chief's advice).
     idle: icon((p) => {
-      p.ellipse(5, 5, 5, 5, '#fff8e8');
-      p.hline(4, 6, 2, P.outline);
-      p.px(7, 3, P.outline);
-      p.px(6, 4, P.outline);
-      p.px(5, 5, P.outline);
-      p.px(5, 7, P.outline);
+      p.ellipse(5, 5, 5, 4, '#fff8e8');
+      for (const x of [1, 4, 7]) p.rect(x, 4, 2, 2, P.outline);
+      p.px(2, 9, '#fff8e8');
     }),
     hungry: icon((p) => {
       p.ellipse(5, 5, 5, 5, '#fff8e8');
@@ -308,6 +306,32 @@ export function makeUiIcons(): Record<UiIconId, Sprite> {
       p.px(5, 6, '#d8384a');
       p.px(2, 6, '#5ab0e0');
       p.px(8, 6, '#5ab0e0');
+    }),
+    // The Assistant Chief's "?": a gold speech bubble with a tail, big enough to click.
+    advice: (() => {
+      const p = new Painter(16, 19, 1, 1);
+      p.ellipse(7, 6.5, 6.5, 6.5, '#f4cf5a');
+      p.ellipse(6, 5, 4, 4, '#ffe48a');
+      for (let y = 0; y < 4; y++) p.hline(6 - Math.floor(y / 2), 8 - y, 13 + y, '#f4cf5a');
+      // The question mark.
+      p.hline(5, 9, 2, '#3a2412');
+      p.px(4, 3, '#3a2412');
+      p.px(10, 3, '#3a2412');
+      p.px(10, 4, '#3a2412');
+      p.px(9, 5, '#3a2412');
+      p.px(8, 6, '#3a2412');
+      p.px(7, 7, '#3a2412');
+      p.px(7, 8, '#3a2412');
+      p.rect(7, 10, 1, 2, '#3a2412');
+      p.outline();
+      return p.sprite(8, 18);
+    })(),
+    // A blue cap with a white feather, worn by the Assistant Chief.
+    chiefCap: icon((p) => {
+      p.rect(2, 5, 7, 3, '#3a6ea5');
+      p.hline(1, 9, 7, '#27507e');
+      p.rect(3, 4, 5, 1, '#4f86c0');
+      for (let i = 0; i < 4; i++) p.px(8 + (i > 1 ? 1 : 0), 4 - i, '#f4f0e8');
     }),
   };
 }

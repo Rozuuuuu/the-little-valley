@@ -15,7 +15,7 @@ import type {
  * Save file format. Bump SAVE_VERSION whenever this shape changes and add a
  * migration in migrations.ts so older worlds keep loading.
  */
-export const SAVE_VERSION = 13;
+export const SAVE_VERSION = 14;
 
 export interface SaveMeta {
   name: string;
@@ -66,6 +66,8 @@ export interface SavedSettler {
   /** v13+: health below full. */
   hp?: number;
   boostUntil?: number;
+  /** v14+: a role being learned at the Town Hall. */
+  training?: { role: JobId; hall: number; progress: number };
 }
 
 export interface SavedBuilding {
@@ -237,6 +239,8 @@ export interface SaveFileV10 extends Omit<SaveFileV9, 'version' | 'sim'> {
     horseDay: number;
     /** v12+: when the ruler can Rally again. */
     rallyReadyAt?: number;
+    /** v14+: the Assistant Chief's advice. */
+    chief?: { nextAt: number; adviceReady: boolean; advice: string };
     /** v12+: animals and their random stream. */
     animals?: SavedAnimal[];
     animalRng?: number;
@@ -267,7 +271,12 @@ export interface SaveFileV13 extends Omit<SaveFileV12, 'version'> {
   version: 13;
 }
 
-export type SaveFile = SaveFileV13;
+/** v14: roles trained at the Town Hall and the Assistant Chief (optional, so v13 worlds load unchanged). */
+export interface SaveFileV14 extends Omit<SaveFileV13, 'version'> {
+  version: 14;
+}
+
+export type SaveFile = SaveFileV14;
 
 export class SaveError extends Error {
   constructor(message: string) {

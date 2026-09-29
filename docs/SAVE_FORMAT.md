@@ -1,7 +1,7 @@
 # Save format
 
 Saves are JSON documents described by `src/game/save/format.ts`. The current version
-is **13** (`SAVE_VERSION`).
+is **14** (`SAVE_VERSION`).
 
 ## Version history
 
@@ -11,6 +11,7 @@ is **13** (`SAVE_VERSION`).
 | 2 | Milestone 1 | `meta` / `sim` / `world` sections, crafting stats, weather. |
 | 3 | Milestone 2 (Village) | World generator version, work areas, personal work orders, production workers, span building sizes, the chronicle and session marks, new stats. |
 | 4 | Seasons and settlements | `settlements`, settler `settlementId`, storage `wants` (stock targets). |
+| 14 | Roles and the Assistant Chief | Settler `training` (role being learned, the Town Hall, study progress); `sim.chief` (when the chief next brings advice, whether it is waiting, and what it says). Three new job ids: `traveler`, `messenger`, `chief`. Optional, so v13 worlds load unchanged. |
 | 13 | Health and melee hunting | Settler and animal `hp` (only when below full). Optional, so v12 worlds load unchanged. |
 | 12 | Town Hall, ruler, habitats and animals | Building `level`, an `upgrade` under way (target level, progress, what was paid), `pen` (breeding progress, products waiting); settler `ruler` and `boostUntil`; `sim.rallyReadyAt`, `sim.animals` (species, position, home spot, pen) and `sim.animalRng`; work area `wanted` and `crop`; `world.habitat`. Every field is optional, so a v11 world migrates by changing only the version. New worlds use generator 4. |
 | 11 | Frontier war, occupation and peace | `sim.war`: war records (sides, objective, start, routs, deployment timing), surrender meters, occupation timers; settler `captive`; company health, morale and regroup timers (inside kingdoms); combat stats. Occupied land is a claim entry whose `occupyingKingdom` differs from its `legalOwner`. |

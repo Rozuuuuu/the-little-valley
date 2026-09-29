@@ -8,7 +8,7 @@ import { TERRAIN } from '../world/tiles';
 import { World } from '../world/World';
 import type { PathGrid } from './pathfinding';
 import type {
-  Animal, Appearance, BedClaim, Building, ChronicleEntry, CoalitionCommitment, ConcernState, GrowthMode, Household, Incident, Kingdom, Manifest, NewsReport, Party, Recruitment, Route, Stance,
+  Animal, Appearance, ChiefState, BedClaim, Building, ChronicleEntry, CoalitionCommitment, ConcernState, GrowthMode, Household, Incident, Kingdom, Manifest, NewsReport, Party, Recruitment, Route, Stance,
   TerritoryClaim, TravelerOffer, TreatyOffer, WarPlan, WarState, Warning, WorldEvent, ProgressionState, Regrowth, SessionMark, Settlement, Settler, SimEvent, Stats, WeatherState, WorkArea,
 } from './types';
 import { updateSettler } from './settlers';
@@ -173,6 +173,8 @@ export class Simulation implements PathGrid {
   lastSeason: SeasonId | null = null;
   /** When the ruler can Rally again. */
   rallyReadyAt = 0;
+  /** The Assistant Chief's advice (saved). */
+  chief: ChiefState = { nextAt: 0, adviceReady: false, advice: '', waitUntil: 0 };
   /** Wild and penned animals. */
   animals: Animal[] = [];
   /** Animals draw from their own stream, so they never change what settlers do. */
