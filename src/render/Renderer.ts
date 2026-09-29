@@ -28,10 +28,10 @@ import { adviceShowing } from '../game/sim/roles';
 import type { Chunk } from '../game/world/Chunk';
 import { O, OBJECTS, T } from '../game/world/tiles';
 import { chunkKey } from '../game/world/World';
-import type { Camera } from './Camera';
 import { P } from './palette';
 import { Particles } from './particles';
-import { gpuImage, makeCanvas, tinted, type Sprite } from './pixel';
+import { gpuImage, gpuImages, makeCanvas, tinted, type Sprite } from './pixel';
+import { Camera } from './Camera';
 import { FRAME } from './sprites/characters';
 import type { SpriteBank } from './sprites';
 import { paintChunk, pixelsToCanvas, terrainGrid } from './terrainPainter';
@@ -147,6 +147,12 @@ interface Drawable {
   draw: () => void;
 }
 
+/**
+ * The night's light map is drawn at 1/LIGHT_DIV of the screen on a CPU canvas and stretched
+ * smoothly over the map. (On the GPU, using a canvas that changes every frame as an image made
+ * the page wait for the graphics card each frame, which stalled dawn, dusk and night.)
+ */
+const LIGHT_DIV = 6;
 /** The ruler's aura ring: rotation steps, and how many steps it turns per second. */
 const AURA_PHASES = 8;
 const AURA_STEPS_PER_SECOND = 6;
@@ -156,7 +162,7 @@ function auraImage(phase: number): HTMLCanvasElement {
   const R = AURA_RADIUS * TILE;
   const size = R * 2 + 4;
   const c = makeCanvas(size, size);
-  const g = c.getContext('2d')!;
+  const g = c.getContext('2d', { willReadFrequently: true })!;
   const mid = size / 2;
   // The faint fill, one row at a time (no paths).
   g.fillStyle = 'rgba(236, 210, 126, 0.06)';
@@ -182,9 +188,10 @@ function auraImage(phase: number): HTMLCanvasElement {
 /** Chunks of ground the worker may be painting at once. */
 const MAX_PAINTING = 6;
 /** A painted chunk of ground: a bitmap from the worker, or a canvas painted on the main thread. */
-type GroundImage = HTMLCanvasElement | ImageBitmap;
+type GroundImage = HTMLCanvasElement | ImageBitmap | ImageBitmap[];
 function closeImage(img: GroundImage): void {
-  if (typeof ImageBitmap !== 'undefined' && img instanceof ImageBitmap) img.close();
+  if (Array.isArray(img)) img.forEach((b) => b.close());
+  else if (typeof ImageBitmap !== 'undefined' && img instanceof ImageBitmap) img.close();
 }
 /** Fog is smoothed once into a copy this many times the chunk's tile size. */
 const FOG_UP = 4;
@@ -195,7 +202,7 @@ const CHUNK_PX = CHUNK * TILE;
 const MAX_CHUNK_CACHE = 48;
 
 export class Renderer {
-  readonly ctx: CanvasRenderingContext2D;
+  ctx: CanvasRenderingContext2D;
   readonly particles = new Particles();
   private ground = new Map<number, { canvas: GroundImage; version: number; season: SeasonId; used: number }>();
   private fog = new Map<number, { canvas: HTMLCanvasElement; big: HTMLCanvasElement; version: number }>();
@@ -223,14 +230,14 @@ export class Renderer {
   constructor(
     readonly canvas: HTMLCanvasElement,
     readonly sprites: SpriteBank,
-    readonly camera: Camera,
+    public camera: Camera,
   ) {
     this.ctx = canvas.getContext('2d', { alpha: false })!;
     this.light = makeCanvas(1, 1);
-    this.lightCtx = this.light.getContext('2d')!;
+    this.lightCtx = this.light.getContext('2d', { willReadFrequently: true })!;
     try {
       this.worker = new Worker(new URL('./terrainWorker.ts', import.meta.url), { type: 'module' });
-      this.worker.onmessage = (e: MessageEvent<{ id: number; pixels?: Uint32Array; bitmap?: ImageBitmap }>) => this.onPainted(e.data.id, e.data.bitmap ?? e.data.pixels!);
+      this.worker.onmessage = (e: MessageEvent<{ id: number; pixels?: Uint32Array; bitmaps?: ImageBitmap[] }>) => this.onPainted(e.data.id, e.data.bitmaps ?? e.data.pixels!);
       this.worker.onerror = () => {
         // Fall back to painting on the main thread.
         this.worker = null;
@@ -242,20 +249,53 @@ export class Renderer {
     }
   }
 
-  private onPainted(id: number, image: ImageBitmap | Uint32Array): void {
+  private onPainted(id: number, image: ImageBitmap[] | Uint32Array): void {
     const info = this.pending.get(id);
     this.pending.delete(id);
-    const bitmap = image instanceof Uint32Array ? null : image;
+    const quarters = image instanceof Uint32Array ? null : image;
     if (!info || info.gen !== this.cacheGen) {
-      bitmap?.close();
+      if (quarters) closeImage(quarters);
       if (info) this.pendingKeys.delete(info.key);
       return;
     }
     this.pendingKeys.delete(info.key);
     const old = this.ground.get(info.key);
-    if (old && old.canvas !== bitmap) closeImage(old.canvas);
-    this.ground.set(info.key, { canvas: bitmap ?? pixelsToCanvas(image as Uint32Array), version: info.version, season: info.season, used: this.frame });
+    if (old) closeImage(old.canvas);
+    this.ground.set(info.key, { canvas: quarters ?? pixelsToCanvas(image as Uint32Array), version: info.version, season: info.season, used: this.frame });
+    // Send the new pieces to the graphics card a frame at a time, before they scroll into view.
+    if (quarters) this.warmQueue.push(...quarters);
     this.evictGround();
+  }
+
+  /** Painted ground not yet sent to the graphics card (see warmUp). */
+  private warmQueue: ImageBitmap[] = [];
+
+  /**
+   * Draws one queued piece of ground at a single pixel, under everything else, so the graphics
+   * card uploads it now (one small upload per frame) rather than all at once when a whole chunk
+   * scrolls into view, which hitched panning into new land on slower GPUs.
+   */
+  private warmUp(): void {
+    const b = this.warmQueue.shift();
+    if (!b || b.width === 0) return;
+    const ctx = this.ctx;
+    ctx.globalAlpha = 0.01;
+    ctx.drawImage(b, 0, 0, 1, 1);
+    ctx.globalAlpha = 1;
+  }
+
+  /** Draws a chunk's ground (one image, or four quarters) over a square of screen pixels. */
+  private drawGround(g: GroundImage, x: number, y: number, size: number): void {
+    const ctx = this.ctx;
+    if (!Array.isArray(g)) {
+      ctx.drawImage(g, x, y, size, size);
+      return;
+    }
+    const h = Math.round(size / 2);
+    ctx.drawImage(g[0], x, y, h, h);
+    ctx.drawImage(g[1], x + h, y, size - h, h);
+    ctx.drawImage(g[2], x, y + h, h, size - h);
+    ctx.drawImage(g[3], x + h, y + h, size - h, size - h);
   }
 
   private evictGround(): void {
@@ -276,8 +316,8 @@ export class Renderer {
     this.canvas.width = w;
     this.canvas.height = h;
     this.camera.setViewport(w, h);
-    this.light.width = Math.ceil(w / 4);
-    this.light.height = Math.ceil(h / 4);
+    this.light.width = Math.ceil(w / LIGHT_DIV);
+    this.light.height = Math.ceil(h / LIGHT_DIV);
   }
 
   /** Paints the ground for every chunk in view up front, e.g. while a load screen shows. */
@@ -295,6 +335,7 @@ export class Renderer {
     this.pendingKeys.clear();
     for (const g of this.ground.values()) closeImage(g.canvas);
     this.ground.clear();
+    this.warmQueue = [];
     this.fog.clear();
     this.particles.list = [];
   }
@@ -351,7 +392,7 @@ export class Renderer {
     const e = this.fog.get(k);
     if (e && e.version === c.fogVersion) return e.big;
     const canvas = e?.canvas ?? makeCanvas(CHUNK + 2, CHUNK + 2);
-    const ctx = canvas.getContext('2d')!;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
     const img = ctx.createImageData(CHUNK + 2, CHUNK + 2);
     const [r, g, b] = [0x17, 0x13, 0x1f];
     for (let y = -1; y <= CHUNK; y++) {
@@ -369,7 +410,7 @@ export class Renderer {
     // Smooth the edge once, into a 4× copy, instead of scaling with smoothing every frame.
     // A new canvas each time (not a reused one), so it can be handed to the GPU once (gpuImage).
     const big = makeCanvas(CHUNK * FOG_UP, CHUNK * FOG_UP);
-    const bctx = big.getContext('2d')!;
+    const bctx = big.getContext('2d', { willReadFrequently: true })!;
     bctx.imageSmoothingEnabled = true;
     bctx.drawImage(canvas, 0, 0, CHUNK + 2, CHUNK + 2, -FOG_UP, -FOG_UP, (CHUNK + 2) * FOG_UP, (CHUNK + 2) * FOG_UP);
     this.fog.set(k, { canvas, big, version: c.fogVersion });
@@ -412,20 +453,78 @@ export class Renderer {
 
   // ---- main ---------------------------------------------------------------
 
+  /**
+   * Draws a frame. The map itself is drawn at its art resolution (one art pixel per canvas pixel)
+   * into a small off-screen canvas on the CPU, then scaled up to the screen in one step; text,
+   * night, rain and the planning layers are drawn over it at screen resolution. A weak graphics
+   * card then has one image to upload and draw per frame instead of hundreds of small drawings,
+   * which is what made panning stutter. (Set artPass = false to draw everything straight to the
+   * screen canvas, as before.)
+   */
   render(st: RenderState): void {
     this.season = seasonOf(st.sim).id;
-    const { sim } = st;
-    const ctx = this.ctx;
-    const cam = this.camera;
     this.simTick = st.sim.tick;
     this.lastSim = st.sim;
     const dt = Math.min(0.1, Math.max(0, st.time - this.lastTime));
     this.lastTime = st.time;
     this.frame++;
     this.paintBudget = 1;
+    const light = this.darkness(st.sim.timeOfDay);
+    this.night = light.dark > 0.3;
+    const screen = this.camera;
+    const main = this.ctx;
+    if (this.artPass && screen.scale >= 1) {
+      // Where the art canvas sits: whole art pixels, plus a sub-pixel offset on screen (dx, dy)
+      // so panning stays smooth at any zoom.
+      const S = screen.scale;
+      const ox = Math.floor(screen.tx / S);
+      const oy = Math.floor(screen.ty / S);
+      const dx = screen.tx - ox * S;
+      const dy = screen.ty - oy * S;
+      const w = Math.ceil((screen.width - dx) / S) + 1;
+      const h = Math.ceil((screen.height - dy) / S) + 1;
+      if (this.art.width !== w || this.art.height !== h) {
+        this.art.width = w;
+        this.art.height = h;
+      }
+      const view = this.artCamera;
+      view.setViewport(w, h);
+      view.scale = view.target = 1;
+      view.x = w / 2 - ox;
+      view.y = h / 2 - oy;
+      this.camera = view;
+      this.ctx = this.artCtx;
+      gpuImages.enabled = false;
+      try {
+        this.drawWorld(st, dt);
+      } finally {
+        this.camera = screen;
+        this.ctx = main;
+        gpuImages.enabled = true;
+      }
+      main.imageSmoothingEnabled = false;
+      main.drawImage(this.art, 0, 0, w, h, dx, dy, w * S, h * S);
+    } else {
+      this.drawWorld(st, dt);
+    }
+    this.drawScreen(st, dt, light);
+  }
+
+  /** Map drawing in art pixels on the art canvas, or straight to the screen without the art pass. */
+  artPass = true;
+  private art = makeCanvas(1, 1);
+  private artCtx = this.art.getContext('2d', { alpha: false, willReadFrequently: true })!;
+  private artCamera = new Camera();
+
+  /** Everything that belongs to the map: ground, water, buildings, people, animals, effects, fog. */
+  private drawWorld(st: RenderState, dt: number): void {
+    const { sim } = st;
+    const ctx = this.ctx;
+    const cam = this.camera;
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = FOG;
     ctx.fillRect(0, 0, cam.width, cam.height);
+    if (!this.artPass) this.warmUp();
     const sc = cam.scale;
     const { cx0, cy0, cx1, cy1 } = this.chunkRange();
     const tl = cam.screenToWorld(0, 0);
@@ -434,9 +533,7 @@ export class Renderer {
     const ty0 = Math.floor(tl.y / TILE) - 1;
     const tx1 = Math.floor(br.x / TILE) + 1;
     const ty1 = Math.floor(br.y / TILE) + 3;
-    const light = this.darkness(sim.timeOfDay);
-    const night = light.dark > 0.3;
-    this.night = night;
+    const night = this.night;
 
     // Ground
     let chunks = 0;
@@ -447,7 +544,7 @@ export class Renderer {
         const g = this.groundFor(sim, c);
         if (!g) continue;
         chunks++;
-        ctx.drawImage(g, Math.round(cx * CHUNK_PX * sc + cam.tx), Math.round(cy * CHUNK_PX * sc + cam.ty), Math.round(CHUNK_PX * sc), Math.round(CHUNK_PX * sc));
+        this.drawGround(g, Math.round(cx * CHUNK_PX * sc + cam.tx), Math.round(cy * CHUNK_PX * sc + cam.ty), Math.round(CHUNK_PX * sc));
       }
     }
     this.stats.chunks = chunks;
@@ -565,11 +662,8 @@ export class Renderer {
       }
     }
     this.particles.update(dt);
-    this.particles.draw(ctx, sc, cam.tx, cam.ty);
-
-    if (st.showGrid) this.drawGrid(tx0, ty0, tx1, ty1);
+    this.particles.draw(ctx, sc, cam.tx, cam.ty, 'world');
     this.drawOverlays(st, tx0, ty0, tx1, ty1);
-    this.drawHighlight(st);
 
     // Fog of war (pre-smoothed per chunk; see fogFor).
     for (let cy = cy0; cy <= cy1; cy++) {
@@ -581,12 +675,21 @@ export class Renderer {
         ctx.drawImage(gpuImage(f), Math.round(cx * CHUNK_PX * sc + cam.tx), Math.round(cy * CHUNK_PX * sc + cam.ty), Math.round(CHUNK_PX * sc), Math.round(CHUNK_PX * sc));
       }
     }
+  }
 
-    this.drawLighting(sim, st, light);
-    this.drawWeather(sim, st.time, dt, light.dark);
+  /** Over the map at screen resolution: night, rain, the grid, planning layers, text. */
+  private drawScreen(st: RenderState, dt: number, light: { dark: number; tint: string }): void {
+    const cam = this.camera;
+    const tl = cam.screenToWorld(0, 0);
+    const br = cam.screenToWorld(cam.width, cam.height);
+    this.drawLighting(st.sim, st, light);
+    this.drawWeather(st.sim, st.time, dt, light.dark);
+    if (st.showGrid) this.drawGrid(Math.floor(tl.x / TILE) - 1, Math.floor(tl.y / TILE) - 1, Math.floor(br.x / TILE) + 1, Math.floor(br.y / TILE) + 3);
+    this.drawHighlight(st);
     // Areas are a planning layer: above fog and night so they stay readable.
     this.drawAreas(st);
     this.drawUiLayer(st);
+    this.particles.draw(this.ctx, cam.scale, cam.tx, cam.ty, 'text');
   }
 
   private neighboursExplored(sim: Simulation, c: Chunk): boolean {
@@ -1022,7 +1125,7 @@ export class Renderer {
     if (pad === undefined) {
       pad = 0;
       try {
-        const d = s.canvas.getContext('2d')!.getImageData(0, 0, s.w, s.h).data;
+        const d = s.canvas.getContext('2d', { willReadFrequently: true })!.getImageData(0, 0, s.w, s.h).data;
         const opaqueRow = (y: number) => {
           for (let x = 0; x < s.w; x++) if (d[(y * s.w + x) * 4 + 3] > 40) return true;
           return false;
@@ -1309,7 +1412,7 @@ export class Renderer {
     let m = this.mirrorCache.get(s);
     if (!m) {
       const c = makeCanvas(s.w, s.h);
-      const cx = c.getContext('2d')!;
+      const cx = c.getContext('2d', { willReadFrequently: true })!;
       cx.translate(s.w, 0);
       cx.scale(-1, 1);
       cx.drawImage(s.canvas, 0, 0);
@@ -1471,17 +1574,17 @@ export class Renderer {
     }
     for (const g of glows) {
       const p = cam.worldToScreen(g.x, g.y);
-      const r = (g.r * cam.scale) / 4;
-      const grad = lc.createRadialGradient(p.x / 4, p.y / 4, 0, p.x / 4, p.y / 4, r);
+      const r = (g.r * cam.scale) / LIGHT_DIV;
+      const grad = lc.createRadialGradient(p.x / LIGHT_DIV, p.y / LIGHT_DIV, 0, p.x / LIGHT_DIV, p.y / LIGHT_DIV, r);
       grad.addColorStop(0, 'rgba(0,0,0,1)');
       grad.addColorStop(0.5, 'rgba(0,0,0,0.7)');
       grad.addColorStop(1, 'rgba(0,0,0,0)');
       lc.fillStyle = grad;
-      lc.fillRect(p.x / 4 - r, p.y / 4 - r, r * 2, r * 2);
+      lc.fillRect(p.x / LIGHT_DIV - r, p.y / LIGHT_DIV - r, r * 2, r * 2);
     }
     const ctx = this.ctx;
     ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(this.light, 0, 0, W * 4, H * 4);
+    ctx.drawImage(this.light, 0, 0, W * LIGHT_DIV, H * LIGHT_DIV);
     ctx.imageSmoothingEnabled = false;
     // Warm additive glow around fires and windows
     ctx.globalCompositeOperation = 'lighter';

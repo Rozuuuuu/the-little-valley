@@ -19,6 +19,8 @@ export interface Settings {
   bindingsVersion: number;
   /** Keep the mouse inside the game while it runs (Warcraft-style); it is let go while paused. */
   lockMouse: boolean;
+  /** The player switched lockMouse themselves (earlier versions turned it on for everyone). */
+  lockMouseChosen: boolean;
   /** Draw the map at the screen's full pixel density (sharper, but much more work on high-DPI screens). */
   sharpGraphics: boolean;
   /** Minutes between autosaves. */
@@ -40,7 +42,7 @@ export function defaultSettings(): Settings {
   return {
     masterVolume: 0.8, musicVolume: 0.5, sfxVolume: 0.7, muted: false,
     edgePan: true, edgeSpeed: 1, healthBars: 'always', detailsInHud: true, showGrid: false, bindings: defaultBindings(), bindingsVersion: BINDINGS_VERSION,
-    lockMouse: true, sharpGraphics: false, autosaveMinutes: 2,
+    lockMouse: false, lockMouseChosen: false, sharpGraphics: false, autosaveMinutes: 2,
   };
 }
 
@@ -71,7 +73,10 @@ export function loadSettings(): Settings {
       autosaveMinutes: typeof s.autosaveMinutes === 'number' && s.autosaveMinutes >= 1 ? s.autosaveMinutes : d.autosaveMinutes,
       bindings,
       bindingsVersion: BINDINGS_VERSION,
-      lockMouse: typeof s.lockMouse === 'boolean' ? s.lockMouse : d.lockMouse,
+      // Off unless the player turned it on: the drawn cursor it needs freezes whenever the page
+      // is busy, so the real cursor is the default (edge scrolling works without it).
+      lockMouse: s.lockMouseChosen === true && s.lockMouse === true,
+      lockMouseChosen: s.lockMouseChosen === true,
       sharpGraphics: typeof s.sharpGraphics === 'boolean' ? s.sharpGraphics : d.sharpGraphics,
     };
   } catch {

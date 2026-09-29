@@ -140,8 +140,10 @@ export class Particles {
     this.list = out;
   }
 
-  draw(ctx: CanvasRenderingContext2D, scale: number, tx: number, ty: number): void {
+  /** Draws the particles: 'world' ones (drawn with the map), 'text' (floating numbers, drawn at screen resolution), or all. */
+  draw(ctx: CanvasRenderingContext2D, scale: number, tx: number, ty: number, which: 'world' | 'text' | 'all' = 'all'): void {
     for (const p of this.list) {
+      if (which !== 'all' && (p.kind === 'text') !== (which === 'text')) continue;
       const t = p.life / p.max;
       const sx = Math.round(p.x * scale + tx);
       const sy = Math.round(p.y * scale + ty);

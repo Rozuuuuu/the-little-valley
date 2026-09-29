@@ -80,7 +80,7 @@ export function paintChunk(world: World, chunk: Chunk, season: GroundSeason = 's
 
 export function pixelsToCanvas(pixels: Uint32Array): HTMLCanvasElement {
   const canvas = makeCanvas(S, S);
-  const ctx = canvas.getContext('2d')!;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
   const img = ctx.createImageData(S, S);
   new Uint32Array(img.data.buffer).set(pixels);
   ctx.putImageData(img, 0, 0);

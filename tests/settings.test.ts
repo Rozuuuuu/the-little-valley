@@ -34,7 +34,15 @@ describe('settings', () => {
     expect(s.bindings.stop).toEqual(['KeyS']);
     expect(s.bindings.hold).toEqual(['KeyH']);
     expect(s.bindings.harvest).toEqual(['KeyG']);
-    expect(s.lockMouse).toBe(true);
+    // The drawn cursor of the held mouse is opt-in: the real cursor never freezes.
+    expect(s.lockMouse).toBe(false);
+  });
+
+  it('keeps the mouse held only for players who turned it on themselves', () => {
+    withStorage({ lockMouse: true });
+    expect(loadSettings().lockMouse).toBe(false);
+    withStorage({ lockMouse: true, lockMouseChosen: true });
+    expect(loadSettings().lockMouse).toBe(true);
   });
 
   it('keeps bindings the player changed after the Warcraft layout', () => {

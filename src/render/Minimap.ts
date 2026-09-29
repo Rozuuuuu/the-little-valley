@@ -53,7 +53,7 @@ export class Minimap {
     if (hit && hit.key === key) return hit.canvas;
     // A fresh canvas per change, so each one goes to the GPU only once (see gpuImage).
     const canvas = makeCanvas(CHUNK, CHUNK);
-    const ctx = canvas.getContext('2d')!;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
     const img = ctx.createImageData(CHUNK, CHUNK);
     const out = new Uint32Array(img.data.buffer);
     for (let i = 0; i < CHUNK * CHUNK; i++) {

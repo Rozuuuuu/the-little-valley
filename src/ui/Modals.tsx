@@ -124,8 +124,8 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
         <input type="checkbox" checked={s.edgePan} onChange={(e) => update({ ...s, edgePan: e.target.checked })} />
       </div>
       <div className="row">
-        <span>Keep the mouse inside the game while playing (let go while paused or in a menu)</span>
-        <input type="checkbox" checked={s.lockMouse} onChange={(e) => update({ ...s, lockMouse: e.target.checked })} />
+        <span>Keep the mouse inside the game while playing, like Warcraft III (uses a drawn cursor, which can stutter on slow PCs; let go while paused)</span>
+        <input type="checkbox" checked={s.lockMouse} onChange={(e) => update({ ...s, lockMouse: e.target.checked, lockMouseChosen: true })} />
       </div>
       <label className="slider">
         <span>Edge scroll speed</span>

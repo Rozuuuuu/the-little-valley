@@ -340,7 +340,7 @@ function Title({ hasSave, onContinue, onNew, onLoad, onSettings }: { hasSave: bo
       <ShellButtons />
       <p className="shell-note">
         {isInstalled()
-          ? 'Playing as an app: the mouse stays in the game while it runs; pause to let it go.'
+          ? 'Playing as an app: the screen edges are the map edges, so edge scrolling works all round.'
           : 'Tip: install it as an app (or play full screen) so the mouse can’t slip off the top or bottom edge while scrolling.'}
       </p>
       <div className="credit">All art and sound are generated in code. Saved in this browser.</div>

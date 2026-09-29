@@ -14,8 +14,9 @@ export interface PaintRequest {
 
 /**
  * Paints chunk ground off the main thread so exploring and panning never stutter. The result
- * goes back as an ImageBitmap (ready for the GPU, uploaded once) rather than raw pixels that the
- * main thread would have to copy onto a canvas; browsers without bitmaps in workers get pixels.
+ * goes back as four ImageBitmaps, one per quarter: ready for the GPU, and a quarter of the
+ * size each, so sending one to the graphics card never takes long enough to hitch a frame.
+ * Browsers without bitmaps in workers get the raw pixels.
  */
 self.onmessage = async (e: MessageEvent<PaintRequest>) => {
   const { id, seed, cx, cy, terr, season, size } = e.data;
@@ -23,8 +24,10 @@ self.onmessage = async (e: MessageEvent<PaintRequest>) => {
   const worker = self as unknown as Worker;
   if (typeof createImageBitmap === 'function' && typeof ImageData === 'function') {
     try {
-      const bitmap = await createImageBitmap(new ImageData(new Uint8ClampedArray(pixels.buffer as ArrayBuffer), size, size));
-      worker.postMessage({ id, bitmap }, [bitmap]);
+      const img = new ImageData(new Uint8ClampedArray(pixels.buffer as ArrayBuffer), size, size);
+      const h = size / 2;
+      const bitmaps = await Promise.all([[0, 0], [h, 0], [0, h], [h, h]].map(([x, y]) => createImageBitmap(img, x, y, h, h)));
+      worker.postMessage({ id, bitmaps }, bitmaps);
       return;
     } catch {
       // Fall through to raw pixels.

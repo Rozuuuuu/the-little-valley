@@ -1,4 +1,3 @@
-import { P } from '../render/palette';
 
 /**
  * Pixel textures for the HUD, painted once at startup and set as CSS variables on :root:
@@ -42,7 +41,7 @@ function canvas(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContex
   const c = document.createElement('canvas');
   c.width = w;
   c.height = h;
-  return [c, c.getContext('2d')!];
+  return [c, c.getContext('2d', { willReadFrequently: true })!];
 }
 
 export function dirtTile(): HTMLCanvasElement {
@@ -57,11 +56,40 @@ export function dirtTile(): HTMLCanvasElement {
   return c;
 }
 
-/** Colours of a grass blade from its root (0) to its tip (h - 1). */
-function bladeColor(i: number, h: number): string {
-  if (i === h - 1) return P.grassTip;
-  if (i === 0) return P.grass0;
-  return i > h / 2 ? P.grass3 : i % 2 ? P.grass2 : P.grass1;
+/** HUD grass: deep, darker greens (the frame used to be bright enough to look like a cracker's edge). */
+const GR = { root: '#143614', dark: '#1d4a1b', mid: '#2a6323', lit: '#387a2b', tip: '#4f9636' };
+
+/** Colour of a pixel of a blade from its root (0) to its tip (h - 1); lit blades are the sunny side of a tuft. */
+function bladeColor(i: number, h: number, lit = false): string {
+  if (i === 0) return GR.root;
+  if (i === h - 1 && h >= 5) return lit ? GR.tip : GR.lit;
+  if (i >= h / 2) return lit ? GR.lit : GR.mid;
+  return GR.dark;
+}
+
+/**
+ * Pixel grass tufts along a baseline: a tall middle blade with shorter blades either side, the
+ * left one lit, spaced unevenly with short stubble between, so the edge reads as grass rather
+ * than a regular scalloped edge.
+ */
+function paintTufts(px: (x: number, y: number, col: string) => void, width: number, base: number, maxH: number, seed: number): void {
+  // Stubble first, then tufts over it.
+  for (let x = 0; x < width; x++) {
+    const h = hash(x, 1, seed) > 0.5 ? 2 : 1;
+    for (let i = 0; i < h; i++) px(x, base - 1 - i, i === 0 ? GR.root : GR.dark);
+  }
+  let x = Math.floor(hash(0, 2, seed) * 3);
+  while (x < width + 2) {
+    const tall = Math.min(maxH, 4 + Math.floor(hash(x, 3, seed) * (maxH - 3)));
+    const side = Math.max(2, tall - 2 - Math.floor(hash(x, 4, seed) * 2));
+    const blade = (bx: number, h: number, lean: number, lit: boolean) => {
+      for (let i = 0; i < h; i++) px((((bx + (i >= h - 2 ? lean : 0)) % width) + width) % width, base - 1 - i, bladeColor(i, h, lit));
+    };
+    blade(x - 1, side, -1, true);
+    blade(x + 1, side, 1, false);
+    blade(x, tall, 0, true);
+    x += 4 + Math.floor(hash(x, 5, seed) * 4);
+  }
 }
 
 export function grassFrame(): HTMLCanvasElement {
@@ -75,68 +103,52 @@ export function grassFrame(): HTMLCanvasElement {
   };
   const turf = (x: number, y: number) => {
     const r = hash(x, y, 41);
-    px(x, y, r > 0.72 ? P.grass2 : r < 0.22 ? P.grass0 : P.grass1);
+    px(x, y, r > 0.8 ? GR.lit : r < 0.25 ? GR.dark : GR.mid);
   };
   // A turf band all the way round: 3 px at the top, the sides and the bottom.
   const t0 = top - 5;
-  // The loam inside the turf, so the frame blends with the box's own dirt.
+  // The dirt inside the turf, so the frame blends with the box's own dirt.
   for (let y = t0 + 3; y < S - 3; y++) for (let x = 3; x < S - 3; x++) px(x, y, loam(x, y));
   for (let y = t0; y < S; y++) {
     for (let x = 0; x < S; x++) {
-      const inTop = y < t0 + 3;
-      const inSide = x < 3 || x >= S - 3;
-      const inBottom = y >= S - 3;
-      if (inTop || inSide || inBottom) turf(x, y);
+      if (y < t0 + 3 || x < 3 || x >= S - 3 || y >= S - 3) turf(x, y);
     }
   }
-  // Turf hanging into the dirt along the top, and creeping in from the sides.
+  // The turf's lower edge is a shade darker (it shadows the dirt), with roots hanging in.
   for (let x = 0; x < S; x++) {
-    const drip = Math.floor(hash(x, 0, 43) * 3);
-    for (let d = 0; d < drip; d++) px(x, t0 + 3 + d, d === drip - 1 ? P.grass0 : P.grass1);
+    px(x, t0 + 2, GR.dark);
+    const drip = hash(x, 0, 43) > 0.6 ? 1 + Math.floor(hash(x, 7, 44) * 2) : 0;
+    for (let d = 0; d < drip; d++) px(x, t0 + 3 + d, d === drip - 1 ? GR.root : GR.dark);
   }
   for (let y = t0 + 3; y < S - 3; y++) {
-    if (hash(1, y, 45) > 0.55) px(3, y, P.grass0);
-    if (hash(2, y, 47) > 0.55) px(S - 4, y, P.grass0);
+    px(2, y, GR.dark);
+    px(S - 3, y, GR.dark);
   }
-  // Blades along the top: short to medium, darker at the root, bright at the tip.
-  for (let x = 0; x < S; x++) {
-    const r = hash(x, 1, 47);
-    if (r < 0.1) continue;
-    const h = Math.min(t0, 2 + Math.floor(hash(x, 2, 53) * 5) + (hash(x, 8, 73) > 0.85 ? 2 : 0));
-    const lean = hash(x, 3, 59) > 0.8 ? (hash(x, 4, 61) > 0.5 ? 1 : -1) : 0;
-    for (let i = 0; i < h; i++) {
-      const y = t0 - 1 - i;
-      const bx = i >= h - 1 && lean ? x + lean : x;
-      px(bx, y, bladeColor(i, h));
-      if (r > 0.75 && i < h - 1) px(x + 1, y, i === 0 ? P.grass0 : P.grass1);
-    }
-    if (h >= t0 - 2 && hash(x, 5, 67) > 0.93) px(x, t0 - 1 - h, hash(x, 6, 71) > 0.5 ? '#f4dc5c' : '#f0f0f8');
+  // Tufts along the top.
+  paintTufts(px, S, t0, t0, 47);
+  // Small tufts poking out of the sides, and short blades hanging below the bottom hem.
+  for (let y = t0 + 2; y < S - 2; y += 3 + Math.floor(hash(0, y, 81) * 3)) {
+    px(0, y, GR.lit);
+    px(0, y + 1, GR.mid);
+    px(S - 1, y + 1, GR.mid);
+    px(S - 1, y + 2, GR.dark);
   }
-  // Tufts poking out of the sides (1–2 px), and short blades hanging from the bottom hem.
-  for (let y = t0 + 1; y < S - 1; y++) {
-    if (hash(0, y, 81) > 0.62) px(0, y, hash(0, y, 82) > 0.5 ? P.grass3 : P.grass2);
-    if (hash(S, y, 83) > 0.62) px(S - 1, y, hash(S, y, 84) > 0.5 ? P.grass3 : P.grass2);
-  }
-  for (let x = 1; x < S - 1; x++) if (hash(x, S, 85) > 0.7) px(x, S - 1, P.grass3);
+  for (let x = 1; x < S - 1; x++) if (hash(x, S, 85) > 0.72) px(x, S - 1, GR.dark);
   return c;
 }
 
-/** A 48×8 strip of blades on a turf line, repeated along the top of the bottom console. */
+/** A 48×8 strip of tufts on a turf line, repeated along the top of the bottom console. */
 export function grassEdge(): HTMLCanvasElement {
   const W = 48;
   const H = 8;
   const [c, ctx] = canvas(W, H);
   const px = (x: number, y: number, col: string) => {
+    if (y < 0 || y >= H) return;
     ctx.fillStyle = col;
     ctx.fillRect(x, y, 1, 1);
   };
-  for (let x = 0; x < W; x++) {
-    px(x, H - 1, P.grass1);
-    const r = hash(x, 9, 101);
-    if (r < 0.08) continue;
-    const h = 2 + Math.floor(hash(x, 10, 103) * 5);
-    for (let i = 0; i < h; i++) px(x, H - 2 - i, bladeColor(i, h));
-  }
+  for (let x = 0; x < W; x++) px(x, H - 1, GR.mid);
+  paintTufts(px, W, H - 1, H - 1, 101);
   return c;
 }
 

@@ -89,7 +89,7 @@ export class SpriteBank {
     if (cached) return cached;
     const frame = this.settler(a)[0][0].canvas;
     const c = makeCanvas(18, 16);
-    const ctx = c.getContext('2d')!;
+    const ctx = c.getContext('2d', { willReadFrequently: true })!;
     ctx.imageSmoothingEnabled = false;
     if (crown) {
       // Shift the figure down a little and set a small gold crown on the head.
@@ -117,7 +117,7 @@ export class SpriteBank {
     if (cached) return cached;
     const size = 40;
     const c = makeCanvas(size, size);
-    const ctx = c.getContext('2d')!;
+    const ctx = c.getContext('2d', { willReadFrequently: true })!;
     ctx.imageSmoothingEnabled = false;
     let src: HTMLCanvasElement | null = this.buildings[id]?.day.canvas ?? null;
     if (id === 'fence') src = this.fence[2 | 8].canvas;
@@ -147,7 +147,7 @@ export class SpriteBank {
   private penPreview(id: string): HTMLCanvasElement {
     const pen = this.pens[id];
     const c = makeCanvas(pen.back.w, pen.back.h);
-    const ctx = c.getContext('2d')!;
+    const ctx = c.getContext('2d', { willReadFrequently: true })!;
     ctx.drawImage(pen.back.canvas, 0, 0);
     const species = ({ chickenCoop: 'chicken', pigsty: 'pig', sheepPen: 'sheep', goatPen: 'goat', cattlePasture: 'cow', horsePaddock: 'horse' } as Record<string, SpeciesId>)[id];
     const a = this.animals[species][0];
@@ -159,7 +159,7 @@ export class SpriteBank {
 
   private cropPreview(): HTMLCanvasElement {
     const c = makeCanvas(16, 16);
-    const ctx = c.getContext('2d')!;
+    const ctx = c.getContext('2d', { willReadFrequently: true })!;
     ctx.drawImage(this.soil.tilled.canvas, 0, 0);
     ctx.drawImage(this.crops.wheat[3].canvas, 0, 0);
     return c;
@@ -167,7 +167,7 @@ export class SpriteBank {
 
   private stoneBridgePreview(): HTMLCanvasElement {
     const c = makeCanvas(24, 16);
-    const ctx = c.getContext('2d')!;
+    const ctx = c.getContext('2d', { willReadFrequently: true })!;
     ctx.fillStyle = '#3b82b4';
     ctx.fillRect(0, 8, 24, 8);
     ctx.fillStyle = '#a3a8ab';
@@ -184,7 +184,7 @@ export class SpriteBank {
 
   private groundPreview(id: 'path' | 'bridge'): HTMLCanvasElement {
     const c = makeCanvas(16, 16);
-    const ctx = c.getContext('2d')!;
+    const ctx = c.getContext('2d', { willReadFrequently: true })!;
     if (id === 'path') {
       ctx.fillStyle = '#b18555';
       ctx.fillRect(0, 2, 16, 12);

@@ -149,6 +149,22 @@ in `localStorage`.
    update keep automatic newcomer arrivals until you choose **Adopt deliberate
    growth** in the Families tab.
 
+## What's new in the steady-frames update
+
+- **The map is drawn at its art resolution** (one art pixel per pixel) on a small canvas and
+  scaled up to the screen in one step; night, rain, text and planning layers go on top at
+  screen resolution. A weak graphics card now uploads and draws one image per frame instead of
+  hundreds of small drawings, which is what stalled panning into new land.
+- **Selecting someone no longer freezes the game:** sprites are built on CPU canvases, so reading
+  them back (for portraits, outlines and tints) no longer waits for the graphics card. The night
+  light map is also a small CPU canvas.
+- **New ground reaches the graphics card in quarters**, one small piece per frame, ahead of the
+  camera.
+- **The real cursor is back by default.** The held mouse drew its own cursor, which froze
+  whenever the page was busy. You can still turn it on in Settings; edge scrolling works
+  without it (leaving through an edge keeps scrolling that way).
+- **Darker HUD grass** in chunky pixel tufts, instead of an even row of bright blades.
+
 ## What's new in the smooth-panning update
 
 - **Panning without stutter.** Measured on a real graphics card, the worst hitches came from the

@@ -13,9 +13,9 @@
   --text-light: #f6ead0;
   --text-muted: #ecdab4;
   --accent: #f4cf5a;
-  --grass: #4f8a3c;
-  --grass-dark: #2f5a28;
-  --grass-hi: #7cc050;
+  --grass: #2f6a27;
+  --grass-dark: #1d4a1b;
+  --grass-hi: #4f9636;
 }
 
 /* The boxes. */
@@ -93,7 +93,7 @@
 
 /* The console: a grass verge along the bottom of the screen with dirt boxes on it. */
 .console {
-  background-image: radial-gradient(#6fae4c 1px, transparent 1.3px), linear-gradient(180deg, #5e9a45 0 4px, #4f8a3c 4px 100%);
+  background-image: radial-gradient(#387a2b 1px, transparent 1.3px), linear-gradient(180deg, #2f6a27 0 4px, #25561f 4px 100%);
   background-size: 5px 5px, 100% 100%;
   border-top: 3px solid #1c3416;
   box-shadow: 0 -3px 0 #7cc050, 0 -5px 0 #1c3416;
