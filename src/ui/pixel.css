@@ -342,3 +342,86 @@ body.mouse-locked[data-paused="1"] .soft-cursor { rotate: none; }
 body.mouse-locked:not([data-paused="1"]):is([data-edge="n"], [data-edge="s"], [data-edge="w"], [data-edge="e"], [data-edge="nw"], [data-edge="ne"], [data-edge="sw"], [data-edge="se"]) .soft-cursor { margin: -16px 0 0 -16px; background-size: 32px 32px; }
 body:has(.console), body:has(.console) .game-canvas.mode-select, body:has(.console) .card-btn, body:has(.console) .btn, body:has(.console) .win-btn { cursor: var(--cursor); }
 body:has(.title-screen) { cursor: var(--cursor); }
+
+/* =====================================================================================
+   Touch and small screens (phones and tablets).
+   ===================================================================================== */
+/* The game handles every touch itself: no browser panning, zooming, text selection or callouts. */
+html, body { overscroll-behavior: none; }
+.game-canvas { touch-action: none; }
+body { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+input, textarea, [contenteditable] { -webkit-user-select: text; user-select: text; }
+.console, .hud-top, .side, .panel { touch-action: manipulation; }
+
+.win-btn .short { display: none; }
+
+/* Phones in landscape and other short or narrow screens: a slimmer HUD so the map keeps the room. */
+@media (max-height: 560px), (max-width: 900px) {
+  :root { --top-h: 40px; --console-h: 128px; }
+  .hud-top { top: 3px; left: 3px; right: 3px; gap: 3px; height: calc(var(--top-h) - 4px); }
+  .hud-top .panel, .cmd-tip, .toast, .hover-info, .paused-banner { border-width: 10px 4px 4px 4px; border-image: var(--grass-frame) 14 6 6 6 / 10px 4px 4px 4px / 0 round; }
+  .res { font-size: 12px; padding: 1px 3px; gap: 2px; }
+  .res img { width: 14px; height: 14px; }
+  .res small { font-size: 10px; }
+  .goods-btn { display: none; }
+  .resources { overflow-x: auto; scrollbar-width: none; }
+  .win-btn { font-size: 11px; padding: 2px 4px; }
+  .win-btn .full, .win-btn .corner-key { display: none; }
+  .win-btn .short { display: inline; }
+  .clock { gap: 3px; padding: 0 3px; }
+  .clock img { width: 14px; height: 14px; }
+  .clock .time { font-size: 11px; }
+  .clock .time .cal, .clock .sub, .today-btn { display: none; }
+  .speed .btn { padding: 1px 4px; min-width: 22px; font-size: 11px; }
+
+  .console { grid-template-columns: 116px minmax(0, 1fr) 200px; gap: 3px; padding: 3px 3px 2px; }
+  .console .con-map, .console .con-info, .console .con-card { border-width: 12px 5px 5px 5px; border-image: var(--grass-frame) 14 6 6 6 / 12px 5px 5px 5px / 0 round; }
+  .console::before { top: -10px; height: 10px; background-size: 60px 10px; }
+  .con-map { padding: 2px; gap: 2px; }
+  .con-map .mm-row { display: none; }
+  .con-info { padding: 2px 4px; }
+  .portrait.big { width: 58px; height: 58px; }
+  .portrait.big img { width: 52px; height: 52px; }
+  .con-title strong { font-size: 14px; }
+  .con-task, .con-info .reason, .con-line, .con-bars { font-size: 11px; }
+  .con-bars { gap: 1px 4px; }
+  .see-more { font-size: 11px; padding: 1px 5px; }
+  .card-head { display: none; }
+  .card-grid { gap: 2px; }
+  .card-btn { padding: 0 1px; }
+  .card-btn img { width: 16px; height: 16px; }
+  .card-btn .glyph { font-size: 13px; line-height: 15px; height: 15px; }
+  .card-label { font-size: 9px; line-height: 10px; height: 10px; }
+  .card-btn kbd { display: none; }
+  .con-info.split { grid-template-columns: 1fr; }
+  .con-info.split .con-summary { display: none; }
+  .con-info.split .see-more { display: inline-block; }
+  .con-details { columns: 1; font-size: 12px; }
+  .side { width: min(320px, calc(100vw - 8px)); }
+  .modal { padding: 10px 12px; max-height: 96vh; }
+  .toasts { top: calc(var(--top-h) + 2px); }
+  .toast { font-size: 13px; padding: 5px 10px; }
+
+  /* Title screen: fit the logo and menu in a short screen. */
+  .title-screen { padding: 0 5vw; justify-content: center; }
+  .logo { font-size: min(9vw, 17vh); }
+  .tagline { font-size: 13px; margin: 8px 0 10px; }
+  .menu { width: 220px; gap: 5px; }
+  .title-screen .menu .btn { font-size: 15px; padding: 5px 10px; }
+  .title-screen .extra { margin-top: 6px; }
+  .shell-note { display: none; }
+}
+
+/* Phones held upright: the map on top, then the selection, then the commands. */
+@media (max-width: 600px) and (orientation: portrait) {
+  :root { --top-h: 116px; --console-h: 250px; }
+  .hud-top { flex-wrap: wrap; height: auto; }
+  .hud-top .spacer { display: none; }
+  .resources { flex: 1 1 100%; }
+  .win-tabs { flex: 1 1 auto; }
+  .console { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) 132px; }
+  .console .con-map { display: none; }
+  .logo { font-size: 18vw; }
+  .title-screen { align-items: center; text-align: center; }
+  .menu { width: min(300px, 86vw); }
+}

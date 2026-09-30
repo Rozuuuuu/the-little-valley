@@ -235,6 +235,8 @@ describe('production', () => {
   it('explains why a workshop is idle', () => {
     const sim = createNewGame(1313);
     camp(sim).inventory = { wood: 60, stone: 40, food: 60 };
+    // Nobody may craft (labourers lend a hand at idle workshops unless their order says no).
+    for (const s of sim.settlers) s.priorities = ['build', 'haul', 'farm', 'gather'];
     const ws = findSpot(sim, 'workshop');
     runUntil(sim, () => ws.built, DAY_TICKS * 2);
     run(sim, 20);

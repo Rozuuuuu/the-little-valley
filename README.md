@@ -149,6 +149,19 @@ in `localStorage`.
    update keep automatic newcomer arrivals until you choose **Adopt deliberate
    growth** in the Families tab.
 
+## What's new in the no-dead-ends and mobile update
+
+- **No dead end on the way to a Keep.** Crafters, hunters and herders are taught at the Town
+  Hall from the start (their workshops, lodges and pens can be built from day one), and
+  labourers lend a hand at an idle workshop, so planks for the Keep can always be made. A test
+  checks the whole chain for every Town Hall upgrade: each material, and everything it is made
+  from, comes from a building open by then, worked by a role the hall can already teach.
+- **Play on a phone or tablet.** Drag with one finger to move the map, tap to select, tap the
+  ground or a tree with people selected to give an order, press and hold then drag to select a
+  group, pinch to zoom. A **Deselect** button stands in for Esc. On small screens the HUD
+  shrinks to leave room for the map, and phones held upright stack the selection and commands
+  under it. Install it from the browser menu (Add to Home Screen) to play full screen.
+
 ## What's new in the smooth-scrolling update
 
 - **The map is its own layer on the page.** Each frame is drawn off-screen and handed to a
@@ -232,9 +245,9 @@ in `localStorage`.
 
 - **Everyone has a role**, and you change it by training at the **Town Hall**. Select
   people and press **Train** (J): they walk to the hall and study for about half a minute.
-  The Town Hall teaches labourers, farmers, gatherers, builders and haulers with 2 places at
-  a time. The **Keep** adds crafters, hunters, herders, **travellers** and **messengers** (3
-  places), and the **Castle** adds the **Assistant Chief** (4 places, one chief).
+  The Town Hall teaches every working role (labourers, farmers, gatherers, builders, haulers,
+  crafters, hunters and herders) with 2 places at a time. The **Keep** adds **travellers** and
+  **messengers** (3 places), and the **Castle** adds the **Assistant Chief** (4 places, one chief).
 - **Travellers** roam past the edge of the known land and lift the fog, coming home to eat
   and sleep.
 - **Messengers**: while you have one, letters and news reach you twice as fast. In between,

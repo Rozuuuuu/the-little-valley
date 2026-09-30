@@ -477,6 +477,8 @@ function useCommands(menu: CardMenu, setMenu: (m: CardMenu) => void, openWindow:
   const ruler = s.ruler;
   const details: Cmd = { id: 'details', label: 'See more', glyph: 'ⓘ', hotkey: b.seeMore[0], tip: { title: 'See more', body: 'Everything about the selection, beside it in the panel.' }, run: openDetails };
   const ordering = (o: 'move' | 'attack' | 'gather') => mode.kind === 'order' && mode.order === o;
+  // On a touch screen there is no Esc key: a button clears the selection.
+  const deselect: Cmd = { id: 'deselect', label: 'Deselect', glyph: '✕', hotkey: 'Escape', tip: { title: 'Deselect', body: 'Clear the selection.' }, run: () => game.cancel() };
 
   if (s.selection.length > 0) {
     // A Warcraft-style unit card: Move, Stop, Hold, Attack on top; work orders below.
@@ -518,7 +520,7 @@ function useCommands(menu: CardMenu, setMenu: (m: CardMenu) => void, openWindow:
       };
       slots[7] = {
         id: 'train', label: 'Train', glyph: '🎓', hotkey: b.trainRole[0], disabled: people.length === 0,
-        tip: { title: 'Train a new main job', body: 'Choose a role: they walk to the Town Hall and learn it. The Keep teaches crafters, hunters, herders, travellers and messengers; the Castle an Assistant Chief.' },
+        tip: { title: 'Train a new main job', body: 'Choose a role: they walk to the Town Hall and learn it. The Town Hall teaches every working role; the Keep adds travellers and messengers, the Castle an Assistant Chief.' },
         run: () => setMenu('train'),
       };
       slots[8] = {
@@ -535,6 +537,7 @@ function useCommands(menu: CardMenu, setMenu: (m: CardMenu) => void, openWindow:
       } else if (one?.homeId != null) slots[9] = { id: 'home', label: 'Home', glyph: '⌂', tip: { title: 'Show home' }, run: () => game.focusBuildingById(one.homeId!) };
     }
     slots[10] = details;
+    slots[BACK_SLOT] = deselect;
   } else if (bi) {
     // A building card.
     const id = bi.ids[0];
@@ -553,6 +556,7 @@ function useCommands(menu: CardMenu, setMenu: (m: CardMenu) => void, openWindow:
       slots[2] = { id: 'pause', label: bi.workshop.paused ? 'Resume' : 'Pause', glyph: bi.workshop.paused ? '▶' : '❚❚', hotkey: 'KeyP', tip: { title: bi.workshop.paused ? 'Resume work' : 'Pause work' }, run: () => game.toggleWorkshop(id) };
     }
     slots[3] = details;
+    slots[10] = deselect;
     if (bi.canRemove) {
       slots[BACK_SLOT] = {
         id: 'demolish', label: bi.built ? 'Demolish' : 'Cancel', glyph: '✖', hotkey: b.demolish[0],
@@ -732,7 +736,7 @@ export function BottomConsole({ menu, setMenu, openWindow }: { menu: CardMenu; s
   const { game } = useGame();
   const s = useSnapshot();
   // In the HUD, See more starts open: it uses the panel's free space and covers nothing.
-  const [details, setDetails] = useState(() => game.settings.detailsInHud);
+  const [details, setDetails] = useState(() => game.settings.detailsInHud && window.innerWidth > 900);
   const hasSelection = s.selection.length > 0 || !!s.building;
   // The See more key (V) toggles the details.
   useEffect(() => {

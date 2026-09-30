@@ -601,7 +601,7 @@ export function updateWorkshops(sim: Simulation): void {
     else if (!anyone) {
       ws.status = b.workers.length
         ? `Its worker has Craft turned off — edit their work order`
-        : `No worker — select a settler and right-click the ${name}`;
+        : `No worker — select a settler and right-click the ${name}, or train a Crafter at the Town Hall`;
     } else {
       const r = RECIPES[ws.recipe];
       const crafting = sim.reservations.has(`craft:${b.id}`);

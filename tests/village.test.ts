@@ -213,6 +213,8 @@ describe('wheat → mill → bakery', () => {
   it('enforces worker limits and explains stopped production', () => {
     const { sim, mill } = chain(808);
     camp(sim).inventory = { food: 60 };
+    // Nobody may craft (labourers lend a hand at idle workshops unless their order says no).
+    for (const s of sim.settlers) s.priorities = ['build', 'haul', 'farm', 'gather'];
     run(sim, 20);
     expect(mill.workshop!.status).toMatch(/No worker/);
     const [a, b] = [sim.settlers[3], sim.settlers[4]];

@@ -31,13 +31,14 @@ import { keyLabel, type Action } from '../input/bindings';
 /** Always on the bar; everything else lives in the Goods drawer. */
 const MAIN_RES: ResourceId[] = ['food', 'wood', 'stone', 'planks', 'tools'];
 
-const WINDOWS: { id: WindowTab; label: string; title: string; key: Action }[] = [
-  { id: 'people', label: 'People', title: 'Everyone in the valley', key: 'winPeople' },
-  { id: 'areas', label: 'Areas', title: 'Work areas', key: 'winAreas' },
-  { id: 'towns', label: 'Towns', title: 'Settlements, seasons and supply routes', key: 'winTowns' },
-  { id: 'families', label: 'Families', title: 'Households, children and visitors', key: 'winFamilies' },
-  { id: 'realm', label: 'Realm', title: 'Crown, diplomacy, news and war', key: 'winRealm' },
-  { id: 'goals', label: 'Goals', title: 'Milestones and what they unlock', key: 'winGoals' },
+/** The window tabs; `short` is shown on small screens. */
+const WINDOWS: { id: WindowTab; label: string; short: string; title: string; key: Action }[] = [
+  { id: 'people', label: 'People', short: 'Ppl', title: 'Everyone in the valley', key: 'winPeople' },
+  { id: 'areas', label: 'Areas', short: 'Area', title: 'Work areas', key: 'winAreas' },
+  { id: 'towns', label: 'Towns', short: 'Town', title: 'Settlements, seasons and supply routes', key: 'winTowns' },
+  { id: 'families', label: 'Families', short: 'Fam', title: 'Households, children and visitors', key: 'winFamilies' },
+  { id: 'realm', label: 'Realm', short: 'Realm', title: 'Crown, diplomacy, news and war', key: 'winRealm' },
+  { id: 'goals', label: 'Goals', short: 'Goal', title: 'Milestones and what they unlock', key: 'winGoals' },
 ];
 
 function GoodsDrawer({ onClose }: { onClose: () => void }) {
@@ -122,7 +123,8 @@ export function TopBar({ onMenu, win, setWin }: { onMenu: () => void; win: Windo
         {WINDOWS.map((w) => (
           <button key={w.id} className={`win-btn${win === w.id ? ' on' : ''}`} onClick={() => setWin(win === w.id ? null : w.id)} title={`${w.title} (${k(w.key)})`} aria-pressed={win === w.id}>
             <kbd className="corner-key">{k(w.key)}</kbd>
-            {w.label}
+            <span className="full">{w.label}</span>
+            <span className="short">{w.short}</span>
             {badge(w.id) !== null && <span className="badge">{badge(w.id)}</span>}
           </button>
         ))}
@@ -131,7 +133,8 @@ export function TopBar({ onMenu, win, setWin }: { onMenu: () => void; win: Windo
         <UiIcon id={s.raining ? 'rain' : s.isNight ? 'moon' : 'sun'} size={20} />
         <div>
           <div className="time">
-            {s.region.calendar} · {s.clock}
+            <span className="cal">{s.region.calendar} · </span>
+            {s.clock}
           </div>
           <div className="sub">
             {s.period}
@@ -147,7 +150,7 @@ export function TopBar({ onMenu, win, setWin }: { onMenu: () => void; win: Windo
               {sp}×
             </button>
           ))}
-          <button className="btn" onClick={() => game.openOverview()} title={`Valley today: issues and ideas (${k('today')})`}>
+          <button className="btn today-btn" onClick={() => game.openOverview()} title={`Valley today: issues and ideas (${k('today')})`}>
             Today
           </button>
           <button className="btn" onClick={onMenu} title="Menu (Esc)">

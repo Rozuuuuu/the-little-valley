@@ -40,9 +40,9 @@ describe('main job and side job', () => {
   it('side jobs follow what the Town Hall teaches', () => {
     const sim = world();
     const s = people(sim)[0];
-    const res = applyCommand(sim, { type: 'setSideJob', ids: [s.id], job: 'hunter' });
-    expect(res.ok).toBe(false);
-    expect(res.message).toMatch(/Keep/);
+    // Every working role is taught from the start (a hunter's lodge can be built from day one).
+    expect(applyCommand(sim, { type: 'setSideJob', ids: [s.id], job: 'hunter' }).ok).toBe(true);
+    expect(applyCommand(sim, { type: 'setSideJob', ids: [s.id], job: 'messenger' }).ok).toBe(false);
     expect(applyCommand(sim, { type: 'setSideJob', ids: [s.id], job: 'chief' }).ok).toBe(false);
     expect(applyCommand(sim, { type: 'setSideJob', ids: [s.id], job: s.job }).message).toMatch(/main job/i);
   });

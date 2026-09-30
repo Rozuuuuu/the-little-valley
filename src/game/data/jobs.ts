@@ -17,14 +17,14 @@ export type JobId =
   | 'traveler' | 'messenger' | 'chief';
 
 export const JOBS: Record<JobId, JobDef> = {
-  laborer: { id: 'laborer', name: 'Laborer', description: 'Builds, hauls, farms and harvests marked resources.', priorities: ['build', 'haul', 'farm', 'gather'], hallLevel: 1 },
+  laborer: { id: 'laborer', name: 'Laborer', description: 'Builds, hauls, farms and harvests marked resources, and lends a hand at an idle workshop.', priorities: ['build', 'haul', 'farm', 'gather', 'craft'], hallLevel: 1 },
   farmer: { id: 'farmer', name: 'Farmer', description: 'Tends fields first, then helps elsewhere.', priorities: ['farm', 'haul', 'build', 'gather'], hallLevel: 1 },
   gatherer: { id: 'gatherer', name: 'Gatherer', description: 'Harvests marked resources, or whatever the stores are shortest of.', priorities: ['gather', 'haul', 'build'], hallLevel: 1 },
   builder: { id: 'builder', name: 'Builder', description: 'Constructs and supplies building sites.', priorities: ['build', 'haul', 'gather'], hallLevel: 1 },
   hauler: { id: 'hauler', name: 'Hauler', description: 'Moves materials to sites and workshops.', priorities: ['haul', 'build', 'gather'], hallLevel: 1 },
-  crafter: { id: 'crafter', name: 'Crafter', description: 'Works at a workshop, mill or bakery.', priorities: ['craft', 'haul', 'build', 'gather'], hallLevel: 2 },
-  hunter: { id: 'hunter', name: 'Hunter', description: "Hunts game from a hunter's lodge, then gathers.", priorities: ['gather', 'haul', 'build'], hallLevel: 2 },
-  herder: { id: 'herder', name: 'Herder', description: 'Tends pens and pastures first, then fields.', priorities: ['farm', 'haul', 'build', 'gather'], hallLevel: 2 },
+  crafter: { id: 'crafter', name: 'Crafter', description: 'Works at a workshop, mill or bakery.', priorities: ['craft', 'haul', 'build', 'gather'], hallLevel: 1 },
+  hunter: { id: 'hunter', name: 'Hunter', description: "Hunts game from a hunter's lodge, then gathers.", priorities: ['gather', 'haul', 'build'], hallLevel: 1 },
+  herder: { id: 'herder', name: 'Herder', description: 'Tends pens and pastures first, then fields.', priorities: ['farm', 'haul', 'build', 'gather'], hallLevel: 1 },
   traveler: { id: 'traveler', name: 'Traveller', description: 'Roams beyond the known land and lifts the fog, coming home to eat and sleep.', priorities: [], hallLevel: 2 },
   messenger: { id: 'messenger', name: 'Messenger', description: 'Letters and news reach you twice as fast while you have one. Runs errands (hauling) in between.', priorities: ['haul', 'build', 'gather'], hallLevel: 2 },
   chief: {

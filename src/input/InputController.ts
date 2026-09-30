@@ -5,6 +5,11 @@ import type { GameController } from '../engine/GameController';
 const EDGE_MARGIN = 8;
 const EDGE_LOCKED = 3;
 const DRAG_THRESHOLD = 5;
+/** Touch: CSS pixels a finger may drift and still count as a tap; ms to hold for a box selection. */
+const TAP_SLOP = 10;
+const LONG_PRESS = 450;
+/** Touch: how far apart two fingers must spread (or pinch) to zoom a step. */
+const PINCH_STEP = 1.45;
 
 /**
  * Turns raw pointer and keyboard events into controller intents. Coordinates
@@ -23,6 +28,7 @@ export class InputController {
     canvas.addEventListener('pointermove', this.pointerMove);
     canvas.addEventListener('pointerup', this.pointerUp);
     canvas.addEventListener('pointerleave', this.pointerLeave);
+    canvas.addEventListener('pointercancel', this.pointerCancel);
     canvas.addEventListener('wheel', this.wheel, { passive: false });
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     window.addEventListener('keydown', this.keyDown);
@@ -43,6 +49,8 @@ export class InputController {
    */
   private edgeMove = (e: MouseEvent): void => {
     const g = this.game;
+    // A tap sends the browser's compatibility mouse events too; they must not start edge scrolling.
+    if (performance.now() - this.lastTouch < 1000) return this.setEdge(0, 0, 1);
     // The edge is tracked even while paused, so a pointer resting at the edge scrolls again as
     // soon as play resumes; the camera itself holds still while paused (see updateCamera).
     if (!g.settings.edgePan || g.attract) return this.setEdge(0, 0, 1);
@@ -85,6 +93,7 @@ export class InputController {
     this.canvas.removeEventListener('pointermove', this.pointerMove);
     this.canvas.removeEventListener('pointerup', this.pointerUp);
     this.canvas.removeEventListener('pointerleave', this.pointerLeave);
+    this.canvas.removeEventListener('pointercancel', this.pointerCancel);
     this.canvas.removeEventListener('wheel', this.wheel);
     window.removeEventListener('keydown', this.keyDown);
     window.removeEventListener('keyup', this.keyUp);
@@ -100,7 +109,114 @@ export class InputController {
     return { sx: (e.clientX - r.left) * this.dpr, sy: (e.clientY - r.top) * this.dpr };
   }
 
+  // ---- touch -------------------------------------------------------------------------
+  //  One finger drags the map; a tap selects (or, with people selected, gives the smart order a
+  //  right-click would); a long press then drag draws a selection box; two fingers pinch to zoom
+  //  and pan. In the placing, marking and targeting modes a finger acts as the left button.
+
+  private lastTouch = -Infinity;
+  private touches = new Map<number, { sx: number; sy: number }>();
+  private gesture:
+    | { kind: 'pending' | 'pan' | 'box'; sx: number; sy: number; camX: number; camY: number; timer: number }
+    | { kind: 'pinch'; dist: number; mx: number; my: number }
+    | null = null;
+
+  private pinchInfo(): { dist: number; mx: number; my: number } {
+    const [a, b] = [...this.touches.values()];
+    return { dist: Math.hypot(a.sx - b.sx, a.sy - b.sy), mx: (a.sx + b.sx) / 2, my: (a.sy + b.sy) / 2 };
+  }
+
+  private endGesture(): void {
+    if (this.gesture && 'timer' in this.gesture) clearTimeout(this.gesture.timer);
+    this.gesture = null;
+  }
+
+  /** Handles a touch pointer event; false lets it through to the mouse handling (as the left button). */
+  private touch(e: PointerEvent, phase: 'down' | 'move' | 'up'): boolean {
+    this.lastTouch = performance.now();
+    const g = this.game;
+    const { sx, sy } = this.pos(e);
+    if (phase === 'down') {
+      g.audio.unlock();
+      this.touches.set(e.pointerId, { sx, sy });
+      if (this.touches.size >= 2) {
+        // A second finger: pinch and pan, and forget any single-finger gesture.
+        this.endGesture();
+        this.down = null;
+        g.dragBox = null;
+        this.gesture = { kind: 'pinch', ...this.pinchInfo() };
+        return true;
+      }
+      if (g.mode.kind !== 'select') return false;
+      g.hoverWorld = g.camera.screenToWorld(sx, sy);
+      const timer = window.setTimeout(() => {
+        const t = this.gesture;
+        if (!t || t.kind !== 'pending') return;
+        // Held still: draw a selection box from here with the mouse code.
+        this.gesture = { ...t, kind: 'box' };
+        this.down = { button: 0, sx: t.sx, sy: t.sy, tile: g.worldTile(t.sx, t.sy), dragging: false };
+        g.audio.play('select');
+      }, LONG_PRESS);
+      this.gesture = { kind: 'pending', sx, sy, camX: g.camera.x, camY: g.camera.y, timer };
+      return true;
+    }
+    const t = this.gesture;
+    if (phase === 'move') {
+      if (this.touches.has(e.pointerId)) this.touches.set(e.pointerId, { sx, sy });
+      if (t?.kind === 'pinch') {
+        if (this.touches.size < 2) return true;
+        const now = this.pinchInfo();
+        g.camera.pan(-(now.mx - t.mx) / g.camera.scale, -(now.my - t.my) / g.camera.scale);
+        t.mx = now.mx;
+        t.my = now.my;
+        if (now.dist > t.dist * PINCH_STEP || now.dist < t.dist / PINCH_STEP) {
+          g.camera.zoomBy(now.dist > t.dist ? 1 : -1, now.mx, now.my);
+          t.dist = now.dist;
+        }
+        return true;
+      }
+      if (!t) return false;
+      if (t.kind === 'box') return false;
+      if (t.kind === 'pending' && Math.hypot(sx - t.sx, sy - t.sy) > TAP_SLOP * this.dpr) {
+        clearTimeout(t.timer);
+        t.kind = 'pan';
+      }
+      if (t.kind === 'pan') g.camera.centerOn(t.camX - (sx - t.sx) / g.camera.scale, t.camY - (sy - t.sy) / g.camera.scale);
+      return true;
+    }
+    // up
+    this.touches.delete(e.pointerId);
+    if (t?.kind === 'pinch') {
+      if (this.touches.size === 0) this.gesture = null;
+      return true;
+    }
+    if (!t) return false;
+    this.endGesture();
+    if (t.kind === 'box') return false;
+    if (t.kind === 'pending') this.tap(sx, sy);
+    return true;
+  }
+
+  /** The browser took a pointer away (a system gesture, say): drop whatever it was doing. */
+  private pointerCancel = (e: PointerEvent): void => {
+    this.touches.delete(e.pointerId);
+    if (this.touches.size === 0) this.endGesture();
+    this.down = null;
+    this.panFrom = null;
+    this.game.dragBox = null;
+    this.game.areaBox = null;
+  };
+
+  /** A tap in select mode: select what is there, or order the selected people to it. */
+  private tap(sx: number, sy: number): void {
+    const g = this.game;
+    g.hoverWorld = g.camera.screenToWorld(sx, sy);
+    if (g.selected.size && g.settlerAtScreen(sx, sy) === null && !g.adviceAt(sx, sy)) g.commandAt(sx, sy);
+    else g.clickSelect(sx, sy, false);
+  }
+
   private pointerDown = (e: PointerEvent): void => {
+    if (e.pointerType === 'touch' && this.touch(e, 'down')) return;
     this.game.audio.unlock();
     const { sx, sy } = this.pos(e);
     try {
@@ -118,6 +234,7 @@ export class InputController {
   };
 
   private pointerMove = (e: PointerEvent): void => {
+    if (e.pointerType === 'touch' && this.touch(e, 'move')) return;
     const { sx, sy } = this.pos(e);
     const g = this.game;
     g.hoverWorld = g.camera.screenToWorld(sx, sy);
@@ -143,6 +260,7 @@ export class InputController {
   };
 
   private pointerUp = (e: PointerEvent): void => {
+    if (e.pointerType === 'touch' && this.touch(e, 'up')) return;
     const { sx, sy } = this.pos(e);
     const g = this.game;
     try {

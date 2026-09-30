@@ -14,8 +14,9 @@ import type { Building, CommandResult, Settler, Task } from './types';
 /**
  * Roles. Everyone has one (their job), and a new one is learned at the Town
  * Hall: the person walks there and studies for a while. What the hall can teach
- * depends on its level — the Keep adds crafters, hunters, herders, travellers and
- * messengers, the Castle the Assistant Chief.
+ * depends on its level. The Town Hall teaches every working role (crafters, hunters and
+ * herders included, since their workplaces can be built from the start); the Keep adds
+ * travellers and messengers, the Castle the Assistant Chief.
  *
  *  - Travellers roam past the edge of the known land and lift the fog.
  *  - Messengers halve the time letters and news take to reach you.

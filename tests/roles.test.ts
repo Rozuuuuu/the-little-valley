@@ -43,12 +43,13 @@ describe('roles trained at the Town Hall', () => {
     expect(s.training).toBeFalsy();
   });
 
-  it('the hall level decides the roles: Keep for hunters, travellers and messengers; Castle for the Assistant Chief', () => {
+  it('the hall level decides the roles: working roles at once, travellers and messengers at a Keep, the Assistant Chief at a Castle', () => {
     const { sim, hall } = world(1);
     const s = people(sim)[0];
-    const hunter = applyCommand(sim, { type: 'trainRole', ids: [s.id], role: 'hunter' });
-    expect(hunter.ok).toBe(false);
-    expect(hunter.message).toMatch(/Keep/);
+    expect(applyCommand(sim, { type: 'trainRole', ids: [people(sim)[2].id], role: 'crafter' }).ok).toBe(true);
+    const messenger = applyCommand(sim, { type: 'trainRole', ids: [s.id], role: 'messenger' });
+    expect(messenger.ok).toBe(false);
+    expect(messenger.message).toMatch(/Keep/);
     hall.level = 2;
     expect(applyCommand(sim, { type: 'trainRole', ids: [s.id], role: 'traveler' }).ok).toBe(true);
     const chief = applyCommand(sim, { type: 'trainRole', ids: [people(sim)[1].id], role: 'chief' });
