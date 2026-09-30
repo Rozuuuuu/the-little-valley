@@ -425,3 +425,55 @@ input, textarea, [contenteditable] { -webkit-user-select: text; user-select: tex
   .title-screen { align-items: center; text-align: center; }
   .menu { width: min(300px, 86vw); }
 }
+
+/* =====================================================================================
+   Touch screens: every control at least about 44 px, the size a fingertip can hit
+   reliably. Mouse layouts are unchanged.
+   ===================================================================================== */
+@media (pointer: coarse) {
+  .btn, .px-select, .modal .btn { min-height: 44px; }
+  .btn.small { min-height: 40px; padding: 4px 10px; }
+  .px-select-opt { min-height: 44px; font-size: 15px; }
+  input[type="checkbox"], input[type="radio"] { width: 26px; height: 26px; }
+  input[type="checkbox"]:checked::after, input[type="radio"]:checked::after { width: 14px; height: 14px; }
+  input[type="range"] { height: 32px; }
+  input[type="range"]::-webkit-slider-thumb { width: 22px; height: 28px; margin-top: -11px; }
+  input[type="text"], input[type="number"] { min-height: 44px; font-size: 16px; }
+  .chip { min-height: 40px; padding: 4px 12px; }
+  .settler-row, .sel-list button, .vt-list button, .area-head { min-height: 44px; }
+  .order-list .btn { min-width: 40px; }
+  .group-cell { width: 44px; height: 44px; }
+  .cmd-tip { display: none; }
+}
+
+/* Touch, landscape phones and other short screens: a taller console and a wider command card. */
+@media (pointer: coarse) and (max-height: 560px), (pointer: coarse) and (max-width: 900px) {
+  :root { --top-h: 52px; --console-h: 170px; }
+  .hud-top { height: calc(var(--top-h) - 4px); }
+  .win-btn { min-height: 38px; min-width: 44px; font-size: 13px; padding: 4px 8px; }
+  .speed .btn { min-height: 38px; min-width: 40px; font-size: 13px; padding: 2px 6px; }
+  .res { font-size: 13px; }
+  .console { grid-template-columns: 116px minmax(0, 1fr) min(300px, 40vw); }
+  .card-grid { gap: 4px; }
+  .card-btn { min-height: 44px; }
+  .card-btn .glyph { font-size: 17px; line-height: 19px; height: 19px; }
+  .card-btn img { width: 20px; height: 20px; }
+  .card-label { font-size: 11px; line-height: 12px; height: 12px; }
+  .see-more { min-height: 40px; font-size: 13px; padding: 4px 10px; }
+  .con-map .minimap-canvas { cursor: default; }
+}
+
+/* Touch, phones held upright: bigger rows for the top bar and the command card. */
+@media (pointer: coarse) and (max-width: 600px) and (orientation: portrait) {
+  :root { --top-h: 142px; --console-h: 312px; }
+  .console { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) 178px; }
+  .card-btn { min-height: 52px; }
+  .card-label { font-size: 12px; line-height: 13px; height: 13px; }
+  .card-btn .glyph { font-size: 20px; line-height: 22px; height: 22px; }
+}
+/* Touch, small screens: resource counts never squash into each other; the stores panel scrolls sideways instead. */
+@media (pointer: coarse) and (max-height: 560px), (pointer: coarse) and (max-width: 900px) {
+  .resources .res { flex: 0 0 auto; }
+  .resources { flex: 1 1 0; min-width: 120px; }
+  .win-btn { padding: 4px 6px; min-width: 40px; }
+}
