@@ -13,6 +13,8 @@ import { MouseLock } from '../input/MouseLock';
 import { isInstalled, toggleFullscreen } from './appShell';
 import { ShellButtons } from './ShellButtons';
 import { RotateNotice } from './RotateNotice';
+import { UpdateBanner } from './UpdateBanner';
+import { BUILD } from './version';
 import { Camera } from '../render/Camera';
 import { Renderer } from '../render/Renderer';
 import { SpriteBank } from '../render/sprites';
@@ -219,6 +221,7 @@ export function App() {
             </>
           )}
           <RotateNotice game={game} playing={screen === 'game'} />
+          <UpdateBanner idle={screen === 'title' && !overlay} inGame={screen === 'game'} save={async () => game?.save(false)} />
           {overlay === 'pause' && <PauseMenu onClose={closeOverlay} onSettings={() => setOverlay('settings')} onHelp={() => setOverlay('help')} onQuit={quitToTitle} />}
           {overlay === 'settings' && <SettingsModal onClose={() => setOverlay(screen === 'game' ? 'pause' : null)} />}
           {overlay === 'help' && <HelpModal onClose={() => setOverlay(screen === 'game' ? 'pause' : null)} />}
@@ -345,7 +348,9 @@ function Title({ hasSave, onContinue, onNew, onLoad, onSettings }: { hasSave: bo
           ? 'Playing as an app: the screen edges are the map edges, so edge scrolling works all round.'
           : 'Tip: install it as an app (or play full screen) so the mouse can’t slip off the top or bottom edge while scrolling.'}
       </p>
-      <div className="credit">All art and sound are generated in code. Saved in this browser.</div>
+      <div className="credit">
+        All art and sound are generated in code. Saved in this browser. <span className="version">Version {BUILD.short}</span>
+      </div>
     </div>
   );
 }

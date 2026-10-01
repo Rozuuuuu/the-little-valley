@@ -8,6 +8,8 @@ import type { SlotMeta } from '../game/save/storage';
 import { saveSettings, type Settings } from '../engine/settings';
 import { DEFAULT_BINDINGS, defaultBindings, keyLabel, type Action } from '../input/bindings';
 import { useGame } from './context';
+import { BUILD } from './version';
+import { BROWSER_PLAY_KEY, currentAppSignals, runsAsApp } from './platform';
 
 function Modal({ title, children, onClose, label }: { title: string; children: React.ReactNode; onClose: () => void; label?: string }) {
   useEffect(() => {
@@ -178,6 +180,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
           <KeyGroup key={g} group={g} s={s} listening={listening} setListening={setListening} />
         ))}
       </div>
+      <AboutBuild />
       <div className="buttons">
         <button className="btn" onClick={() => update({ ...s, bindings: defaultBindings() })}>
           Reset keys
@@ -187,6 +190,33 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
         </button>
       </div>
     </Modal>
+  );
+}
+
+/** Which version this is, and a way out of browser play (the testing bypass). */
+function AboutBuild() {
+  const inBrowser = !runsAsApp(currentAppSignals());
+  const stop = () => {
+    try {
+      localStorage.removeItem(BROWSER_PLAY_KEY);
+    } catch {
+      // Storage blocked: the setting was never kept anyway.
+    }
+    window.location.href = window.location.pathname;
+  };
+  return (
+    <>
+      <h3 style={{ marginTop: 12 }}>Version</h3>
+      <p className="muted">
+        {BUILD.short}
+        {BUILD.commit !== 'dev' && ` · ${BUILD.date.slice(0, 10)}${BUILD.message ? ` · ${BUILD.message}` : ''}`}. Updates download by themselves.
+      </p>
+      {inBrowser && (
+        <button className="btn small" onClick={stop}>
+          Stop playing in the browser
+        </button>
+      )}
+    </>
   );
 }
 

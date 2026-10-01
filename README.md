@@ -149,6 +149,20 @@ in `localStorage`.
    update keep automatic newcomer arrivals until you choose **Adopt deliberate
    growth** in the Families tab.
 
+## What's new in the auto-update update
+
+- **Play in the browser anyway (for testing).** The download screen has a small button that plays
+  the game in the tab; this device remembers it (Settings → Version → *Stop playing in the
+  browser* undoes it). Adding `?play=browser` to the address does the same for one visit.
+- **The app keeps itself up to date.** Every push to `master` is tested, built and published to
+  GitHub Pages by `.github/workflows/deploy.yml`. Each build carries its commit (shown on the
+  title screen and in Settings) and publishes a `version.json`. The installed app checks it on
+  start, every 10 minutes, when it comes back to the front and when the network returns; the new
+  version downloads in the background. On the title screen it switches straight away; during play
+  a banner offers **Save and update** (or *Later*, and it switches next time you reach the title).
+- One-time setup: push `master`, then in the GitHub repository open Settings → Pages and set
+  *Source* to **GitHub Actions**. Install the game from the Pages address.
+
 ## What's new in the app-only update
 
 - **Little Valley is an app.** Opened in an ordinary browser tab, the published game shows only

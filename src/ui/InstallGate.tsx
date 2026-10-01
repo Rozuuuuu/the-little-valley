@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { canInstall, install, onShellChange } from './appShell';
-import { detectDevice, installSteps } from './platform';
+import { BROWSER_PLAY_KEY, detectDevice, installSteps } from './platform';
 
 /**
  * Shown instead of the game in an ordinary browser tab: Little Valley is played as an
  * installed app. Offers the browser's own install button where there is one, and the steps
  * for this device and browser otherwise.
  */
-export function InstallGate() {
+export function InstallGate({ onPlayInBrowser }: { onPlayInBrowser: () => void }) {
   const [, bump] = useState(0);
   const [installed, setInstalled] = useState(false);
   useEffect(() => onShellChange(() => bump((n) => n + 1)), []);
@@ -48,6 +48,19 @@ export function InstallGate() {
             <p className="muted">Already installed? Open Little Valley from your apps instead of this browser tab.</p>
           </>
         )}
+        <button
+          className="btn small browser-play"
+          onClick={() => {
+            try {
+              window.localStorage.setItem(BROWSER_PLAY_KEY, '1');
+            } catch {
+              // Not remembered (private browsing): it still plays this time.
+            }
+            onPlayInBrowser();
+          }}
+        >
+          Play in the browser anyway (for testing)
+        </button>
       </div>
     </div>
   );

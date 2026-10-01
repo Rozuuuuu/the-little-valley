@@ -62,6 +62,19 @@ export function installSteps(d: Device): string[] {
   return ['This browser can’t install apps. Open this page in Chrome or Microsoft Edge (or Safari on a Mac).', 'Then install it from the browser’s menu.', 'Little Valley opens in its own window from then on.'];
 }
 
+/** Remembers "play in the browser anyway" (for testing) on this device. */
+export const BROWSER_PLAY_KEY = 'little-valley:browser-play';
+
+/** Playing in a browser tab for testing: ?play=browser, or chosen before on this device. */
+export function browserPlayAllowed(search: string, storage: Pick<Storage, 'getItem'> | null): boolean {
+  if (new URLSearchParams(search).get('play') === 'browser') return true;
+  try {
+    return storage?.getItem(BROWSER_PLAY_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 /** A touch screen held upright: the game asks to be turned sideways. */
 export function needsLandscape(s: { coarse: boolean; width: number; height: number }): boolean {
   return s.coarse && s.height > s.width;

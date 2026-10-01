@@ -563,3 +563,20 @@ input, textarea, [contenteditable] { -webkit-user-select: text; user-select: tex
 /* The title never clips its logo on short screens: centred when it fits, scrolls when not. */
 .title-screen { justify-content: safe center; overflow-y: auto; }
 @media (pointer: coarse) and (max-height: 560px) { .title-screen .tagline { display: none; } .logo { font-size: min(8vw, 15vh); } }
+
+/* "Play in the browser anyway (for testing)" on the download screen. */
+.install-gate .browser-play { margin-top: 14px; opacity: 0.75; }
+.install-gate .browser-play:hover { opacity: 1; }
+
+/* A new version is ready (during play). */
+.update-banner {
+  position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 60;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center;
+  max-width: min(640px, calc(100vw - 32px)); padding: 8px 12px; font-size: 14px;
+}
+.update-banner .update-actions { display: flex; gap: 8px; }
+.credit .version { opacity: 0.7; margin-left: 6px; }
+@media (pointer: coarse) {
+  .update-banner { top: 8px; font-size: 13px; }
+  .update-banner .btn { min-height: 40px; }
+}
