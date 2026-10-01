@@ -9,7 +9,10 @@ describe('updates', () => {
   it('stamps each build with its git commit, or "dev" without git', () => {
     const fake = (cmd: string) => ({ 'rev-parse HEAD': 'abcdef1234567890', 'log -1 --format=%cI': '2026-10-01T10:00:00+08:00', 'log -1 --format=%s': 'Grow the valley' })[cmd] ?? '';
     expect(buildInfo(fake)).toEqual({ commit: 'abcdef1234567890', short: 'abcdef1', date: '2026-10-01T10:00:00+08:00', message: 'Grow the valley' });
-    expect(buildInfo(() => { throw new Error('no git'); }).commit).toBe('dev');
+    expect(buildInfo(() => { throw new Error('no git'); }, {}).commit).toBe('dev');
+    // Vercel builds without .git but names the commit in its environment.
+    const v = buildInfo(() => { throw new Error('no git'); }, { VERCEL_GIT_COMMIT_SHA: '0123456789abcdef', VERCEL_GIT_COMMIT_MESSAGE: 'Bigger fields\n\nmore text' });
+    expect(v).toMatchObject({ commit: '0123456789abcdef', short: '0123456', message: 'Bigger fields' });
   });
 
   it('a different published commit is an update; the same one, or a dev build, is not', () => {

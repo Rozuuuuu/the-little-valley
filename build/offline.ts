@@ -12,13 +12,21 @@ export interface BuildInfo {
   message: string;
 }
 
-/** Reads the build's commit from git (run is `git <args>`); "dev" when there is no git. */
-export function buildInfo(run: (args: string) => string = (a) => execFileSync('git', a.split(' '), { encoding: 'utf8' })): BuildInfo {
+/**
+ * Reads the build's commit from git (run is `git <args>`). Hosts that build without the .git
+ * folder (Vercel) name the commit in environment variables instead; "dev" when neither is there.
+ */
+export function buildInfo(
+  run: (args: string) => string = (a) => execFileSync('git', a.split(' '), { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }),
+  env: Record<string, string | undefined> = process.env,
+): BuildInfo {
   try {
     const commit = run('rev-parse HEAD').trim();
     if (!commit) throw new Error('no commit');
     return { commit, short: commit.slice(0, 7), date: run('log -1 --format=%cI').trim(), message: run('log -1 --format=%s').trim() };
   } catch {
+    const commit = env.VERCEL_GIT_COMMIT_SHA || env.GITHUB_SHA || '';
+    if (commit) return { commit, short: commit.slice(0, 7), date: new Date().toISOString(), message: (env.VERCEL_GIT_COMMIT_MESSAGE ?? '').split('\n')[0].trim() };
     return { commit: 'dev', short: 'dev', date: new Date(0).toISOString(), message: '' };
   }
 }

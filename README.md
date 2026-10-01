@@ -154,26 +154,15 @@ in `localStorage`.
 - **Play in the browser anyway (for testing).** The download screen has a small button that plays
   the game in the tab; this device remembers it (Settings → Version → *Stop playing in the
   browser* undoes it). Adding `?play=browser` to the address does the same for one visit.
-- **The app keeps itself up to date.** Every push to `master` is tested, built and published to
-  GitHub Pages by `.github/workflows/deploy.yml`. Each build carries its commit (shown on the
-  title screen and in Settings) and publishes a `version.json`. The installed app checks it on
-  start, every 10 minutes, when it comes back to the front and when the network returns; the new
-  version downloads in the background. On the title screen it switches straight away; during play
-  a banner offers **Save and update** (or *Later*, and it switches next time you reach the title).
-- One-time setup:
-  1. GitHub Pages needs a **public** repository on a free account (private repositories need
-     GitHub Pro, Team or Enterprise). Change it under Settings → General → Danger Zone if needed.
-  2. In the repository: **Settings → Pages** (left sidebar, under *Code and automation*) →
-     *Build and deployment* → *Source*: **GitHub Actions**. Nothing else on that page needs setting.
-  3. The run started by the first push failed at *deploy* because Pages wasn't on yet: open
-     **Actions → Deploy → Run workflow** (branch `master`), or re-run the failed run.
-  4. When both jobs are green, the game is at `https://<user>.github.io/<repository>/` (the
-     address is also shown on Settings → Pages and on the run's *deploy* job).
-  5. Open that address in Chrome or Edge (Safari on iPhone/iPad) and install it from there.
-     Only copies installed from that address update; saves belong to the address they were made
-     on, so valleys from `localhost` or another copy don't carry over.
-- Later pushes to `master` publish by themselves (about 2–3 minutes). A failing test stops the
-  publish, so a broken build never reaches installed apps.
+- **The app keeps itself up to date.** The game is hosted on Vercel, which builds and publishes
+  every push to `master` (the production branch). Each build carries its commit (shown on the
+  title screen and in Settings; on Vercel it comes from `VERCEL_GIT_COMMIT_SHA`) and publishes a
+  `version.json`. The installed app checks it on start, every 10 minutes, when it comes back to
+  the front and when the network returns; the new version downloads in the background. On the
+  title screen it switches straight away; during play a banner offers **Save and update** (or
+  *Later*, and it switches next time you reach the title).
+- Only copies installed from the production address update (Vercel preview addresses are separate
+  apps). Saves belong to the address they were made on.
 
 ## What's new in the app-only update
 
