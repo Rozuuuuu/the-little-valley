@@ -477,3 +477,59 @@ input, textarea, [contenteditable] { -webkit-user-select: text; user-select: tex
   .resources { flex: 1 1 0; min-width: 120px; }
   .win-btn { padding: 4px 6px; min-width: 40px; }
 }
+
+/* =====================================================================================
+   Phones (touch, small screens): the map comes first. The HUD scales with the screen,
+   the command card is 2 rows of 6 so it is short but each button stays finger-sized,
+   and See more opens as a sheet over the map instead of squeezing into the panel.
+   (Overrides the earlier touch sizes for small screens.)
+   ===================================================================================== */
+@media (pointer: coarse) and (max-height: 560px), (pointer: coarse) and (max-width: 900px) {
+  :root { --top-h: clamp(34px, 10vh, 42px); --console-h: clamp(92px, 27vh, 116px); }
+  .hud-top { height: calc(var(--top-h) - 4px); }
+  .win-btn { min-height: 30px; min-width: 34px; font-size: 12px; padding: 2px 6px; }
+  .speed .btn { min-height: 30px; min-width: 32px; font-size: 12px; padding: 1px 4px; }
+  .res { font-size: 12px; }
+  .console { grid-template-columns: clamp(64px, 11vw, 96px) minmax(0, 1fr) auto; gap: 3px; }
+  .card-grid { grid-template-columns: repeat(6, clamp(40px, 7.2vw, 58px)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 3px; }
+  .card-btn { min-height: 0; }
+  .card-btn .glyph { font-size: 15px; line-height: 17px; height: 17px; }
+  .card-btn img { width: 17px; height: 17px; }
+  .card-label { font-size: 9px; line-height: 10px; height: 10px; }
+  .portrait.big { width: clamp(36px, 10vh, 52px); height: clamp(36px, 10vh, 52px); }
+  .portrait.big img { width: 90%; height: 90%; }
+  .con-info-row { gap: 6px; }
+  .con-title strong { font-size: 13px; }
+  .con-bars { display: none; }
+  .see-more { min-height: 30px; font-size: 12px; padding: 2px 8px; }
+  /* See more: a sheet over the map, above the console. */
+  .con-info.split { grid-template-columns: 1fr; }
+  .con-info.split .con-summary { display: block; }
+  .con-info.split .see-more { display: inline-block; }
+  .con-info.split .con-details {
+    position: fixed; left: 4px; right: 4px; bottom: calc(var(--console-h) + 6px); max-height: min(55vh, 420px); z-index: 6;
+    background: var(--dirt) var(--dirt-tile); background-size: 32px 32px; image-rendering: pixelated;
+    border: 3px solid var(--grass); box-shadow: 0 0 0 2px var(--grass-dark); padding: 8px 10px; columns: 2 220px;
+  }
+  .side { max-height: calc(100vh - var(--top-h) - var(--console-h) - 10px); }
+}
+
+/* Phones held upright: two slim rows on top, then the map, then the selection and a 6×2 card. */
+@media (pointer: coarse) and (max-width: 600px) and (orientation: portrait) {
+  :root { --top-h: 76px; --console-h: clamp(150px, 25vh, 186px); }
+  .hud-top { flex-wrap: wrap; height: auto; row-gap: 2px; }
+  .resources { flex: 1 1 100%; }
+  .win-tabs { flex: 1 1 auto; overflow-x: auto; }
+  .clock .time { display: none; }
+  .console { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
+  .card-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); grid-template-rows: repeat(2, clamp(36px, 5.5vh, 46px)); }
+  .card-btn { min-height: 0; }
+  .card-label { font-size: 10px; }
+}
+@media (pointer: coarse) and (max-width: 600px) and (orientation: portrait) {
+  :root { --console-h: clamp(170px, 27vh, 204px); }
+  .win-tabs { flex: 1 1 0; min-width: 0; flex-wrap: nowrap; scrollbar-width: none; }
+  .win-tabs::-webkit-scrollbar { display: none; }
+  .clock { flex: 0 0 auto; }
+  .console { grid-template-rows: minmax(66px, 1fr) auto; }
+}
