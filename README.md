@@ -160,8 +160,20 @@ in `localStorage`.
   start, every 10 minutes, when it comes back to the front and when the network returns; the new
   version downloads in the background. On the title screen it switches straight away; during play
   a banner offers **Save and update** (or *Later*, and it switches next time you reach the title).
-- One-time setup: push `master`, then in the GitHub repository open Settings → Pages and set
-  *Source* to **GitHub Actions**. Install the game from the Pages address.
+- One-time setup:
+  1. GitHub Pages needs a **public** repository on a free account (private repositories need
+     GitHub Pro, Team or Enterprise). Change it under Settings → General → Danger Zone if needed.
+  2. In the repository: **Settings → Pages** (left sidebar, under *Code and automation*) →
+     *Build and deployment* → *Source*: **GitHub Actions**. Nothing else on that page needs setting.
+  3. The run started by the first push failed at *deploy* because Pages wasn't on yet: open
+     **Actions → Deploy → Run workflow** (branch `master`), or re-run the failed run.
+  4. When both jobs are green, the game is at `https://<user>.github.io/<repository>/` (the
+     address is also shown on Settings → Pages and on the run's *deploy* job).
+  5. Open that address in Chrome or Edge (Safari on iPhone/iPad) and install it from there.
+     Only copies installed from that address update; saves belong to the address they were made
+     on, so valleys from `localhost` or another copy don't carry over.
+- Later pushes to `master` publish by themselves (about 2–3 minutes). A failing test stops the
+  publish, so a broken build never reaches installed apps.
 
 ## What's new in the app-only update
 
