@@ -12,6 +12,7 @@ import { InputController } from '../input/InputController';
 import { MouseLock } from '../input/MouseLock';
 import { isInstalled, toggleFullscreen } from './appShell';
 import { ShellButtons } from './ShellButtons';
+import { RotateNotice } from './RotateNotice';
 import { Camera } from '../render/Camera';
 import { Renderer } from '../render/Renderer';
 import { SpriteBank } from '../render/sprites';
@@ -217,6 +218,7 @@ export function App() {
               <ChiefAdvice />
             </>
           )}
+          <RotateNotice game={game} playing={screen === 'game'} />
           {overlay === 'pause' && <PauseMenu onClose={closeOverlay} onSettings={() => setOverlay('settings')} onHelp={() => setOverlay('help')} onQuit={quitToTitle} />}
           {overlay === 'settings' && <SettingsModal onClose={() => setOverlay(screen === 'game' ? 'pause' : null)} />}
           {overlay === 'help' && <HelpModal onClose={() => setOverlay(screen === 'game' ? 'pause' : null)} />}

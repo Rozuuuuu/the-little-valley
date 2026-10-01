@@ -149,6 +149,20 @@ in `localStorage`.
    update keep automatic newcomer arrivals until you choose **Adopt deliberate
    growth** in the Families tab.
 
+## What's new in the app-only update
+
+- **Little Valley is an app.** Opened in an ordinary browser tab, the published game shows only
+  a **Download to play** screen: the browser's own Install button where it offers one (Chrome,
+  Edge, Android), and step-by-step instructions for this device and browser otherwise (Safari's
+  Share → Add to Home Screen on iPhone and iPad, File → Add to Dock on a Mac, and a pointer to
+  Chrome or Edge from browsers that can't install apps). The game runs once it is opened as the
+  installed app. Development builds (`npm run dev`, `vite build --mode development`) still play
+  in the browser.
+- **Landscape on phones and tablets.** The installed app asks the system to stay in landscape;
+  where it can't (iPhone, or a tablet with rotation unlocked), a "Turn your device sideways"
+  screen covers the game held upright and pauses it until it is turned back.
+- The app needs to be served over HTTPS (or from localhost) for browsers to offer installing it.
+
 ## What's new in the no-dead-ends and mobile update
 
 - **No dead end on the way to a Keep.** Crafters, hunters and herders are taught at the Town
