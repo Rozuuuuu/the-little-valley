@@ -8,6 +8,8 @@ config_version=5
 config/name="Little Valley"
 config/description="A cosy top-down farming and settlement game."
 config/features=PackedStringArray("4.7", "GL Compatibility")
+run/main_scene="res://scenes/main.tscn"
+config/icon="res://icon.svg"
 
 [debug]
 
@@ -22,3 +24,15 @@ gdscript/warnings/unsafe_call_argument=1
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/canvas_textures/default_texture_filter=1
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=4
+
+[input_devices]
+
+pointing/emulate_mouse_from_touch=true

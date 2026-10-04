@@ -1,0 +1,67 @@
+{
+  "_comment": "The colour source of truth for the illustrated art (docs/godot/ART_STYLE.md). Read by scripts/art/make-svgs.ts and by the game (ground shader, UI). Tones run dark to light.",
+  "core": {
+    "teal": "#173b3d",
+    "tealMid": "#24524f",
+    "forest": "#2f6a4f",
+    "sage": "#8aab7a",
+    "mint": "#cdeedb",
+    "gold": "#e6b65a",
+    "goldDeep": "#b98a35"
+  },
+  "ground": {
+    "grass": ["#4f7d55", "#5f8f5d", "#71a066"],
+    "meadow": ["#6c9b5c", "#7fae68", "#93c077"],
+    "forestFloor": ["#2f5a43", "#3a684b", "#467654"],
+    "hill": ["#5e8a5a", "#729c66", "#86ad75"],
+    "rocky": ["#6e7b70", "#7f8c80", "#93a093"],
+    "mountain": ["#3f4f4c", "#56645f", "#6d7b74"],
+    "sand": ["#b6a77c", "#c8ba8f", "#d8cba2"],
+    "road": ["#8d7458", "#9d8466", "#ad9475"],
+    "bridge": ["#7a5a3e", "#8f6c4b", "#a88259"],
+    "stoneBridge": ["#7f8a86", "#929d98", "#a8b2ad"],
+    "water": ["#2f7f93", "#3d93a6", "#5aaab8"],
+    "deep": ["#1d5568", "#246477", "#2c7286"],
+    "foam": "#d4efe8",
+    "fog": "#14302f"
+  },
+  "seasons": {
+    "spring": { "tint": "#ffffff", "grassShift": 0.0 },
+    "summer": { "tint": "#fbfbef", "grassShift": 0.04 },
+    "autumn": { "tint": "#f4e8d2", "grassShift": 0.16 },
+    "winter": { "tint": "#e6eef0", "grassShift": 0.0 }
+  },
+  "materials": {
+    "leaf": ["#1f4a3a", "#2f6a4f", "#3f8459", "#5a9e68", "#86c08a"],
+    "leafAutumn": ["#5a2e22", "#8a4a2c", "#b8692f", "#d99247", "#f0c06a"],
+    "pine": ["#173b3d", "#1f5145", "#2b6650", "#3d7f5e"],
+    "snow": ["#bfd3d6", "#dce9ea", "#f3f8f8"],
+    "bark": ["#3b2a22", "#5a3f2e", "#77563d"],
+    "wood": ["#5c3d28", "#7d5636", "#a77446", "#c9955f"],
+    "stone": ["#4d5a58", "#6c7a76", "#8e9b95", "#b6c1bb"],
+    "roofRed": ["#6e2f28", "#924237", "#b8604a", "#d68466"],
+    "roofSlate": ["#2b4048", "#3b5662", "#4f6f7c", "#6a8b96"],
+    "wall": ["#b9a98a", "#d2c4a3", "#e8dcc0"],
+    "soil": ["#4a3122", "#5e412e", "#7a573c", "#8c6243"],
+    "berry": ["#7a2433", "#b23b48", "#d9584f"],
+    "wheat": ["#a7802f", "#cfa848", "#e2c46c", "#f0dc97"],
+    "glassLit": ["#f2c66a", "#ffe2a0"]
+  },
+  "people": {
+    "skin": ["#f1c9a5", "#d9a882", "#b07a55", "#7a5038"],
+    "hair": ["#2d211b", "#5a3a26", "#8a5a33", "#c58b4a", "#d9c08a", "#8d8d8d"],
+    "shirt": ["#c4553f", "#3f7fa6", "#d6a13d", "#7a5aa0", "#4f8c5a", "#c7738f"],
+    "pants": ["#3a3f52", "#5a4632", "#4a5a46"],
+    "outline": "#1c3534"
+  },
+  "ui": {
+    "panel": "#173b3d",
+    "panelHi": "#24524f",
+    "line": "#cdeedb",
+    "text": "#eef7f1",
+    "textDim": "#a9c8b9",
+    "accent": "#e6b65a",
+    "good": "#8fd18a",
+    "problem": "#d9584f"
+  }
+}

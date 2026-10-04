@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+<g>
+<clipPath id="c84"><path d="M14,22H36Q42,22 42,28V29Q42,35 36,35H14Q8,35 8,29V28Q8,22 14,22Z"/></clipPath>
+<clipPath id="c84r"><path d="M14,22H36Q42,22 42,28V29Q42,35 36,35H14Q8,35 8,29V28Q8,22 14,22Z" transform="translate(-5,-5)"/></clipPath>
+<path d="M14,22H36Q42,22 42,28V29Q42,35 36,35H14Q8,35 8,29V28Q8,22 14,22Z" fill="#5c3d28"/>
+<g clip-path="url(#c84)">
+<path d="M14,22H36Q42,22 42,28V29Q42,35 36,35H14Q8,35 8,29V28Q8,22 14,22Z" fill="#7d5636" transform="translate(-3,-3)"/>
+<path d="M14,22H36Q42,22 42,28V29Q42,35 36,35H14Q8,35 8,29V28Q8,22 14,22Z" fill="#a77446" opacity="0.9" transform="translate(20,20) scale(0.72) translate(-25,-25)"/>
+
+</g>
+<path d="M14,22H36Q42,22 42,28V29Q42,35 36,35H14Q8,35 8,29V28Q8,22 14,22Z" fill="none" stroke="#39392f" stroke-width="3" stroke-linejoin="round"/>
+</g><ellipse cx="38" cy="28.5" rx="4" ry="6" fill="#c9955f" stroke="#39392f" stroke-width="2"/><g>
+<clipPath id="c85"><path d="M28,34H50Q56,34 56,40V41Q56,47 50,47H28Q22,47 22,41V40Q22,34 28,34Z"/></clipPath>
+<clipPath id="c85r"><path d="M28,34H50Q56,34 56,40V41Q56,47 50,47H28Q22,47 22,41V40Q22,34 28,34Z" transform="translate(-5,-5)"/></clipPath>
+<path d="M28,34H50Q56,34 56,40V41Q56,47 50,47H28Q22,47 22,41V40Q22,34 28,34Z" fill="#5c3d28"/>
+<g clip-path="url(#c85)">
+<path d="M28,34H50Q56,34 56,40V41Q56,47 50,47H28Q22,47 22,41V40Q22,34 28,34Z" fill="#7d5636" transform="translate(-3,-3)"/>
+<path d="M28,34H50Q56,34 56,40V41Q56,47 50,47H28Q22,47 22,41V40Q22,34 28,34Z" fill="#a77446" opacity="0.9" transform="translate(34,34) scale(0.72) translate(-39,-39)"/>
+
+</g>
+<path d="M28,34H50Q56,34 56,40V41Q56,47 50,47H28Q22,47 22,41V40Q22,34 28,34Z" fill="none" stroke="#39392f" stroke-width="3" stroke-linejoin="round"/>
+</g><ellipse cx="52" cy="40.5" rx="4" ry="6" fill="#c9955f" stroke="#39392f" stroke-width="2"/><g>
+<clipPath id="c86"><path d="M26,32H48Q54,32 54,38V39Q54,45 48,45H26Q20,45 20,39V38Q20,32 26,32Z"/></clipPath>
+<clipPath id="c86r"><path d="M26,32H48Q54,32 54,38V39Q54,45 48,45H26Q20,45 20,39V38Q20,32 26,32Z" transform="translate(-5,-5)"/></clipPath>
+<path d="M26,32H48Q54,32 54,38V39Q54,45 48,45H26Q20,45 20,39V38Q20,32 26,32Z" fill="#5c3d28"/>
+<g clip-path="url(#c86)">
+<path d="M26,32H48Q54,32 54,38V39Q54,45 48,45H26Q20,45 20,39V38Q20,32 26,32Z" fill="#7d5636" transform="translate(-3,-3)"/>
+<path d="M26,32H48Q54,32 54,38V39Q54,45 48,45H26Q20,45 20,39V38Q20,32 26,32Z" fill="#a77446" opacity="0.9" transform="translate(32,32) scale(0.72) translate(-37,-37)"/>
+
+</g>
+<path d="M26,32H48Q54,32 54,38V39Q54,45 48,45H26Q20,45 20,39V38Q20,32 26,32Z" fill="none" stroke="#39392f" stroke-width="3" stroke-linejoin="round"/>
+</g><ellipse cx="50" cy="38.5" rx="4" ry="6" fill="#c9955f" stroke="#39392f" stroke-width="2"/>
+</svg>
