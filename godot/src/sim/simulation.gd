@@ -26,7 +26,7 @@ const CHRONICLE_LIMIT := 80
 const SHARED_UNREACHABLE_RANGE := 12
 const GROWTH_STEP := 50
 ## Navigation window: tiles around the first settlement that paths can use (half-size).
-const NAV_HALF := 96
+const NAV_HALF := 64
 
 # Reservation and target key namespaces (high bits), so one int names any target.
 const K_OBJ := 1 << 48
@@ -182,6 +182,16 @@ func cost(x: int, y: int) -> float:
 
 
 # ---- navigation --------------------------------------------------------------------------------
+
+## Loads every chunk the navigation window around (cx, cy) covers, then creates the window.
+## Used when a valley starts or is loaded, so both see the same land.
+func load_nav_area(cx: int, cy: int) -> void:
+	for ky in range((cy - NAV_HALF) >> Chunk.SHIFT, ((cy + NAV_HALF - 1) >> Chunk.SHIFT) + 1):
+		for kx in range((cx - NAV_HALF) >> Chunk.SHIFT, ((cx + NAV_HALF - 1) >> Chunk.SHIFT) + 1):
+			world.request(kx, ky)
+	world.finish_pending()
+	setup_nav(cx, cy)
+
 
 ## Creates the navigation window around (cx, cy) and fills it from the loaded world.
 func setup_nav(cx: int, cy: int) -> void:

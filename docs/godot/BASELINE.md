@@ -219,6 +219,48 @@ average.** Hitches above 16 ms remain in about 5% of frames at 300.
 - The ground shader is not the bottleneck: hiding it changed the frame time by less than
   the run-to-run noise.
 
+## Web build (the installable version)
+
+Exported with the standard Godot 4.7.2 editor and the official templates: single-threaded
+(`web_nothreads`, no special server headers needed), PWA enabled, landscape.
+
+| File | Size (uncompressed) |
+| --- | --- |
+| `index.wasm` (the engine) | 39.5 MB |
+| `index.pck` (the game) | 0.9 MB |
+
+Servers compress the engine to roughly a quarter (an estimate; measure on the real host), and the
+service worker caches it after the first visit.
+
+`npx tsx scripts/godot-web-bench.ts N frames desktop|phone` runs the build in headless Chrome on
+this machine. **Headless Chrome has no real display, so frame times are indicative only;** for
+example 25 settlers measured slower than 100 in two runs.
+
+| Run | Startup to first code | Art | New valley | avg ms | p50 | p95 | p99 | Sim / view ms per frame |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Desktop, 100 settlers | ≈6.5 s | 0.45 s | 1.9 s | 21.5 | 16.9 | 36.8 | 48.2 | 2.8 / 1.7 |
+| Phone emulation (4× CPU throttle, 915×412), 25 settlers | | | | 58.1 | 42.3 | 144 | 230 | 18.4 / 12.6 |
+| Phone emulation, 100 settlers, before the fixes below | | | 139 s total | 177.7 | 132 | 514 | 897 | 101 / 42 |
+
+Findings:
+- **GDScript in WebAssembly runs about 3–5x slower than native GDScript** (simulation at 100
+  settlers: 2.8 ms per frame on the web against 0.62 natively). One world chunk takes about
+  0.7 s to generate on the web.
+- **Fixed after measuring:**
+  - a tick-catch-up spiral: the simulation now has a hard per-frame budget, and a slow device
+    runs game time slower (the clock says so) instead of freezing;
+  - chunk generation now runs a few rows at a time across frames (`WorldGen.ChunkJob`), so
+    exploring never stalls a frame for a whole chunk;
+  - a new valley generates 16 chunks up front instead of 36.
+- **Not yet measured: a real phone.** The 4× throttle stands in for a low-end phone, and recent
+  phones are likely faster. Run `npx tsx scripts/serve-godot-web.ts` and open the printed address
+  on a phone on the same Wi-Fi to measure one.
+- **Next for phones:**
+  - a lower render resolution option;
+  - refreshing distant settlers less often;
+  - the threaded web build (needs cross-origin isolation headers on Vercel) to move world
+    generation off the main thread.
+
 ## Saves
 
 - Godot saves use the browser game's v15 JSON layout. A genuine v15 browser save

@@ -39,6 +39,9 @@ var _in_flight := {}
 ## Finished worker results waiting to be installed: key -> Chunk. Guarded by _mutex.
 var _done := {}
 var _mutex := Mutex.new()
+## The chunk being generated a few rows at a time (single-threaded builds).
+var _job: WorldGen.ChunkJob = null
+var _job_key := -1
 
 ## Called with (x, y) after a tile's terrain or object changes, and with a chunk after it is
 ## installed (generated or restored), so navigation can refresh. Set by the simulation.
@@ -112,7 +115,14 @@ func ensure(cx: int, cy: int) -> Chunk:
 		return c
 	if _in_flight.has(k) and _collect(k):
 		return _chunks[k]
-	c = WorldGen.generate_chunk(seed_value, cx, cy, gen, habitat_id)
+	if _job != null and _job_key == k:
+		# Finish the chunk already part-way through.
+		while not _job.step(1 << 30):
+			pass
+		c = _job.chunk
+		_job = null
+	else:
+		c = WorldGen.generate_chunk(seed_value, cx, cy, gen, habitat_id)
 	_install(k, c)
 	return c
 
@@ -127,7 +137,7 @@ func request(cx: int, cy: int) -> void:
 
 
 func pending_count() -> int:
-	return _queue.size() + _in_flight.size()
+	return _queue.size() + _in_flight.size() + (1 if _job != null else 0)
 
 
 ## Installs finished chunks and starts or runs queued generation. Call once per frame.
@@ -144,13 +154,25 @@ func pump(budget_usec: int = 4000) -> int:
 			_queued.erase(k)
 			_in_flight[k] = WorkerThreadPool.add_task(_generate_task.bind(k), false, "Little Valley chunk")
 	else:
+		# No threads (the single-threaded web build): generate a few rows per frame, resuming the
+		# same chunk next frame, so no frame waits for a whole chunk.
 		var t0 := Time.get_ticks_usec()
-		while not _queue.is_empty():
-			var k: int = _queue.pop_front()
-			_queued.erase(k)
-			if not _chunks.has(k):
-				_install(k, WorldGen.generate_chunk(seed_value, key_cx(k), key_cy(k), gen, habitat_id))
-				installed += 1
+		while true:
+			if _job == null:
+				if _queue.is_empty():
+					break
+				var k: int = _queue.pop_front()
+				_queued.erase(k)
+				if _chunks.has(k):
+					continue
+				_job_key = k
+				_job = WorldGen.ChunkJob.new(seed_value, key_cx(k), key_cy(k), gen, habitat_id)
+			var left := budget_usec - (Time.get_ticks_usec() - t0)
+			if _job.step(maxi(1, left)):
+				if not _chunks.has(_job_key):
+					_install(_job_key, _job.chunk)
+					installed += 1
+				_job = null
 			if Time.get_ticks_usec() - t0 >= budget_usec:
 				break
 	return installed

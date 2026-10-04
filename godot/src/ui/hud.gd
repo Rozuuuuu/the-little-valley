@@ -542,6 +542,8 @@ func refresh_now() -> void:
 	var season: Dictionary = sim.season()
 	var t := sim.time_of_day() * 24.0
 	_clock.text = "%s · Day %d of %s · %02d:%02d%s" % [season["def"]["name"], int(season["day"]), str(season["def"]["name"]).to_lower(), int(t), int(fmod(t, 1.0) * 60.0), "  ⏸" if game.paused else ("  %d×" % game.speed if game.speed > 1 else "")]
+	if game.falling_behind and not game.paused:
+		_clock.text += "  (slowed: this device can't keep up at this speed)"
 	_refresh_selection()
 	_refresh_card()
 	_refresh_people()

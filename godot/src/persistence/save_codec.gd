@@ -291,16 +291,9 @@ static func decode(save: Variant) -> Dictionary:
 	for r: Array in sd.get("regrowth", []):
 		sim.regrowth[Simulation.tile_key(int(r[0]), int(r[1]))] = [int(r[2]), int(r[3])]
 
-	# The land around the first settlement is generated before play continues.
-	var camp := BuildingOps.camp_of(sim)
-	var centre := Vector2i(camp.x, camp.y) if camp != null else Vector2i.ZERO
-	var ccx := centre.x >> Chunk.SHIFT
-	var ccy := centre.y >> Chunk.SHIFT
-	for cy in range(ccy - NewGame.START_CHUNKS, ccy + NewGame.START_CHUNKS):
-		for cx in range(ccx - NewGame.START_CHUNKS, ccx + NewGame.START_CHUNKS):
-			sim.world.request(cx, cy)
-	sim.world.finish_pending()
-	sim.setup_nav(centre.x, centre.y)
+	# The land around the first settlement is generated before play continues: the same area a
+	# new valley starts with (the navigation window around the origin, where every hall stands).
+	sim.load_nav_area(0, 0)
 	# Households that lost an adult are dropped; claims on missing or full homes are released.
 	sim.households = sim.households.filter(func(h: Dictionary) -> bool:
 		return sim.settler(int(h["adults"][0])) != null and sim.settler(int(h["adults"][1])) != null)

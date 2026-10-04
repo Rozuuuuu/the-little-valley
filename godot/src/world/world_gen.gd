@@ -379,36 +379,74 @@ static func object_at(seed_value: int, x: int, y: int, terrain: int, gen: int = 
 	return Tiles.O_NONE
 
 
-## Generates one chunk. Water is computed once for the chunk plus a one-tile border.
+## Generates one chunk (all at once): a ChunkJob run to completion.
 static func generate_chunk(seed_value: int, cx: int, cy: int, gen: int = 1, habitat_id: String = "valley") -> Chunk:
-	Tiles.ensure_loaded()
-	var h := HabitatDef.of(habitat_id)
-	var c := Chunk.new(cx, cy)
-	var ox := cx * Chunk.SIZE
-	var oy := cy * Chunk.SIZE
-	var cache := GenCache.new(seed_value, ox, oy, gen, h)
+	var job := ChunkJob.new(seed_value, cx, cy, gen, habitat_id)
+	while not job.step(1 << 30):
+		pass
+	return job.chunk
+
+
+## A chunk generated a few rows at a time, so a single-threaded device (the web build) can spread
+## the work over frames instead of freezing. Water is computed once for the chunk plus a one-tile
+## border (shores need neighbours), then terrain and objects row by row. The results are the same
+## however the work is split.
+class ChunkJob:
+	var seed_value: int
+	var gen: int
+	var h: HabitatDef
+	var chunk: Chunk
+	var _ox: int
+	var _oy: int
+	var _cache: GenCache
+	var _water := PackedByteArray()
+	## 0..33: water border rows; 34..65: terrain rows; 66: done.
+	var _row := 0
 	const G := Chunk.SIZE + 2
-	var water := PackedByteArray()
-	water.resize(G * G)
-	for gy in G:
-		for gx in G:
-			water[gy * G + gx] = water_at(seed_value, ox + gx - 1, oy + gy - 1, gen, h, cache)
-	for ly in Chunk.SIZE:
-		for lx in Chunk.SIZE:
-			var i := ly * Chunk.SIZE + lx
-			var w := water[(ly + 1) * G + (lx + 1)]
-			var shore := false
-			if w == 0:
-				for dy in range(-1, 2):
-					for dx in range(-1, 2):
-						if (dx != 0 or dy != 0) and water[(ly + 1 + dy) * G + (lx + 1 + dx)] != 0:
-							shore = true
-			var t := _terrain_from_water(seed_value, ox + lx, oy + ly, gen, h, w, shore, cache)
-			var o := object_at(seed_value, ox + lx, oy + ly, t, gen, h, cache)
-			c.terrain[i] = t
-			c.obj[i] = o
-			c.amt[i] = Tiles.start_amount[o]
-	return c
+
+	func _init(world_seed: int, cx: int, cy: int, generator: int, habitat_id: String) -> void:
+		Tiles.ensure_loaded()
+		seed_value = world_seed
+		gen = generator
+		h = HabitatDef.of(habitat_id)
+		chunk = Chunk.new(cx, cy)
+		_ox = cx * Chunk.SIZE
+		_oy = cy * Chunk.SIZE
+		_water.resize(G * G)
+
+	func done() -> bool:
+		return _row >= G + Chunk.SIZE
+
+	## Works until `budget_usec` is spent (at least one row). Returns true when the chunk is complete.
+	func step(budget_usec: int) -> bool:
+		var t0 := Time.get_ticks_usec()
+		if _cache == null:
+			_cache = GenCache.new(seed_value, _ox, _oy, gen, h)
+		while not done():
+			if _row < G:
+				var gy := _row
+				for gx in G:
+					_water[gy * G + gx] = WorldGen.water_at(seed_value, _ox + gx - 1, _oy + gy - 1, gen, h, _cache)
+			else:
+				var ly := _row - G
+				for lx in Chunk.SIZE:
+					var i := ly * Chunk.SIZE + lx
+					var w := _water[(ly + 1) * G + (lx + 1)]
+					var shore := false
+					if w == 0:
+						for dy in range(-1, 2):
+							for dx in range(-1, 2):
+								if (dx != 0 or dy != 0) and _water[(ly + 1 + dy) * G + (lx + 1 + dx)] != 0:
+									shore = true
+					var t := WorldGen._terrain_from_water(seed_value, _ox + lx, _oy + ly, gen, h, w, shore, _cache)
+					var o := WorldGen.object_at(seed_value, _ox + lx, _oy + ly, t, gen, h, _cache)
+					chunk.terrain[i] = t
+					chunk.obj[i] = o
+					chunk.amt[i] = Tiles.start_amount[o]
+			_row += 1
+			if Time.get_ticks_usec() - t0 >= budget_usec:
+				break
+		return done()
 
 
 # ---- generator 4: habitats -------------------------------------------------------------------

@@ -31,6 +31,35 @@ because they generate every fingerprinted chunk.
 godot --headless --path . -s res://tools/bench_gen.gd -- 12   # ms per chunk, generators 1–4
 ```
 
+## Exporting (web and Windows)
+
+Use the **standard** Godot 4.7.2 editor (not the .NET one: C# projects can't export to the web)
+and the official export templates (`Godot_v4.7.2-stable_export_templates.tpz`, unzipped).
+
+```bash
+GODOT=/path/to/Godot_v4.7.2-stable_win64_console.exe \
+GODOT_TEMPLATES=/path/to/templates \
+scripts/godot-export.sh web        # → dist-godot/web/ (an installable PWA)
+scripts/godot-export.sh windows    # → dist-godot/windows/LittleValley.exe
+```
+
+Check the web build in Chrome: `npx tsx scripts/godot-web-bench.ts 100 600 desktop`, or with
+phone emulation (`phone`). To try it on a real phone on your Wi-Fi: `npx tsx scripts/serve-godot-web.ts`.
+
+The game also takes capture options, as command-line arguments or, on the web, in the page
+address:
+
+| Option | Meaning |
+| --- | --- |
+| `--shot=out.png` | Save a screenshot |
+| `--settlers=N` | Add N settlers |
+| `--ticks=N` | Run N ticks first |
+| `--zoom=Z` | Camera zoom |
+| `--frames=N` | Frame benchmark over N frames |
+| `--people=1` | Open the People window |
+
+On the web, use `?bench=N&settlers=M` instead.
+
 ## Data shared with the browser game
 
 Both versions must agree exactly, so the Godot side reads data exported from the TypeScript

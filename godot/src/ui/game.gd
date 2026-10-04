@@ -12,7 +12,7 @@ extends Node2D
 const TICK_MS := 100.0
 const MAX_STEPS_PER_FRAME := 8
 ## Simulation time allowed per frame (ms) before the rest of a tick waits for the next frame.
-const SIM_BUDGET_MS := 6.0
+var SIM_BUDGET_MS := 6.0
 const LONG_PRESS := 0.4
 
 var sim: Simulation
@@ -51,8 +51,15 @@ var _touch_moved := false
 var _touch_box := false
 
 
+## Startup timings (ms), printed by capture mode: engine start to _ready, art, first valley.
+var startup := {}
+
+
 func _ready() -> void:
+	startup["engineToReady"] = Time.get_ticks_msec()
+	var t0 := Time.get_ticks_msec()
 	art.load_all(1.0)
+	startup["art"] = Time.get_ticks_msec() - t0
 	add_child(view)
 	add_child(overlay)
 	add_child(camera)
@@ -75,6 +82,17 @@ func _capture_requested() -> bool:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--") and a.contains("="):
 			opts[a.substr(2, a.find("=") - 2)] = a.substr(a.find("=") + 1)
+	# On the web there is no command line: the same options come from the page address,
+	# e.g. index.html?bench=600&settlers=100 (results go to the browser console).
+	if OS.has_feature("web"):
+		var query := str(JavaScriptBridge.eval("location.search", true)).trim_prefix("?")
+		for pair in query.split("&", false):
+			var kv := pair.split("=")
+			if kv.size() == 2:
+				opts[kv[0]] = kv[1].uri_decode()
+		if opts.has("bench"):
+			opts["frames"] = opts["bench"]
+			opts["shot"] = ""
 	if not opts.has("shot"):
 		return false
 	_capture.call_deferred(opts)
@@ -84,7 +102,10 @@ func _capture_requested() -> bool:
 func _capture(opts: Dictionary) -> void:
 	world_name = "Capture"
 	world_id = "capture"
+	var t0 := Time.get_ticks_msec()
 	_start(NewGame.create(int(opts.get("seed", "4242")), WorldGen.CURRENT_GEN, str(opts.get("habitat", "valley"))))
+	startup["newValley"] = Time.get_ticks_msec() - t0
+	print("STARTUP %s" % JSON.stringify(startup))
 	var extra := int(opts.get("settlers", "0"))
 	for i in extra:
 		sim.add_settler(-4 + (i % 9), 5 + i / 9, ["laborer", "farmer", "gatherer", "builder", "hauler"][i % 5])
@@ -111,10 +132,13 @@ func _capture(opts: Dictionary) -> void:
 		await get_tree().process_frame
 	if opts.has("frames"):
 		await _frame_benchmark(int(opts["frames"]))
-	var img := get_viewport().get_texture().get_image()
-	img.save_png(str(opts["shot"]))
-	print("captured %s (%dx%d), %d settlers, tick %d" % [opts["shot"], img.get_width(), img.get_height(), sim.settlers.size(), sim.tick])
-	get_tree().quit()
+	if str(opts["shot"]) != "":
+		var img := get_viewport().get_texture().get_image()
+		img.save_png(str(opts["shot"]))
+		print("captured %s (%dx%d), %d settlers, tick %d" % [opts["shot"], img.get_width(), img.get_height(), sim.settlers.size(), sim.tick])
+	print("CAPTURE DONE")
+	if not OS.has_feature("web"):
+		get_tree().quit()
 
 
 ## Plays normally for `n` frames with vsync off, panning slowly, and prints frame-time
@@ -272,32 +296,41 @@ func _process(delta: float) -> void:
 		save_now()
 
 
-## Runs due ticks in slices: each settler slice is a share of the tick spread over the frames the
-## tick lasts, and work stops for this frame once SIM_BUDGET_MS is spent (at least one slice).
-## If the simulation falls far behind (a slow device at 4×), the backlog is dropped instead of
-## freezing the game.
+## Runs due ticks in slices within a hard time budget per frame (SIM_BUDGET_MS, at least one
+## slice). Each slice is a share of the tick spread over the frames the tick lasts. On a device
+## too slow to keep up, game time runs slower rather than the frame rate collapsing: a backlog of
+## more than MAX_BACKLOG ticks is dropped (never caught up in one frame).
 func _run_ticks(started_usec: int) -> void:
 	var frames_per_tick := maxf(1.0, TICK_MS / (1000.0 / maxf(1.0, Engine.get_frames_per_second())) / speed)
 	var slice := maxi(8, ceili(sim.settlers.size() / frames_per_tick))
-	var done_ticks := 0
 	while true:
 		if sim.slice_next == -1:
-			if _acc < TICK_MS or done_ticks >= MAX_STEPS_PER_FRAME * speed:
+			if _acc < TICK_MS:
 				break
 			sim.begin_tick()
 		var n := sim.settlers.size()
 		while sim.slice_next < n:
 			sim.update_settlers(sim.slice_next, sim.slice_next + slice)
-			# Behind schedule (more than a tick due): finish this tick whatever it costs.
-			if _acc < TICK_MS * 2.0 and (Time.get_ticks_usec() - started_usec) / 1000.0 > SIM_BUDGET_MS:
+			if (Time.get_ticks_usec() - started_usec) / 1000.0 > SIM_BUDGET_MS:
+				_trim_backlog()
 				return
 		sim.end_tick()
 		_acc -= TICK_MS
-		done_ticks += 1
-		if (Time.get_ticks_usec() - started_usec) / 1000.0 > SIM_BUDGET_MS and _acc < TICK_MS * 2.0:
+		if (Time.get_ticks_usec() - started_usec) / 1000.0 > SIM_BUDGET_MS:
 			break
-	if _acc > TICK_MS * MAX_STEPS_PER_FRAME * speed:
-		_acc = 0.0
+	_trim_backlog()
+
+
+## Ticks owed beyond this are dropped: the game slows down instead of stalling to catch up.
+const MAX_BACKLOG := 3
+## True while the device can't keep up at this speed (shown in the HUD).
+var falling_behind := false
+
+
+func _trim_backlog() -> void:
+	falling_behind = _acc > TICK_MS * MAX_BACKLOG
+	if falling_behind:
+		_acc = TICK_MS * MAX_BACKLOG
 
 
 func _on_event(e: Dictionary) -> void:

@@ -12,7 +12,8 @@ extends RefCounted
 ## keeps the manifest's size and anchor (scaled versions are accepted and fitted to the size).
 
 const SOURCE_PX_PER_TILE := 96.0
-const GEN_DIR := "res://art/generated"
+## Every generated sprite's SVG, size and anchor (scripts/art/make-svgs.ts writes it).
+const BUNDLE := "res://art/sprites.json"
 const FINAL_DIR := "res://art/final"
 const OVERRIDE_DIR := "user://art_overrides"
 const ATLAS_SIZE := 4096
@@ -27,8 +28,8 @@ var raster_scale := 1.0
 ## Loads every sprite. `raster_scale` < 1 rasterises smaller (for low-memory devices).
 func load_all(scale: float = 1.0) -> void:
 	raster_scale = scale
-	var manifest: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(GEN_DIR + "/manifest.json"))
-	var entries: Dictionary = manifest["sprites"]
+	var bundle: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(BUNDLE))
+	var entries: Dictionary = bundle["sprites"]
 	var images := {}
 	var names: Array = entries.keys()
 	for n: String in names:
@@ -88,7 +89,7 @@ func _load_image(sprite_name: String, entry: Dictionary) -> Image:
 					im.convert(Image.FORMAT_RGBA8)
 					return im
 	var gen := Image.new()
-	gen.load_svg_from_string(FileAccess.get_file_as_string("%s/%s.svg" % [GEN_DIR, sprite_name]), raster_scale)
+	gen.load_svg_from_string(str(entry["svg"]), raster_scale)
 	gen.convert(Image.FORMAT_RGBA8)
 	return gen
 

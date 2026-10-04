@@ -3,7 +3,7 @@ extends SceneTree
 ##   godot --headless --path . -s res://tools/art_sheet.gd -- <out.png> [filter] [scale=0.5]
 ## People are drawn assembled (legs, body, head, hair, hat) and tinted, as the game draws them.
 
-const GEN := "res://art/generated"
+const BUNDLE := "res://art/sprites.json"
 
 
 func _initialize() -> void:
@@ -11,8 +11,9 @@ func _initialize() -> void:
 	var out := args[0] if args.size() > 0 else "user://art_sheet.png"
 	var filter := args[1] if args.size() > 1 else ""
 	var scale := float(args[2]) if args.size() > 2 else 0.5
-	var manifest: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(GEN + "/manifest.json"))
+	var manifest: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(BUNDLE))
 	var sprites: Dictionary = manifest["sprites"]
+	_sprites = sprites
 	# The filter may list several substrings separated by commas.
 	var parts := filter.split(",", false)
 	var names: Array = sprites.keys().filter(func(n: String) -> bool:
@@ -61,9 +62,12 @@ func _initialize() -> void:
 	quit()
 
 
+var _sprites := {}
+
+
 func _raster(sprite_name: String, scale: float) -> Image:
 	var im := Image.new()
-	im.load_svg_from_string(FileAccess.get_file_as_string("%s/%s.svg" % [GEN, sprite_name]), scale)
+	im.load_svg_from_string(str(_sprites[sprite_name]["svg"]), scale)
 	return im
 
 
