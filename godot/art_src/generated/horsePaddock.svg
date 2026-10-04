@@ -1,19 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="400" height="348" viewBox="0 0 400 348">
 <path d="M32,64H368Q386,64 386,82V320Q386,338 368,338H32Q14,338 14,320V82Q14,64 32,64Z" fill="#e2c46c" opacity="0.4"/><g>
-<clipPath id="c268"><path d="M22,86H134Q138,86 138,90V128Q138,132 134,132H22Q18,132 18,128V90Q18,86 22,86Z"/></clipPath>
-<clipPath id="c268r"><path d="M22,86H134Q138,86 138,90V128Q138,132 134,132H22Q18,132 18,128V90Q18,86 22,86Z" transform="translate(-5,-5)"/></clipPath>
+<clipPath id="c275"><path d="M22,86H134Q138,86 138,90V128Q138,132 134,132H22Q18,132 18,128V90Q18,86 22,86Z"/></clipPath>
+<clipPath id="c275r"><path d="M22,86H134Q138,86 138,90V128Q138,132 134,132H22Q18,132 18,128V90Q18,86 22,86Z" transform="translate(-5,-5)"/></clipPath>
 <path d="M22,86H134Q138,86 138,90V128Q138,132 134,132H22Q18,132 18,128V90Q18,86 22,86Z" fill="#5c3d28"/>
-<g clip-path="url(#c268)">
+<g clip-path="url(#c275)">
 <path d="M22,86H134Q138,86 138,90V128Q138,132 134,132H22Q18,132 18,128V90Q18,86 22,86Z" fill="#7d5636" transform="translate(-4,-4)"/>
 <path d="M22,86H134Q138,86 138,90V128Q138,132 134,132H22Q18,132 18,128V90Q18,86 22,86Z" fill="#a77446" opacity="0.9" transform="translate(71,71) scale(0.72) translate(-78,-78)"/>
 
 </g>
 <path d="M22,86H134Q138,86 138,90V128Q138,132 134,132H22Q18,132 18,128V90Q18,86 22,86Z" fill="none" stroke="#39392f" stroke-width="3" stroke-linejoin="round"/>
 </g><g>
-<clipPath id="c269"><path d="M10,90 L78,54 L146,90Z"/></clipPath>
-<clipPath id="c269r"><path d="M10,90 L78,54 L146,90Z" transform="translate(-5,-5)"/></clipPath>
+<clipPath id="c276"><path d="M10,90 L78,54 L146,90Z"/></clipPath>
+<clipPath id="c276r"><path d="M10,90 L78,54 L146,90Z" transform="translate(-5,-5)"/></clipPath>
 <path d="M10,90 L78,54 L146,90Z" fill="#6e2f28"/>
-<g clip-path="url(#c269)">
+<g clip-path="url(#c276)">
 <path d="M10,90 L78,54 L146,90Z" fill="#924237" transform="translate(-4,-4)"/>
 <path d="M10,90 L78,54 L146,90Z" fill="#b8604a" opacity="0.9" transform="translate(71,65) scale(0.72) translate(-78,-72)"/>
 

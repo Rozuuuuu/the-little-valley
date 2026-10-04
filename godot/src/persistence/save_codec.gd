@@ -27,7 +27,7 @@ static func encode(sim: Simulation, save_name: String, created_at: int, view: Di
 			"focus": s.focus.duplicate() if not s.focus.is_empty() else null,
 			"areaId": _id_or_null(s.area_id), "priorities": s.priorities.duplicate() if s.has_priorities else null,
 			"settlementId": _id_or_null(s.settlement_id), "lifeStage": s.life_stage, "ageTicks": s.age_ticks, "householdId": _id_or_null(s.household_id),
-			"awayOn": null, "kingdomId": 0, "military": null, "captive": null,
+			"awayOn": _id_or_null(s.away_on), "kingdomId": 0, "military": null, "captive": null,
 		}
 		if s.side_job != "":
 			d["sideJob"] = s.side_job
@@ -112,7 +112,8 @@ static func encode(sim: Simulation, save_name: String, created_at: int, view: Di
 			"offer": sim.offer.duplicate(true) if not sim.offer.is_empty() else null, "nextVisitor": sim.next_visitor,
 			"recruits": _recruits_out(sim), "lastRecruit": sim.last_recruit if sim.last_recruit > -1000000000 else null,
 			"lastArrival": sim.last_arrival,
-			"geology": {"version": Geology.VERSION, "cells": sim.geology.keys().map(func(id: int) -> Array: return [id, sim.geology[id]])}, "routes": [], "manifests": [], "parties": [], "knownRegions": [], "nextMerchant": 0,
+			"geology": {"version": Geology.VERSION, "cells": sim.geology.keys().map(func(id: int) -> Array: return [id, sim.geology[id]])}, "routes": sim.routes.map(func(r: Dictionary) -> Dictionary: return {"id": r["id"], "sourceId": r["sourceId"], "destId": r["destId"], "res": r["res"], "target": r["target"]}),
+			"manifests": sim.manifests.map(func(m: Dictionary) -> Dictionary: return m.duplicate(true)), "parties": [], "knownRegions": [], "nextMerchant": 0,
 			"claims": [], "horseDay": 0, "animals": sim.animals.map(_animal_out), "animalRng": sim.animal_rng.state, "rallyReadyAt": sim.rally_ready_at,
 			"chief": {"nextAt": sim.chief["nextAt"], "adviceReady": sim.chief["adviceReady"], "advice": sim.chief["advice"]},
 		},
@@ -320,6 +321,7 @@ static func decode(save: Variant) -> Dictionary:
 		s.area_id = int(sv["areaId"]) if sv.get("areaId") != null else -1
 		s.hp = float(sv["hp"]) if sv.get("hp") != null else 100.0
 		s.ruler = sv.get("ruler") == true
+		s.away_on = int(sv["awayOn"]) if sv.get("awayOn") != null else -1
 		s.boost_until = int(sv["boostUntil"]) if sv.get("boostUntil") != null else -1
 		if sv.get("training") is Dictionary:
 			var tr: Dictionary = sv["training"]
@@ -329,6 +331,21 @@ static func decode(save: Variant) -> Dictionary:
 		s.capacity = Simulation.SETTLER_CAPACITY
 		sim._add_settler_object(s)
 
+	for rd: Dictionary in sd.get("routes", []):
+		sim.routes.append({"id": int(rd["id"]), "sourceId": int(rd["sourceId"]), "destId": int(rd["destId"]), "res": str(rd["res"]), "target": int(rd["target"]), "status": ""})
+	for md: Dictionary in sd.get("manifests", []):
+		var cargo := Inv.from_json(md.get("cargo", {}))
+		sim.manifests.append({"id": int(md["id"]), "routeId": int(md["routeId"]) if md.get("routeId") != null else null, "crewId": int(md["crewId"]),
+			"sourceId": int(md["sourceId"]), "destId": int(md["destId"]), "cargo": cargo, "state": str(md["state"]),
+			"departTick": int(md["departTick"]), "arriveTick": int(md["arriveTick"]), "legTicks": int(md["legTicks"]),
+			"from": {"x": float(md["from"]["x"]), "y": float(md["from"]["y"])}, "to": {"x": float(md["to"]["x"]), "y": float(md["to"]["y"])}})
+	var manifest_ids := {}
+	for m: Dictionary in sim.manifests:
+		manifest_ids[int(m["id"])] = true
+	for s in sim.settlers:
+		if s.away_on != -1 and not manifest_ids.has(s.away_on):
+			s.away_on = -1
+		s.hidden = s.away_on != -1
 	sim.rally_ready_at = int(sd.get("rallyReadyAt", 0))
 	if sd.get("chief") is Dictionary:
 		var ch: Dictionary = sd["chief"]
@@ -461,7 +478,7 @@ static func unsupported(d: Dictionary) -> PackedStringArray:
 	var out: PackedStringArray = []
 	var sd: Dictionary = d["sim"]
 	var counts := {
-		"routes": "supply route", "manifests": "caravan on the road", "parties": "merchant", "claims": "land claim",
+		"parties": "merchant", "claims": "land claim",
 	}
 	for k: String in counts:
 		var n := (sd.get(k, []) as Array).size() if sd.get(k) is Array else 0
@@ -497,7 +514,7 @@ static func unsupported(d: Dictionary) -> PackedStringArray:
 	var simulated := {"townHall": true, "camp": true, "house": true, "familyHome": true, "cottage": true, "storehouse": true, "field": true, "path": true, "bridge": true,
 		"orchard": true, "workshop": true, "mill": true, "bakery": true, "charcoalKiln": true, "smelter": true, "forge": true, "tannery": true, "weaver": true, "granary": true,
 		"crate": true, "hunterLodge": true, "chickenCoop": true, "pigsty": true, "sheepPen": true, "goatPen": true, "cattlePasture": true, "horsePaddock": true,
-		"quarry": true, "mine": true, "fisherHut": true}
+		"quarry": true, "mine": true, "fisherHut": true, "waystation": true, "depot": true, "stoneBridge": true}
 	var others := {}
 	for bd: Dictionary in sd.get("buildings", []):
 		var t := str(bd["type"])

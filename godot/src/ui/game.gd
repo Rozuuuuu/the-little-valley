@@ -116,6 +116,33 @@ func _capture(opts: Dictionary) -> void:
 	Commands.apply(sim, {"type": "placeArea", "building": "field", "x0": 4, "y0": 4, "x1": 6, "y1": 6, "crop": "wheat"})
 	_place_near_hall(["house", "storehouse"])
 	Commands.apply(sim, {"type": "designate", "x0": -16, "y0": -16, "x1": 16, "y1": 16, "on": true})
+	if opts.get("towns", "0") == "1":
+		# A waystation to the west with a depot at home and a wood route: carts on the road.
+		sim.reached.append("hamlet")
+		sim.reached.append("village")
+		var tx := 6
+		while tx >= -60:
+			sim.world.reveal(tx, 0, 11)
+			tx -= 3
+		_place_near_hall(["depot"])
+		var ws: Building = null
+		for r in 12:
+			for oy in range(-r, r + 1):
+				for ox in range(-r, r + 1):
+					if ws == null and bool(BuildingOps.check_placement(sim, "waystation", -40 + ox, oy)["ok"]):
+						ws = BuildingOps.place(sim, "waystation", -40 + ox, oy)
+						ws.delivered = BuildingOps.cost_of(ws).duplicate()
+						BuildingOps.complete(sim, ws)
+		for b: Building in sim.buildings.values():
+			if b.type == "depot":
+				b.delivered = BuildingOps.cost_of(b).duplicate()
+				BuildingOps.complete(sim, b, true)
+				Commands.apply(sim, {"type": "assignWorker", "buildingId": b.id, "ids": [sim.settlers[3].id]})
+		BuildingOps.camp_of(sim).inventory["wood"] = 120
+		if ws != null:
+			Commands.apply(sim, {"type": "createRoute", "sourceId": BuildingOps.camp_of(sim).id, "destinationId": ws.id, "resource": "wood", "target": 60})
+		opts["x"] = "-18"
+		opts["y"] = "2"
 	if opts.get("mining", "0") == "1":
 		# The starter copper surveyed with a finished mine on it, and a quarry beside it.
 		sim.reached.append("hamlet")
@@ -160,6 +187,8 @@ func _capture(opts: Dictionary) -> void:
 		hud.toggle_people()
 	if opts.get("areas", "0") == "1":
 		hud.toggle_areas()
+	if opts.get("towns", "0") == "1":
+		hud.toggle_towns()
 	if opts.get("upgrade", "0") == "1":
 		# Starts upgrading the storehouse and selects it, to review the level UI.
 		BuildingOps.camp_of(sim).inventory = {"food": 120, "wood": 300, "stone": 200, "planks": 80, "tools": 20}
@@ -467,6 +496,14 @@ func _update_ghost() -> void:
 	ghost_tiles = []
 	if placing == "" or hover_tile.x == -99999 or placing.begins_with("area:") or placing == "survey":
 		return
+	if placing != "mark" and placing != "unmark" and Defs.building(placing).has("span"):
+		if drag_box.has_area():
+			var sr := _tile_rect(drag_box)
+			var sc := BuildingOps.check_span(sim, placing, sr.position.x, sr.position.y, sr.end.x - 1, sr.end.y - 1)
+			ghost_tiles = sc["tiles"]
+		else:
+			ghost_tiles = [[hover_tile.x, hover_tile.y, sim.world.terrain(hover_tile.x, hover_tile.y) == Tiles.WATER or sim.world.terrain(hover_tile.x, hover_tile.y) == Tiles.DEEP_WATER]]
+		return
 	if placing == "mark" or placing == "unmark" or Defs.building(placing).get("paint", false):
 		if drag_box.has_area():
 			var r := _tile_rect(drag_box)
@@ -535,6 +572,11 @@ func _place(screen: Vector2, box: Rect2) -> void:
 	if placing == "mark" or placing == "unmark":
 		var r := _tile_rect(box) if box.has_area() else Rect2i(_tile_at(screen), Vector2i.ONE)
 		command({"type": "designate", "x0": r.position.x, "y0": r.position.y, "x1": r.end.x - 1, "y1": r.end.y - 1, "on": placing == "mark"})
+		return
+	if Defs.building(placing).has("span"):
+		var sr := _tile_rect(box) if box.has_area() else Rect2i(_tile_at(screen), Vector2i.ONE)
+		if bool(command({"type": "placeSpan", "building": placing, "x0": sr.position.x, "y0": sr.position.y, "x1": sr.end.x - 1, "y1": sr.end.y - 1})["ok"]):
+			cancel_placing()
 		return
 	if Defs.building(placing).get("paint", false):
 		var r := _tile_rect(box) if box.has_area() else Rect2i(_tile_at(screen), Vector2i.ONE)
@@ -662,6 +704,8 @@ func _key(k: InputEventKey) -> void:
 			hud.toggle_people()
 		KEY_F3:
 			hud.toggle_areas()
+		KEY_F4:
+			hud.toggle_towns()
 		KEY_R:
 			if sim.ruler() != null and selected.has(sim.ruler().id):
 				command({"type": "rally"})

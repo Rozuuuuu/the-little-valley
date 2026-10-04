@@ -442,6 +442,38 @@
    "kind": "night",
    "provisional": true
   },
+  "waystation": {
+   "w": 312,
+   "h": 314,
+   "ax": 12,
+   "ay": 304,
+   "kind": "building",
+   "provisional": true
+  },
+  "waystation_lit": {
+   "w": 312,
+   "h": 314,
+   "ax": 12,
+   "ay": 304,
+   "kind": "night",
+   "provisional": true
+  },
+  "depot": {
+   "w": 312,
+   "h": 288,
+   "ax": 12,
+   "ay": 278,
+   "kind": "building",
+   "provisional": true
+  },
+  "depot_lit": {
+   "w": 312,
+   "h": 288,
+   "ax": 12,
+   "ay": 278,
+   "kind": "night",
+   "provisional": true
+  },
   "stable": {
    "w": 312,
    "h": 296,

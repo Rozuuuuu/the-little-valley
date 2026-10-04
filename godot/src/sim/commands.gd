@@ -7,7 +7,8 @@ class_name Commands
 ## setRecipe, toggleWorkshop, assignWorker, unassignWorker, stop, hold, returnGoods,
 ## formHousehold, requestChild, cancelChildRequest, adoptDeliberateGrowth, acceptRecruit, cancelRecruit,
 ## createArea, updateArea, deleteArea, assignArea, upgradeBuilding, cancelUpgrade, hunt,
-## surveyDeposit, upgradeMine, rally, takeThrone, trainRole, cancelRoleTraining, hearAdvice.
+## surveyDeposit, upgradeMine, rally, takeThrone, trainRole, cancelRoleTraining, hearAdvice, placeSpan,
+## assignSettlement, renameSettlement, setWants, createRoute, setRouteTarget, cancelRoute.
 ## Others report that they are not available yet.
 
 const MAX_AREA := 40 * 40
@@ -285,6 +286,88 @@ static func _apply(sim: Simulation, cmd: Dictionary) -> Dictionary:
 		"createArea":
 			return _create_area(sim, cmd)
 
+		"placeSpan":
+			var st := str(cmd.get("building", ""))
+			if not Defs.is_building(st) or not Defs.building(st).has("span"):
+				return _err("Invalid building")
+			if not _rect_ok(cmd):
+				return _err("Invalid location")
+			var sc := BuildingOps.check_span(sim, st, int(cmd["x0"]), int(cmd["y0"]), int(cmd["x1"]), int(cmd["y1"]))
+			if not bool(sc["ok"]):
+				return _err(sc["reason"] if sc["reason"] != "" else "Can't build here")
+			var sr: Rect2i = sc["rect"]
+			var span_b := BuildingOps.place(sim, st, sr.position.x, sr.position.y, "", sr.size)
+			sim.emit({"type": "sfx", "name": "place", "x": float(sr.position.x), "y": float(sr.position.y)})
+			sim.emit({"type": "important"})
+			var short := ""
+			var tot := sim.totals()
+			for e in Inv.entries(BuildingOps.cost_of(span_b)):
+				if int(tot.get(e[0], 0)) < int(e[1]):
+					short += ("" if short == "" else ", ") + "%d more %s" % [int(e[1]) - int(tot.get(e[0], 0)), str(Defs.resource(e[0])["name"]).to_lower()]
+			var span_res := _ok("Stone bridge planned: %d tiles.%s" % [maxi(sr.size.x, sr.size.y), " Builders will wait for %s." % short if short != "" else ""])
+			span_res["id"] = span_b.id
+			return span_res
+
+		"assignSettlement":
+			var st := Settlements.find(sim, int(cmd["settlementId"]) if _is_int(cmd.get("settlementId")) else -1)
+			if st.is_empty():
+				return _err("That settlement is gone")
+			var hall: Building = sim.buildings.get(int(st["id"]))
+			var movers: Array[Settler] = []
+			for s0 in _pick_settlers(sim, cmd.get("ids")):
+				if s0.settlement_id != int(st["id"]):
+					movers.append(s0)
+			if movers.is_empty():
+				return _err("Select settlers who live somewhere else first")
+			var names: PackedStringArray = []
+			for s1 in movers:
+				_take_order(sim, s1)
+				s1.settlement_id = int(st["id"])
+				# A new home means a new bed, and walking over there.
+				s1.home_id = -1
+				s1.area_id = -1
+				for b2: Building in sim.buildings.values():
+					b2.workers.erase(s1.id)
+				if hall != null:
+					s1.task = Task.move(hall.x + hall.w / 2, hall.y + hall.h)
+				names.append(s1.name)
+			sim.forget_work_index()
+			var homeless := BuildingOps.assign_homes(sim)
+			var beds := " %d settler%s no bed yet." % [homeless, " has" if homeless == 1 else "s have"] if homeless > 0 else ""
+			return _ok("%s %s moving to %s.%s" % [", ".join(names), "is" if movers.size() == 1 else "are", st["name"], beds])
+
+		"renameSettlement":
+			var st2 := Settlements.find(sim, int(cmd["settlementId"]) if _is_int(cmd.get("settlementId")) else -1)
+			if st2.is_empty():
+				return _err("That settlement is gone")
+			var nm: String = str(cmd["name"]).strip_edges().left(30) if cmd.get("name") is String else ""
+			if nm == "":
+				return _err("Give it a name")
+			st2["name"] = nm
+			return _ok()
+
+		"setWants":
+			var wb: Building = sim.buildings.get(int(cmd["buildingId"])) if _is_int(cmd.get("buildingId")) else null
+			if wb == null or not wb.is_storage():
+				return _err("Stock targets are for storehouses and settlement halls")
+			if not Defs.resource_ids().has(str(cmd.get("res", ""))) or not _is_int(cmd.get("amount")) or int(cmd["amount"]) < 0:
+				return _err("Invalid stock target")
+			var amount := mini(int(cmd["amount"]), wb.storage_capacity())
+			if amount == 0:
+				wb.wants.erase(str(cmd["res"]))
+			else:
+				wb.wants[str(cmd["res"])] = amount
+			return _ok()
+
+		"createRoute":
+			return Logistics.create_route(sim, cmd.get("sourceId"), cmd.get("destinationId"), cmd.get("resource"), cmd.get("target"))
+
+		"setRouteTarget":
+			return Logistics.set_route_target(sim, cmd.get("routeId"), cmd.get("target"))
+
+		"cancelRoute":
+			return Logistics.cancel_route(sim, cmd.get("routeId"))
+
 		"rally":
 			return Roles.rally(sim)
 
@@ -531,8 +614,9 @@ static func _assign_worker(sim: Simulation, cmd: Dictionary) -> Dictionary:
 	var hunting := b != null and b.def().has("hunting")
 	var penned := b != null and b.def().has("pen")
 	var digs := b != null and b.def().has("extraction")
-	if b == null or (b.workshop.is_empty() and not hunting and not penned and not digs) or not b.built:
-		return _err("Workers can only be assigned to finished workshops, mills, bakeries, quarries, mines, fisheries, kilns, smelters, forges, lodges and pens")
+	var depot := b != null and b.def().has("depot")
+	if b == null or (b.workshop.is_empty() and not hunting and not penned and not digs and not depot) or not b.built:
+		return _err("Workers can only be assigned to finished workshops, mills, bakeries, quarries, mines, fisheries, kilns, smelters, forges, lodges, pens and caravan depots")
 	var picked: Variant = _pick_workers(sim, cmd.get("ids"), "work at a workshop")
 	if picked is String:
 		return _err(picked)
@@ -553,7 +637,9 @@ static func _assign_worker(sim: Simulation, cmd: Dictionary) -> Dictionary:
 		# Make sure their kind of work comes first: hunters gather, herders farm, others craft.
 		var kind := "gather" if hunting else ("farm" if penned else "craft")
 		var job := "hunter" if hunting else ("herder" if penned else "crafter")
-		if not s.has_priorities and s.job != job:
+		if depot:
+			pass
+		elif not s.has_priorities and s.job != job:
 			s.job = job
 		elif s.has_priorities:
 			var order: Array = [kind]

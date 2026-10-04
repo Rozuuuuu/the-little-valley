@@ -61,6 +61,11 @@ var upgrading := {}
 var animals: Array[Animal] = []
 ## Surveyed geology cells (saved): cell id -> ore left (null when the cell holds no deposit).
 var geology := {}
+var routes: Array[Dictionary] = []
+var manifests: Array[Dictionary] = []
+## Road links between settlements and cart legs, cached until the map changes.
+var road_cache := {}
+var leg_cache := {}
 ## The ruler's name (kept for the kingdom record when the ruler is away).
 var ruler_name := ""
 var rally_ready_at := 0
@@ -449,6 +454,8 @@ func is_unreachable(s: Settler, target: int) -> bool:
 
 ## The map changed (something built, removed, a bridge finished): let everyone try again.
 func map_changed() -> void:
+	road_cache.clear()
+	leg_cache.clear()
 	shared_unreachable.clear()
 	_unreachable_count.clear()
 	wake_idle()
@@ -727,7 +734,8 @@ func end_tick() -> void:
 	slice_next = -1
 	if tick % 10 == 0:
 		Production.update_workshops(self)
-	if tick % Levels.CRATE_STEP == 0:
+	if tick % Logistics.STEP == 0:
+		Logistics.update(self)
 		Levels.tidy_crates(self)
 	if not upgrading.is_empty():
 		Levels.update(self)

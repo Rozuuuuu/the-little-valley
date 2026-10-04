@@ -1,21 +1,30 @@
 class_name BuildingOps
 ## Placing, finishing and removing buildings, homes and regrowth (src/game/sim/buildings.ts).
 ##
-## Not yet ported (the slice has none of these buildings): span buildings (stone bridge), workshops
-## and recipes, orchards, pens, mines and quarries, settlement spacing and territory checks.
+## Territory checks come with kingdoms.
 
 
 static func is_unlocked(sim: Simulation, unlock: Variant) -> bool:
 	return unlock == null or str(unlock) == "" or sim.reached.has(str(unlock))
 
 
-## The building's construction cost (shared: do not modify).
+## The building's construction cost (shared for ordinary buildings: do not modify). A span (the
+## stone bridge) costs per tile.
 static func cost_of(b: Building) -> Dictionary:
-	return Defs.cost(b.type)
+	var d := b.def()
+	if not d.has("span"):
+		return Defs.cost(b.type)
+	var out := {}
+	for e in Inv.entries(Inv.from_json(d["span"]["costPerTile"])):
+		out[e[0]] = int(e[1]) * b.w * b.h
+	return out
 
 
 static func work_of(b: Building) -> float:
-	return float(b.def().get("work", 0))
+	var d := b.def()
+	if d.has("span"):
+		return float(d["span"]["workPerTile"]) * b.w * b.h
+	return float(d.get("work", 0))
 
 
 static func materials_complete(b: Building) -> bool:
@@ -83,8 +92,10 @@ static func check_placement(sim: Simulation, type: String, x: int, y: int) -> Di
 			if p != "" and reason == "":
 				reason = p
 			tiles.append([x + dx, y + dy, p == ""])
-	# Settlement spacing and territory come with those systems.
-	var site := Mining.site_problem(sim, type, x, y) if d.has("site") else ""
+	# Territory comes with kingdoms.
+	var site := Settlements.spacing_problem(sim, type, x, y)
+	if site == "" and d.has("site"):
+		site = Mining.site_problem(sim, type, x, y)
 	if site != "":
 		if reason == "":
 			reason = site
@@ -106,15 +117,15 @@ static func shortfall(sim: Simulation, type: String, count: int = 1) -> String:
 
 
 ## Creates a building without validation (callers check placement first).
-static func place(sim: Simulation, type: String, x: int, y: int, crop: String = "turnip") -> Building:
+static func place(sim: Simulation, type: String, x: int, y: int, crop: String = "turnip", size: Vector2i = Vector2i.ZERO) -> Building:
 	var d := Defs.building(type)
 	var b := Building.new()
 	b.id = sim.alloc_id()
 	b.type = type
 	b.x = x
 	b.y = y
-	b.w = int(d["size"]["w"])
-	b.h = int(d["size"]["h"])
+	b.w = size.x if size.x > 0 else int(d["size"]["w"])
+	b.h = size.y if size.y > 0 else int(d["size"]["h"])
 	b.placed_tick = sim.tick
 	sim.buildings[b.id] = b
 	for dy in b.h:
@@ -146,7 +157,7 @@ static func complete(sim: Simulation, b: Building, silent: bool = false) -> void
 	b.progress = work_of(b)
 	sim.buildings_changed()
 	# Construction materials are consumed.
-	for e in Defs.cost_entries(b.type):
+	for e in Inv.entries(cost_of(b)):
 		Inv.add(b.delivered, e[0], -int(e[1]))
 	var cx := b.center_x()
 	var cy := b.center_y()
@@ -162,12 +173,19 @@ static func complete(sim: Simulation, b: Building, silent: bool = false) -> void
 			sim.stats["pathsBuilt"] = int(sim.stats["pathsBuilt"]) + b.w * b.h
 		sim.emit({"type": "fx", "kind": "dust", "x": cx, "y": cy})
 		return
+	if b.type == "stoneBridge":
+		# The building stays as a landmark; its tiles become stone deck anyone can walk.
+		for dy in b.h:
+			for dx in b.w:
+				sim.world.set_terrain(b.x + dx, b.y + dy, Tiles.STONE_BRIDGE)
 	if d.has("recipes"):
 		Production.init_workshop(b)
 	if b.type == "orchard":
 		Orchards.init_orchard(sim, b)
 	if d.has("pen"):
 		Animals.stock_pen(sim, b)
+	if d.has("settlementCenter") and b.type != "camp" and Settlements.find(sim, b.id).is_empty() and not silent:
+		Settlements.found(sim, b)
 	if d.has("reveal"):
 		var r: Variant = b.stat("reveal")
 		sim.world.reveal(cx, cy, float(r))
@@ -357,3 +375,52 @@ static func schedule_regrowth(sim: Simulation, x: int, y: int) -> void:
 	var od := Tiles.object_def(sim.world.obj(x, y))
 	if od.has("regrow"):
 		sim.regrowth[Simulation.tile_key(x, y)] = [int(od["regrow"]["to"]), sim.tick + int(od["regrow"]["ticks"]) + floori(sim.rng.next() * Defs.DAY_TICKS * 0.3)]
+
+
+## A span building (the stone bridge) runs straight over water only, with dry, walkable land just
+## beyond both ends; the drag snaps to its longer axis. {ok, reason, tiles, rect: Rect2i}.
+static func check_span(sim: Simulation, type: String, x0: int, y0: int, x1: int, y1: int) -> Dictionary:
+	var d := Defs.building(type)
+	var span: Dictionary = d["span"]
+	var horizontal := absi(x1 - x0) >= absi(y1 - y0)
+	if horizontal:
+		y1 = y0
+	else:
+		x1 = x0
+	var rect := Rect2i(mini(x0, x1), mini(y0, y1), absi(x1 - x0) + 1, absi(y1 - y0) + 1)
+	var length := maxi(rect.size.x, rect.size.y)
+	var tiles: Array = []
+	var reason := gate_problem(sim, type)
+	for dy in rect.size.y:
+		for dx in rect.size.x:
+			var tx := rect.position.x + dx
+			var ty := rect.position.y + dy
+			var p := ""
+			if not sim.world.explored(tx, ty):
+				p = "Explore this area first"
+			elif sim.occupancy.has(Simulation.tile_key(tx, ty)):
+				p = "Something is already built here"
+			elif sim.world.terrain(tx, ty) != Tiles.WATER and sim.world.terrain(tx, ty) != Tiles.DEEP_WATER:
+				p = "A stone bridge spans water only — start and end at the banks"
+			if p != "" and reason == "":
+				reason = p
+			tiles.append([tx, ty, p == ""])
+	if reason == "" and length < int(span["min"]):
+		reason = "Too short: a bridge needs at least %d water tiles" % int(span["min"])
+	if reason == "" and length > int(span["max"]):
+		reason = "Too long: %d tiles at most — look for a narrower crossing" % int(span["max"])
+	if reason == "":
+		var ends: Array[Vector2i] = []
+		if horizontal:
+			ends.append_array([Vector2i(rect.position.x - 1, rect.position.y), Vector2i(rect.end.x, rect.position.y)])
+		else:
+			ends.append_array([Vector2i(rect.position.x, rect.position.y - 1), Vector2i(rect.position.x, rect.end.y)])
+		for e in ends:
+			var t := sim.world.terrain(e.x, e.y)
+			if t == Tiles.WATER or t == Tiles.DEEP_WATER:
+				reason = "Both ends must reach dry land — extend the bridge to the bank"
+				break
+			if not sim.world.explored(e.x, e.y) or not sim.walkable(e.x, e.y):
+				reason = "Each end needs open, explored ground to walk onto"
+				break
+	return {"ok": reason == "", "reason": reason, "tiles": tiles, "rect": rect}

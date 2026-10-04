@@ -187,7 +187,7 @@ static func _find_build(sim: Simulation, s: Settler, area: WorkArea = null) -> V
 				break
 		if slot < 0:
 			continue
-		var d := _dist(s, b.center_x(), b.center_y())
+		var d := _dist(s, b.center_x(), b.center_y()) + Settlements.away_penalty(sim, s, b.center_x(), b.center_y())
 		if d < best_d:
 			best_d = d
 			best = b
@@ -207,7 +207,7 @@ static func haul_needs(sim: Simulation, area: WorkArea = null) -> Array[Dictiona
 	for b: Building in sim.sites():
 		if area != null and not area.overlaps(b.x, b.y, b.w, b.h):
 			continue
-		for e in Defs.cost_entries(b.type):
+		for e in Inv.entries(BuildingOps.cost_of(b)):
 			var need: int = int(e[1]) - int(b.delivered.get(e[0], 0)) - int(b.incoming.get(e[0], 0))
 			if need > 0:
 				out.append({"dst": b, "res": e[0], "need": need, "priority": 0, "supply": false})
@@ -284,7 +284,7 @@ static func _find_haul(sim: Simulation, s: Settler, area: WorkArea = null) -> Va
 		var dst: Building = n["dst"]
 		if sim.is_unreachable(s, Simulation.T_BUILDING + dst.id):
 			continue
-		scored.append([_dist(s, dst.center_x(), dst.center_y()) + int(n["priority"]), scored.size(), n])
+		scored.append([_dist(s, dst.center_x(), dst.center_y()) + int(n["priority"]) + Settlements.away_penalty(sim, s, dst.center_x(), dst.center_y()), scored.size(), n])
 	# Stable by score, as Array.prototype.sort is in the browser game.
 	scored.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]) or (float(a[0]) == float(b[0]) and int(a[1]) < int(b[1])))
 	var reason: Variant = null
@@ -315,7 +315,7 @@ static func _find_farm(sim: Simulation, s: Settler, area: WorkArea = null) -> Va
 			continue
 		if sim.is_reserved(Simulation.K_ORCHARD + b.id, s.id) or sim.is_unreachable(s, Simulation.T_BUILDING + b.id):
 			continue
-		var oscore := _dist(s, b.x + 1, b.y + 1) - (10.0 if oa == &"pick" else 3.0)
+		var oscore := _dist(s, b.x + 1, b.y + 1) - (10.0 if oa == &"pick" else 3.0) + (0.0 if area != null else Settlements.away_penalty(sim, s, b.x, b.y))
 		if oscore < best_score:
 			best_score = oscore
 			best_orchard = b
@@ -330,7 +330,7 @@ static func _find_farm(sim: Simulation, s: Settler, area: WorkArea = null) -> Va
 		if sim.is_reserved(Simulation.K_FIELD + b.id, s.id) or sim.is_unreachable(s, Simulation.T_BUILDING + b.id):
 			continue
 		var bonus := 10 if a == &"harvest" else (5 if a == &"plant" else (2 if a == &"till" else 0))
-		var score := _dist(s, b.x + 0.5, b.y + 0.5) - bonus
+		var score := _dist(s, b.x + 0.5, b.y + 0.5) - bonus + (0.0 if area != null else Settlements.away_penalty(sim, s, b.x, b.y))
 		if score < best_score:
 			best_score = score
 			best = b
@@ -404,7 +404,7 @@ static func _find_gather(sim: Simulation, s: Settler) -> Variant:
 			if o != World.UNKNOWN and Tiles.object_resource[o] == "":
 				stale.append(tk)
 			return INF
-		return JsMath.hypot(x + 0.5 - s.x, y + 0.5 - s.y))
+		return JsMath.hypot(x + 0.5 - s.x, y + 0.5 - s.y) + Settlements.away_penalty(sim, s, x, y))
 	for tk in stale:
 		sim.designations.erase(tk)
 	Prof.end("gather_marks", tm)

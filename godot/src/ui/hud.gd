@@ -8,7 +8,7 @@ extends CanvasLayer
 const BUILD_LIST: Array[String] = ["house", "familyHome", "storehouse", "field", "orchard", "path", "bridge",
 	"workshop", "mill", "bakery", "granary", "charcoalKiln", "cottage", "hunterLodge", "chickenCoop", "pigsty",
 	"sheepPen", "goatPen", "cattlePasture", "horsePaddock", "tannery", "weaver", "quarry", "mine", "fisherHut",
-	"smelter", "forge"]
+	"smelter", "forge", "waystation", "depot", "stoneBridge"]
 const JOBS: Array[String] = ["laborer", "farmer", "gatherer", "builder", "hauler", "hunter", "herder"]
 const STOCKS: Array[String] = ["food", "wood", "stone", "planks", "wheat"]
 
@@ -36,6 +36,9 @@ var _people := PanelContainer.new()
 var _people_text := RichTextLabel.new()
 var _people_buttons := VBoxContainer.new()
 var _people_key := ""
+var _towns := PanelContainer.new()
+var _towns_list := VBoxContainer.new()
+var _towns_key := ""
 var _areas := PanelContainer.new()
 var _areas_text := RichTextLabel.new()
 var _areas_list := VBoxContainer.new()
@@ -72,6 +75,14 @@ func _ready() -> void:
 	_root.add_child(_toasts)
 	_build_people()
 	_build_areas()
+	_towns.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_towns.offset_right = -8
+	_towns.offset_top = 64
+	_towns.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_towns_list.custom_minimum_size = Vector2(480, 0)
+	_towns.add_child(_towns_list)
+	_towns.visible = false
+	_root.add_child(_towns)
 	for p: Control in [_title, _menu, _busy]:
 		p.set_anchors_preset(Control.PRESET_CENTER)
 		p.visible = false
@@ -175,6 +186,7 @@ func _build_top() -> void:
 	row.add_child(_speed_box)
 	row.add_child(_button("People", toggle_people, "Visitors, travellers, households and children (F2)"))
 	row.add_child(_button("Areas", toggle_areas, "Work areas: farms, woodlots, quarries, building areas (F3)"))
+	row.add_child(_button("Towns", toggle_towns, "Settlements, supply routes and caravans (F4)"))
 	row.add_child(_button("Save", func() -> void: game.save_now(), "Save now (F5)"))
 	row.add_child(_button("Menu", toggle_menu, "Menu (Esc)"))
 	_top.visible = false
@@ -237,6 +249,7 @@ func toggle_people() -> void:
 	_people.visible = not _people.visible
 	if _people.visible:
 		_areas.visible = false
+		_towns.visible = false
 	_people_key = ""
 	refresh_now()
 
@@ -341,6 +354,120 @@ func _refresh_people() -> void:
 		_people_buttons.add_child(hint)
 
 
+# ---- towns window --------------------------------------------------------------------------------
+
+func toggle_towns() -> void:
+	_towns.visible = not _towns.visible
+	if _towns.visible:
+		_people.visible = false
+		_areas.visible = false
+	_towns_key = ""
+	refresh_now()
+
+
+## Settlements, their stores and the supply routes between them.
+func _refresh_towns() -> void:
+	if not _towns.visible:
+		return
+	var sim := game.sim
+	var key := "%d|%d|%d" % [sim.settlements.size(), game.selected.size(), sim.manifests.size()]
+	for st: Dictionary in sim.settlements:
+		key += "|%s:%d" % [st["name"], Settlements.residents(sim, int(st["id"])).size()]
+	for r: Dictionary in sim.routes:
+		key += "|%d:%d:%s" % [int(r["id"]), int(r["target"]), Logistics.route_info(sim, int(r["id"]))["status"]]
+	if key == _towns_key:
+		return
+	_towns_key = key
+	for c in _towns_list.get_children():
+		_towns_list.remove_child(c)
+		c.queue_free()
+	var head := RichTextLabel.new()
+	head.bbcode_enabled = true
+	head.fit_content = true
+	head.scroll_active = false
+	var lines: PackedStringArray = ["[b]Towns[/b]"]
+	if sim.settlements.size() < 2:
+		lines.append("[color=%s]Build a waystation (from Village) at least 24 tiles away to found a second settlement. A caravan depot and supply routes then keep its stores stocked.[/color]" % _c("textDim").to_html())
+	head.text = "\n".join(lines)
+	_towns_list.add_child(head)
+	for st: Dictionary in sim.settlements:
+		var sid := int(st["id"])
+		var row := HFlowContainer.new()
+		var l := Label.new()
+		l.text = "%s — %d people" % [st["name"], Settlements.residents(sim, sid).size()]
+		row.add_child(l)
+		var edit := LineEdit.new()
+		edit.placeholder_text = "Rename"
+		edit.custom_minimum_size = Vector2(130, 0)
+		row.add_child(edit)
+		row.add_child(_button("Rename", func() -> void:
+			game.command({"type": "renameSettlement", "settlementId": sid, "name": edit.text})
+			_towns_key = ""
+			refresh_now()))
+		if not game.selected.is_empty() and sim.settlements.size() > 1:
+			row.add_child(_button("Move selected here", func() -> void:
+				game.command({"type": "assignSettlement", "ids": game.selected.duplicate(), "settlementId": sid})
+				_towns_key = ""
+				refresh_now(), "They move their bed and work to this settlement"))
+		_towns_list.add_child(row)
+	if sim.settlements.size() < 2:
+		return
+	var rh := Label.new()
+	rh.text = "Supply routes (%d cart%s on the road)" % [sim.manifests.size(), "" if sim.manifests.size() == 1 else "s"]
+	rh.add_theme_color_override("font_color", _c("textDim"))
+	_towns_list.add_child(rh)
+	for r: Dictionary in sim.routes:
+		var rid := int(r["id"])
+		var src: Building = sim.buildings.get(int(r["sourceId"]))
+		var dst: Building = sim.buildings.get(int(r["destId"]))
+		var rl := Label.new()
+		rl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		rl.custom_minimum_size = Vector2(460, 0)
+		rl.text = "%s → %s: keep %d %s · %s" % [Settlements.name_of(sim, Settlements.id_of_building(sim, src)) if src != null else "?", Settlements.name_of(sim, Settlements.id_of_building(sim, dst)) if dst != null else "?",
+			int(r["target"]), str(Defs.resource(str(r["res"]))["name"]).to_lower(), Logistics.route_info(sim, rid)["status"]]
+		_towns_list.add_child(rl)
+		var rr := HFlowContainer.new()
+		var tgt := int(r["target"])
+		rr.add_child(_button("−10", func() -> void:
+			game.command({"type": "setRouteTarget", "routeId": rid, "target": maxi(1, tgt - 10)})
+			refresh_now()))
+		rr.add_child(_button("+10", func() -> void:
+			game.command({"type": "setRouteTarget", "routeId": rid, "target": tgt + 10})
+			refresh_now()))
+		rr.add_child(_button("End route", func() -> void:
+			game.command({"type": "cancelRoute", "routeId": rid})
+			refresh_now(), "A cart on the road turns back with its load"))
+		_towns_list.add_child(rr)
+	# A new route: from a store to a store in another settlement.
+	var stores := sim.storages()
+	var nr := HFlowContainer.new()
+	var src_pick := OptionButton.new()
+	var dst_pick := OptionButton.new()
+	for b in stores:
+		var label := "%s %s" % [Settlements.name_of(sim, Settlements.id_of_building(sim, b)), str(b.def()["name"]).to_lower()]
+		src_pick.add_item(label)
+		src_pick.set_item_metadata(src_pick.item_count - 1, b.id)
+		dst_pick.add_item(label)
+		dst_pick.set_item_metadata(dst_pick.item_count - 1, b.id)
+	if dst_pick.item_count > 1:
+		dst_pick.select(dst_pick.item_count - 1)
+	var res_pick := OptionButton.new()
+	for r: String in ["wood", "stone", "food", "planks", "tools", "wheat", "flour"]:
+		res_pick.add_item(str(Defs.resource(r)["name"]))
+		res_pick.set_item_metadata(res_pick.item_count - 1, r)
+	nr.add_child(src_pick)
+	nr.add_child(dst_pick)
+	nr.add_child(res_pick)
+	nr.add_child(_button("Add route", func() -> void:
+		if src_pick.selected < 0 or dst_pick.selected < 0:
+			return
+		game.command({"type": "createRoute", "sourceId": src_pick.get_item_metadata(src_pick.selected), "destinationId": dst_pick.get_item_metadata(dst_pick.selected),
+			"resource": res_pick.get_item_metadata(res_pick.selected), "target": 40})
+		_towns_key = ""
+		refresh_now(), "Keep 40 there (change it after); needs a caravan depot with a teamster at the source"))
+	_towns_list.add_child(nr)
+
+
 # ---- areas window -------------------------------------------------------------------------------
 
 func _build_areas() -> void:
@@ -367,6 +494,7 @@ func toggle_areas() -> void:
 	_areas.visible = not _areas.visible
 	if _areas.visible:
 		_people.visible = false
+		_towns.visible = false
 	_areas_key = ""
 	refresh_now()
 
@@ -713,6 +841,7 @@ func refresh_now() -> void:
 	_refresh_card()
 	_refresh_people()
 	_refresh_areas()
+	_refresh_towns()
 
 
 func _refresh_selection() -> void:
@@ -931,6 +1060,15 @@ func _building_text(b: Building) -> String:
 				lines.append("On hand: %s" % Inv.format(b.delivered))
 		if b.is_storage():
 			lines.append("Holds %d/%d: %s" % [game.sim.storage_used(b), b.storage_capacity(), Inv.format(b.inventory)])
+			if not b.wants.is_empty():
+				lines.append("Stock targets: %s" % Inv.format(b.wants))
+		if b.def().has("depot"):
+			var tn: PackedStringArray = []
+			for id in b.workers:
+				var w := game.sim.settler(id)
+				if w != null:
+					tn.append(w.name + (" (on the road)" if w.away_on != -1 else ""))
+			lines.append("Teamsters: %s" % (", ".join(tn) if not tn.is_empty() else "none — select someone and right-click here"))
 		if b.beds() > 0:
 			var names: PackedStringArray = []
 			for s in game.sim.settlers:
@@ -951,6 +1089,8 @@ func _placing_text() -> String:
 	if game.placing == "unmark":
 		return "[b]Remove marks[/b]\nDrag over marked things. Right-click or Esc to stop."
 	var d := Defs.building(game.placing)
+	if d.has("span"):
+		return "[b]%s[/b]\n%s\nCost per tile: %s\nDrag across the water from bank to bank." % [d["name"], d.get("description", ""), Inv.format(Inv.from_json(d["span"]["costPerTile"]))]
 	var cost := Inv.format(Defs.cost(game.placing))
 	return "[b]%s[/b]\n%s\nCost: %s\n%s" % [d["name"], d.get("description", ""), cost if cost != "" else "free", "Drag to lay out several." if d.get("paint", false) else "Click to place; Shift to place more."]
 
@@ -988,6 +1128,24 @@ func _refresh_card() -> void:
 				game.command({"type": "setJob", "ids": game.selected.duplicate(), "job": j})
 				_card_mode = ""
 				refresh_now()))
+		_card_grid.add_child(_button("Back", func() -> void:
+			_card_mode = ""
+			refresh_now()))
+		return
+	if _card_mode == "wants" and game.selected_building != -1 and sim.buildings.has(game.selected_building):
+		var wb: Building = sim.buildings[game.selected_building]
+		_card_title.text = "Stock targets"
+		for r: String in ["wood", "stone", "food", "planks", "tools"]:
+			var have := int(wb.wants.get(r, 0))
+			_card_grid.add_child(_button("%s %d −" % [Defs.resource(r)["name"], have], func() -> void:
+				game.command({"type": "setWants", "buildingId": wb.id, "res": r, "amount": maxi(0, have - 10)})
+				_last_card_key = ""
+				refresh_now()))
+			_card_grid.add_child(_button("+10 %s" % str(Defs.resource(r)["name"]).to_lower(), func() -> void:
+				game.command({"type": "setWants", "buildingId": wb.id, "res": r, "amount": have + 10})
+				_last_card_key = ""
+				refresh_now()))
+			_card_grid.add_child(Control.new())
 		_card_grid.add_child(_button("Back", func() -> void:
 			_card_mode = ""
 			refresh_now()))
@@ -1080,6 +1238,10 @@ func _refresh_card() -> void:
 							refresh_now(), tip)
 						ub.disabled = problem != ""
 						_card_grid.add_child(ub)
+			if b.built and b.is_storage() and b.type != "crate":
+				_card_grid.add_child(_button("Stock targets…", func() -> void:
+					_card_mode = "wants"
+					refresh_now(), "Haulers keep this store stocked from other stores"))
 			var permanent: bool = b.built and bool(b.def().get("permanent", false))
 			var rm := _button("Cancel site" if not b.built else "Demolish", func() -> void:
 				game.command({"type": "remove", "buildingId": b.id})

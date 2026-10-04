@@ -3,8 +3,7 @@ class_name Progression
 ## content/progression.json, checked every GROWTH_STEP ticks (src/game/sim/progression.ts).
 ## Reached milestones are never removed.
 ##
-## Requirement kinds that belong to systems not yet ported (several settlements,
-## roads between them, the crown, treaties) report their progress as 0, which is true of a world
+## Requirement kinds that belong to systems not yet ported (the crown, treaties) report their progress as 0, which is true of a world
 ## without those systems.
 
 
@@ -48,13 +47,17 @@ static func requirement_progress(sim: Simulation, req: Dictionary) -> Dictionary
 					done_count += 1
 			return {"label": str(req["label"]), "current": mini(done_count, target), "target": target, "done": done_count >= target, "options": options}
 		"settlements":
+			for st: Dictionary in sim.settlements:
+				if Settlements.residents(sim, int(st["id"])).size() >= int(req["minResidents"]):
+					current += 1
 			label = "Have %d settlements with %d+ settlers each" % [target, int(req["minResidents"])]
 		"crowned":
 			return {"label": "Crown your ruler", "current": 0, "target": 1, "done": false}
 		"treaty":
 			return {"label": str(req["label"]), "current": 0, "target": 1, "done": false}
 		"roadLink":
-			return {"label": "Join two settlements with a road", "current": 0, "target": 1, "done": false}
+			var linked := Settlements.any_road_link(sim)
+			return {"label": "Join two settlements with a road", "current": 1 if linked else 0, "target": 1, "done": linked}
 	return {"label": label, "current": mini(current, target), "target": target, "done": current >= target}
 
 

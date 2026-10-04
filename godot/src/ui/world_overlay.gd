@@ -133,6 +133,19 @@ func _draw() -> void:
 		else:
 			draw_rect(game.drag_box, Color(WorldView.MINT, 0.12))
 			draw_rect(game.drag_box, Color(WorldView.MINT, 0.9), false, 2.0)
+	# Caravan carts on the road between settlements.
+	for m: Dictionary in sim.manifests:
+		var cp2 := Logistics.cart_position(sim, m) * T
+		if not view.has_point(cp2):
+			continue
+		draw_set_transform(cp2, 0.0, Vector2.ONE * px * 0.9)
+		draw_rect(Rect2(-16, -22, 32, 16), Color("#8a5a3a"))
+		draw_rect(Rect2(-16, -22, 32, 16), Color("#4a2e1c"), false, 2.0)
+		draw_rect(Rect2(-12, -30, 24, 9), WorldView.GOLD if m["state"] == "outbound" else Color("#b8a27c"))
+		for wx: int in [-10, 10]:
+			draw_circle(Vector2(wx, -4), 6.0, Color("#3a2a1f"))
+			draw_circle(Vector2(wx, -4), 2.5, Color("#b8a27c"))
+		draw_set_transform(Vector2.ZERO)
 	# A small gold crown over the ruler, so the player can always find themselves.
 	var ruler := sim.ruler()
 	if ruler != null and not ruler.hidden:

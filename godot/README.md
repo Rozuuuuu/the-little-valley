@@ -59,6 +59,7 @@ address:
 | `--people=1` | Open the People window |
 | `--areas=1` | Add a farm area and a woodlot, and open the Areas window |
 | `--ruler=Name` | Start with a named ruler |
+| `--towns=1` | A waystation, a depot and a wood route with a cart on the road |
 | `--mining=1` | Survey the starter copper and build a mine and a quarry there |
 | `--animals=1` | Place a coop, a sheep pen and a hunting lodge near the hall |
 | `--upgrade=1` | Start upgrading the storehouse and select it |

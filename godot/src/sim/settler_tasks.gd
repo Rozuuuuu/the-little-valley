@@ -26,6 +26,9 @@ enum Move { ARRIVED, MOVING, FAILED }
 # ---- per tick ---------------------------------------------------------------------------------
 
 static func update_settler(sim: Simulation, s: Settler) -> void:
+	# Away with a caravan: not simulated here until they are back.
+	if s.away_on != -1:
+		return
 	s.hunger = maxf(0.0, s.hunger - HUNGER_DECAY)
 	var sleeping := s.task != null and s.task.kind == Task.SLEEP and s.task.stage == &"sleep"
 	if not sleeping:

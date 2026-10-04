@@ -173,6 +173,25 @@ export const SPECS: Record<string, BuildingSpec> = {
         + shaded(rrect(f.x0 + 6, f.yBase - 22, 26, 20, 7), { tones: M.wheat, outline: M.wheat[0], shadow: 3, light: 2 });
     },
   },
+  waystation: {
+    size: [3, 2], rise: 110, wall: M.wall, roof: M.roofSlate, shape: 'hip', windows: 2, chimney: true,
+    extra: (f) => {
+      // A banner pole: the new settlement's flag.
+      const x = f.x0 + f.fw - 10;
+      return `<path d="M${x},${f.yBase} V${f.ridge - 30}" stroke="${M.wood[0]}" stroke-width="4"/>`
+        + `<path d="M${x},${f.ridge - 30} l30,8 l-30,10Z" fill="${P.core.mint}" stroke="${P.core.forest}" stroke-width="2"/>`;
+    },
+  },
+  depot: {
+    size: [3, 2], rise: 84, wall: M.wood.slice(1), roof: M.roofRed, shape: 'barn', door: 'barn', windows: 1,
+    extra: (f) => {
+      // A loaded cart by the door.
+      const x = f.x0 + f.fw - 70;
+      return shaded(rrect(x, f.yBase - 30, 56, 20, 4), { tones: M.wood, outline: outlineOf(M.wood), shadow: 3, light: 2 })
+        + shaded(rrect(x + 6, f.yBase - 42, 44, 14, 4), { tones: M.wheat, outline: M.wheat[0], shadow: 2, light: 2 })
+        + `<circle cx="${x + 12}" cy="${f.yBase - 6}" r="8" fill="${M.wood[0]}"/><circle cx="${x + 44}" cy="${f.yBase - 6}" r="8" fill="${M.wood[0]}"/>`;
+    },
+  },
   stable: {
     size: [3, 2], rise: 92, wall: ['#7a3f30', '#9c5240', '#bd6d56'], roof: M.roofSlate, shape: 'barn', door: 'barn', windows: 2,
     extra: (f) => {

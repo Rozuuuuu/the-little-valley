@@ -1,19 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="304" height="252" viewBox="0 0 304 252">
 <path d="M32,64H272Q290,64 290,82V224Q290,242 272,242H32Q14,242 14,224V82Q14,64 32,64Z" fill="#7a573c" opacity="0.75"/><path d="M143,179.1C136.9,174.4 125.2,167.8 126.4,162.6C127.5,157.4 140.5,150.5 149.9,147.8C159.4,145.1 171.4,146.6 183.3,146.5C195.1,146.4 211.4,143.9 220.9,147.1C230.4,150.2 238.8,159.1 240.2,165.5C241.5,172 236.9,181.5 229.1,185.6C221.3,189.7 204.1,189.5 193.1,190.4C182.1,191.2 171.3,192.6 163,190.7C154.6,188.9 149.1,183.8 143,179.1Z" fill="#4a3122" opacity="0.55"/><g>
-<clipPath id="c260"><path d="M22,86H134Q138,86 138,90V128Q138,132 134,132H22Q18,132 18,128V90Q18,86 22,86Z"/></clipPath>
-<clipPath id="c260r"><path d="M22,86H134Q138,86 138,90V128Q138,132 134,132H22Q18,132 18,128V90Q18,86 22,86Z" transform="translate(-5,-5)"/></clipPath>
+<clipPath id="c267"><path d="M22,86H134Q138,86 138,90V128Q138,132 134,132H22Q18,132 18,128V90Q18,86 22,86Z"/></clipPath>
+<clipPath id="c267r"><path d="M22,86H134Q138,86 138,90V128Q138,132 134,132H22Q18,132 18,128V90Q18,86 22,86Z" transform="translate(-5,-5)"/></clipPath>
 <path d="M22,86H134Q138,86 138,90V128Q138,132 134,132H22Q18,132 18,128V90Q18,86 22,86Z" fill="#5c3d28"/>
-<g clip-path="url(#c260)">
+<g clip-path="url(#c267)">
 <path d="M22,86H134Q138,86 138,90V128Q138,132 134,132H22Q18,132 18,128V90Q18,86 22,86Z" fill="#7d5636" transform="translate(-4,-4)"/>
 <path d="M22,86H134Q138,86 138,90V128Q138,132 134,132H22Q18,132 18,128V90Q18,86 22,86Z" fill="#a77446" opacity="0.9" transform="translate(71,71) scale(0.72) translate(-78,-78)"/>
 
 </g>
 <path d="M22,86H134Q138,86 138,90V128Q138,132 134,132H22Q18,132 18,128V90Q18,86 22,86Z" fill="none" stroke="#39392f" stroke-width="3" stroke-linejoin="round"/>
 </g><g>
-<clipPath id="c261"><path d="M10,90 L78,54 L146,90Z"/></clipPath>
-<clipPath id="c261r"><path d="M10,90 L78,54 L146,90Z" transform="translate(-5,-5)"/></clipPath>
+<clipPath id="c268"><path d="M10,90 L78,54 L146,90Z"/></clipPath>
+<clipPath id="c268r"><path d="M10,90 L78,54 L146,90Z" transform="translate(-5,-5)"/></clipPath>
 <path d="M10,90 L78,54 L146,90Z" fill="#2b4048"/>
-<g clip-path="url(#c261)">
+<g clip-path="url(#c268)">
 <path d="M10,90 L78,54 L146,90Z" fill="#3b5662" transform="translate(-4,-4)"/>
 <path d="M10,90 L78,54 L146,90Z" fill="#4f6f7c" opacity="0.9" transform="translate(71,65) scale(0.72) translate(-78,-72)"/>
 

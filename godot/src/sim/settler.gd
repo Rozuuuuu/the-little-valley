@@ -43,6 +43,8 @@ var ruler := false
 var boost_until := -1
 ## Learning a new role at the Town Hall: {role, hall, progress}, or empty.
 var training := {}
+## The caravan manifest a teamster is away with (-1: at home).
+var away_on := -1
 
 # ---- transient -------------------------------------------------------------------------------
 ## Position at the start of the tick being simulated.

@@ -373,6 +373,10 @@ func _make_building(b: Building, look: String) -> Node2D:
 		return pen_holder
 	var node := Node2D.new()
 	node.position = base
+	if b.built and b.type == "stoneBridge":
+		# The finished bridge is its stone deck, drawn by the ground.
+		entities.add_child(node)
+		return node
 	var sp := Sprite2D.new()
 	var name := "site_%dx%d" % [b.w, b.h] if not b.built else b.type
 	if b.built and not b.orchard.is_empty():

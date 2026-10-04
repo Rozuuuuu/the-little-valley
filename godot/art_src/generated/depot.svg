@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="312" height="288" viewBox="0 0 312 288">
+<ellipse cx="166" cy="274" rx="154" ry="16" fill="#173b3d" opacity="0.28"/><g>
+<clipPath id="c97"><path d="M24,159H288Q294,159 294,165V268Q294,274 288,274H24Q18,274 18,268V165Q18,159 24,159Z"/></clipPath>
+<clipPath id="c97r"><path d="M24,159H288Q294,159 294,165V268Q294,274 288,274H24Q18,274 18,268V165Q18,159 24,159Z" transform="translate(-5,-5)"/></clipPath>
+<path d="M24,159H288Q294,159 294,165V268Q294,274 288,274H24Q18,274 18,268V165Q18,159 24,159Z" fill="#7d5636"/>
+<g clip-path="url(#c97)">
+<path d="M24,159H288Q294,159 294,165V268Q294,274 288,274H24Q18,274 18,268V165Q18,159 24,159Z" fill="#a77446" transform="translate(-10,-10)"/>
+<path d="M24,159H288Q294,159 294,165V268Q294,274 288,274H24Q18,274 18,268V165Q18,159 24,159Z" fill="#c9955f" opacity="0.9" transform="translate(140,140) scale(0.72) translate(-156,-156)"/>
+
+</g>
+<path d="M24,159H288Q294,159 294,165V268Q294,274 288,274H24Q18,274 18,268V165Q18,159 24,159Z" fill="none" stroke="#484435" stroke-width="3" stroke-linejoin="round"/>
+</g><rect x="34" y="184.96" width="24" height="22" rx="4" fill="#24524f" stroke="#484435" stroke-width="3"/><path d="M46,184.96 V206.96 M34,195.96 H58" stroke="#484435" stroke-width="2"/><path d="M140,212H172Q184,212 184,224V262Q184,274 172,274H140Q128,274 128,262V224Q128,212 140,212Z" fill="#7d5636" stroke="#39392f" stroke-width="3"/><path d="M128,212 L184,274 M184,212 L128,274" stroke="#5c3d28" stroke-width="3"/><g>
+<clipPath id="c98"><path d="M8,167L30,101L282,101L304,167Z"/></clipPath>
+<clipPath id="c98r"><path d="M8,167L30,101L282,101L304,167Z" transform="translate(-5,-5)"/></clipPath>
+<path d="M8,167L30,101L282,101L304,167Z" fill="#6e2f28"/>
+<g clip-path="url(#c98)">
+<path d="M8,167L30,101L282,101L304,167Z" fill="#924237" transform="translate(-14,-14)"/>
+<path d="M8,167L30,101L282,101L304,167Z" fill="#b8604a" opacity="0.9" transform="translate(132,110) scale(0.72) translate(-156,-134)"/>
+
+</g>
+<path d="M8,167L30,101L282,101L304,167Z" fill="none" stroke="#cdeedb" stroke-width="5" stroke-opacity="0.6" clip-path="url(#c98r)"/><path d="M8,167L30,101L282,101L304,167Z" fill="none" stroke="#41322f" stroke-width="3" stroke-linejoin="round"/>
+</g><path d="M26,144.96 H286" stroke="#6e2f28" stroke-width="2" opacity="0.35"/><path d="M26,122.96000000000001 H286" stroke="#6e2f28" stroke-width="2" opacity="0.35"/><g>
+<clipPath id="c99"><path d="M234,248H282Q286,248 286,252V264Q286,268 282,268H234Q230,268 230,264V252Q230,248 234,248Z"/></clipPath>
+<clipPath id="c99r"><path d="M234,248H282Q286,248 286,252V264Q286,268 282,268H234Q230,268 230,264V252Q230,248 234,248Z" transform="translate(-5,-5)"/></clipPath>
+<path d="M234,248H282Q286,248 286,252V264Q286,268 282,268H234Q230,268 230,264V252Q230,248 234,248Z" fill="#5c3d28"/>
+<g clip-path="url(#c99)">
+<path d="M234,248H282Q286,248 286,252V264Q286,268 282,268H234Q230,268 230,264V252Q230,248 234,248Z" fill="#7d5636" transform="translate(-3,-3)"/>
+<path d="M234,248H282Q286,248 286,252V264Q286,268 282,268H234Q230,268 230,264V252Q230,248 234,248Z" fill="#a77446" opacity="0.9" transform="translate(253,253) scale(0.72) translate(-258,-258)"/>
+
+</g>
+<path d="M234,248H282Q286,248 286,252V264Q286,268 282,268H234Q230,268 230,264V252Q230,248 234,248Z" fill="none" stroke="#39392f" stroke-width="3" stroke-linejoin="round"/>
+</g><g>
+<clipPath id="c100"><path d="M240,236H276Q280,236 280,240V246Q280,250 276,250H240Q236,250 236,246V240Q236,236 240,236Z"/></clipPath>
+<clipPath id="c100r"><path d="M240,236H276Q280,236 280,240V246Q280,250 276,250H240Q236,250 236,246V240Q236,236 240,236Z" transform="translate(-5,-5)"/></clipPath>
+<path d="M240,236H276Q280,236 280,240V246Q280,250 276,250H240Q236,250 236,246V240Q236,236 240,236Z" fill="#a7802f"/>
+<g clip-path="url(#c100)">
+<path d="M240,236H276Q280,236 280,240V246Q280,250 276,250H240Q236,250 236,246V240Q236,236 240,236Z" fill="#cfa848" transform="translate(-2,-2)"/>
+<path d="M240,236H276Q280,236 280,240V246Q280,250 276,250H240Q236,250 236,246V240Q236,236 240,236Z" fill="#e2c46c" opacity="0.9" transform="translate(254,254) scale(0.72) translate(-258,-258)"/>
+
+</g>
+<path d="M240,236H276Q280,236 280,240V246Q280,250 276,250H240Q236,250 236,246V240Q236,236 240,236Z" fill="none" stroke="#a7802f" stroke-width="3" stroke-linejoin="round"/>
+</g><circle cx="242" cy="272" r="8" fill="#5c3d28"/><circle cx="274" cy="272" r="8" fill="#5c3d28"/>
+</svg>

@@ -57,11 +57,8 @@ static func committed_population(sim: Simulation) -> int:
 
 
 ## Unreserved goods in a settlement's stores (one settlement until settlements are ported).
-static func local_available(sim: Simulation, _settlement_id: int, res: String) -> int:
-	var n := 0
-	for b in sim.storages():
-		n += maxi(0, sim.available(b, res))
-	return n
+static func local_available(sim: Simulation, settlement_id: int, res: String) -> int:
+	return Settlements.local_available(sim, settlement_id, res)
 
 
 static func settlement_name(sim: Simulation, id: int) -> String:
