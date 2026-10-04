@@ -143,9 +143,9 @@ static func _find_kind(sim: Simulation, s: Settler, kind: String) -> Variant:
 		"haul":
 			return _find_haul(sim, s)
 		"farm":
-			return _find_farm(sim, s)
+			return Husbandry.find_farm_or_herd(sim, s, func() -> Variant: return _find_farm(sim, s))
 		"gather":
-			return _find_gather(sim, s)
+			return Husbandry.find_gather_or_hunt(sim, s, func() -> Variant: return _find_gather(sim, s))
 		"craft":
 			# Quarries and mines (digging) come with mining.
 			return Production.find_craft(sim, s)
@@ -441,7 +441,7 @@ static func find_area_work(sim: Simulation, s: Settler, area: WorkArea, hands_fu
 		"forage":
 			return null if hands_full else _find_area_gather(sim, s, area, "food")
 		"hunt":
-			return "Hunting grounds wait for the animals, which come in a later version"
+			return null if hands_full else Husbandry.find_hunt_in_area(sim, s, area)
 		"build":
 			var b: Variant = _find_build(sim, s, area)
 			if b is Task:

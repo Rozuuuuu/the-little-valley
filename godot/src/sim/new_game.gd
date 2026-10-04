@@ -2,7 +2,7 @@ class_name NewGame
 ## A fresh valley: a Town Hall in the clearing, five settlers and a little food
 ## (src/game/sim/newGame.ts).
 ##
-## Not yet ported: the ruler, deliberate growth (visitors and households), wildlife, kingdoms.
+## Not yet ported: the ruler and kingdoms.
 
 const STARTING_GOODS := {"food": 30, "wood": 15, "stone": 5}
 const STARTING_JOBS: Array[String] = ["farmer", "gatherer", "builder", "laborer", "laborer"]
@@ -26,6 +26,8 @@ static func create(seed_value: int, gen: int = WorldGen.CURRENT_GEN, habitat: St
 	for i in Simulation.STARTING_SETTLERS:
 		sim.add_settler(SPOTS[i].x, SPOTS[i].y, STARTING_JOBS[i])
 	BuildingOps.assign_homes(sim)
+	# A few herds in sight of the hall, of the habitat's own animals.
+	Animals.seed_wildlife(sim)
 	sim.start_session()
 	sim.drain_events()
 	return sim

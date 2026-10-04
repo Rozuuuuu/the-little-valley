@@ -15,6 +15,8 @@ const EAT := &"eat"              ## src
 const CRAFT := &"craft"          ## site (the recipe building), stage walk|work
 const ORCHARD := &"orchard"      ## field (the orchard), action tend|pick, stage walk|work, timer
 const SLEEP := &"sleep"          ## home (building id or -1), stage walk|sleep
+const HUNT := &"hunt"            ## animal, site (lodge or -1), target (area or -1), direct, x, y (last seen), stage stalk|aim, timer
+const HERD := &"herd"            ## site (the pen), stage walk|work, timer
 
 var kind: StringName
 var stage: StringName = &"walk"
@@ -31,6 +33,8 @@ var field := -1
 var action: StringName = &""
 var home := -1
 var timer := 0.0
+var animal := -1
+var direct := false
 
 
 static func move(tx: int, ty: int, wander: bool = false) -> Task:
@@ -109,4 +113,24 @@ static func sleep(home_id: int) -> Task:
 	var t := Task.new()
 	t.kind = SLEEP
 	t.home = home_id
+	return t
+
+
+static func hunt(animal_id: int, lodge_id: int, area_id: int, is_direct: bool, tx: int, ty: int) -> Task:
+	var t := Task.new()
+	t.kind = HUNT
+	t.animal = animal_id
+	t.site = lodge_id
+	t.target = area_id
+	t.direct = is_direct
+	t.x = tx
+	t.y = ty
+	t.stage = &"stalk"
+	return t
+
+
+static func herd(pen_id: int) -> Task:
+	var t := Task.new()
+	t.kind = HERD
+	t.site = pen_id
 	return t

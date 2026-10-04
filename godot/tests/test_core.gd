@@ -88,6 +88,23 @@ func test_sin_matches_v8() -> void:
 	check(mismatches == 0, "sin differs from V8 for %d of %d arguments (largest difference %s)" % [mismatches, total, str(worst)])
 
 
+func test_cos_matches_v8() -> void:
+	var data: Dictionary = load_json(GOLDEN + "/math.json")
+	if data == null:
+		return
+	var mismatches := 0
+	var worst := 0.0
+	for s: Array in data["cos"]:
+		var a := float_from_bits(s[0])
+		var expected := float_from_bits(s[1])
+		var got := JsMath.cos_js(a)
+		if got != expected:
+			mismatches += 1
+			worst = maxf(worst, absf(got - expected))
+	var total: int = (data["cos"] as Array).size()
+	check(mismatches == 0, "cos differs from V8 for %d of %d arguments (largest difference %s)" % [mismatches, total, str(worst)])
+
+
 func test_content_floats_parse_exactly() -> void:
 	var manifest: Dictionary = load_json("res://content/_manifest.json")
 	if manifest == null:

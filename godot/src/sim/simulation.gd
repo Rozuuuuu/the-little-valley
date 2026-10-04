@@ -34,8 +34,11 @@ const K_BUILD := 2 << 48
 const K_FIELD := 3 << 48
 const K_CRAFT := 4 << 48
 const K_ORCHARD := 5 << 48
+const K_HUNT := 6 << 48
+const K_HERD := 7 << 48
 const T_BUILDING := 1 << 48
 const T_OBJECT := 2 << 48
+const T_ANIMAL := 3 << 48
 
 var world: World
 var tick := 0
@@ -54,6 +57,9 @@ var regrowth := {}
 var work_areas: Array[WorkArea] = []
 ## Ids of buildings with an upgrade under way (rebuilt from buildings on load).
 var upgrading := {}
+var animals: Array[Animal] = []
+## Animals draw from their own stream, so they never change what settlers do.
+var animal_rng: Rng
 ## Target key -> [until tick, x, y] of the failed search (shared notes). Transient.
 var shared_unreachable := {}
 var _unreachable_count := {}
@@ -96,6 +102,11 @@ var _sites: Array[Building] = []
 var _fields: Array[Building] = []
 var _workshops: Array[Building] = []
 var _orchards: Array[Building] = []
+var _lodges: Array[Building] = []
+var _pens: Array[Building] = []
+## Settler id -> the building they are assigned to work at.
+var _workplace := {}
+var _workplace_tick := -1
 var _season_tick := -1
 var _season := {}
 ## Loaded tiles holding a harvestable object, by resource ("wood", "stone", "food"), for nearest
@@ -108,6 +119,7 @@ var _storage_warned := false
 func _init(world_seed: int, rng_state: int = 0, gen: int = WorldGen.CURRENT_GEN, habitat: String = "valley", rng_given: bool = false) -> void:
 	world = World.new(world_seed, gen, habitat)
 	rng = Rng.new(rng_state if rng_given else (world_seed ^ 0x5bd1e995))
+	animal_rng = Rng.new(world_seed ^ 0x0a11a1)
 	_reset_stats()
 	world.on_tile_changed = _on_tile_changed
 	world.on_chunk_installed = _on_chunk_installed
@@ -439,7 +451,13 @@ func _refresh_lists() -> void:
 	_fields.clear()
 	_workshops.clear()
 	_orchards.clear()
+	_lodges.clear()
+	_pens.clear()
 	for b: Building in buildings.values():
+		if b.built and b.def().has("hunting"):
+			_lodges.append(b)
+		if b.built and b.def().has("pen"):
+			_pens.append(b)
 		if b.built and not b.orchard.is_empty():
 			_orchards.append(b)
 		if not b.built:
@@ -450,6 +468,36 @@ func _refresh_lists() -> void:
 			_workshops.append(b)
 		if b.is_field():
 			_fields.append(b)
+
+
+## Finished hunting lodges.
+func lodges() -> Array[Building]:
+	_refresh_lists()
+	return _lodges
+
+
+## Finished pens and pastures.
+func pens() -> Array[Building]:
+	_refresh_lists()
+	return _pens
+
+
+## Forgets the work index after assignments change.
+func forget_work_index() -> void:
+	_workplace_tick = -1
+
+
+## The building a settler is assigned to work at, or null (rebuilt at most once a tick, like the
+## browser game's work index; assignments can change between ticks).
+func workplace_of(settler_id: int) -> Building:
+	if _workplace_tick != tick:
+		_workplace_tick = tick
+		_workplace.clear()
+		for b: Building in buildings.values():
+			if b.built:
+				for id in b.workers:
+					_workplace[id] = b
+	return _workplace.get(settler_id)
 
 
 ## Finished storage buildings, in placement order. Shared: do not modify the array.
@@ -655,6 +703,7 @@ func end_tick() -> void:
 		Levels.tidy_crates(self)
 	if not upgrading.is_empty():
 		Levels.update(self)
+	Animals.update(self)
 	if tick % Areas.AREA_STEP == 0:
 		Areas.update(self)
 	# Where each settler stood at the start and end of this tick, for drawing between ticks.

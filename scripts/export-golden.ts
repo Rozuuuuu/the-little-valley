@@ -8,6 +8,8 @@ import { generateChunk, riverCenter } from '../src/game/world/worldgen';
 import { findPath, lastPathStats, type Goal } from '../src/game/sim/pathfinding';
 import { TERRAIN } from '../src/game/world/tiles';
 import { World } from '../src/game/world/World';
+import { createNewGame } from '../src/game/sim/newGame';
+import { CURRENT_GEN } from '../src/game/world/worldgen';
 
 const OUT = 'godot/tests/golden';
 mkdirSync(OUT, { recursive: true });
@@ -60,6 +62,8 @@ for (let x = -3000; x <= 3000; x += 7) {
 }
 const math = {
   sin: sinArgs.map((a) => [bits(a), bits(Math.sin(a))]),
+  // Herd placement uses angles in [0, 2π): cos and sin there, plus the generator range for cos.
+  cos: [...sinArgs, ...Array.from({ length: 600 }, (_, i) => (i / 600) * Math.PI * 2 + i * 1e-4)].map((a) => [bits(a), bits(Math.cos(a))]),
   hypot: hypotArgs.map(([a, b]) => [bits(a), bits(b), bits(Math.hypot(a, b))]),
   riverCenter: [424242, 12345, 777].flatMap((s) => [-500, -33, 0, 17, 250, 4000].map((y) => [s, y, bits(riverCenter(s, y))])),
 };
@@ -110,5 +114,13 @@ writeFileSync(`${OUT}/rng.json`, JSON.stringify({ rng, hashes }));
 writeFileSync(`${OUT}/noise.json`, JSON.stringify(noise));
 writeFileSync(`${OUT}/math.json`, JSON.stringify(math));
 writeFileSync(`${OUT}/chunks.json`, JSON.stringify(chunks));
+
+// The herds a new valley starts with, per habitat (animals draw from their own random stream, so
+// these depend only on the world and that stream).
+const wildlife = (Object.keys(HABITATS) as HabitatId[]).map((h) => {
+  const sim = createNewGame(8080, CURRENT_GEN, h);
+  return { habitat: h, animals: sim.animals.map((a) => [a.species, bits(a.x), bits(a.y), a.homeX, a.homeY, a.facing]), rng: sim.animalRng.state };
+});
+writeFileSync(`${OUT}/wildlife.json`, JSON.stringify(wildlife));
 for (const gen of [1, 2, 3, 4]) copyFileSync(`tests/fixtures/gen-v${gen}-fingerprint.json`, `${OUT}/gen-v${gen}-fingerprint.json`);
 console.log(`golden data written to ${OUT}`);

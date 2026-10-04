@@ -79,7 +79,8 @@ func test_genuine_browser_save_imports_with_a_report() -> void:
 	var sim: Simulation = r["sim"]
 	var report: PackedStringArray = r["report"]
 	var text := "; ".join(report)
-	check(text.contains("animals"), "wild animals are reported, not silently dropped: %s" % text)
+	check_eq(sim.animals.size(), (data["sim"]["animals"] as Array).size(), "every animal arrives")
+	check(not text.contains("animal"), "animals are simulated now, so not reported: %s" % text)
 	check(text.contains("ruler"), "the ruler is reported: %s" % text)
 	check_eq(sim.settlers.size(), (data["sim"]["settlers"] as Array).size(), "every settler arrives")
 	check_eq(sim.buildings.size(), (data["sim"]["buildings"] as Array).size(), "every building arrives")

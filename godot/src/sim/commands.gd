@@ -6,7 +6,7 @@ class_name Commands
 ## Ported: move, gather, work, place, placeArea, remove, designate, setJob, setPriorities, setCrop,
 ## setRecipe, toggleWorkshop, assignWorker, unassignWorker, stop, hold, returnGoods,
 ## formHousehold, requestChild, cancelChildRequest, adoptDeliberateGrowth, acceptRecruit, cancelRecruit,
-## createArea, updateArea, deleteArea, assignArea, upgradeBuilding, cancelUpgrade.
+## createArea, updateArea, deleteArea, assignArea, upgradeBuilding, cancelUpgrade, hunt.
 ## Others report that they are not available yet.
 
 const MAX_AREA := 40 * 40
@@ -281,6 +281,12 @@ static func _apply(sim: Simulation, cmd: Dictionary) -> Dictionary:
 		"createArea":
 			return _create_area(sim, cmd)
 
+		"hunt":
+			var hunters: Variant = _pick_workers(sim, cmd.get("ids"), "hunt")
+			if hunters is String:
+				return _err(hunters)
+			return Husbandry.hunt_animal(sim, hunters, cmd.get("animalId"))
+
 		"upgradeBuilding", "cancelUpgrade":
 			var ub: Building = sim.buildings.get(int(cmd["buildingId"])) if _is_int(cmd.get("buildingId")) else null
 			if ub == null:
@@ -331,6 +337,7 @@ static func _apply(sim: Simulation, cmd: Dictionary) -> Dictionary:
 				return _err("That building is gone")
 			var sid := int(cmd.get("settlerId", -1))
 			b.workers.erase(sid)
+			sim.forget_work_index()
 			var s := sim.settler(sid)
 			if s != null:
 				_replan(sim, s)
@@ -490,8 +497,10 @@ static func _work(sim: Simulation, cmd: Dictionary) -> Dictionary:
 
 static func _assign_worker(sim: Simulation, cmd: Dictionary) -> Dictionary:
 	var b: Building = sim.buildings.get(int(cmd.get("buildingId", -1)))
-	if b == null or b.workshop.is_empty() or not b.built:
-		return _err("Workers can only be assigned to finished workshops, mills, bakeries, kilns, smelters and forges")
+	var hunting := b != null and b.def().has("hunting")
+	var penned := b != null and b.def().has("pen")
+	if b == null or (b.workshop.is_empty() and not hunting and not penned) or not b.built:
+		return _err("Workers can only be assigned to finished workshops, mills, bakeries, kilns, smelters, forges, lodges and pens")
 	var picked: Variant = _pick_workers(sim, cmd.get("ids"), "work at a workshop")
 	if picked is String:
 		return _err(picked)
@@ -507,14 +516,17 @@ static func _assign_worker(sim: Simulation, cmd: Dictionary) -> Dictionary:
 			if other != b:
 				other.workers.erase(s.id)
 		b.workers.append(s.id)
+		sim.forget_work_index()
 		_take_order(sim, s)
-		# Make sure crafting is in their work order, and first.
-		if not s.has_priorities and s.job != "crafter":
-			s.job = "crafter"
+		# Make sure their kind of work comes first: hunters gather, herders farm, others craft.
+		var kind := "gather" if hunting else ("farm" if penned else "craft")
+		var job := "hunter" if hunting else ("herder" if penned else "crafter")
+		if not s.has_priorities and s.job != job:
+			s.job = job
 		elif s.has_priorities:
-			var order: Array = ["craft"]
+			var order: Array = [kind]
 			for k: String in s.priorities:
-				if k != "craft":
+				if k != kind:
 					order.append(k)
 			s.priorities = order
 		added.append(s.name)

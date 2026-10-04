@@ -33,6 +33,8 @@ static func encode(sim: Simulation, save_name: String, created_at: int, view: Di
 			d["sideJob"] = s.side_job
 		if s.hold:
 			d["hold"] = true
+		if s.hp < 100.0:
+			d["hp"] = s.hp
 		settlers.append(d)
 	var buildings: Array = []
 	for b: Building in sim.buildings.values():
@@ -46,6 +48,8 @@ static func encode(sim: Simulation, save_name: String, created_at: int, view: Di
 			d["field"] = {"crop": f["crop"] if f["crop"] != "" else null, "state": f["state"], "growth": f["growth"], "moisture": f["moisture"]}
 		if not b.orchard.is_empty():
 			d["orchard"] = b.orchard.duplicate()
+		if not b.pen.is_empty():
+			d["pen"] = {"breed": b.pen["breed"], "ready": b.pen["ready"]}
 		if not b.workshop.is_empty():
 			d["workshop"] = {"recipe": b.workshop["recipe"] if str(b.workshop.get("recipe", "")) != "" else null, "progress": b.workshop["progress"], "paused": b.workshop["paused"]}
 		if b.level > 1:
@@ -99,11 +103,18 @@ static func encode(sim: Simulation, save_name: String, created_at: int, view: Di
 			"recruits": _recruits_out(sim), "lastRecruit": sim.last_recruit if sim.last_recruit > -1000000000 else null,
 			"lastArrival": sim.last_arrival,
 			"geology": {"version": 1, "cells": []}, "routes": [], "manifests": [], "parties": [], "knownRegions": [], "nextMerchant": 0,
-			"claims": [], "horseDay": 0, "animals": [],
+			"claims": [], "horseDay": 0, "animals": sim.animals.map(_animal_out), "animalRng": sim.animal_rng.state,
 		},
 		"world": {"genVersion": sim.world.gen, "habitat": sim.world.habitat_id, "chunks": chunks},
 		"view": view,
 	}
+
+
+static func _animal_out(a: Animal) -> Dictionary:
+	var d := {"id": a.id, "species": a.species, "x": a.x, "y": a.y, "homeX": a.home_x, "homeY": a.home_y, "penId": _id_or_null(a.pen_id), "facing": a.facing}
+	if a.hp >= 0.0:
+		d["hp"] = a.hp
+	return d
 
 
 static func _id_or_null(id: int) -> Variant:
@@ -242,6 +253,8 @@ static func decode(save: Variant) -> Dictionary:
 		if bd.get("field") is Dictionary:
 			var f: Dictionary = bd["field"]
 			b.field = {"crop": "" if f["crop"] == null else str(f["crop"]), "state": str(f["state"]), "growth": float(f["growth"]), "moisture": float(f["moisture"])}
+		if bd.get("pen") is Dictionary:
+			b.pen = {"breed": float(bd["pen"].get("breed", 0)), "ready": float(bd["pen"].get("ready", 0))}
 		if bd.get("orchard") is Dictionary:
 			var od: Dictionary = bd["orchard"]
 			b.orchard = {"growth": float(od.get("growth", 0)), "fruit": float(od.get("fruit", 0)), "careUntil": int(od.get("careUntil", 0))}
@@ -290,9 +303,32 @@ static func decode(save: Variant) -> Dictionary:
 		s.side_job = str(sv.get("sideJob", "")) if sv.get("sideJob") != null else ""
 		s.hold = bool(sv.get("hold", false))
 		s.area_id = int(sv["areaId"]) if sv.get("areaId") != null else -1
+		s.hp = float(sv["hp"]) if sv.get("hp") != null else 100.0
 		s.capacity = Simulation.SETTLER_CAPACITY
 		sim._add_settler_object(s)
 
+	if sd.get("animalRng") != null:
+		sim.animal_rng.state = int(sd["animalRng"])
+	for av: Dictionary in sd.get("animals", []):
+		var a := Animal.new()
+		a.id = int(av["id"])
+		a.species = str(av["species"])
+		a.x = float(av["x"])
+		a.y = float(av["y"])
+		a.px = a.x
+		a.py = a.y
+		a.rpx = a.x
+		a.rpy = a.y
+		a.rx = a.x
+		a.ry = a.y
+		a.tx = a.x
+		a.ty = a.y
+		a.home_x = int(av["homeX"])
+		a.home_y = int(av["homeY"])
+		a.pen_id = int(av["penId"]) if av.get("penId") != null else -1
+		a.facing = int(av.get("facing", 3))
+		a.hp = float(av["hp"]) if av.get("hp") != null else -1.0
+		sim.animals.append(a)
 	for ad: Dictionary in sd.get("workAreas", []):
 		sim.work_areas.append(WorkArea.from_json(ad))
 	for s in sim.settlers:
@@ -395,18 +431,12 @@ static func unsupported(d: Dictionary) -> PackedStringArray:
 	var out: PackedStringArray = []
 	var sd: Dictionary = d["sim"]
 	var counts := {
-		"routes": "supply route", "manifests": "caravan on the road", "parties": "merchant", "animals": "animal", "claims": "land claim",
+		"routes": "supply route", "manifests": "caravan on the road", "parties": "merchant", "claims": "land claim",
 	}
 	for k: String in counts:
 		var n := (sd.get(k, []) as Array).size() if sd.get(k) is Array else 0
 		if n > 0:
 			out.append("%d %s%s" % [n, counts[k], "" if n == 1 else "s"])
-	var hunts := 0
-	for av: Variant in sd.get("workAreas", []):
-		if av is Dictionary and (av as Dictionary).get("kind") == "hunt":
-			hunts += 1
-	if hunts > 0:
-		out.append("%d hunting ground%s (kept; their hunters wait until animals arrive)" % [hunts, "" if hunts == 1 else "s"])
 	if sd.get("geology") is Dictionary and not (sd["geology"]["cells"] as Array).is_empty():
 		out.append("%d surveyed ground cells" % (sd["geology"]["cells"] as Array).size())
 	if sd.get("kingdoms") is Array:

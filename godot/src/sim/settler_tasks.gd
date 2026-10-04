@@ -30,6 +30,8 @@ static func update_settler(sim: Simulation, s: Settler) -> void:
 	var sleeping := s.task != null and s.task.kind == Task.SLEEP and s.task.stage == &"sleep"
 	if not sleeping:
 		s.energy = maxf(0.0, s.energy - ENERGY_DECAY)
+	if s.hp < 100.0:
+		s.hp = minf(100.0, s.hp + float(Animals.value("HEAL_ASLEEP") if sleeping else Animals.value("HEAL_AWAKE")))
 	if (s.task == null or s.task.kind == Task.WANDER) and (sim.tick + s.id) % 4 == 0 and sim.tick >= s.next_think:
 		var t0 := Prof.begin()
 		SettlerBrain.assign_task(sim, s)
@@ -83,6 +85,10 @@ static func run_task(sim: Simulation, s: Settler) -> void:
 			Production.run_craft(sim, s, t)
 		Task.ORCHARD:
 			Orchards.run(sim, s, t)
+		Task.HUNT:
+			Husbandry.run_hunt(sim, s, t)
+		Task.HERD:
+			Husbandry.run_herd(sim, s, t)
 		Task.SLEEP:
 			_run_sleep(sim, s, t)
 
@@ -165,7 +171,7 @@ static func go_to(sim: Simulation, s: Settler, g: GridAStar.Goal, partial: bool 
 		s.repaths += 1
 		return Move.FAILED if s.repaths > 4 else Move.MOVING
 	s.anim = &"walk"
-	if _step_toward(sim, s, nx + 0.5, ny + 0.5):
+	if step_toward(sim, s, nx + 0.5, ny + 0.5):
 		s.path_index += 1
 		if s.path_index >= s.path.size() / 2:
 			s.has_path = false
@@ -183,10 +189,10 @@ static func _settle(sim: Simulation, s: Settler, tx: int, ty: int) -> Move:
 	if absf(s.x - cx) < 0.01 and absf(s.y - cy) < 0.01:
 		return Move.ARRIVED
 	s.anim = &"walk"
-	return Move.ARRIVED if _step_toward(sim, s, cx, cy) else Move.MOVING
+	return Move.ARRIVED if step_toward(sim, s, cx, cy) else Move.MOVING
 
 
-static func _step_toward(sim: Simulation, s: Settler, tx: float, ty: float) -> bool:
+static func step_toward(sim: Simulation, s: Settler, tx: float, ty: float) -> bool:
 	var dx := tx - s.x
 	var dy := ty - s.y
 	var d := JsMath.hypot(dx, dy)
@@ -219,6 +225,10 @@ static func task_keys(s: Settler) -> Array[int]:
 			return [Simulation.K_CRAFT + t.site]
 		Task.ORCHARD:
 			return [Simulation.K_ORCHARD + t.field]
+		Task.HUNT:
+			return [Simulation.K_HUNT + t.animal]
+		Task.HERD:
+			return [Simulation.K_HERD + t.site]
 	return []
 
 
@@ -242,6 +252,13 @@ static func _release_task(sim: Simulation, s: Settler) -> void:
 			sim.release(Simulation.K_CRAFT + t.site, s.id)
 		Task.ORCHARD:
 			sim.release(Simulation.K_ORCHARD + t.field, s.id)
+		Task.HUNT:
+			sim.release(Simulation.K_HUNT + t.animal, s.id)
+			var a := Animals.find(sim, t.animal)
+			if a != null and a.hunted_by == s.id:
+				a.hunted_by = -1
+		Task.HERD:
+			sim.release(Simulation.K_HERD + t.site, s.id)
 		Task.HAUL:
 			var src: Building = sim.buildings.get(t.src)
 			var dst: Building = sim.buildings.get(t.dst)

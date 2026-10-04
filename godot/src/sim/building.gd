@@ -22,6 +22,8 @@ var field := {}
 var workshop := {}
 ## Orchards only: {growth, fruit, careUntil}.
 var orchard := {}
+## Pens only: {breed, ready}.
+var pen := {}
 var level := 1
 ## An upgrade under way: {to, progress, paid}, or empty.
 var upgrade := {}

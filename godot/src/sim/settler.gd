@@ -35,6 +35,8 @@ var age_ticks := 0
 var household_id := -1
 var hold := false
 var side_job := ""
+## Health, 0..100 (hunters hurt by dangerous game heal over time).
+var hp := 100.0
 
 # ---- transient -------------------------------------------------------------------------------
 ## Position at the start of the tick being simulated.
@@ -72,6 +74,8 @@ var next_think := 0
 var stopped_until := -1
 ## Targets this settler could not reach recently: target key -> tick until which it is skipped.
 var unreachable := {}
+## Tick of the last blow taken, for the hit flash.
+var hit_at := -1000000
 ## Last tile key where this settler revealed the map.
 var last_reveal_key := -1
 

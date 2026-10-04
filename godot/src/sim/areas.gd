@@ -3,8 +3,7 @@ class_name Areas
 ##  - an area with a wanted number of workers staffs itself from free adults (idle ones first,
 ##    then the nearest) and lets the most recently added go when the number drops;
 ##  - a farm area with a crop lays out its own fields on every free fertile tile;
-##  - woodlots replant (SettlerTasks.run_gather).
-## Hunting grounds keep their settlers but find no work until animals are ported.
+##  - woodlots replant (SettlerTasks.run_gather) and hunting grounds hunt (Husbandry).
 
 const AREA_STEP := 100
 ## Most new fields a farm area lays out per step (they are free and instant).

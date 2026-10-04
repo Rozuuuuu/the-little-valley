@@ -118,6 +118,26 @@ static func sin_js(x: float) -> float:
 			return -_kernel_cos(y[0], y[1])
 
 
+## `Math.cos` exactly as V8 computes it (fdlibm), with the same argument range as sin_js.
+static func cos_js(x: float) -> float:
+	var ix := _high_word(x) & 0x7FFFFFFF
+	if ix <= 0x3FE921FB:
+		return _kernel_cos(x, 0.0)
+	if ix >= 0x7FF00000:
+		return x - x
+	var y := PackedFloat64Array([0.0, 0.0])
+	var n := _rem_pio2(x, y)
+	match n & 3:
+		0:
+			return _kernel_cos(y[0], y[1])
+		1:
+			return -_kernel_sin(y[0], y[1], 1)
+		2:
+			return -_kernel_cos(y[0], y[1])
+		_:
+			return _kernel_sin(y[0], y[1], 1)
+
+
 static func _kernel_sin(x: float, y: float, iy: int) -> float:
 	var ix := _high_word(x) & 0x7FFFFFFF
 	if ix < 0x3E400000 and int(x) == 0:

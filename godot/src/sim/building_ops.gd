@@ -158,6 +158,8 @@ static func complete(sim: Simulation, b: Building, silent: bool = false) -> void
 		Production.init_workshop(b)
 	if b.type == "orchard":
 		Orchards.init_orchard(sim, b)
+	if d.has("pen"):
+		Animals.stock_pen(sim, b)
 	if d.has("reveal"):
 		var r: Variant = b.stat("reveal")
 		sim.world.reveal(cx, cy, float(r))
