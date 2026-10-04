@@ -6,7 +6,7 @@ class_name Commands
 ## Ported: move, gather, work, place, placeArea, remove, designate, setJob, setPriorities, setCrop,
 ## setRecipe, toggleWorkshop, assignWorker, unassignWorker, stop, hold, returnGoods,
 ## formHousehold, requestChild, cancelChildRequest, adoptDeliberateGrowth, acceptRecruit, cancelRecruit,
-## createArea, updateArea, deleteArea, assignArea.
+## createArea, updateArea, deleteArea, assignArea, upgradeBuilding, cancelUpgrade.
 ## Others report that they are not available yet.
 
 const MAX_AREA := 40 * 40
@@ -280,6 +280,12 @@ static func _apply(sim: Simulation, cmd: Dictionary) -> Dictionary:
 
 		"createArea":
 			return _create_area(sim, cmd)
+
+		"upgradeBuilding", "cancelUpgrade":
+			var ub: Building = sim.buildings.get(int(cmd["buildingId"])) if _is_int(cmd.get("buildingId")) else null
+			if ub == null:
+				return _err("That building is gone")
+			return Levels.start_upgrade(sim, ub) if cmd["type"] == "upgradeBuilding" else Levels.cancel_upgrade(sim, ub)
 
 		"updateArea":
 			return _update_area(sim, cmd)

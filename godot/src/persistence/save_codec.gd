@@ -50,6 +50,8 @@ static func encode(sim: Simulation, save_name: String, created_at: int, view: Di
 			d["workshop"] = {"recipe": b.workshop["recipe"] if str(b.workshop.get("recipe", "")) != "" else null, "progress": b.workshop["progress"], "paused": b.workshop["paused"]}
 		if b.level > 1:
 			d["level"] = b.level
+		if not b.upgrade.is_empty():
+			d["upgrade"] = {"to": b.upgrade["to"], "progress": b.upgrade["progress"], "paid": (b.upgrade["paid"] as Dictionary).duplicate()}
 		buildings.append(d)
 	var designations: Array = []
 	for k: int in sim.designations.keys():
@@ -229,7 +231,11 @@ static func decode(save: Variant) -> Dictionary:
 		b.delivered = Inv.from_json(bd.get("delivered", {}))
 		b.inventory = Inv.from_json(bd.get("inventory", {}))
 		b.placed_tick = int(bd.get("placedTick", 0))
-		b.level = int(bd.get("level", 1))
+		b.level = int(bd["level"]) if bd.get("level") != null else 1
+		if bd.get("upgrade") is Dictionary:
+			var ud: Dictionary = bd["upgrade"]
+			b.upgrade = {"to": int(ud["to"]), "progress": int(ud["progress"]), "paid": Inv.from_json(ud.get("paid", {}))}
+			sim.upgrading[b.id] = true
 		for wid: Variant in bd.get("workers", []):
 			b.workers.append(int(wid))
 		b.wants = Inv.from_json(bd.get("wants", {}))

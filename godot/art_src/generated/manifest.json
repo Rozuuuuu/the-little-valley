@@ -178,6 +178,14 @@
    "kind": "object",
    "provisional": true
   },
+  "crate": {
+   "w": 96,
+   "h": 96,
+   "ax": 0,
+   "ay": 96,
+   "kind": "building",
+   "provisional": true
+  },
   "townHall": {
    "w": 408,
    "h": 450,

@@ -192,6 +192,12 @@ static func remove(sim: Simulation, b: Building) -> String:
 	if b.built:
 		for e in Inv.entries(cost_of(b)):
 			Inv.add(refund, e[0], int(e[1]) / 2)
+	# An upgrade under way is refunded in full, like a cancel.
+	if not b.upgrade.is_empty():
+		for e in Inv.entries(b.upgrade["paid"]):
+			Inv.add(refund, e[0], int(e[1]))
+		b.upgrade = {}
+		sim.upgrading.erase(b.id)
 	for e in Inv.entries(refund):
 		lost += sim.deposit_anywhere(e[0], int(e[1]), cx, cy)
 	for e in Inv.entries(b.inventory):

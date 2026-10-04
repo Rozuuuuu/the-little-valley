@@ -792,7 +792,19 @@ func _bar(v: float) -> String:
 
 func _building_text(b: Building) -> String:
 	var d := b.def()
-	var lines := ["[b]%s[/b]" % d["name"]]
+	var lines := ["[b]%s[/b]" % (Levels.level_name(b) if b.built else str(d["name"]))]
+	var levels := Levels.levels_of(b)
+	if b.built and not levels.is_empty():
+		var lv_line := "Level %d of %d" % [b.level, levels.size()]
+		if not b.upgrade.is_empty():
+			var to := int(b.upgrade["to"])
+			var nl: Dictionary = levels[to - 1]
+			lv_line += " · upgrading to %s: %d%%" % [nl["name"], roundi(float(b.upgrade["progress"]) / maxf(1.0, float(nl["time"])) * 100)]
+		else:
+			var next := Levels.next_level(b)
+			if not next.is_empty():
+				lv_line += " · next: %s (%s)" % [next["name"], ", ".join(PackedStringArray(next.get("perks", []) as Array))]
+		lines.append("[color=%s]%s[/color]" % [_c("textDim").to_html(), lv_line])
 	if b.is_field():
 		var f := b.field
 		lines.append("%s · %s" % [str(f["crop"]).capitalize() if f["crop"] != "" else "Nothing planted", str(f["state"]).capitalize()])
@@ -854,6 +866,9 @@ func _placing_text() -> String:
 func _refresh_card() -> void:
 	var sim := game.sim
 	var key := "%s|%s|%d|%d|%s" % [_card_mode, game.placing, game.selected.size(), game.selected_building, sim.reached]
+	var sel: Building = sim.buildings.get(game.selected_building)
+	if sel != null:
+		key += "|%d|%s|%d|%s" % [sel.level, sel.upgrade.is_empty(), sel.type.hash(), Levels.upgrade_problem(sim, sel) if sel.upgrade.is_empty() else ""]
 	if key == _last_card_key:
 		return
 	_last_card_key = key
@@ -914,6 +929,24 @@ func _refresh_card() -> void:
 					game.command({"type": "toggleWorkshop", "buildingId": b.id})
 					_last_card_key = ""
 					refresh_now(), "Pause or resume production (P)"))
+			if b.built and not Levels.levels_of(b).is_empty():
+				if not b.upgrade.is_empty():
+					_card_grid.add_child(_button("Cancel upgrade", func() -> void:
+						game.command({"type": "cancelUpgrade", "buildingId": b.id})
+						_last_card_key = ""
+						refresh_now(), "Everything paid comes back"))
+				else:
+					var next := Levels.next_level(b)
+					if not next.is_empty():
+						var problem := Levels.upgrade_problem(sim, b)
+						var tip := "%s\nCost: %s · %d s at normal speed%s" % [", ".join(PackedStringArray(next.get("perks", []) as Array)),
+							Inv.format(Inv.from_json(next.get("cost", {}))), roundi(float(next["time"]) / 10.0), "\n" + problem if problem != "" else ""]
+						var ub := _button("Upgrade → %s" % next["name"], func() -> void:
+							game.command({"type": "upgradeBuilding", "buildingId": b.id})
+							_last_card_key = ""
+							refresh_now(), tip)
+						ub.disabled = problem != ""
+						_card_grid.add_child(ub)
 			var permanent: bool = b.built and bool(b.def().get("permanent", false))
 			var rm := _button("Cancel site" if not b.built else "Demolish", func() -> void:
 				game.command({"type": "remove", "buildingId": b.id})

@@ -58,6 +58,31 @@ func _draw() -> void:
 		draw_rect(Rect2(top, Vector2(w, 8)), Color(0.09, 0.23, 0.24, 0.85))
 		draw_rect(Rect2(top, Vector2(w * mat_frac, 4)), Color("#d9b26a"))
 		draw_rect(Rect2(top + Vector2(0, 4), Vector2(w * work_frac, 4)), Color("#8fd18a"))
+	# Levels: a gold pip per level above the first, and an upgrade's progress.
+	for id: int in sim.upgrading:
+		var ub: Building = sim.buildings.get(id)
+		if ub == null or ub.upgrade.is_empty():
+			continue
+		var top := Vector2(ub.x * T, ub.y * T - 12)
+		if not view.has_point(top):
+			continue
+		var lvs := Levels.levels_of(ub)
+		var to := int(ub.upgrade["to"])
+		var frac := float(ub.upgrade["progress"]) / maxf(1.0, float((lvs[to - 1] as Dictionary)["time"])) if to - 1 < lvs.size() else 0.0
+		draw_rect(Rect2(top, Vector2(ub.w * T, 6)), Color(0.09, 0.23, 0.24, 0.85))
+		draw_rect(Rect2(top, Vector2(ub.w * T * frac, 6)), WorldView.GOLD)
+	for b: Building in sim.buildings.values():
+		if b.level <= 1 or not b.built:
+			continue
+		var at := Vector2((b.x + b.w) * T - 10, b.y * T + 8)
+		if not view.has_point(at):
+			continue
+		for i in b.level - 1:
+			var c := at - Vector2(i * 12, 0)
+			var pip := PackedVector2Array([c + Vector2(0, -5), c + Vector2(5, 0), c + Vector2(0, 5), c + Vector2(-5, 0)])
+			draw_colored_polygon(pip, WorldView.GOLD)
+			pip.append(pip[0])
+			draw_polyline(pip, Color("#7a5a20"), 1.5, true)
 	# Hovered tile.
 	if game.hover_tile.x != -99999 and game.placing == "":
 		draw_rect(Rect2(Vector2(game.hover_tile) * T, Vector2(T, T)), Color(WorldView.MINT, 0.5), false, 2.0)

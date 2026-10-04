@@ -166,6 +166,20 @@ function sapling(): string {
   return body;
 }
 
+/** A wooden crate with rope: goods that fit in no store wait in one. */
+function crate(): string {
+  const W = TILE;
+  const H = TILE;
+  const cx = W / 2;
+  const ground = H - 10;
+  let body = groundShadow(cx + 4, ground + 2, 34, 9, SHADOW);
+  body += shaded(rrect(cx - 30, ground - 44, 60, 44, 5), { tones: M.wood, outline: outlineOf(M.wood), shadow: 6, light: 4 });
+  // Planks and a cross brace.
+  body += `<path d="M${cx - 30},${ground - 22} H${cx + 30} M${cx - 26},${ground - 40} L${cx + 26},${ground - 4}" stroke="${outlineOf(M.wood)}" stroke-width="3" opacity="0.55" fill="none"/>`;
+  body += `<path d="M${cx - 6},${ground - 44} V${ground}" stroke="${P.core.gold}" stroke-width="4" opacity="0.9"/>`;
+  return body;
+}
+
 // ---- buildings -----------------------------------------------------------------------------
 
 /** A construction site: a staked foundation and scaffold poles, for any footprint. */
@@ -367,6 +381,7 @@ for (let v = 0; v < 2; v++) emit(`rock_${v}`, TILE, TILE, TILE / 2, TILE - 12, '
 emit('boulder', TILE * 1.5, TILE * 1.3, TILE * 0.75, TILE * 1.3 - 12, 'object', rock(0, true));
 emit('stump', TILE, TILE, TILE / 2, TILE - 18, 'object', stump());
 emit('sapling', TILE, TILE + 20, TILE / 2, TILE + 4, 'object', sapling());
+emit('crate', TILE, TILE, 0, TILE, 'building', crate());
 for (const k of Object.keys(SPECS)) {
   for (const lit of [false, true]) {
     const b = building(k, lit);

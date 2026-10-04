@@ -23,6 +23,8 @@ var workshop := {}
 ## Orchards only: {growth, fruit, careUntil}.
 var orchard := {}
 var level := 1
+## An upgrade under way: {to, progress, paid}, or empty.
+var upgrade := {}
 var placed_tick := 0
 ## Settler ids assigned to work here (production buildings).
 var workers: Array[int] = []

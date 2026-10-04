@@ -52,6 +52,8 @@ var reservations := {}
 ## Tile key -> [object id it becomes, tick].
 var regrowth := {}
 var work_areas: Array[WorkArea] = []
+## Ids of buildings with an upgrade under way (rebuilt from buildings on load).
+var upgrading := {}
 ## Target key -> [until tick, x, y] of the failed search (shared notes). Transient.
 var shared_unreachable := {}
 var _unreachable_count := {}
@@ -573,6 +575,19 @@ func deposit(b: Building, res: String, amount: int) -> int:
 
 
 ## Deposits into any storage, nearest first. Returns how many could not be stored.
+## Removes unreserved goods from storage, spreading across buildings. Returns how many were taken.
+func withdraw_unreserved(res: String, amount: int) -> int:
+	var left := amount
+	for b in storages():
+		if left <= 0:
+			break
+		var n := mini(left, maxi(0, available(b, res)))
+		if n > 0:
+			Inv.add(b.inventory, res, -n)
+			left -= n
+	return amount - left
+
+
 func deposit_anywhere(res: String, amount: int, x: float, y: float) -> int:
 	var left := amount
 	var list := storages().duplicate()
@@ -636,6 +651,10 @@ func end_tick() -> void:
 	slice_next = -1
 	if tick % 10 == 0:
 		Production.update_workshops(self)
+	if tick % Levels.CRATE_STEP == 0:
+		Levels.tidy_crates(self)
+	if not upgrading.is_empty():
+		Levels.update(self)
 	if tick % Areas.AREA_STEP == 0:
 		Areas.update(self)
 	# Where each settler stood at the start and end of this tick, for drawing between ticks.

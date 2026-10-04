@@ -134,6 +134,18 @@ func _capture(opts: Dictionary) -> void:
 		hud.toggle_people()
 	if opts.get("areas", "0") == "1":
 		hud.toggle_areas()
+	if opts.get("upgrade", "0") == "1":
+		# Starts upgrading the storehouse and selects it, to review the level UI.
+		BuildingOps.camp_of(sim).inventory = {"food": 120, "wood": 300, "stone": 200, "planks": 80, "tools": 20}
+		for b: Building in sim.buildings.values():
+			if b.type == "storehouse" and b.built:
+				Commands.apply(sim, {"type": "upgradeBuilding", "buildingId": b.id})
+				for i in 300:
+					sim.step()
+				selected = []
+				selected_building = b.id
+				camera.position = Vector2(b.center_x(), b.center_y()) * WorldView.TILE_PX
+				camera.target_pos = camera.position
 	for i in 20:
 		await get_tree().process_frame
 	if opts.has("frames"):
