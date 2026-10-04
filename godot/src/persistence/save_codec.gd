@@ -44,6 +44,8 @@ static func encode(sim: Simulation, save_name: String, created_at: int, view: Di
 		if b.is_field():
 			var f := b.field
 			d["field"] = {"crop": f["crop"] if f["crop"] != "" else null, "state": f["state"], "growth": f["growth"], "moisture": f["moisture"]}
+		if not b.orchard.is_empty():
+			d["orchard"] = b.orchard.duplicate()
 		if not b.workshop.is_empty():
 			d["workshop"] = {"recipe": b.workshop["recipe"] if str(b.workshop.get("recipe", "")) != "" else null, "progress": b.workshop["progress"], "paused": b.workshop["paused"]}
 		if b.level > 1:
@@ -234,6 +236,9 @@ static func decode(save: Variant) -> Dictionary:
 		if bd.get("field") is Dictionary:
 			var f: Dictionary = bd["field"]
 			b.field = {"crop": "" if f["crop"] == null else str(f["crop"]), "state": str(f["state"]), "growth": float(f["growth"]), "moisture": float(f["moisture"])}
+		if bd.get("orchard") is Dictionary:
+			var od: Dictionary = bd["orchard"]
+			b.orchard = {"growth": float(od.get("growth", 0)), "fruit": float(od.get("fruit", 0)), "careUntil": int(od.get("careUntil", 0))}
 		if bd.get("workshop") is Dictionary:
 			var wsd: Dictionary = bd["workshop"]
 			b.workshop = {"recipe": "" if wsd.get("recipe") == null else str(wsd["recipe"]), "progress": float(wsd.get("progress", 0.0)), "paused": bool(wsd.get("paused", false)), "status": ""}
@@ -412,7 +417,7 @@ static func unsupported(d: Dictionary) -> PackedStringArray:
 	if special["training"] > 0:
 		out.append("%d settlers training a new role" % special["training"])
 	var simulated := {"townHall": true, "camp": true, "house": true, "familyHome": true, "cottage": true, "storehouse": true, "field": true, "path": true, "bridge": true,
-		"workshop": true, "mill": true, "bakery": true, "charcoalKiln": true, "smelter": true, "forge": true, "tannery": true, "weaver": true, "granary": true}
+		"orchard": true, "workshop": true, "mill": true, "bakery": true, "charcoalKiln": true, "smelter": true, "forge": true, "tannery": true, "weaver": true, "granary": true}
 	var others := {}
 	for bd: Dictionary in sd.get("buildings", []):
 		var t := str(bd["type"])

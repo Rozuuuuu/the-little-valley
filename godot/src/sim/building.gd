@@ -20,6 +20,8 @@ var inventory := {}
 var field := {}
 ## Recipe buildings only: {recipe, progress, paused, status (transient)}.
 var workshop := {}
+## Orchards only: {growth, fruit, careUntil}.
+var orchard := {}
 var level := 1
 var placed_tick := 0
 ## Settler ids assigned to work here (production buildings).

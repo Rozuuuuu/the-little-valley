@@ -79,6 +79,8 @@ static func run_task(sim: Simulation, s: Settler) -> void:
 			_run_eat(sim, s, t)
 		Task.CRAFT:
 			Production.run_craft(sim, s, t)
+		Task.ORCHARD:
+			Orchards.run(sim, s, t)
 		Task.SLEEP:
 			_run_sleep(sim, s, t)
 
@@ -213,6 +215,8 @@ static func task_keys(s: Settler) -> Array[int]:
 			return [Simulation.K_FIELD + t.field]
 		Task.CRAFT:
 			return [Simulation.K_CRAFT + t.site]
+		Task.ORCHARD:
+			return [Simulation.K_ORCHARD + t.field]
 	return []
 
 
@@ -234,6 +238,8 @@ static func _release_task(sim: Simulation, s: Settler) -> void:
 			sim.release(Simulation.K_FIELD + t.field, s.id)
 		Task.CRAFT:
 			sim.release(Simulation.K_CRAFT + t.site, s.id)
+		Task.ORCHARD:
+			sim.release(Simulation.K_ORCHARD + t.field, s.id)
 		Task.HAUL:
 			var src: Building = sim.buildings.get(t.src)
 			var dst: Building = sim.buildings.get(t.dst)

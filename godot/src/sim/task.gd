@@ -13,6 +13,7 @@ const BUILD := &"build"          ## site, slot, stage walk|work
 const FARM := &"farm"            ## field, action, stage walk|work, timer
 const EAT := &"eat"              ## src
 const CRAFT := &"craft"          ## site (the recipe building), stage walk|work
+const ORCHARD := &"orchard"      ## field (the orchard), action tend|pick, stage walk|work, timer
 const SLEEP := &"sleep"          ## home (building id or -1), stage walk|sleep
 
 var kind: StringName
@@ -86,6 +87,14 @@ static func craft(ws_id: int) -> Task:
 	var t := Task.new()
 	t.kind = CRAFT
 	t.site = ws_id
+	return t
+
+
+static func orchard_job(orchard_id: int, what: StringName) -> Task:
+	var t := Task.new()
+	t.kind = ORCHARD
+	t.field = orchard_id
+	t.action = what
 	return t
 
 

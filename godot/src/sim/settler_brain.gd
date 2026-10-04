@@ -277,6 +277,20 @@ static func _find_farm(sim: Simulation, s: Settler) -> Variant:
 	var best_score := INF
 	var action: StringName = &""
 	var any_fields := false
+	var best_orchard: Building = null
+	var orchard_job: StringName = &""
+	for b: Building in sim.orchards():
+		any_fields = true
+		var oa := Orchards.action(sim, b)
+		if oa == &"" or (oa == &"pick" and s.carrying()):
+			continue
+		if sim.is_reserved(Simulation.K_ORCHARD + b.id, s.id) or sim.is_unreachable(s, Simulation.T_BUILDING + b.id):
+			continue
+		var oscore := _dist(s, b.x + 1, b.y + 1) - (10.0 if oa == &"pick" else 3.0)
+		if oscore < best_score:
+			best_score = oscore
+			best_orchard = b
+			orchard_job = oa
 	for b: Building in sim.fields():
 		any_fields = true
 		var a := Farming.field_action(sim, b.field)
@@ -290,6 +304,10 @@ static func _find_farm(sim: Simulation, s: Settler) -> Variant:
 			best_score = score
 			best = b
 			action = a
+			best_orchard = null
+	if best_orchard != null:
+		sim.reserve(Simulation.K_ORCHARD + best_orchard.id, s.id)
+		return Task.orchard_job(best_orchard.id, orchard_job)
 	if best == null:
 		if any_fields and sim.season()["id"] == "winter":
 			return "Winter: the fields rest until spring"

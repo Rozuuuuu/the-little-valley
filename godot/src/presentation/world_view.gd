@@ -321,6 +321,8 @@ func _building_look(b: Building, night: bool) -> String:
 		return "field:%s:%s:%d:%s" % [f["state"], f["crop"], stage, wet]
 	if not b.built:
 		return "site:%d:%d" % [b.w, b.h]
+	if not b.orchard.is_empty():
+		return "orchard:%s" % Orchards.look(sim, b)
 	return "%s:%s" % [b.type, night]
 
 
@@ -350,6 +352,8 @@ func _make_building(b: Building, look: String) -> Node2D:
 	node.position = base
 	var sp := Sprite2D.new()
 	var name := "site_%dx%d" % [b.w, b.h] if not b.built else b.type
+	if b.built and not b.orchard.is_empty():
+		name = "orchard_" + look.get_slice(":", 1)
 	if not art.has(name):
 		name = "site_%dx%d" % [mini(b.w, 4), mini(b.h, 3)] if art.has("site_%dx%d" % [mini(b.w, 4), mini(b.h, 3)]) else "site_1x1"
 	art.apply(sp, name)

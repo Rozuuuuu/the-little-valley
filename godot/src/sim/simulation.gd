@@ -33,6 +33,7 @@ const K_OBJ := 1 << 48
 const K_BUILD := 2 << 48
 const K_FIELD := 3 << 48
 const K_CRAFT := 4 << 48
+const K_ORCHARD := 5 << 48
 const T_BUILDING := 1 << 48
 const T_OBJECT := 2 << 48
 
@@ -91,6 +92,7 @@ var _storages: Array[Building] = []
 var _sites: Array[Building] = []
 var _fields: Array[Building] = []
 var _workshops: Array[Building] = []
+var _orchards: Array[Building] = []
 var _season_tick := -1
 var _season := {}
 ## Loaded tiles holding a harvestable object, by resource ("wood", "stone", "food"), for nearest
@@ -414,7 +416,10 @@ func _refresh_lists() -> void:
 	_sites.clear()
 	_fields.clear()
 	_workshops.clear()
+	_orchards.clear()
 	for b: Building in buildings.values():
+		if b.built and not b.orchard.is_empty():
+			_orchards.append(b)
 		if not b.built:
 			_sites.append(b)
 		elif b.is_storage():
@@ -435,6 +440,12 @@ func storages() -> Array[Building]:
 func sites() -> Array[Building]:
 	_refresh_lists()
 	return _sites
+
+
+## Finished orchards, in placement order. Shared: do not modify.
+func orchards() -> Array[Building]:
+	_refresh_lists()
+	return _orchards
 
 
 ## Finished recipe buildings, in placement order. Shared: do not modify.
@@ -586,6 +597,7 @@ func begin_tick() -> void:
 	var t0 := Prof.begin()
 	if tick % 5 == 0:
 		Farming.update_fields(self, 5)
+		Orchards.update(self, 5)
 	Prof.end("update_fields", t0)
 	if tick % 20 == 0:
 		BuildingOps.update_regrowth(self)

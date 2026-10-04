@@ -156,6 +156,8 @@ static func complete(sim: Simulation, b: Building, silent: bool = false) -> void
 		return
 	if d.has("recipes"):
 		Production.init_workshop(b)
+	if b.type == "orchard":
+		Orchards.init_orchard(sim, b)
 	if d.has("reveal"):
 		var r: Variant = b.stat("reveal")
 		sim.world.reveal(cx, cy, float(r))

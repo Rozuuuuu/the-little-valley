@@ -418,6 +418,62 @@
    "kind": "night",
    "provisional": true
   },
+  "orchard_saplings": {
+   "w": 216,
+   "h": 262,
+   "ax": 12,
+   "ay": 252,
+   "kind": "building",
+   "provisional": true
+  },
+  "orchard_leafy": {
+   "w": 216,
+   "h": 262,
+   "ax": 12,
+   "ay": 252,
+   "kind": "building",
+   "provisional": true
+  },
+  "orchard_fruit1": {
+   "w": 216,
+   "h": 262,
+   "ax": 12,
+   "ay": 252,
+   "kind": "building",
+   "provisional": true
+  },
+  "orchard_fruit2": {
+   "w": 216,
+   "h": 262,
+   "ax": 12,
+   "ay": 252,
+   "kind": "building",
+   "provisional": true
+  },
+  "orchard_fruit3": {
+   "w": 216,
+   "h": 262,
+   "ax": 12,
+   "ay": 252,
+   "kind": "building",
+   "provisional": true
+  },
+  "orchard_autumn": {
+   "w": 216,
+   "h": 262,
+   "ax": 12,
+   "ay": 252,
+   "kind": "building",
+   "provisional": true
+  },
+  "orchard_winter": {
+   "w": 216,
+   "h": 262,
+   "ax": 12,
+   "ay": 252,
+   "kind": "building",
+   "provisional": true
+  },
   "site_1x1": {
    "w": 120,
    "h": 156,

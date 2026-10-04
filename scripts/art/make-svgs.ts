@@ -12,6 +12,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { blob, groundShadow, mix, poly, rng, rrect, shaded, smoothPath, svg, TILE } from './svg-kit';
 import { M, OUTLINE, outlineOf, P, RIM, SHADOW } from './palette';
 import { building, SPECS } from './buildings';
+import { orchard, ORCHARD_LOOKS } from './orchard';
 
 const OUT = 'godot/art/generated';
 
@@ -364,6 +365,10 @@ for (const k of Object.keys(SPECS)) {
     const b = building(k, lit);
     emit(`${k}${lit ? '_lit' : ''}`, b.w, b.h, b.ax, b.ay, lit ? 'night' : 'building', b.body);
   }
+}
+for (const look of ORCHARD_LOOKS) {
+  const o = orchard(look);
+  emit(`orchard_${look}`, o.w, o.h, o.ax, o.ay, 'building', o.body);
 }
 for (const [tw, th] of [[1, 1], [2, 2], [3, 2], [4, 3]]) {
   const b = site(tw, th);

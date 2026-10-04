@@ -304,3 +304,73 @@ func test_calling_off_returns_all_the_food() -> void:
 	check(bool(Commands.apply(sim, {"type": "cancelRecruit", "recruitId": rid})["ok"]), "called off")
 	check_eq(int(sim.totals()["food"]), before, "every unit of food back")
 	check(sim.bed_claims.is_empty() and sim.recruits.is_empty(), "nothing left promised")
+
+
+# ---- orchards (ported from tests/recruitment.test.ts) -------------------------------------------
+
+func _clear_spot(sim: Simulation, w: int, h: int, near: Vector2i) -> Vector2i:
+	for r in 30:
+		for y in range(near.y - r, near.y + r + 1):
+			for x in range(near.x - r, near.x + r + 1):
+				var ok := true
+				for dy in range(-1, h + 1):
+					for dx in range(-1, w + 1):
+						if not ok:
+							break
+						var t := sim.world.terrain(x + dx, y + dy)
+						var o := sim.world.obj(x + dx, y + dy)
+						ok = sim.world.explored(x + dx, y + dy) and sim.building_at(x + dx, y + dy) == null and (t == Tiles.GRASS or t == Tiles.MEADOW or t == Tiles.FOREST) and o != World.UNKNOWN and Tiles.blocks[o] == 0
+				if ok:
+					return Vector2i(x, y)
+	return Vector2i(-99999, 0)
+
+
+func _orchard_world(seed_value: int = 6161) -> Array:
+	var sim := NewGame.create(seed_value)
+	SimHelpers.camp(sim).inventory = {"food": 150, "wood": 40, "stone": 20}
+	var p := _clear_spot(sim, 2, 2, Vector2i(-8, 4))
+	var r := Commands.apply(sim, {"type": "place", "building": "orchard", "x": p.x, "y": p.y})
+	check(bool(r["ok"]), "orchard placed: %s" % r["message"])
+	return [sim, sim.building_at(p.x, p.y)]
+
+
+func test_orchards_establish_then_bear_apples_farmers_bring_in() -> void:
+	var w := _orchard_world()
+	var sim: Simulation = w[0]
+	var orchard: Building = w[1]
+	check(SimHelpers.run_until(sim, func() -> bool: return orchard.built, Defs.DAY_TICKS * 2) >= 0, "planted")
+	check_eq(float(orchard.orchard["growth"]), 0.0, "starts unestablished")
+	var est := int(Content.get_value("kingdomBalance", "ORCHARD_ESTABLISH_TICKS"))
+	SimHelpers.run(sim, roundi(est * 0.5))
+	check_eq(float(orchard.orchard["fruit"]), 0.0, "no fruit while establishing")
+	check(SimHelpers.run_until(sim, func() -> bool: return int(sim.stats["applesPicked"]) > 0, est + Defs.DAY_TICKS * 2) >= 0, "apples picked")
+	check(SimHelpers.run_until(sim, func() -> bool: return sim.stored_total("apples") > 0, Defs.DAY_TICKS) >= 0, "apples in storage")
+	check_eq(SimHelpers.accounted_for(sim, "apples"), int(sim.stats["applesPicked"]), "every apple accounted for")
+	check_eq(SimHelpers.reservation_problems(sim), PackedStringArray(), "reservations")
+
+
+func test_orchards_rest_in_winter() -> void:
+	var w := _orchard_world()
+	var sim: Simulation = w[0]
+	var orchard: Building = w[1]
+	SimHelpers.run_until(sim, func() -> bool: return orchard.built, Defs.DAY_TICKS * 2)
+	var season_days := int(Content.get_value("seasons", "SEASON_DAYS"))
+	sim.tick = 3 * season_days * Defs.DAY_TICKS + 10
+	check_eq(str(sim.season()["id"]), "winter", "winter")
+	orchard.orchard["growth"] = 100.0
+	orchard.orchard["fruit"] = 3.0
+	orchard.orchard["careUntil"] = sim.tick + Defs.DAY_TICKS
+	SimHelpers.run(sim, Defs.DAY_TICKS / 2)
+	check_eq(float(orchard.orchard["growth"]), 100.0, "no establishing")
+	check_eq(float(orchard.orchard["fruit"]), 3.0, "no new fruit")
+
+
+func test_dried_apples_conserve_every_apple() -> void:
+	var sim := NewGame.create(7171)
+	SimHelpers.camp(sim).inventory = {"food": 100, "apples": 40, "wood": 60, "stone": 30}
+	var ws := _instant(sim, "workshop", Vector2i(5, 5))
+	check(bool(Commands.apply(sim, {"type": "setRecipe", "buildingId": ws.id, "recipe": "driedApples"})["ok"]), "recipe set")
+	check(bool(Commands.apply(sim, {"type": "assignWorker", "buildingId": ws.id, "ids": [sim.settlers[4].id]})["ok"]), "worker assigned")
+	check(SimHelpers.run_until(sim, func() -> bool: return int(sim.stats["driedApples"]) > 0, Defs.DAY_TICKS * 2) >= 0, "apples dried")
+	var used := int(sim.stats["driedApples"]) / 3 * 4
+	check_eq(SimHelpers.accounted_for(sim, "apples") + used, 40, "every apple accounted for")

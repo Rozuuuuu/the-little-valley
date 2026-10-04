@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="80" height="128" viewBox="0 0 80 128">
 <g>
-<clipPath id="c107"><path d="M29,16H51Q57,16 57,22V24Q57,30 51,30H29Q23,30 23,24V22Q23,16 29,16Z"/></clipPath>
-<clipPath id="c107r"><path d="M29,16H51Q57,16 57,22V24Q57,30 51,30H29Q23,30 23,24V22Q23,16 29,16Z" transform="translate(-5,-5)"/></clipPath>
+<clipPath id="c155"><path d="M29,16H51Q57,16 57,22V24Q57,30 51,30H29Q23,30 23,24V22Q23,16 29,16Z"/></clipPath>
+<clipPath id="c155r"><path d="M29,16H51Q57,16 57,22V24Q57,30 51,30H29Q23,30 23,24V22Q23,16 29,16Z" transform="translate(-5,-5)"/></clipPath>
 <path d="M29,16H51Q57,16 57,22V24Q57,30 51,30H29Q23,30 23,24V22Q23,16 29,16Z" fill="#7d5636"/>
-<g clip-path="url(#c107)">
+<g clip-path="url(#c155)">
 <path d="M29,16H51Q57,16 57,22V24Q57,30 51,30H29Q23,30 23,24V22Q23,16 29,16Z" fill="#a77446" transform="translate(-3,-3)"/>
 <path d="M29,16H51Q57,16 57,22V24Q57,30 51,30H29Q23,30 23,24V22Q23,16 29,16Z" fill="#c9955f" opacity="0.9" transform="translate(31.5,31.5) scale(0.72) translate(-36.5,-36.5)"/>
 

@@ -5,7 +5,7 @@ extends CanvasLayer
 ## Built in code from the palette. It reads the game's state and calls Game's command helpers;
 ## it never changes simulation state itself.
 
-const BUILD_LIST: Array[String] = ["house", "familyHome", "storehouse", "field", "path", "bridge",
+const BUILD_LIST: Array[String] = ["house", "familyHome", "storehouse", "field", "orchard", "path", "bridge",
 	"workshop", "mill", "bakery", "granary", "charcoalKiln", "cottage"]
 const JOBS: Array[String] = ["laborer", "farmer", "gatherer", "builder", "hauler"]
 const STOCKS: Array[String] = ["food", "wood", "stone", "planks", "wheat"]
@@ -653,6 +653,8 @@ func _building_text(b: Building) -> String:
 		lines.append("Work %d%%" % roundi(b.progress / maxf(1.0, BuildingOps.work_of(b)) * 100))
 	else:
 		lines.append(str(d.get("description", "")))
+		if not b.orchard.is_empty():
+			lines.append(Orchards.status(game.sim, b))
 		if not b.workshop.is_empty():
 			var ws := b.workshop
 			var r := str(ws.get("recipe", ""))

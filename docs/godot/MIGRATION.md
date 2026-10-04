@@ -150,7 +150,7 @@ Status: **Done** (ported and tested against the browser game), **Started**, **Pl
 | Spatial index | none | `src/sim/tile_set_index.gd`: harvest marks and harvestable objects | Slice tests; benchmark (48 to 4 ms per tick at 100) | **Done** (buildings and storage not indexed; not needed so far) |
 | Buildings, construction, levels | `sim/buildings.ts`, `levels.ts` | `src/sim/building_ops.gd`: place, complete, remove, homes, regrowth, paths, bridges | Construction and refund tests | **Started** (no upgrades, spans, workshops, pens or mines) |
 | Farming, weather, seasons | `sim/farming.ts`, `seasons.ts` | `src/sim/farming.gd`, `seasons.gd` | Farming-cycle, dry-field, crop-unlock tests | **Done** (wells come with the well) |
-| Orchards | `sim/orchards.ts` | `src/sim/` | Orchard tests | Planned |
+| Orchards | `sim/orchards.ts` | `src/sim/orchards.gd`, orchard art in seven looks | Establish and bear, winter rest, dried-apple conservation | **Done** |
 | Production, workshops | `sim/buildings.ts` | `src/sim/production.gd`: recipes, fuel, two-batch buffering, worker assignment, status explanations; work, assignWorker, setRecipe, toggleWorkshop commands | Planks, idle explanation, wheat → flour → bread conservation, worker limits | **Done** (quarries and mines come with mining) |
 | Hauling, stock targets | `sim/settlers.ts` | `src/sim/settlers/` | Conservation, no shuttling | Planned |
 | Population, households, recruitment | `population.ts`, `households.ts`, `travelers.ts` | `src/sim/people.gd`: visitors and welcomed travellers with escrow, households, bed claims, births, children, legacy arrivals; People window | 15 ported tests (claims, births across saves, refunds, refusals) | **Done** (no 300 cap: a 5,000 safety ceiling, owner's decision) |
