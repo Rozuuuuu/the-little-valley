@@ -6,8 +6,9 @@ extends CanvasLayer
 ## it never changes simulation state itself.
 
 const BUILD_LIST: Array[String] = ["house", "familyHome", "storehouse", "field", "orchard", "path", "bridge",
-	"workshop", "mill", "bakery", "granary", "charcoalKiln", "cottage"]
-const JOBS: Array[String] = ["laborer", "farmer", "gatherer", "builder", "hauler"]
+	"workshop", "mill", "bakery", "granary", "charcoalKiln", "cottage", "hunterLodge", "chickenCoop", "pigsty",
+	"sheepPen", "goatPen", "cattlePasture", "horsePaddock", "tannery", "weaver"]
+const JOBS: Array[String] = ["laborer", "farmer", "gatherer", "builder", "hauler", "hunter", "herder"]
 const STOCKS: Array[String] = ["food", "wood", "stone", "planks", "wheat"]
 
 var game: Game
@@ -717,11 +718,37 @@ func _refresh_selection() -> void:
 		var b: Building = sim.buildings.get(game.selected_building)
 		if b != null:
 			text = _building_text(b)
+	elif game.selected_animal != -1:
+		var a := Animals.find(sim, game.selected_animal)
+		if a != null:
+			text = _animal_text(a)
+		else:
+			game.selected_animal = -1
 	elif game.placing != "":
 		text = _placing_text()
 	_select_panel.visible = text != ""
 	if _select_text.text != text:
 		_select_text.text = text
+
+
+func _animal_text(a: Animal) -> String:
+	var d := a.def()
+	var lines := ["[b]%s[/b]%s" % [d["name"], " · in the %s" % str((game.sim.buildings[a.pen_id] as Building).def()["name"]).to_lower() if a.pen_id != -1 and game.sim.buildings.has(a.pen_id) else ""]]
+	lines.append(str(d.get("note", "")))
+	if a.pen_id == -1:
+		if d.has("hunt"):
+			var h: Dictionary = d["hunt"]
+			lines.append("Hunting gives %d food%s. Health %d/%d." % [int(h["food"]), " and %d hides" % int(h["hides"]) if int(h["hides"]) > 0 else "", ceili(a.health()), int(d["hp"])])
+			if d.has("fightsBack"):
+				lines.append("[color=%s]Strikes back at hunters who come close.[/color]" % _c("accent").to_html())
+			lines.append("Select settlers and right-click it to hunt it.")
+		else:
+			lines.append("Not hunted.")
+		if a.hunted_by != -1:
+			var s := game.sim.settler(a.hunted_by)
+			if s != null:
+				lines.append("%s is stalking it." % s.name)
+	return "\n".join(lines)
 
 
 func _set_text(l: Label, t: String) -> void:
@@ -733,7 +760,7 @@ func _settler_text(s: Settler) -> String:
 	var job := str(Defs.job(s.job)["name"])
 	var lines := ["[b]%s[/b] — %s" % [s.name, job]]
 	lines.append(_describe(s))
-	lines.append("Hunger %s  ·  Energy %s" % [_bar(s.hunger), _bar(s.energy)])
+	lines.append("Hunger %s  ·  Energy %s%s" % [_bar(s.hunger), _bar(s.energy), "  ·  Health %s" % _bar(s.hp) if s.hp < 100.0 else ""])
 	if s.carrying():
 		lines.append("Carrying %d %s" % [s.carry_amount, str(Defs.resource(s.carry_res)["name"]).to_lower()])
 	var area := game.sim.area(s.area_id)
@@ -778,6 +805,18 @@ func _describe(s: Settler) -> String:
 			var f: Building = sim.buildings.get(t.field)
 			var crop := str(f.field["crop"]) if f != null and f.is_field() else ""
 			return {&"till": "Tilling a field", &"plant": "Planting %s" % crop, &"water": "Watering the %s" % crop, &"harvest": "Harvesting %s" % crop}.get(t.action, "Farming")
+		Task.HUNT:
+			var a := Animals.find(sim, t.animal)
+			var an := str(a.def()["name"]).to_lower() if a != null else "game"
+			return ("Striking at the %s" if t.stage == &"aim" else "Stalking a %s") % an
+		Task.HERD:
+			var pen: Building = sim.buildings.get(t.site)
+			return "Tending the %s" % (str(pen.def()["name"]).to_lower() if pen != null else "animals")
+		Task.CRAFT:
+			var ws: Building = sim.buildings.get(t.site)
+			return "Working at the %s" % (str(ws.def()["name"]).to_lower() if ws != null else "workshop")
+		Task.ORCHARD:
+			return "Picking apples" if t.action == &"pick" else "Tending the orchard"
 		Task.EAT:
 			return "Going to eat"
 		Task.SLEEP:
@@ -822,6 +861,20 @@ func _building_text(b: Building) -> String:
 		lines.append(str(d.get("description", "")))
 		if not b.orchard.is_empty():
 			lines.append(Orchards.status(game.sim, b))
+		if b.def().has("pen") and not b.pen.is_empty():
+			lines.append(Animals.pen_status(game.sim, b))
+		if b.def().has("hunting"):
+			var weapon: Dictionary = (Animals.value("WEAPONS") as Dictionary)[Animals.weapon_of_lodge(b)]
+			var near := Animals.prey_near(game.sim, b).size()
+			lines.append("Hunters carry: %s · %d game within %d tiles" % [str(weapon["name"]).to_lower(), near, roundi(Animals.hunt_radius_of(b))])
+		if b.def().has("hunting") or b.def().has("pen"):
+			var wn: PackedStringArray = []
+			for id in b.workers:
+				var w := game.sim.settler(id)
+				if w != null:
+					wn.append(w.name)
+			var mx := int(b.stat("maxWorkers") if b.stat("maxWorkers") != null else 1)
+			lines.append("Workers %d/%d%s" % [wn.size(), mx, ": " + ", ".join(wn) if not wn.is_empty() else " — anyone free helps; select someone and right-click here to assign"])
 		if not b.workshop.is_empty():
 			var ws := b.workshop
 			var r := str(ws.get("recipe", ""))

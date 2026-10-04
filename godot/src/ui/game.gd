@@ -31,6 +31,7 @@ var speed := 1
 var paused := false
 var selected: Array[int] = []
 var selected_building := -1
+var selected_animal := -1
 var hover_tile := Vector2i(-99999, 0)
 ## Building type being placed, "mark"/"unmark" for harvest marks, "area:<kind>" for a new work
 ## area, or "".
@@ -115,6 +116,9 @@ func _capture(opts: Dictionary) -> void:
 	Commands.apply(sim, {"type": "placeArea", "building": "field", "x0": 4, "y0": 4, "x1": 6, "y1": 6, "crop": "wheat"})
 	_place_near_hall(["house", "storehouse"])
 	Commands.apply(sim, {"type": "designate", "x0": -16, "y0": -16, "x1": 16, "y1": 16, "on": true})
+	if opts.get("animals", "0") == "1":
+		sim.reached.append("hamlet")
+		_place_near_hall(["chickenCoop", "sheepPen", "hunterLodge"])
 	if opts.get("areas", "0") == "1":
 		Commands.apply(sim, {"type": "createArea", "kind": "farm", "x0": -14, "y0": 8, "x1": -6, "y1": 13, "wanted": 2, "crop": "turnip"})
 		Commands.apply(sim, {"type": "createArea", "kind": "wood", "x0": 6, "y0": -14, "x1": 16, "y1": -6, "wanted": 2})
@@ -418,7 +422,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					if placing != "":
 						cancel_placing()
 					else:
-						order_at(_tile_at(mb.position))
+						order_at(_tile_at(mb.position), camera.screen_to_world(mb.position) / WorldView.TILE_PX)
 	elif event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
 		if mm.button_mask & MOUSE_BUTTON_MASK_MIDDLE:
@@ -530,6 +534,12 @@ func click_select(screen: Vector2, additive: bool) -> void:
 	if not additive:
 		selected.clear()
 	selected_building = -1
+	selected_animal = -1
+	if best == -1:
+		var an := animal_at(w)
+		if an != null:
+			selected_animal = an.id
+			return
 	if best != -1:
 		if selected.has(best):
 			selected.erase(best)
@@ -541,10 +551,29 @@ func click_select(screen: Vector2, additive: bool) -> void:
 		selected_building = b.id
 
 
-## The smart order: work at a building under the cursor, gather a resource there, otherwise walk.
-func order_at(tile: Vector2i) -> void:
+## The animal drawn under a point in tiles, or null.
+func animal_at(w: Vector2) -> Animal:
+	var best: Animal = null
+	var best_d := 0.8
+	for a in sim.animals:
+		var d := Vector2(a.x, a.y - 0.3).distance_to(w)
+		if d < best_d:
+			best_d = d
+			best = a
+	return best
+
+
+## The smart order: hunt an animal, work at a building under the cursor, gather a resource there,
+## otherwise walk.
+func order_at(tile: Vector2i, world: Vector2 = Vector2(INF, INF)) -> void:
 	if selected.is_empty():
 		return
+	if world.x != INF:
+		var an := animal_at(world)
+		if an != null and an.pen_id == -1:
+			if bool(command({"type": "hunt", "ids": selected.duplicate(), "animalId": an.id})["ok"]):
+				markers.append({"p": Vector2(an.x, an.y) * WorldView.TILE_PX, "t": Time.get_ticks_msec() / 1000.0, "kind": "work"})
+			return
 	var o := sim.world.obj(tile.x, tile.y)
 	var p := (Vector2(tile) + Vector2(0.5, 0.5)) * WorldView.TILE_PX
 	var b := sim.building_at(tile.x, tile.y)
@@ -665,7 +694,7 @@ func _tap(p: Vector2) -> void:
 	click_select(p, false)
 	if selected.is_empty() and selected_building == -1 and not before.is_empty():
 		selected = before
-		order_at(_tile_at(p))
+		order_at(_tile_at(p), camera.screen_to_world(p) / WorldView.TILE_PX)
 	hud.refresh_now()
 
 

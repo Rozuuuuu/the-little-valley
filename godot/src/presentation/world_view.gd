@@ -37,6 +37,8 @@ var _objects := {}
 var _buildings := {}
 ## settler id -> SettlerView
 var settler_views := {}
+## animal id -> Sprite2D
+var animal_views := {}
 var _white: ImageTexture
 var _season := ""
 ## Chunk builds (ground textures or object sprites) allowed per frame.
@@ -85,6 +87,9 @@ func set_simulation(simulation: Simulation) -> void:
 		(d["node"] as Node).queue_free()
 	for v: SettlerView in settler_views.values():
 		v.queue_free()
+	for v: Node in animal_views.values():
+		v.queue_free()
+	animal_views.clear()
 	_ground.clear()
 	_objects.clear()
 	_buildings.clear()
@@ -136,6 +141,7 @@ func refresh(alpha: float, view: Rect2, delta: float) -> void:
 	_free_far(_objects, c0, c1)
 	_sync_buildings()
 	_sync_settlers(alpha, delta, view.grow(TILE_PX * 3))
+	_sync_animals(alpha, view.grow(TILE_PX * 3))
 	_ground_layer.visible = ground_visible
 	_night.color = _night_tint()
 	_night.visible = _night.color != Color.WHITE
@@ -348,6 +354,16 @@ func _make_building(b: Building, look: String) -> Node2D:
 		holder.tree_exiting.connect(func() -> void: soil.queue_free())
 		entities.add_child(holder)
 		return holder
+	if b.built and b.def().has("pen") and art.has(b.type):
+		# Pens lie on the ground layer, so the animals inside are always in view.
+		var pen_holder := Node2D.new()
+		var yard := Sprite2D.new()
+		art.apply(yard, b.type)
+		yard.position = base
+		_field_layer.add_child(yard)
+		pen_holder.tree_exiting.connect(func() -> void: yard.queue_free())
+		entities.add_child(pen_holder)
+		return pen_holder
 	var node := Node2D.new()
 	node.position = base
 	var sp := Sprite2D.new()
@@ -395,6 +411,39 @@ func _sync_settlers(alpha: float, delta: float, area: Rect2) -> void:
 		if not seen.has(id):
 			(settler_views[id] as Node).queue_free()
 			settler_views.erase(id)
+
+
+# ---- animals -------------------------------------------------------------------------------------
+
+func _sync_animals(alpha: float, area: Rect2) -> void:
+	var seen := {}
+	var now := Time.get_ticks_msec()
+	for a in sim.animals:
+		seen[a.id] = true
+		var sp: Sprite2D = animal_views.get(a.id)
+		if sp == null:
+			sp = Sprite2D.new()
+			sp.set_meta("frame", -1)
+			entities.add_child(sp)
+			animal_views[a.id] = sp
+		var pos := Vector2(lerpf(a.rpx, a.rx, alpha), lerpf(a.rpy, a.ry, alpha)) * TILE_PX
+		sp.position = pos
+		if not area.has_point(pos):
+			sp.visible = false
+			continue
+		sp.visible = true
+		var walking := absf(a.rx - a.rpx) + absf(a.ry - a.rpy) > 0.001
+		var frame := (int(now / 180.0) + a.id) % 2 if walking and motion > 0.0 else 0
+		if int(sp.get_meta("frame")) != frame:
+			sp.set_meta("frame", frame)
+			art.apply(sp, "animal_%s_%d" % [a.species, frame])
+		sp.scale.x = -absf(sp.scale.x) if a.facing == 2 else absf(sp.scale.x)
+		# A short red flash when struck.
+		sp.modulate = Color(1.0, 0.55, 0.5) if sim.tick - a.hit_at < 4 else Color.WHITE
+	for id: int in animal_views.keys():
+		if not seen.has(id):
+			(animal_views[id] as Node).queue_free()
+			animal_views.erase(id)
 
 
 # ---- light ---------------------------------------------------------------------------------------

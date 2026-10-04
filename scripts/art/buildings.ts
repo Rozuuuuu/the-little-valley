@@ -150,6 +150,27 @@ export const SPECS: Record<string, BuildingSpec> = {
     // Bolts of cloth by the door.
     extra: (f) => [0, 1].map((i) => shaded(rrect(f.x0 + 8 + i * 22, f.yBase - 30, 18, 26, 6), { tones: CLOTH, outline: OUTLINE, shadow: 3, light: 2 })).join(''),
   },
+  hunterLodge: {
+    size: [2, 2], rise: 96, wall: ['#5b3d2a', '#7a5238', '#9c6d4b'], roof: M.wood, shape: 'gable', windows: 1,
+    extra: (f) => {
+      // Log ends at the corners, antlers over the door and a hide on a frame.
+      const cx = f.x0 + f.fw / 2;
+      let out = '';
+      for (let i = 0; i < 4; i++) out += `<circle cx="${f.x0 + 4}" cy="${f.wallTop + 12 + i * 16}" r="6" fill="${M.wood[2]}" stroke="${outlineOf(M.wood)}" stroke-width="2"/><circle cx="${f.x0 + f.fw - 4}" cy="${f.wallTop + 12 + i * 16}" r="6" fill="${M.wood[2]}" stroke="${outlineOf(M.wood)}" stroke-width="2"/>`;
+      out += `<path d="M${cx - 4},${f.wallTop + 6} l-10,-14 m5,7 l-9,-3 M${cx + 4},${f.wallTop + 6} l10,-14 m-5,7 l9,-3" stroke="#d9c49c" stroke-width="3.5" stroke-linecap="round" fill="none"/>`;
+      return out + `<path d="M${f.x0 + f.fw + 6},${f.yBase} V${f.yBase - 46} M${f.x0 + f.fw + 34},${f.yBase} V${f.yBase - 46} M${f.x0 + f.fw + 2},${f.yBase - 44} H${f.x0 + f.fw + 38}" stroke="${M.wood[0]}" stroke-width="4"/>`
+        + `<path d="${blob(f.x0 + f.fw + 20, f.yBase - 26, 13, 16, 12)}" fill="#a87c52" stroke="${outlineOf(M.wood)}" stroke-width="2"/>`;
+    },
+  },
+  stable: {
+    size: [3, 2], rise: 92, wall: ['#7a3f30', '#9c5240', '#bd6d56'], roof: M.roofSlate, shape: 'barn', door: 'barn', windows: 2,
+    extra: (f) => {
+      // Hay bales by the wall and a horseshoe over the door.
+      const cx = f.x0 + f.fw / 2;
+      return [0, 1].map((i) => shaded(rrect(f.x0 + 6 + i * 30, f.yBase - 24, 28, 22, 5), { tones: M.wheat, outline: M.wheat[0], shadow: 3, light: 2 })).join('')
+        + `<path d="M${cx - 9},${f.wallTop + 8} a9,9 0 1,1 18,0" stroke="${P.core.gold}" stroke-width="4" fill="none"/>`;
+    },
+  },
   well: {
     size: [1, 1], rise: 70, wall: M.stone, roof: M.roofRed, shape: 'none', door: 'none', windows: 0,
     extra: (f) => {

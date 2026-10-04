@@ -13,6 +13,7 @@ import { blob, groundShadow, mix, poly, rng, rrect, shaded, smoothPath, svg, TIL
 import { M, OUTLINE, outlineOf, P, RIM, SHADOW } from './palette';
 import { building, SPECS } from './buildings';
 import { orchard, ORCHARD_LOOKS } from './orchard';
+import { animal, penYard, SPECIES_ART } from './animals';
 
 /** SVG sources for review and replacement (ignored by Godot's importer via .gdignore). */
 const OUT = 'godot/art_src/generated';
@@ -391,6 +392,18 @@ for (const k of Object.keys(SPECS)) {
 for (const look of ORCHARD_LOOKS) {
   const o = orchard(look);
   emit(`orchard_${look}`, o.w, o.h, o.ax, o.ay, 'building', o.body);
+}
+for (const id of Object.keys(SPECIES_ART)) {
+  for (const frame of [0, 1]) {
+    const a = animal(id, frame);
+    emit(`animal_${id}_${frame}`, a.w, a.h, a.ax, a.ay, 'animal', a.body);
+  }
+}
+const buildingDefs = JSON.parse(readFileSync('godot/content/buildings.json', 'utf8')).BUILDINGS as Record<string, { size: { w: number; h: number }; pen?: unknown }>;
+for (const [k, d] of Object.entries(buildingDefs)) {
+  if (!d.pen) continue;
+  const y = penYard(d.size.w, d.size.h, k);
+  emit(k, y.w, y.h, y.ax, y.ay, 'pen', y.body);
 }
 for (const [tw, th] of [[1, 1], [2, 2], [3, 2], [4, 3]]) {
   const b = site(tw, th);
