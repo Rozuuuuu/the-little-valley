@@ -27,6 +27,8 @@ var _dir := "down"
 var _shown_carry := ""
 var _shown_tool: StringName = &""
 var _hair_style := 0
+var _legs_name := ""
+var _ring_state := -1
 
 
 func setup(art: Art, s: Settler, people: Dictionary) -> void:
@@ -57,7 +59,7 @@ func _apply_dir(dir: String, job: String) -> void:
 	_hat.visible = hat != ""
 	if hat != "":
 		_art.apply(_hat, "person_hat_%s_%s" % [hat, dir])
-	_art.apply(_legs, "person_legs_%s_0" % dir)
+	_set_legs("person_legs_%s_0" % dir)
 
 
 ## Called every frame with the interpolated position (world px).
@@ -79,10 +81,10 @@ func refresh(s: Settler, pos: Vector2, delta: float, motion: float) -> void:
 	if s.anim == &"walk" and moved > 0.01:
 		_walk_phase += moved / 9.0
 		var frame := int(_walk_phase) % 4
-		_art.apply(_legs, "person_legs_%s_%d" % [_dir, frame])
+		_set_legs("person_legs_%s_%d" % [_dir, frame])
 		_parts.position.y = -absf(sin(_walk_phase * PI / 2.0)) * 2.5 * motion
 	elif not sleeping:
-		_art.apply(_legs, "person_legs_%s_0" % _dir)
+		_set_legs("person_legs_%s_0" % _dir)
 		# A slow breath while idle.
 		_parts.position.y = sin(Time.get_ticks_msec() / 600.0 + settler_id) * 0.8 * motion
 	# Tool in hand while working.
@@ -102,7 +104,16 @@ func refresh(s: Settler, pos: Vector2, delta: float, motion: float) -> void:
 		if _carry.visible:
 			_art.apply(_carry, "icon_" + carry)
 			_carry.scale *= 0.42
-	queue_redraw()
+	var ring := 2 if selected else (1 if hovered else 0)
+	if ring != _ring_state:
+		_ring_state = ring
+		queue_redraw()
+
+
+func _set_legs(sprite_name: String) -> void:
+	if sprite_name != _legs_name:
+		_legs_name = sprite_name
+		_art.apply(_legs, sprite_name)
 
 
 func _draw() -> void:

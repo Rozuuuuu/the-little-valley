@@ -18,9 +18,10 @@ func _draw() -> void:
 	var T := WorldView.TILE_PX
 	var view := game.camera.view_rect().grow(T)
 	# Harvest marks: a small gold diamond over each marked object.
-	for k: int in sim.designations.keys():
+	var tiles := Rect2i(floori(view.position.x / T), floori(view.position.y / T), ceili(view.size.x / T) + 1, ceili(view.size.y / T) + 1)
+	for k: int in sim.designations.keys_in(tiles):
 		var p := Vector2(Simulation.key_x(k) + 0.5, Simulation.key_y(k) + 0.85) * T
-		if view.has_point(p):
+		if true:
 			# A small gold tag at the foot of the marked object.
 			draw_colored_polygon(PackedVector2Array([p + Vector2(0, -5), p + Vector2(5, 0), p + Vector2(0, 5), p + Vector2(-5, 0)]), WorldView.GOLD)
 			draw_polyline(PackedVector2Array([p + Vector2(0, -5), p + Vector2(5, 0), p + Vector2(0, 5), p + Vector2(-5, 0), p + Vector2(0, -5)]), Color("#7a5a20"), 1.5, true)

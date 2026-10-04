@@ -34,9 +34,15 @@ var hold := false
 var side_job := ""
 
 # ---- transient -------------------------------------------------------------------------------
-## Position at the previous tick, for render interpolation.
+## Position at the start of the tick being simulated.
 var px: float
 var py: float
+## Start and end of the last completed tick: what is drawn (lerp between them), so a tick being
+## run in slices across frames never shows half done.
+var rpx: float
+var rpy: float
+var rx: float
+var ry: float
 var anim: StringName = &"idle"
 var tool: StringName = &""
 var capacity := 10

@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="216" height="294" viewBox="0 0 216 294">
+<ellipse cx="118" cy="280" rx="106" ry="16" fill="#173b3d" opacity="0.28"/><g>
+<clipPath id="c84"><path d="M24,165H192Q198,165 198,171V274Q198,280 192,280H24Q18,280 18,274V171Q18,165 24,165Z"/></clipPath>
+<clipPath id="c84r"><path d="M24,165H192Q198,165 198,171V274Q198,280 192,280H24Q18,280 18,274V171Q18,165 24,165Z" transform="translate(-5,-5)"/></clipPath>
+<path d="M24,165H192Q198,165 198,171V274Q198,280 192,280H24Q18,280 18,274V171Q18,165 24,165Z" fill="#b9a98a"/>
+<g clip-path="url(#c84)">
+<path d="M24,165H192Q198,165 198,171V274Q198,280 192,280H24Q18,280 18,274V171Q18,165 24,165Z" fill="#d2c4a3" transform="translate(-10,-10)"/>
+<path d="M24,165H192Q198,165 198,171V274Q198,280 192,280H24Q18,280 18,274V171Q18,165 24,165Z" fill="#e8dcc0" opacity="0.9" transform="translate(133,133) scale(0.72) translate(-149,-149)"/>
+
+</g>
+<path d="M24,165H192Q198,165 198,171V274Q198,280 192,280H24Q18,280 18,274V171Q18,165 24,165Z" fill="none" stroke="#63695b" stroke-width="3" stroke-linejoin="round"/>
+</g><rect x="34" y="190.96" width="24" height="22" rx="4" fill="#24524f" stroke="#63695b" stroke-width="3"/><path d="M46,190.96 V212.96 M34,201.96 H58" stroke="#63695b" stroke-width="2"/><path d="M105,234H111Q123,234 123,246V268Q123,280 111,280H105Q93,280 93,268V246Q93,234 105,234Z" fill="#a77446" stroke="#39392f" stroke-width="3"/><g>
+<clipPath id="c85"><path d="M6,173L108,83L210,173Z"/></clipPath>
+<clipPath id="c85r"><path d="M6,173L108,83L210,173Z" transform="translate(-5,-5)"/></clipPath>
+<path d="M6,173L108,83L210,173Z" fill="#6e2f28"/>
+<g clip-path="url(#c85)">
+<path d="M6,173L108,83L210,173Z" fill="#924237" transform="translate(-14,-14)"/>
+<path d="M6,173L108,83L210,173Z" fill="#b8604a" opacity="0.9" transform="translate(84,104) scale(0.72) translate(-108,-128)"/>
+
+</g>
+<path d="M6,173L108,83L210,173Z" fill="none" stroke="#cdeedb" stroke-width="5" stroke-opacity="0.6" clip-path="url(#c85r)"/><path d="M6,173L108,83L210,173Z" fill="none" stroke="#41322f" stroke-width="3" stroke-linejoin="round"/>
+</g><path d="M26,150.96 H190" stroke="#6e2f28" stroke-width="2" opacity="0.35"/><path d="M26,128.96 H190" stroke="#6e2f28" stroke-width="2" opacity="0.35"/><g>
+<clipPath id="c86"><path d="M26,254H32Q38,254 38,260V274Q38,280 32,280H26Q20,280 20,274V260Q20,254 26,254Z"/></clipPath>
+<clipPath id="c86r"><path d="M26,254H32Q38,254 38,260V274Q38,280 32,280H26Q20,280 20,274V260Q20,254 26,254Z" transform="translate(-5,-5)"/></clipPath>
+<path d="M26,254H32Q38,254 38,260V274Q38,280 32,280H26Q20,280 20,274V260Q20,254 26,254Z" fill="#7a5aa0"/>
+<g clip-path="url(#c86)">
+<path d="M26,254H32Q38,254 38,260V274Q38,280 32,280H26Q20,280 20,274V260Q20,254 26,254Z" fill="#3f7fa6" transform="translate(-3,-3)"/>
+<path d="M26,254H32Q38,254 38,260V274Q38,280 32,280H26Q20,280 20,274V260Q20,254 26,254Z" fill="#9fc3dd" opacity="0.9" transform="translate(145,145) scale(0.72) translate(-150,-150)"/>
+
+</g>
+<path d="M26,254H32Q38,254 38,260V274Q38,280 32,280H26Q20,280 20,274V260Q20,254 26,254Z" fill="none" stroke="#1c3534" stroke-width="3" stroke-linejoin="round"/>
+</g><g>
+<clipPath id="c87"><path d="M48,254H54Q60,254 60,260V274Q60,280 54,280H48Q42,280 42,274V260Q42,254 48,254Z"/></clipPath>
+<clipPath id="c87r"><path d="M48,254H54Q60,254 60,260V274Q60,280 54,280H48Q42,280 42,274V260Q42,254 48,254Z" transform="translate(-5,-5)"/></clipPath>
+<path d="M48,254H54Q60,254 60,260V274Q60,280 54,280H48Q42,280 42,274V260Q42,254 48,254Z" fill="#7a5aa0"/>
+<g clip-path="url(#c87)">
+<path d="M48,254H54Q60,254 60,260V274Q60,280 54,280H48Q42,280 42,274V260Q42,254 48,254Z" fill="#3f7fa6" transform="translate(-3,-3)"/>
+<path d="M48,254H54Q60,254 60,260V274Q60,280 54,280H48Q42,280 42,274V260Q42,254 48,254Z" fill="#9fc3dd" opacity="0.9" transform="translate(156,156) scale(0.72) translate(-161,-161)"/>
+
+</g>
+<path d="M48,254H54Q60,254 60,260V274Q60,280 54,280H48Q42,280 42,274V260Q42,254 48,254Z" fill="none" stroke="#1c3534" stroke-width="3" stroke-linejoin="round"/>
+</g>
+</svg>

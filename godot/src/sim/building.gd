@@ -18,6 +18,8 @@ var delivered := {}
 var inventory := {}
 ## Fields only: {crop, state wild|tilled|growing|ripe, growth, moisture}.
 var field := {}
+## Recipe buildings only: {recipe, progress, paused, status (transient)}.
+var workshop := {}
 var level := 1
 var placed_tick := 0
 ## Settler ids assigned to work here (production buildings).

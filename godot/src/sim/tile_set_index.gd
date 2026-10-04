@@ -57,6 +57,23 @@ func keys() -> Array:
 	return _all.keys()
 
 
+## Tiles inside a rectangle (in tiles), visiting only the cells it covers.
+func keys_in(rect: Rect2i) -> Array[int]:
+	var out: Array[int] = []
+	if _all.size() <= 64:
+		for k: int in _all:
+			if rect.has_point(Vector2i(Simulation.key_x(k), Simulation.key_y(k))):
+				out.append(k)
+		return out
+	for cy in range(rect.position.y >> CELL_SHIFT, ((rect.end.y - 1) >> CELL_SHIFT) + 1):
+		for cx in range(rect.position.x >> CELL_SHIFT, ((rect.end.x - 1) >> CELL_SHIFT) + 1):
+			var bucket: Dictionary = _buckets.get(Simulation.tile_key(cx, cy), {})
+			for k: int in bucket:
+				if rect.has_point(Vector2i(Simulation.key_x(k), Simulation.key_y(k))):
+					out.append(k)
+	return out
+
+
 func clear() -> void:
 	_all.clear()
 	_buckets.clear()

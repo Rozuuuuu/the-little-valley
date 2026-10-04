@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="216" height="314" viewBox="0 0 216 314">
+<ellipse cx="118" cy="300" rx="106" ry="16" fill="#173b3d" opacity="0.28"/><g>
+<clipPath id="c76"><path d="M24,185H192Q198,185 198,191V294Q198,300 192,300H24Q18,300 18,294V191Q18,185 24,185Z"/></clipPath>
+<clipPath id="c76r"><path d="M24,185H192Q198,185 198,191V294Q198,300 192,300H24Q18,300 18,294V191Q18,185 24,185Z" transform="translate(-5,-5)"/></clipPath>
+<path d="M24,185H192Q198,185 198,191V294Q198,300 192,300H24Q18,300 18,294V191Q18,185 24,185Z" fill="#4d5a58"/>
+<g clip-path="url(#c76)">
+<path d="M24,185H192Q198,185 198,191V294Q198,300 192,300H24Q18,300 18,294V191Q18,185 24,185Z" fill="#6c7a76" transform="translate(-10,-10)"/>
+<path d="M24,185H192Q198,185 198,191V294Q198,300 192,300H24Q18,300 18,294V191Q18,185 24,185Z" fill="#8e9b95" opacity="0.9" transform="translate(143,143) scale(0.72) translate(-159,-159)"/>
+
+</g>
+<path d="M24,185H192Q198,185 198,191V294Q198,300 192,300H24Q18,300 18,294V191Q18,185 24,185Z" fill="none" stroke="#324644" stroke-width="3" stroke-linejoin="round"/>
+</g><path d="M93,300 V269 A15,15 0 0 1 123,269 V300Z" fill="#a77446" stroke="#39392f" stroke-width="3"/><g>
+<clipPath id="c77"><path d="M92,83H124Q134,83 134,93V185Q134,195 124,195H92Q82,195 82,185V93Q82,83 92,83Z"/></clipPath>
+<clipPath id="c77r"><path d="M92,83H124Q134,83 134,93V185Q134,195 124,195H92Q82,195 82,185V93Q82,83 92,83Z" transform="translate(-5,-5)"/></clipPath>
+<path d="M92,83H124Q134,83 134,93V185Q134,195 124,195H92Q82,195 82,185V93Q82,83 92,83Z" fill="#4d5a58"/>
+<g clip-path="url(#c77)">
+<path d="M92,83H124Q134,83 134,93V185Q134,195 124,195H92Q82,195 82,185V93Q82,83 92,83Z" fill="#6c7a76" transform="translate(-8,-8)"/>
+<path d="M92,83H124Q134,83 134,93V185Q134,195 124,195H92Q82,195 82,185V93Q82,83 92,83Z" fill="#8e9b95" opacity="0.9" transform="translate(125.5,125.5) scale(0.72) translate(-138.5,-138.5)"/>
+
+</g>
+<path d="M92,83H124Q134,83 134,93V185Q134,195 124,195H92Q82,195 82,185V93Q82,83 92,83Z" fill="none" stroke="#cdeedb" stroke-width="5" stroke-opacity="0.6" clip-path="url(#c77r)"/><path d="M92,83H124Q134,83 134,93V185Q134,195 124,195H92Q82,195 82,185V93Q82,83 92,83Z" fill="none" stroke="#324644" stroke-width="3" stroke-linejoin="round"/>
+</g>
+</svg>

@@ -136,8 +136,8 @@ static func _find_kind(sim: Simulation, s: Settler, kind: String) -> Variant:
 		"gather":
 			return _find_gather(sim, s)
 		"craft":
-			# Workshops, mills, bakeries, quarries and mines are not in the slice yet.
-			return "No workshop, mill, bakery, quarry or mine built yet"
+			# Quarries and mines (digging) come with mining.
+			return Production.find_craft(sim, s)
 	return null
 
 
@@ -185,6 +185,9 @@ static func haul_needs(sim: Simulation) -> Array[Dictionary]:
 			var need: int = int(e[1]) - int(b.delivered.get(e[0], 0)) - int(b.incoming.get(e[0], 0))
 			if need > 0:
 				out.append({"dst": b, "res": e[0], "need": need, "priority": 0, "supply": false})
+	for b: Building in sim.workshops():
+		for n in Production.workshop_needs(sim, b):
+			out.append({"dst": b, "res": n["res"], "need": n["need"], "priority": 12, "supply": false})
 	for b: Building in sim.storages():
 		if not b.wants.is_empty():
 			# Stock targets: keep this store supplied from others with a surplus.
@@ -229,6 +232,20 @@ static func _plan_haul(sim: Simulation, s: Settler, n: Dictionary) -> Variant:
 	Inv.add(src.reserved_out, res, amount)
 	Inv.add(dst.incoming, res, amount)
 	return Task.haul(src.id, dst.id, res, amount)
+
+
+## A haul for one building's needs (the work command), or a reason.
+static func find_haul_for(sim: Simulation, s: Settler, dst: Building) -> Variant:
+	var reason: Variant = null
+	for n in haul_needs(sim):
+		if n["dst"] != dst:
+			continue
+		var r: Variant = _plan_haul(sim, s, n)
+		if r is Task:
+			return r
+		if reason == null:
+			reason = r
+	return reason
 
 
 static func _find_haul(sim: Simulation, s: Settler) -> Variant:

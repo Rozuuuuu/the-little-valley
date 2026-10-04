@@ -5,7 +5,8 @@ extends CanvasLayer
 ## Built in code from the palette. It reads the game's state and calls Game's command helpers;
 ## it never changes simulation state itself.
 
-const BUILD_LIST: Array[String] = ["house", "storehouse", "field", "path", "bridge", "cottage"]
+const BUILD_LIST: Array[String] = ["house", "familyHome", "storehouse", "field", "path", "bridge",
+	"workshop", "mill", "bakery", "granary", "charcoalKiln", "cottage"]
 const JOBS: Array[String] = ["laborer", "farmer", "gatherer", "builder", "hauler"]
 const STOCKS: Array[String] = ["food", "wood", "stone", "planks", "wheat"]
 
@@ -33,6 +34,9 @@ var _busy_label := Label.new()
 var _card_mode := ""
 var _refresh_timer := 0.0
 var _last_card_key := ""
+## resource id -> Label showing its count (built once).
+var _stock_labels := {}
+var _storage_label: Label
 
 
 func _ready() -> void:
@@ -384,25 +388,26 @@ func refresh_now() -> void:
 		return
 	var sim := game.sim
 	_apply_scale()
-	# Stocks.
-	for c in _stocks.get_children():
-		c.queue_free()
+	# Stocks: chips are built once and only their numbers change.
+	if _stock_labels.is_empty():
+		for r in STOCKS:
+			var chip := HBoxContainer.new()
+			chip.add_child(_icon(r))
+			var l := Label.new()
+			l.tooltip_text = str(Defs.resource(r)["name"])
+			chip.add_child(l)
+			_stocks.add_child(chip)
+			_stock_labels[r] = l
+		_storage_label = Label.new()
+		_stocks.add_child(_storage_label)
 	var totals := sim.totals()
 	for r in STOCKS:
-		if r == "wheat" and int(totals[r]) == 0:
-			continue
-		var chip := HBoxContainer.new()
-		chip.add_child(_icon(r))
-		var l := Label.new()
-		l.text = str(int(totals[r]))
-		l.tooltip_text = str(Defs.resource(r)["name"])
-		chip.add_child(l)
-		_stocks.add_child(chip)
+		var l: Label = _stock_labels[r]
+		_set_text(l, str(int(totals[r])))
+		l.get_parent().visible = r != "wheat" or int(totals[r]) > 0
 	var cap := sim.total_capacity()
-	var store_l := Label.new()
-	store_l.text = "Storage %d/%d" % [cap.x, cap.y]
-	store_l.add_theme_color_override("font_color", _c("problem") if cap.x >= cap.y else _c("textDim"))
-	_stocks.add_child(store_l)
+	_set_text(_storage_label, "Storage %d/%d" % [cap.x, cap.y])
+	_storage_label.add_theme_color_override("font_color", _c("problem") if cap.x >= cap.y else _c("textDim"))
 	var season: Dictionary = sim.season()
 	var t := sim.time_of_day() * 24.0
 	_clock.text = "%s · Day %d of %s · %02d:%02d%s" % [season["def"]["name"], int(season["day"]), str(season["def"]["name"]).to_lower(), int(t), int(fmod(t, 1.0) * 60.0), "  ⏸" if game.paused else ("  %d×" % game.speed if game.speed > 1 else "")]
@@ -431,7 +436,13 @@ func _refresh_selection() -> void:
 	elif game.placing != "":
 		text = _placing_text()
 	_select_panel.visible = text != ""
-	_select_text.text = text
+	if _select_text.text != text:
+		_select_text.text = text
+
+
+func _set_text(l: Label, t: String) -> void:
+	if l.text != t:
+		l.text = t
 
 
 func _settler_text(s: Settler) -> String:
@@ -510,6 +521,23 @@ func _building_text(b: Building) -> String:
 		lines.append("Work %d%%" % roundi(b.progress / maxf(1.0, BuildingOps.work_of(b)) * 100))
 	else:
 		lines.append(str(d.get("description", "")))
+		if not b.workshop.is_empty():
+			var ws := b.workshop
+			var r := str(ws.get("recipe", ""))
+			lines.append("Making: %s" % (str(Production.recipe(r)["name"]) if r != "" else "nothing"))
+			var status := str(ws.get("status", ""))
+			if status != "":
+				var col := _c("text") if status.begins_with("Ready") or status.contains("%") or status.begins_with("Worker") else _c("accent")
+				lines.append("[color=%s]%s[/color]" % [col.to_html(), status])
+			var names: PackedStringArray = []
+			for id in b.workers:
+				var w := game.sim.settler(id)
+				if w != null:
+					names.append(w.name)
+			var max_w := int(b.stat("maxWorkers") if b.stat("maxWorkers") != null else 1)
+			lines.append("Workers %d/%d%s" % [names.size(), max_w, ": " + ", ".join(names) if not names.is_empty() else " — select someone and right-click here"])
+			if not b.delivered.is_empty():
+				lines.append("On hand: %s" % Inv.format(b.delivered))
 		if b.is_storage():
 			lines.append("Holds %d/%d: %s" % [game.sim.storage_used(b), b.storage_capacity(), Inv.format(b.inventory)])
 		if b.beds() > 0:
@@ -580,6 +608,20 @@ func _refresh_card() -> void:
 		var b: Building = sim.buildings.get(game.selected_building)
 		if b != null:
 			_card_title.text = str(b.def()["name"])
+			if not b.workshop.is_empty():
+				for r: String in b.def().get("recipes", []):
+					var rd := Production.recipe(r)
+					var unlocked := BuildingOps.is_unlocked(sim, rd.get("unlock"))
+					var rb := _button(str(rd["name"]), func() -> void:
+						game.command({"type": "setRecipe", "buildingId": b.id, "recipe": r})
+						_last_card_key = ""
+						refresh_now(), "%s → %s (%d work)" % [Inv.format(Inv.from_json(rd["inputs"])), Inv.format(Inv.from_json(rd["outputs"])), int(rd["work"])])
+					rb.disabled = not unlocked or str(b.workshop.get("recipe", "")) == r
+					_card_grid.add_child(rb)
+				_card_grid.add_child(_button("Resume" if bool(b.workshop["paused"]) else "Pause", func() -> void:
+					game.command({"type": "toggleWorkshop", "buildingId": b.id})
+					_last_card_key = ""
+					refresh_now(), "Pause or resume production (P)"))
 			var permanent: bool = b.built and bool(b.def().get("permanent", false))
 			var rm := _button("Cancel site" if not b.built else "Demolish", func() -> void:
 				game.command({"type": "remove", "buildingId": b.id})

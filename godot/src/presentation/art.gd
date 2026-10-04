@@ -68,7 +68,8 @@ func _finish_atlas(atlas: Image, placed: Array[Array]) -> void:
 		var at := AtlasTexture.new()
 		at.atlas = tex
 		at.region = p[1]
-		at.filter_clip = true
+		# No filter_clip: the atlas pads every sprite, and clipping per sprite stops batching.
+		at.filter_clip = false
 		var e: Dictionary = p[2]
 		sprites[p[0]] = {"texture": at, "ax": float(e["ax"]), "ay": float(e["ay"]), "w": float(e["w"]), "h": float(e["h"])}
 

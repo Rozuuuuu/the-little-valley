@@ -13,7 +13,7 @@ extends PathGrid
 ##   [parties, military, war, logistics, diplomacy, campaigns, news, workshops, kingdoms,
 ##    upgrades, animals, areas]
 ##   every GROWTH_STEP ticks: [households, travellers, population], storage warning,
-##   [milestones], pruning of unreachable notes; world chunk housekeeping
+##   milestones, pruning of unreachable notes; world chunk housekeeping
 
 const STARTING_SETTLERS := 5
 const SETTLER_CAPACITY := 10
@@ -32,6 +32,7 @@ const NAV_HALF := 96
 const K_OBJ := 1 << 48
 const K_BUILD := 2 << 48
 const K_FIELD := 3 << 48
+const K_CRAFT := 4 << 48
 const T_BUILDING := 1 << 48
 const T_OBJECT := 2 << 48
 
@@ -74,6 +75,7 @@ var _lists_version := -1
 var _storages: Array[Building] = []
 var _sites: Array[Building] = []
 var _fields: Array[Building] = []
+var _workshops: Array[Building] = []
 var _season_tick := -1
 var _season := {}
 ## Loaded tiles holding a harvestable object, by resource ("wood", "stone", "food"), for nearest
@@ -94,8 +96,12 @@ func _init(world_seed: int, rng_state: int = 0, gen: int = WorldGen.CURRENT_GEN,
 
 
 func _reset_stats() -> void:
+	# Every stat the browser game keeps (emptyStats in Simulation.ts), so saves and milestones match.
 	for k: String in ["woodGathered", "stoneGathered", "foodGathered", "harvested", "planksCrafted", "toolsCrafted", "arrivals",
-			"wheatHarvested", "flourMilled", "bakedFood", "pathsBuilt"]:
+			"wheatHarvested", "flourMilled", "bakedFood", "pathsBuilt", "births", "applesPicked", "driedApples",
+			"surveys", "oreMined", "stoneQuarried", "charcoalMade", "coalBurned", "charcoalBurned", "copperSmelted", "ironSmelted",
+			"copperToolsForged", "ironToolsForged", "caravanTrips", "caravanDeliveries", "provisions", "merchantVisits", "trades",
+			"swordsMade", "bowsMade", "armorMade", "horseFeed", "soldiersTrained", "battles", "soldiersLost", "cargoLost", "gearLost", "enemyLosses"]:
 		stats[k] = 0
 
 
@@ -310,6 +316,10 @@ func add_settler(tx: int, ty: int, job: String, settler_name: String = "", settl
 	s.y = ty + 0.5
 	s.px = s.x
 	s.py = s.y
+	s.rpx = s.x
+	s.rpy = s.y
+	s.rx = s.x
+	s.ry = s.y
 	s.job = job
 	s.capacity = SETTLER_CAPACITY
 	s.hunger = 85 + rng.int_below(15)
@@ -388,11 +398,14 @@ func _refresh_lists() -> void:
 	_storages.clear()
 	_sites.clear()
 	_fields.clear()
+	_workshops.clear()
 	for b: Building in buildings.values():
 		if not b.built:
 			_sites.append(b)
 		elif b.is_storage():
 			_storages.append(b)
+		if b.built and not b.workshop.is_empty():
+			_workshops.append(b)
 		if b.is_field():
 			_fields.append(b)
 
@@ -407,6 +420,12 @@ func storages() -> Array[Building]:
 func sites() -> Array[Building]:
 	_refresh_lists()
 	return _sites
+
+
+## Finished recipe buildings, in placement order. Shared: do not modify.
+func workshops() -> Array[Building]:
+	_refresh_lists()
+	return _workshops
 
 
 ## Fields, in placement order. Shared: do not modify.
@@ -527,8 +546,22 @@ func well_equipped() -> bool:
 
 # ---- update ------------------------------------------------------------------------------------
 
+## One whole tick. The game may instead run a tick in slices across frames: begin_tick(), then
+## update_settlers() over consecutive ranges until every settler is done, then end_tick(). The
+## order of work is the same either way, so the results are identical.
 func step() -> void:
+	begin_tick()
+	update_settlers(0, settlers.size())
+	end_tick()
+
+
+## How far the sliced tick in progress has got (settlers updated so far); -1 between ticks.
+var slice_next := -1
+
+
+func begin_tick() -> void:
 	tick += 1
+	slice_next = 0
 	path_searches_left = PATH_SEARCHES_PER_TICK
 	for s in settlers:
 		s.px = s.x
@@ -541,12 +574,30 @@ func step() -> void:
 	Prof.end("update_fields", t0)
 	if tick % 20 == 0:
 		BuildingOps.update_regrowth(self)
+
+
+## Updates settlers [from, to) of the current tick.
+func update_settlers(from: int, to: int) -> void:
 	var t1 := Prof.begin()
-	for s in settlers:
-		SettlerTasks.update_settler(self, s)
+	for i in range(from, mini(to, settlers.size())):
+		SettlerTasks.update_settler(self, settlers[i])
+	slice_next = to
 	Prof.end("all_settlers", t1)
+
+
+func end_tick() -> void:
+	slice_next = -1
+	if tick % 10 == 0:
+		Production.update_workshops(self)
+	# Where each settler stood at the start and end of this tick, for drawing between ticks.
+	for s in settlers:
+		s.rpx = s.px
+		s.rpy = s.py
+		s.rx = s.x
+		s.ry = s.y
 	if tick % GROWTH_STEP == 0:
 		_check_storage()
+		Progression.check(self)
 		_prune_unreachable()
 	world.pump()
 

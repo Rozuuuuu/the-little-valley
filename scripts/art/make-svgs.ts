@@ -9,14 +9,11 @@
  * follows are in docs/godot/ART_STYLE.md.
  */
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { blob, groundShadow, mix, poly, rng, rrect, shaded, smoothPath, svg, TILE, type Palette } from './svg-kit';
+import { blob, groundShadow, mix, poly, rng, rrect, shaded, smoothPath, svg, TILE } from './svg-kit';
+import { M, OUTLINE, outlineOf, P, RIM, SHADOW } from './palette';
+import { building, SPECS } from './buildings';
 
 const OUT = 'godot/art/generated';
-const P = JSON.parse(readFileSync('godot/art/palette.json', 'utf8')) as Palette;
-const M = P.materials;
-const OUTLINE = P.people.outline;
-const RIM = P.core.mint;
-const SHADOW = P.core.teal;
 
 interface Entry {
   /** Canvas size in art pixels (96 per tile). */
@@ -35,7 +32,6 @@ function emit(name: string, w: number, h: number, ax: number, ay: number, kind: 
   manifest[name] = { w, h, ax, ay, kind, provisional: true };
 }
 
-const outlineOf = (tones: string[]) => mix(tones[0], OUTLINE, 0.55);
 
 // ---- trees, bushes, rocks --------------------------------------------------------------------
 
@@ -164,78 +160,6 @@ function sapling(): string {
 }
 
 // ---- buildings -----------------------------------------------------------------------------
-
-/** Walls in front, roof above: a building drawn in footprint coordinates with `rise` px of roof. */
-function building(kind: 'townHall' | 'house' | 'storehouse' | 'cottage', lit: boolean): { w: number; h: number; body: string; ax: number; ay: number } {
-  const size = { townHall: [4, 3], house: [2, 2], storehouse: [3, 2], cottage: [3, 2] }[kind];
-  const fw = size[0] * TILE;
-  const fh = size[1] * TILE;
-  const rise = { townHall: 150, house: 96, storehouse: 80, cottage: 96 }[kind];
-  const W = fw + 24;
-  const H = fh + rise + 12;
-  const x0 = 12;
-  const yBase = H - 10;
-  const wallTop = yBase - fh * 0.62;
-  const roofTones = kind === 'storehouse' ? M.roofSlate : M.roofRed;
-  const wall = kind === 'storehouse' ? M.wood.slice(1) : M.wall;
-  let body = lit ? '' : groundShadow(x0 + fw / 2 + 10, yBase - 4, fw / 2 + 10, 16, SHADOW, 0.28);
-  // Walls.
-  const walls = rrect(x0 + 6, wallTop, fw - 12, yBase - wallTop - 4, 6);
-  if (!lit) body += shaded(walls, { tones: wall, outline: outlineOf(wall), shadow: 10, light: 6 });
-  // Windows and door.
-  const winY = wallTop + 26;
-  const glass = lit ? M.glassLit[1] : P.core.tealMid;
-  const nWin = Math.max(1, size[0] - (kind === 'house' ? 1 : 0));
-  const doorW = kind === 'storehouse' ? 56 : 30;
-  const doorX = x0 + fw / 2 - doorW / 2;
-  const doorH = kind === 'storehouse' ? 62 : 46;
-  for (let i = 0; i <= nWin; i++) {
-    const wx = x0 + 20 + i * ((fw - 64) / Math.max(1, nWin));
-    if (Math.abs(wx + 12 - (doorX + doorW / 2)) < doorW) continue;
-    body += `<rect x="${wx}" y="${winY}" width="24" height="22" rx="4" fill="${glass}" stroke="${outlineOf(wall)}" stroke-width="3"/>`;
-    if (lit) body += `<rect x="${wx - 8}" y="${winY - 8}" width="40" height="38" rx="14" fill="${M.glassLit[0]}" opacity="0.35"/>`;
-    else body += `<path d="M${wx + 12},${winY} V${winY + 22} M${wx},${winY + 11} H${wx + 24}" stroke="${outlineOf(wall)}" stroke-width="2"/>`;
-  }
-  if (!lit) {
-    const doorFill = kind === 'storehouse' ? M.wood[1] : M.wood[2];
-    body += `<path d="${rrect(doorX, yBase - 4 - doorH, doorW, doorH, 12)}" fill="${doorFill}" stroke="${outlineOf(M.wood)}" stroke-width="3"/>`;
-    if (kind === 'storehouse') body += `<path d="M${doorX},${yBase - 4 - doorH} L${doorX + doorW},${yBase - 4} M${doorX + doorW},${yBase - 4 - doorH} L${doorX},${yBase - 4}" stroke="${M.wood[0]}" stroke-width="3"/>`;
-    if (kind === 'cottage') {
-      for (const bx of [x0 + 18, x0 + fw - 54]) body += `<rect x="${bx}" y="${winY + 24}" width="36" height="9" rx="3" fill="${M.wood[2]}"/><circle cx="${bx + 8}" cy="${winY + 22}" r="5" fill="${M.berry[2]}"/><circle cx="${bx + 20}" cy="${winY + 21}" r="5" fill="${P.core.gold}"/><circle cx="${bx + 30}" cy="${winY + 22}" r="5" fill="${M.berry[1]}"/>`;
-    }
-  }
-  // Roof: a hipped shape rising above the walls; each kind has its own silhouette.
-  const eave = wallTop + 8;
-  const ridge = eave - rise;
-  if (!lit) {
-    let roof: string;
-    if (kind === 'storehouse') {
-      roof = poly([[x0 - 4, eave], [x0 + 18, ridge + 18], [x0 + fw - 18, ridge + 18], [x0 + fw + 4, eave]]);
-    } else if (kind === 'townHall') {
-      roof = poly([[x0 - 6, eave], [x0 + 40, ridge + 40], [x0 + fw - 40, ridge + 40], [x0 + fw + 6, eave]]);
-    } else {
-      roof = poly([[x0 - 6, eave], [x0 + fw / 2, ridge], [x0 + fw + 6, eave]]);
-    }
-    body += shaded(roof, { tones: roofTones, outline: outlineOf(roofTones), shadow: 14, light: 10, rim: RIM });
-    // Shingle lines.
-    for (let y = eave - 22; y > ridge + 30; y -= 22) body += `<path d="M${x0 + 14},${y} H${x0 + fw - 14}" stroke="${roofTones[0]}" stroke-width="2" opacity="0.35"/>`;
-    if (kind === 'house' || kind === 'cottage') {
-      // Chimney.
-      const cx = x0 + fw * 0.72;
-      body += shaded(rrect(cx, ridge + 26, 20, 42, 3), { tones: M.stone, outline: outlineOf(M.stone), shadow: 4, light: 2 });
-    }
-    if (kind === 'townHall') {
-      // Bell cupola and a gold-pennant flag: the hall's landmark silhouette.
-      const cx = x0 + fw / 2;
-      body += shaded(rrect(cx - 22, ridge + 4, 44, 44, 6), { tones: M.wall, outline: outlineOf(M.wall), shadow: 6, light: 4 });
-      body += shaded(poly([[cx - 32, ridge + 8], [cx, ridge - 30], [cx + 32, ridge + 8]]), { tones: roofTones, outline: outlineOf(roofTones), shadow: 7, light: 5 });
-      body += `<circle cx="${cx}" cy="${ridge + 26}" r="8" fill="${P.core.gold}" stroke="${P.core.goldDeep}" stroke-width="3"/>`;
-      body += `<path d="M${cx},${ridge - 30} V${ridge - 72}" stroke="${M.wood[0]}" stroke-width="4"/><path d="M${cx},${ridge - 72} L${cx + 34},${ridge - 62} L${cx},${ridge - 52}Z" fill="${P.core.gold}" stroke="${P.core.goldDeep}" stroke-width="2"/>`;
-    }
-  }
-  // Anchor: the bottom-left corner of the footprint (x0, yBase).
-  return { w: W, h: H, body, ax: x0, ay: yBase };
-}
 
 /** A construction site: a staked foundation and scaffold poles, for any footprint. */
 function site(tw: number, th: number): { w: number; h: number; body: string; ax: number; ay: number } {
@@ -435,7 +359,7 @@ for (let v = 0; v < 2; v++) emit(`rock_${v}`, TILE, TILE, TILE / 2, TILE - 12, '
 emit('boulder', TILE * 1.5, TILE * 1.3, TILE * 0.75, TILE * 1.3 - 12, 'object', rock(0, true));
 emit('stump', TILE, TILE, TILE / 2, TILE - 18, 'object', stump());
 emit('sapling', TILE, TILE + 20, TILE / 2, TILE + 4, 'object', sapling());
-for (const k of ['townHall', 'house', 'storehouse', 'cottage'] as const) {
+for (const k of Object.keys(SPECS)) {
   for (const lit of [false, true]) {
     const b = building(k, lit);
     emit(`${k}${lit ? '_lit' : ''}`, b.w, b.h, b.ax, b.ay, lit ? 'night' : 'building', b.body);

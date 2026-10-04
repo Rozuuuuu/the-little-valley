@@ -9,7 +9,7 @@
 
 </g>
 <path d="M24,171H192Q198,171 198,177V280Q198,286 192,286H24Q18,286 18,280V177Q18,171 24,171Z" fill="none" stroke="#63695b" stroke-width="3" stroke-linejoin="round"/>
-</g><rect x="32" y="196.96" width="24" height="22" rx="4" fill="#24524f" stroke="#63695b" stroke-width="3"/><path d="M44,196.96 V218.96 M32,207.96 H56" stroke="#63695b" stroke-width="2"/><rect x="160" y="196.96" width="24" height="22" rx="4" fill="#24524f" stroke="#63695b" stroke-width="3"/><path d="M172,196.96 V218.96 M160,207.96 H184" stroke="#63695b" stroke-width="2"/><path d="M105,240H111Q123,240 123,252V274Q123,286 111,286H105Q93,286 93,274V252Q93,240 105,240Z" fill="#a77446" stroke="#39392f" stroke-width="3"/><g>
+</g><rect x="34" y="196.96" width="24" height="22" rx="4" fill="#24524f" stroke="#63695b" stroke-width="3"/><path d="M46,196.96 V218.96 M34,207.96 H58" stroke="#63695b" stroke-width="2"/><path d="M105,240H111Q123,240 123,252V274Q123,286 111,286H105Q93,286 93,274V252Q93,240 105,240Z" fill="#a77446" stroke="#39392f" stroke-width="3"/><g>
 <clipPath id="c49"><path d="M6,179L108,83L210,179Z"/></clipPath>
 <clipPath id="c49r"><path d="M6,179L108,83L210,179Z" transform="translate(-5,-5)"/></clipPath>
 <path d="M6,179L108,83L210,179Z" fill="#6e2f28"/>

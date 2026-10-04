@@ -17,6 +17,10 @@ const KEEP_MARGIN := 2
 var sim: Simulation
 var art: Art
 var motion := 1.0
+## Wind sway on trees, bushes and crops (benchmarks can turn it off to measure batching).
+var sway_enabled := true
+## Benchmarks can hide the ground to measure its cost.
+var ground_visible := true
 
 var _palette: Dictionary
 var _pal_tex: ImageTexture
@@ -35,6 +39,9 @@ var _buildings := {}
 var settler_views := {}
 var _white: ImageTexture
 var _season := ""
+## Chunk builds (ground textures or object sprites) allowed per frame.
+const BUILDS_PER_FRAME := 2
+var _builds_left := 0
 ## Night: a multiply-blended tint over the world, with lit windows drawn above it so they glow.
 var _night := ColorRect.new()
 var _lights := Node2D.new()
@@ -104,21 +111,32 @@ func refresh(alpha: float, view: Rect2, delta: float) -> void:
 		_set_season_look(season)
 	var c0 := Vector2i(floori(view.position.x / TILE_PX) >> Chunk.SHIFT, floori(view.position.y / TILE_PX) >> Chunk.SHIFT)
 	var c1 := Vector2i(floori(view.end.x / TILE_PX) >> Chunk.SHIFT, floori(view.end.y / TILE_PX) >> Chunk.SHIFT)
-	var visible_keys := {}
+	_builds_left = BUILDS_PER_FRAME
+	# Chunks on screen first, then the margin, so what you see is never waiting on what you don't.
+	var centre := Vector2i((c0.x + c1.x) / 2, (c0.y + c1.y) / 2)
+	var order: Array[Vector2i] = []
 	for cy in range(c0.y - 1, c1.y + 2):
 		for cx in range(c0.x - 1, c1.x + 2):
-			var c := sim.world.peek(cx, cy)
-			if c == null:
-				sim.world.request(cx, cy)
-				continue
-			var k := World.key(cx, cy)
-			visible_keys[k] = true
-			_sync_ground(k, c)
-			_sync_objects(k, c)
+			order.append(Vector2i(cx, cy))
+	order.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		var ina := a.x >= c0.x and a.x <= c1.x and a.y >= c0.y and a.y <= c1.y
+		var inb := b.x >= c0.x and b.x <= c1.x and b.y >= c0.y and b.y <= c1.y
+		if ina != inb:
+			return ina
+		return (a - centre).length_squared() < (b - centre).length_squared())
+	for p in order:
+		var c := sim.world.peek(p.x, p.y)
+		if c == null:
+			sim.world.request(p.x, p.y)
+			continue
+		var k := World.key(p.x, p.y)
+		_sync_ground(k, c)
+		_sync_objects(k, c)
 	_free_far(_ground, c0, c1)
 	_free_far(_objects, c0, c1)
 	_sync_buildings()
-	_sync_settlers(alpha, delta)
+	_sync_settlers(alpha, delta, view.grow(TILE_PX * 3))
+	_ground_layer.visible = ground_visible
 	_night.color = _night_tint()
 	_night.visible = _night.color != Color.WHITE
 	_night.position = view.position - Vector2(64, 64)
@@ -139,6 +157,9 @@ func _free_far(store: Dictionary, c0: Vector2i, c1: Vector2i) -> void:
 func _sync_ground(k: int, c: Chunk) -> void:
 	var g: Dictionary = _ground.get(k, {})
 	if g.is_empty():
+		if _builds_left <= 0:
+			return
+		_builds_left -= 1
 		var node := Sprite2D.new()
 		node.texture = _white
 		node.centered = false
@@ -218,6 +239,9 @@ func _sync_objects(k: int, c: Chunk) -> void:
 	var d: Dictionary = _objects.get(k, {})
 	if not d.is_empty() and int(d["version"]) == c.version:
 		return
+	if not _ground.has(k) or _builds_left <= 0:
+		return
+	_builds_left -= 1
 	if not d.is_empty():
 		(d["node"] as Node).queue_free()
 	else:
@@ -239,7 +263,7 @@ func _sync_objects(k: int, c: Chunk) -> void:
 		var sp := Sprite2D.new()
 		art.apply(sp, sprite_name)
 		sp.position = Vector2(tx + 0.5, ty + 0.78) * TILE_PX
-		if o == Tiles.O_OAK or o == Tiles.O_PINE or o == Tiles.O_BERRY or o == Tiles.O_BERRY_EMPTY or o == Tiles.O_SAPLING:
+		if sway_enabled and (o == Tiles.O_OAK or o == Tiles.O_PINE or o == Tiles.O_BERRY or o == Tiles.O_BERRY_EMPTY or o == Tiles.O_SAPLING):
 			sp.material = _sway
 		node.add_child(sp)
 	_objects[k] = {"node": node, "version": c.version}
@@ -316,7 +340,8 @@ func _make_building(b: Building, look: String) -> Node2D:
 			var crop := Sprite2D.new()
 			art.apply(crop, "crop_%s_%d" % [f["crop"], stage])
 			crop.position = base
-			crop.material = _sway
+			if sway_enabled:
+				crop.material = _sway
 			holder.add_child(crop)
 		holder.tree_exiting.connect(func() -> void: soil.queue_free())
 		entities.add_child(holder)
@@ -345,7 +370,7 @@ func _make_building(b: Building, look: String) -> Node2D:
 
 # ---- settlers ------------------------------------------------------------------------------------
 
-func _sync_settlers(alpha: float, delta: float) -> void:
+func _sync_settlers(alpha: float, delta: float, area: Rect2) -> void:
 	var seen := {}
 	for s in sim.settlers:
 		seen[s.id] = true
@@ -355,7 +380,12 @@ func _sync_settlers(alpha: float, delta: float) -> void:
 			v.setup(art, s, _palette["people"])
 			entities.add_child(v)
 			settler_views[s.id] = v
-		var pos := Vector2(lerpf(s.px, s.x, alpha), lerpf(s.py, s.y, alpha)) * TILE_PX
+		var pos := Vector2(lerpf(s.rpx, s.rx, alpha), lerpf(s.rpy, s.ry, alpha)) * TILE_PX
+		if not area.has_point(pos):
+			# Off screen: hide and skip the per-frame work.
+			v.visible = false
+			v.position = pos
+			continue
 		v.refresh(s, pos, delta, motion)
 	for id: int in settler_views.keys():
 		if not seen.has(id):

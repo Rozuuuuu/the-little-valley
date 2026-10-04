@@ -187,6 +187,38 @@ and frames would then never wait for a tick. Where threads are unavailable, tick
 time-sliced. Pathfinding is not the bottleneck: 1.3–4.6 native searches per tick at about
 0.15 ms each.
 
+## Frames (the illustrated Godot version)
+
+Capture-mode benchmark: `godot --path . --resolution 1600x900 -- --shot=out.png --settlers=N --frames=900`.
+It runs a new valley with extra settlers, fields, a house, a storehouse and marks, plays at 1×
+with vsync off while the camera pans continuously, and prints frame percentiles. Reference
+machine (Xeon E5-2680 v3, RX 580), Compatibility renderer, Godot 4.7.2, ticks run in slices
+across frames:
+
+| Settlers | avg ms | FPS | p50 | p95 | p99 | max | Draw calls | Sim ms/frame | View ms/frame | Render CPU / GPU ms |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 25 | 7.6 | 132 | 7.4 | 12.9 | 17.7 | 27.8 | 343 | 0.17 | 1.13 | 1.3 / 3.0 |
+| 100 | 8.5 | 117 | 8.0 | 17.0 | 22.0 | 46.7 | 483 | 0.62 | 2.15 | 1.7 / 3.3 |
+| 300 | 13.5 | 74 | 11.9 | 26.3 | 39.6 | 49.4 | 922 | 2.84 | 4.25 | 2.5 / 4.6 |
+| 1,000 | 49.9 | 20 | 22.4 | 189 | 344 | 717 | 1,134 | 37.1 | 7.09 | 2.7 / 5.3 |
+
+What changed the numbers:
+- Turning off per-sprite clipping on atlas textures cut draw calls by about a third.
+- Building at most two chunks' sprites per frame, nearest first, removed most panning hitches.
+- Off-screen settlers skip their per-frame update.
+- The HUD updates text in place instead of rebuilding widgets.
+- **Ticks run in slices across the frames each tick lasts** (`Simulation.begin_tick`,
+  `update_settlers`, `end_tick`). A test proves the results are identical to whole ticks.
+  At 300 settlers this took p95 from 41 to 26 ms and p99 from 59 to 40 ms.
+
+**Supported scale today (desktop reference machine): up to about 300 settlers at 60+ FPS
+average.** Hitches above 16 ms remain in about 5% of frames at 300.
+- **1,000 settlers are not supported yet:** the simulation needs about 37 ms per frame.
+- **Next steps:** move the simulation to a worker thread where threads are available, and
+  index the remaining linear scans (haul needs, storage search) where profiles show them.
+- The ground shader is not the bottleneck: hiding it changed the frame time by less than
+  the run-to-run noise.
+
 ## Saves
 
 - Godot saves use the browser game's v15 JSON layout. A genuine v15 browser save

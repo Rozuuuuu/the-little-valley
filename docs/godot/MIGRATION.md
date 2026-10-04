@@ -151,10 +151,10 @@ Status: **Done** (ported and tested against the browser game), **Started**, **Pl
 | Buildings, construction, levels | `sim/buildings.ts`, `levels.ts` | `src/sim/building_ops.gd`: place, complete, remove, homes, regrowth, paths, bridges | Construction and refund tests | **Started** (no upgrades, spans, workshops, pens or mines) |
 | Farming, weather, seasons | `sim/farming.ts`, `seasons.ts` | `src/sim/farming.gd`, `seasons.gd` | Farming-cycle, dry-field, crop-unlock tests | **Done** (wells come with the well) |
 | Orchards | `sim/orchards.ts` | `src/sim/` | Orchard tests | Planned |
-| Production, workshops | `sim/buildings.ts` | `src/sim/` | Conservation tests | Planned |
+| Production, workshops | `sim/buildings.ts` | `src/sim/production.gd`: recipes, fuel, two-batch buffering, worker assignment, status explanations; work, assignWorker, setRecipe, toggleWorkshop commands | Planks, idle explanation, wheat → flour → bread conservation, worker limits | **Done** (quarries and mines come with mining) |
 | Hauling, stock targets | `sim/settlers.ts` | `src/sim/settlers/` | Conservation, no shuttling | Planned |
 | Population, households, recruitment | `population.ts`, `households.ts`, `travelers.ts` | `src/sim/people/` | Ported tests | Planned |
-| Progression, milestones | `progression.ts` | `src/sim/` | progression-chain port | Planned |
+| Progression, milestones | `progression.ts` | `src/sim/progression.gd` | Through slice and production tests | **Done** (requirements for unported systems read 0) |
 | Work areas | `areas.ts` | `src/sim/` | areas-auto port | Planned |
 | Ruler, chief, roles, training | `ruler.ts`, `roles.ts` | `src/sim/people/` | roles/townhall ports | Planned |
 | Animals, hunting, herding | `animals.ts` | `src/sim/` | animals, hunting ports | Planned |
@@ -166,12 +166,12 @@ Status: **Done** (ported and tested against the browser game), **Started**, **Pl
 | Military, war | `military.ts`, `combat.ts` | `src/sim/war/` | Ported tests | Planned |
 | Saves: format, migrations, history, files | `save/*` | `src/persistence/save_codec.gd`, `save_store.gd`: v15 layout, validation, 10 automatic plus named points, safe writes | Round trip, damaged saves, store history and fallback | **Started** (migrations v2–v14 and save files on the web to do) |
 | Old-save import | n/a | `SaveCodec.decode` with an unsupported-data report | Genuine v15 browser fixture | **Started** (reading the old IndexedDB on the web to do) |
-| Rendering | `render/*` | `src/presentation/` | Screenshots, frame benchmarks | Planned |
-| Art | code-drawn pixel sprites | SVG-sourced illustrated assets | Style review sheet | Planned |
+| Rendering | `render/*` | `src/presentation/`: ground shader, WorldView, SettlerView, overlay | Capture screenshots, frame benchmarks (BASELINE) | **Done for the slice** |
+| Art | code-drawn pixel sprites | `scripts/art/*` → 144 provisional SVG sprites; `docs/godot/ART_STYLE.md` | Contact sheets (`tools/art_sheet.gd`), screenshots | **Started** (provisional; animals, orchards, pens, military still to draw) |
 | Animation, effects | `particles.ts`, renderer | `src/presentation/fx/` | Frame benchmarks, reduced motion | Planned |
-| Input and bindings, touch | `input/*` | InputMap + `src/ui/` | Input tests | Planned |
-| HUD, windows, tutorial, Valley today | React `ui/*`, `engine/*` | Control scenes | UI smoke tests, playtest | Planned |
-| Settings | `engine/settings.ts` | ConfigFile | settings port | Planned |
+| Input and bindings, touch | `input/*` | `src/ui/game.gd`, `camera_rig.gd`: mouse, keys, edge pan, touch tap, pan, pinch and box | Manual | **Started** (remapping UI to do) |
+| HUD, windows, tutorial, Valley today | React `ui/*`, `engine/*` | `src/ui/hud.gd`: title, top bar, selection, command card, toasts, menu with save points and settings | Screenshots | **Started** (People/Areas/Families windows, tutorial, Valley today to do) |
+| Settings | `engine/settings.ts` | `src/ui/settings.gd` (ConfigFile): reduced motion, effects, interface size, edge scroll, autosave | Manual | **Done** |
 | Audio | WebAudio synth | AudioStreamGenerator or rendered samples | Listening | Planned |
 | Asset Studio (new) | none | `src/ui/asset_studio/` | Pack round trip, size limits | Planned |
 | Install, update (PWA) | `ui/updates.ts`, `InstallGate` | Godot PWA export + service worker | Install and offline test | Planned |
@@ -183,7 +183,7 @@ Status: **Done** (ported and tested against the browser game), **Started**, **Pl
 | 0. Baseline | Tests, profiles, soak, gen-4 fingerprint, golden data, content export | Baseline report; browser tests green | **Done** |
 | 1. Godot core | Numeric ports, worldgen, streaming world, pathfinding | Bit-exact goldens; streaming tests; pathfinding benchmarked and chosen | **Done** (the settler-loop cost moves to Phase 2, where it is measured on the real ported loop rather than a synthetic one) |
 | 2. Slice simulation | Settlers (needs, gather, deliver, haul, build, farm), Town Hall, storehouse, house, field, commands, saves | Ported conservation, reservation, farming and construction tests pass headless; 20-day soak bounded | **Done** except the 20-day Godot soak (with the Phase 4 benchmarks) |
-| 3. Slice presentation | Illustrated ground, objects, settlers with walk, idle, carry and work animation, camera, selection, minimal HUD, reduced motion | 60 FPS at 100 settlers on the reference machine; your review of crowded scenes | Planned |
+| 3. Slice presentation | Illustrated ground, objects, settlers with walk, idle, carry and work animation, camera, selection, minimal HUD, reduced motion | 60 FPS at 100 settlers on the reference machine; your review of crowded scenes | **Done** (117 FPS average at 100; awaiting your review) |
 | 4. Slice evaluation | Benchmarks at 25/100/300/1,000, soak, a web build on a phone | Report and your sign-off | Planned |
 | 5+. Systems | Production → people → seasons and areas → animals → mining → settlements and trade → realm → military → full UI → audio → old-save import → Asset Studio → install and update | Each with ported tests and a matrix update | Planned |
 | Cut-over | The Godot version replaces the browser game at the same address and converts old saves | Parity checklist; old saves convert with a report | Planned |

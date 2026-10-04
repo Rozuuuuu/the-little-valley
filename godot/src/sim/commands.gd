@@ -3,8 +3,9 @@ class_name Commands
 ## {ok: bool, message: String} so the interface can explain refusals (src/game/sim/commands.ts).
 ## Commands are plain Dictionaries with a "type", the same shapes as the browser game's.
 ##
-## Ported for the slice: move, gather, place, placeArea, remove, designate, setJob, setCrop,
-## stop, hold, returnGoods, setPriorities. Others report that they are not available yet.
+## Ported: move, gather, work, place, placeArea, remove, designate, setJob, setPriorities, setCrop,
+## setRecipe, toggleWorkshop, assignWorker, unassignWorker, stop, hold, returnGoods.
+## Others report that they are not available yet.
 
 const MAX_AREA := 40 * 40
 
@@ -272,6 +273,41 @@ static func _apply(sim: Simulation, cmd: Dictionary) -> Dictionary:
 							b.field["growth"] = 0.0
 			return _ok()
 
+		"work":
+			return _work(sim, cmd)
+
+		"assignWorker":
+			return _assign_worker(sim, cmd)
+
+		"unassignWorker":
+			var b: Building = sim.buildings.get(int(cmd.get("buildingId", -1)))
+			if b == null:
+				return _err("That building is gone")
+			var sid := int(cmd.get("settlerId", -1))
+			b.workers.erase(sid)
+			var s := sim.settler(sid)
+			if s != null:
+				_replan(sim, s)
+			return _ok()
+
+		"setRecipe":
+			var b: Building = sim.buildings.get(int(cmd.get("buildingId", -1)))
+			if b == null or b.workshop.is_empty():
+				return _err("Not a workshop")
+			var r: Variant = cmd.get("recipe")
+			if r != null and (not Production.is_recipe(str(r)) or not (b.def().get("recipes", []) as Array).has(str(r))):
+				return _err("Unknown recipe")
+			b.workshop["recipe"] = "" if r == null else str(r)
+			b.workshop["progress"] = 0.0
+			return _ok()
+
+		"toggleWorkshop":
+			var b: Building = sim.buildings.get(int(cmd.get("buildingId", -1)))
+			if b == null or b.workshop.is_empty():
+				return _err("Not a workshop")
+			b.workshop["paused"] = not bool(b.workshop["paused"])
+			return _ok("Workshop paused." if b.workshop["paused"] else "Workshop resumed.")
+
 		"stop":
 			var list := _pick_settlers(sim, cmd.get("ids"))
 			if list.is_empty():
@@ -313,6 +349,138 @@ static func _apply(sim: Simulation, cmd: Dictionary) -> Dictionary:
 			return _ok()
 
 	return _err("“%s” is not available in this version yet" % str(cmd.get("type", "?")))
+
+
+## Right-clicking a building with people selected: build or supply a site, tend a field, work at a
+## recipe building, deliver to a store, or move into a home.
+static func _work(sim: Simulation, cmd: Dictionary) -> Dictionary:
+	var b: Building = sim.buildings.get(int(cmd.get("buildingId", -1)))
+	if b == null:
+		return _err("That building is gone")
+	var d := b.def()
+	var home: bool = d.has("housing") and b.built and not bool(d.get("temporaryBeds", false))
+	var picked: Variant = _pick_settlers(sim, cmd.get("ids")) if home else _pick_workers(sim, cmd.get("ids"), "work")
+	if picked is String:
+		return _err(picked)
+	var list: Array[Settler] = []
+	list.assign(picked)
+	if list.is_empty():
+		return _err("Select a settler first")
+	if not b.built:
+		var assigned := 0
+		var reason := ""
+		for s in list:
+			if BuildingOps.materials_complete(b):
+				for i in int(d.get("maxBuilders", 2)):
+					var k := SettlerTasks.build_key(b.id, i)
+					if not sim.is_reserved(k, s.id):
+						_take_order(sim, s)
+						sim.reserve(k, s.id)
+						s.task = Task.build(b.id, i)
+						assigned += 1
+						break
+			else:
+				_take_order(sim, s)
+				if s.carrying():
+					continue
+				var t: Variant = SettlerBrain.find_haul_for(sim, s, b)
+				if t is Task:
+					s.task = t
+					assigned += 1
+				elif t is String and reason == "":
+					reason = t
+		if assigned == 0:
+			return _err(reason if reason != "" else "Enough hands are already on this site")
+		return _ok()
+	if b.is_field():
+		var action := Farming.field_action(sim, b.field)
+		if action == &"":
+			return _err("This field needs nothing right now" if b.field["crop"] != "" else "Choose a crop for this field first")
+		var s: Settler = list[0]
+		for x in list:
+			if not x.carrying():
+				s = x
+				break
+		if sim.is_reserved(Simulation.K_FIELD + b.id, s.id):
+			return _err("Someone is already tending this field")
+		_take_order(sim, s)
+		sim.reserve(Simulation.K_FIELD + b.id, s.id)
+		s.task = Task.farm(b.id, action)
+		return _ok()
+	if not b.workshop.is_empty():
+		var ids: Array = []
+		for s in list:
+			ids.append(s.id)
+		return Commands.apply(sim, {"type": "assignWorker", "buildingId": b.id, "ids": ids})
+	if b.is_storage():
+		for s in list:
+			_take_order(sim, s)
+			var e := b.entrance()
+			s.task = Task.deliver(b.id) if s.carrying() else Task.move(e.x, e.y)
+		return _ok()
+	if home:
+		var cap := b.beds()
+		var residents := 0
+		for s in sim.settlers:
+			if s.home_id == b.id:
+				residents += 1
+		var moved := 0
+		for s in list:
+			if s.home_id == b.id:
+				continue
+			if residents >= cap:
+				break
+			s.home_id = b.id
+			residents += 1
+			moved += 1
+		if moved > 0:
+			return _ok("%d settler%s moved in (%d/%d beds)." % [moved, "s" if moved > 1 else "", residents, cap])
+		return _err("This %s is full (%d/%d beds)" % [str(d["name"]).to_lower(), cap, cap])
+	for s in list:
+		_take_order(sim, s)
+		s.task = Task.move(b.x, b.y + b.h)
+	return _ok()
+
+
+static func _assign_worker(sim: Simulation, cmd: Dictionary) -> Dictionary:
+	var b: Building = sim.buildings.get(int(cmd.get("buildingId", -1)))
+	if b == null or b.workshop.is_empty() or not b.built:
+		return _err("Workers can only be assigned to finished workshops, mills, bakeries, kilns, smelters and forges")
+	var picked: Variant = _pick_workers(sim, cmd.get("ids"), "work at a workshop")
+	if picked is String:
+		return _err(picked)
+	var max_workers := int(b.stat("maxWorkers") if b.stat("maxWorkers") != null else 1)
+	var bname := str(b.def()["name"]).to_lower()
+	var added: PackedStringArray = []
+	for s: Settler in picked:
+		if b.workers.has(s.id):
+			continue
+		if b.workers.size() >= max_workers:
+			break
+		for other: Building in sim.buildings.values():
+			if other != b:
+				other.workers.erase(s.id)
+		b.workers.append(s.id)
+		_take_order(sim, s)
+		# Make sure crafting is in their work order, and first.
+		if not s.has_priorities and s.job != "crafter":
+			s.job = "crafter"
+		elif s.has_priorities:
+			var order: Array = ["craft"]
+			for k: String in s.priorities:
+				if k != "craft":
+					order.append(k)
+			s.priorities = order
+		added.append(s.name)
+	if added.is_empty():
+		var all_there := true
+		for s: Settler in picked:
+			if not b.workers.has(s.id):
+				all_there = false
+		if all_there:
+			return _ok("Already working at the %s." % bname)
+		return _err("The %s already has %d/%d worker%s — unassign someone in its panel first" % [bname, max_workers, max_workers, "s" if max_workers > 1 else ""])
+	return _ok("%s now work%s at the %s (%d/%d)." % [", ".join(added), "s" if added.size() == 1 else "", bname, b.workers.size(), max_workers])
 
 
 ## The crop for a placed field: "turnip" when not given (the browser game's default).

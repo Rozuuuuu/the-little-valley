@@ -13,14 +13,22 @@ func _initialize() -> void:
 	var scale := float(args[2]) if args.size() > 2 else 0.5
 	var manifest: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(GEN + "/manifest.json"))
 	var sprites: Dictionary = manifest["sprites"]
-	var names: Array = sprites.keys().filter(func(n: String) -> bool: return filter == "" or n.contains(filter))
+	# The filter may list several substrings separated by commas.
+	var parts := filter.split(",", false)
+	var names: Array = sprites.keys().filter(func(n: String) -> bool:
+		if parts.is_empty():
+			return true
+		for p in parts:
+			if n.contains(p):
+				return true
+		return false)
 	names.sort()
 	var palette: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://art/palette.json"))
 	var bg := Color(str((palette["ground"]["meadow"] as Array)[1]))
 	var images: Array[Image] = []
 	var labels: Array[String] = []
 	# Assembled people first: one per role and direction.
-	if filter == "" or filter.contains("person"):
+	if parts.is_empty() or filter.contains("person"):
 		var people := palette["people"] as Dictionary
 		var roles := ["farmer", "builder", "gatherer", "hauler", "crafter", ""]
 		var i := 0

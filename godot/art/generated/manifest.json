@@ -210,19 +210,19 @@
    "kind": "night",
    "provisional": true
   },
-  "storehouse": {
+  "familyHome": {
    "w": 312,
-   "h": 284,
+   "h": 304,
    "ax": 12,
-   "ay": 274,
+   "ay": 294,
    "kind": "building",
    "provisional": true
   },
-  "storehouse_lit": {
+  "familyHome_lit": {
    "w": 312,
-   "h": 284,
+   "h": 304,
    "ax": 12,
-   "ay": 274,
+   "ay": 294,
    "kind": "night",
    "provisional": true
   },
@@ -239,6 +239,182 @@
    "h": 300,
    "ax": 12,
    "ay": 290,
+   "kind": "night",
+   "provisional": true
+  },
+  "storehouse": {
+   "w": 312,
+   "h": 284,
+   "ax": 12,
+   "ay": 274,
+   "kind": "building",
+   "provisional": true
+  },
+  "storehouse_lit": {
+   "w": 312,
+   "h": 284,
+   "ax": 12,
+   "ay": 274,
+   "kind": "night",
+   "provisional": true
+  },
+  "granary": {
+   "w": 312,
+   "h": 294,
+   "ax": 12,
+   "ay": 284,
+   "kind": "building",
+   "provisional": true
+  },
+  "granary_lit": {
+   "w": 312,
+   "h": 294,
+   "ax": 12,
+   "ay": 284,
+   "kind": "night",
+   "provisional": true
+  },
+  "workshop": {
+   "w": 312,
+   "h": 288,
+   "ax": 12,
+   "ay": 278,
+   "kind": "building",
+   "provisional": true
+  },
+  "workshop_lit": {
+   "w": 312,
+   "h": 288,
+   "ax": 12,
+   "ay": 278,
+   "kind": "night",
+   "provisional": true
+  },
+  "mill": {
+   "w": 216,
+   "h": 354,
+   "ax": 12,
+   "ay": 344,
+   "kind": "building",
+   "provisional": true
+  },
+  "mill_lit": {
+   "w": 216,
+   "h": 354,
+   "ax": 12,
+   "ay": 344,
+   "kind": "night",
+   "provisional": true
+  },
+  "bakery": {
+   "w": 312,
+   "h": 294,
+   "ax": 12,
+   "ay": 284,
+   "kind": "building",
+   "provisional": true
+  },
+  "bakery_lit": {
+   "w": 312,
+   "h": 294,
+   "ax": 12,
+   "ay": 284,
+   "kind": "night",
+   "provisional": true
+  },
+  "charcoalKiln": {
+   "w": 216,
+   "h": 264,
+   "ax": 12,
+   "ay": 254,
+   "kind": "building",
+   "provisional": true
+  },
+  "charcoalKiln_lit": {
+   "w": 216,
+   "h": 264,
+   "ax": 12,
+   "ay": 254,
+   "kind": "night",
+   "provisional": true
+  },
+  "smelter": {
+   "w": 216,
+   "h": 314,
+   "ax": 12,
+   "ay": 304,
+   "kind": "building",
+   "provisional": true
+  },
+  "smelter_lit": {
+   "w": 216,
+   "h": 314,
+   "ax": 12,
+   "ay": 304,
+   "kind": "night",
+   "provisional": true
+  },
+  "forge": {
+   "w": 312,
+   "h": 288,
+   "ax": 12,
+   "ay": 278,
+   "kind": "building",
+   "provisional": true
+  },
+  "forge_lit": {
+   "w": 312,
+   "h": 288,
+   "ax": 12,
+   "ay": 278,
+   "kind": "night",
+   "provisional": true
+  },
+  "tannery": {
+   "w": 312,
+   "h": 280,
+   "ax": 12,
+   "ay": 270,
+   "kind": "building",
+   "provisional": true
+  },
+  "tannery_lit": {
+   "w": 312,
+   "h": 280,
+   "ax": 12,
+   "ay": 270,
+   "kind": "night",
+   "provisional": true
+  },
+  "weaver": {
+   "w": 216,
+   "h": 294,
+   "ax": 12,
+   "ay": 284,
+   "kind": "building",
+   "provisional": true
+  },
+  "weaver_lit": {
+   "w": 216,
+   "h": 294,
+   "ax": 12,
+   "ay": 284,
+   "kind": "night",
+   "provisional": true
+  },
+  "well": {
+   "w": 120,
+   "h": 178,
+   "ax": 12,
+   "ay": 168,
+   "kind": "building",
+   "provisional": true
+  },
+  "well_lit": {
+   "w": 120,
+   "h": 178,
+   "ax": 12,
+   "ay": 168,
    "kind": "night",
    "provisional": true
   },

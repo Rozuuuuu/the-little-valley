@@ -58,6 +58,26 @@ static func consumed_by_construction(sim: Simulation, res: String, converted: Di
 	return n
 
 
+## Inputs used up by every recipe run so far (batches derived from output stats), plus fuel burned.
+static func consumed_by_crafting(sim: Simulation, res: String) -> int:
+	var batches := {
+		"planks": int(sim.stats["planksCrafted"]),
+		"tools": int(sim.stats["toolsCrafted"]) - int(sim.stats["copperToolsForged"]) - int(sim.stats["ironToolsForged"]),
+		"charcoal": int(sim.stats["charcoalMade"]) / 2, "smeltCopper": int(sim.stats["copperSmelted"]), "smeltIron": int(sim.stats["ironSmelted"]),
+		"forgeCopperTools": int(sim.stats["copperToolsForged"]), "forgeIronTools": int(sim.stats["ironToolsForged"]) / 2,
+		"forgeSwords": int(sim.stats["swordsMade"]), "forgeArmor": int(sim.stats["armorMade"]), "makeBows": int(sim.stats["bowsMade"]),
+		"flour": int(sim.stats["flourMilled"]) / 2, "bread": int(sim.stats["bakedFood"]) / 5, "driedApples": int(sim.stats["driedApples"]) / 3,
+	}
+	var n := 0
+	for id: String in batches:
+		n += int(batches[id]) * int((Production.recipe(id)["inputs"] as Dictionary).get(res, 0))
+	if res == "coal":
+		n += int(sim.stats["coalBurned"])
+	if res == "charcoal":
+		n += int(sim.stats["charcoalBurned"])
+	return n
+
+
 ## Places a building at the first valid spot in widening rings around the hall.
 static func find_spot(sim: Simulation, type: String) -> Building:
 	for r in range(3, 14):
@@ -82,4 +102,27 @@ static func reservation_problems(sim: Simulation) -> PackedStringArray:
 		for k: String in b.reserved_out:
 			if int(b.reserved_out[k]) > int(b.inventory.get(k, 0)):
 				out.append("building %d promised %d %s but holds %d" % [b.id, int(b.reserved_out[k]), k, int(b.inventory.get(k, 0))])
+	# Goods promised in transit match the haul and meal tasks that promised them.
+	var incoming := {}
+	var outgoing := {}
+	for s in sim.settlers:
+		var t := s.task
+		if t == null:
+			continue
+		if t.kind == Task.HAUL:
+			var ki := "%d:%s" % [t.dst, t.res]
+			incoming[ki] = int(incoming.get(ki, 0)) + t.amount
+			if t.stage == &"toSrc":
+				var ko := "%d:%s" % [t.src, t.res]
+				outgoing[ko] = int(outgoing.get(ko, 0)) + t.amount
+		if t.kind == Task.EAT:
+			var ke := "%d:food" % t.src
+			outgoing[ke] = int(outgoing.get(ke, 0)) + 1
+	for b: Building in sim.buildings.values():
+		for r: String in b.incoming:
+			if int(incoming.get("%d:%s" % [b.id, r], 0)) != int(b.incoming[r]):
+				out.append("incoming %s on %s#%d is %d, tasks say %d" % [r, b.type, b.id, int(b.incoming[r]), int(incoming.get("%d:%s" % [b.id, r], 0))])
+		for r: String in b.reserved_out:
+			if int(outgoing.get("%d:%s" % [b.id, r], 0)) != int(b.reserved_out[r]):
+				out.append("reserved %s on %s#%d is %d, tasks say %d" % [r, b.type, b.id, int(b.reserved_out[r]), int(outgoing.get("%d:%s" % [b.id, r], 0))])
 	return out

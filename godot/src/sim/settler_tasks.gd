@@ -77,6 +77,8 @@ static func run_task(sim: Simulation, s: Settler) -> void:
 			_run_farm(sim, s, t)
 		Task.EAT:
 			_run_eat(sim, s, t)
+		Task.CRAFT:
+			Production.run_craft(sim, s, t)
 		Task.SLEEP:
 			_run_sleep(sim, s, t)
 
@@ -209,6 +211,8 @@ static func task_keys(s: Settler) -> Array[int]:
 			return [build_key(t.site, t.slot)]
 		Task.FARM:
 			return [Simulation.K_FIELD + t.field]
+		Task.CRAFT:
+			return [Simulation.K_CRAFT + t.site]
 	return []
 
 
@@ -228,6 +232,8 @@ static func _release_task(sim: Simulation, s: Settler) -> void:
 			sim.release(build_key(t.site, t.slot), s.id)
 		Task.FARM:
 			sim.release(Simulation.K_FIELD + t.field, s.id)
+		Task.CRAFT:
+			sim.release(Simulation.K_CRAFT + t.site, s.id)
 		Task.HAUL:
 			var src: Building = sim.buildings.get(t.src)
 			var dst: Building = sim.buildings.get(t.dst)
@@ -266,7 +272,7 @@ static func _finish(sim: Simulation, s: Settler) -> void:
 	abort_task(sim, s)
 
 
-static func _fail(sim: Simulation, s: Settler, reason: String, target: int = -1) -> void:
+static func fail(sim: Simulation, s: Settler, reason: String, target: int = -1) -> void:
 	if target != -1:
 		sim.mark_unreachable(s, target)
 	abort_task(sim, s, reason)
@@ -306,7 +312,7 @@ static func _run_gather(sim: Simulation, s: Settler, t: Task) -> void:
 	if t.stage == &"walk":
 		var r := go_to(sim, s, GridAStar.Goal.new(t.x, t.y, 1, 1, true))
 		if r == Move.FAILED:
-			_fail(sim, s, "Can't reach the %s" % str(od["name"]).to_lower(), Simulation.T_OBJECT + Simulation.tile_key(t.x, t.y))
+			fail(sim, s, "Can't reach the %s" % str(od["name"]).to_lower(), Simulation.T_OBJECT + Simulation.tile_key(t.x, t.y))
 		elif r == Move.ARRIVED:
 			t.stage = &"work"
 		return
@@ -351,7 +357,7 @@ static func _run_deliver(sim: Simulation, s: Settler, t: Task) -> void:
 		t.target = target.id
 	var r := go_to(sim, s, target.goal_adjacent())
 	if r == Move.FAILED:
-		_fail(sim, s, "Can't reach storage", Simulation.T_BUILDING + target.id)
+		fail(sim, s, "Can't reach storage", Simulation.T_BUILDING + target.id)
 		return
 	if r != Move.ARRIVED:
 		return
@@ -370,7 +376,7 @@ static func _run_haul(sim: Simulation, s: Settler, t: Task) -> void:
 			return
 		var r := go_to(sim, s, src.goal_adjacent())
 		if r == Move.FAILED:
-			_fail(sim, s, "Can't reach storage", Simulation.T_BUILDING + src.id)
+			fail(sim, s, "Can't reach storage", Simulation.T_BUILDING + src.id)
 			return
 		if r != Move.ARRIVED:
 			return
@@ -392,7 +398,7 @@ static func _run_haul(sim: Simulation, s: Settler, t: Task) -> void:
 		return
 	var r := go_to(sim, s, dst.goal_adjacent())
 	if r == Move.FAILED:
-		_fail(sim, s, "Can't reach the %s" % str(dst.def()["name"]).to_lower(), Simulation.T_BUILDING + dst.id)
+		fail(sim, s, "Can't reach the %s" % str(dst.def()["name"]).to_lower(), Simulation.T_BUILDING + dst.id)
 		return
 	if r != Move.ARRIVED:
 		return
@@ -418,7 +424,7 @@ static func _run_build(sim: Simulation, s: Settler, t: Task) -> void:
 	if t.stage == &"walk":
 		var r := go_to(sim, s, site.goal_adjacent())
 		if r == Move.FAILED:
-			_fail(sim, s, "Can't reach the %s site" % str(site.def()["name"]).to_lower(), Simulation.T_BUILDING + site.id)
+			fail(sim, s, "Can't reach the %s site" % str(site.def()["name"]).to_lower(), Simulation.T_BUILDING + site.id)
 		elif r == Move.ARRIVED:
 			t.stage = &"work"
 		return
@@ -445,7 +451,7 @@ static func _run_farm(sim: Simulation, s: Settler, t: Task) -> void:
 	if t.stage == &"walk":
 		var r := go_to(sim, s, GridAStar.Goal.new(b.x, b.y))
 		if r == Move.FAILED:
-			_fail(sim, s, "Can't reach the field", Simulation.T_BUILDING + b.id)
+			fail(sim, s, "Can't reach the field", Simulation.T_BUILDING + b.id)
 		elif r == Move.ARRIVED:
 			t.stage = &"work"
 		return
@@ -474,7 +480,7 @@ static func _run_eat(sim: Simulation, s: Settler, t: Task) -> void:
 		return
 	var r := go_to(sim, s, src.goal_adjacent())
 	if r == Move.FAILED:
-		_fail(sim, s, "Can't reach the food store", Simulation.T_BUILDING + src.id)
+		fail(sim, s, "Can't reach the food store", Simulation.T_BUILDING + src.id)
 		return
 	if r != Move.ARRIVED:
 		return

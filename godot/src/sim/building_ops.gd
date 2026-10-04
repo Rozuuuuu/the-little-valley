@@ -154,6 +154,8 @@ static func complete(sim: Simulation, b: Building, silent: bool = false) -> void
 			sim.stats["pathsBuilt"] = int(sim.stats["pathsBuilt"]) + b.w * b.h
 		sim.emit({"type": "fx", "kind": "dust", "x": cx, "y": cy})
 		return
+	if d.has("recipes"):
+		Production.init_workshop(b)
 	if d.has("reveal"):
 		var r: Variant = b.stat("reveal")
 		sim.world.reveal(cx, cy, float(r))

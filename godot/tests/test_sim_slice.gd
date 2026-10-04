@@ -230,3 +230,120 @@ func test_orders_release_reservations_mid_task() -> void:
 				Commands.apply(sim, {"type": "hold", "ids": ids.slice(0, 2)})
 		check_eq(SimHelpers.reservation_problems(sim), PackedStringArray(), "reservations after interruption %d" % i)
 		check_eq(SimHelpers.accounted_for(sim, "wood") + SimHelpers.consumed_by_construction(sim, "wood"), 60 + int(sim.stats["woodGathered"]), "wood after interruption %d" % i)
+
+
+func test_ticks_run_in_slices_give_identical_results() -> void:
+	var whole := NewGame.create(2468)
+	var sliced := NewGame.create(2468)
+	for sim: Simulation in [whole, sliced]:
+		SimHelpers.camp(sim).inventory = {"food": 60, "wood": 60, "stone": 30}
+		Commands.apply(sim, {"type": "placeArea", "building": "field", "x0": -9, "y0": 3, "x1": -7, "y1": 5, "crop": "turnip"})
+		SimHelpers.find_spot(sim, "house")
+		Commands.apply(sim, {"type": "designate", "x0": -12, "y0": -12, "x1": 12, "y1": 12, "on": true})
+	for i in 1200:
+		whole.step()
+		sliced.begin_tick()
+		var n := sliced.settlers.size()
+		var at := 0
+		while at < n:
+			sliced.update_settlers(at, at + 2)
+			at += 2
+		sliced.end_tick()
+	var a := SaveCodec.encode(whole, "x", 0)
+	var b := SaveCodec.encode(sliced, "x", 0)
+	(a["meta"] as Dictionary).erase("savedAt")
+	(b["meta"] as Dictionary).erase("savedAt")
+	check_eq(JSON.stringify(b), JSON.stringify(a), "the same valley after 1,200 ticks, whole or sliced")
+
+
+# ---- production (ported from tests/simulation.test.ts and tests/village.test.ts) --------------
+
+func test_a_crafter_turns_wood_into_planks() -> void:
+	var sim := NewGame.create(1212)
+	SimHelpers.camp(sim).inventory = {"wood": 100, "stone": 40, "food": 60}
+	var ws := SimHelpers.find_spot(sim, "workshop")
+	check(SimHelpers.run_until(sim, func() -> bool: return ws.built, Defs.DAY_TICKS * 2) >= 0, "the workshop is built")
+	check_eq(ws.workshop.get("recipe"), "planks", "first recipe")
+	Commands.apply(sim, {"type": "setJob", "ids": [sim.settlers[4].id], "job": "crafter"})
+	check(SimHelpers.run_until(sim, func() -> bool: return int(sim.totals()["planks"]) >= 2, Defs.DAY_TICKS * 2) >= 0, "planks in storage")
+	var wood_total := 100 + int(sim.stats["woodGathered"])
+	check_eq(SimHelpers.accounted_for(sim, "wood") + SimHelpers.consumed_by_construction(sim, "wood") + SimHelpers.consumed_by_crafting(sim, "wood"), wood_total, "wood accounted for")
+	check_eq(SimHelpers.reservation_problems(sim), PackedStringArray(), "reservations")
+
+
+func test_explains_why_a_workshop_is_idle() -> void:
+	var sim := NewGame.create(1313)
+	SimHelpers.camp(sim).inventory = {"wood": 60, "stone": 40, "food": 60}
+	for s in sim.settlers:
+		s.has_priorities = true
+		s.priorities = ["build", "haul", "farm", "gather"]
+	var ws := SimHelpers.find_spot(sim, "workshop")
+	SimHelpers.run_until(sim, func() -> bool: return ws.built, Defs.DAY_TICKS * 2)
+	SimHelpers.run(sim, 20)
+	check(str(ws.workshop["status"]).to_lower().contains("no worker"), "status: %s" % ws.workshop["status"])
+
+
+func _instant(sim: Simulation, type: String, near: Vector2i) -> Building:
+	var d := Defs.building(type)
+	for r in 30:
+		for y in range(near.y - r, near.y + r + 1):
+			for x in range(near.x - r, near.x + r + 1):
+				var ok := true
+				for dy in range(-1, int(d["size"]["h"]) + 1):
+					for dx in range(-1, int(d["size"]["w"]) + 1):
+						if not ok:
+							break
+						var t := sim.world.terrain(x + dx, y + dy)
+						var o := sim.world.obj(x + dx, y + dy)
+						ok = sim.world.explored(x + dx, y + dy) and sim.building_at(x + dx, y + dy) == null and (t == Tiles.GRASS or t == Tiles.MEADOW or t == Tiles.FOREST) and o != World.UNKNOWN and Tiles.blocks[o] == 0
+				if ok:
+					var b := BuildingOps.place(sim, type, x, y)
+					b.delivered = BuildingOps.cost_of(b).duplicate()
+					BuildingOps.complete(sim, b, true)
+					return b
+	return null
+
+
+func test_wheat_is_milled_and_baked_with_every_unit_accounted_for() -> void:
+	var sim := NewGame.create(606)
+	sim.reached.append("hamlet")
+	SimHelpers.camp(sim).inventory = {"food": 60, "wood": 60, "stone": 20, "wheat": 30}
+	var mill := _instant(sim, "mill", Vector2i(5, -4))
+	var bakery := _instant(sim, "bakery", Vector2i(-5, -5))
+	var miller := sim.settlers[3]
+	var baker := sim.settlers[4]
+	check(bool(Commands.apply(sim, {"type": "assignWorker", "buildingId": mill.id, "ids": [miller.id]})["ok"]), "miller assigned")
+	check(bool(Commands.apply(sim, {"type": "assignWorker", "buildingId": bakery.id, "ids": [baker.id]})["ok"]), "baker assigned")
+	check(SimHelpers.run_until(sim, func() -> bool: return int(sim.stats["bakedFood"]) >= 10, Defs.DAY_TICKS * 2) >= 0, "bread baked")
+	check(int(sim.stats["flourMilled"]) > 0, "flour milled")
+	check_eq(SimHelpers.accounted_for(sim, "wheat") + SimHelpers.consumed_by_crafting(sim, "wheat"), 30 + int(sim.stats["wheatHarvested"]), "wheat accounted for")
+	check_eq(SimHelpers.accounted_for(sim, "flour") + SimHelpers.consumed_by_crafting(sim, "flour"), int(sim.stats["flourMilled"]), "flour accounted for")
+	check_eq(SimHelpers.accounted_for(sim, "wood") + SimHelpers.consumed_by_crafting(sim, "wood"), 60 + int(sim.stats["woodGathered"]), "wood accounted for")
+	check_eq(SimHelpers.reservation_problems(sim), PackedStringArray(), "reservations and goods in transit")
+
+
+func test_wheat_fields_yield_wheat_not_food() -> void:
+	var sim := NewGame.create(707)
+	Commands.apply(sim, {"type": "placeArea", "building": "field", "x0": -9, "y0": 3, "x1": -7, "y1": 5, "crop": "wheat"})
+	check(SimHelpers.run_until(sim, func() -> bool: return int(sim.stats["wheatHarvested"]) > 0, Defs.DAY_TICKS * 3) >= 0, "wheat harvested")
+	check_eq(int(sim.stats["harvested"]), 0, "no food from wheat")
+	check(SimHelpers.run_until(sim, func() -> bool: return int(sim.totals()["wheat"]) > 0, 600) >= 0, "wheat in storage")
+
+
+func test_worker_limits_and_stopped_production_are_explained() -> void:
+	var sim := NewGame.create(808)
+	sim.reached.append("hamlet")
+	SimHelpers.camp(sim).inventory = {"food": 60}
+	var mill := _instant(sim, "mill", Vector2i(5, -4))
+	for s in sim.settlers:
+		s.has_priorities = true
+		s.priorities = ["build", "haul", "farm", "gather"]
+	SimHelpers.run(sim, 20)
+	check(str(mill.workshop["status"]).contains("No worker"), "status: %s" % mill.workshop["status"])
+	var a := sim.settlers[3]
+	var b := sim.settlers[4]
+	check(bool(Commands.apply(sim, {"type": "assignWorker", "buildingId": mill.id, "ids": [a.id]})["ok"]), "first worker")
+	var second := Commands.apply(sim, {"type": "assignWorker", "buildingId": mill.id, "ids": [b.id]})
+	check(not bool(second["ok"]) and str(second["message"]).contains("1/1 worker"), "second refused: %s" % second["message"])
+	SimHelpers.run(sim, 20)
+	check(str(mill.workshop["status"]).contains("Needs 3 wheat — none in storage"), "status: %s" % mill.workshop["status"])

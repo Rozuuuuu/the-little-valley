@@ -11,6 +11,8 @@ extends Node2D
 
 const TICK_MS := 100.0
 const MAX_STEPS_PER_FRAME := 8
+## Simulation time allowed per frame (ms) before the rest of a tick waits for the next frame.
+const SIM_BUDGET_MS := 6.0
 const LONG_PRESS := 0.4
 
 var sim: Simulation
@@ -37,6 +39,9 @@ var drag_box := Rect2()
 var markers: Array[Dictionary] = []
 
 var _acc := 0.0
+## Time spent this frame in the simulation and in updating the view (ms), for benchmarks.
+var last_sim_ms := 0.0
+var last_view_ms := 0.0
 var _drag_start: Variant = null
 var _autosave_at := 0.0
 var _touches := {}
@@ -94,16 +99,67 @@ func _capture(opts: Dictionary) -> void:
 	if not sim.settlers.is_empty():
 		selected = [sim.settlers[0].id]
 	camera.target_zoom = float(opts.get("zoom", "0.6"))
+	view.sway_enabled = opts.get("sway", "1") != "0"
+	view.ground_visible = opts.get("ground", "1") != "0"
 	camera.zoom = Vector2.ONE * camera.target_zoom
 	if opts.has("x"):
 		camera.position = Vector2(float(opts["x"]), float(opts["y"])) * WorldView.TILE_PX
 		camera.target_pos = camera.position
 	for i in 20:
 		await get_tree().process_frame
+	if opts.has("frames"):
+		await _frame_benchmark(int(opts["frames"]))
 	var img := get_viewport().get_texture().get_image()
 	img.save_png(str(opts["shot"]))
 	print("captured %s (%dx%d), %d settlers, tick %d" % [opts["shot"], img.get_width(), img.get_height(), sim.settlers.size(), sim.tick])
 	get_tree().quit()
+
+
+## Plays normally for `n` frames with vsync off, panning slowly, and prints frame-time
+## percentiles, draw calls and memory (the Phase 3 frame benchmark).
+func _frame_benchmark(n: int) -> void:
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+	Engine.max_fps = 0
+	var times: Array[float] = []
+	var sim_total := 0.0
+	var view_total := 0.0
+	var proc_total := 0.0
+	var rcpu_total := 0.0
+	var rgpu_total := 0.0
+	var vp := get_viewport().get_viewport_rid()
+	RenderingServer.viewport_set_measure_render_time(vp, true)
+	var last := Time.get_ticks_usec()
+	var start_pos := camera.target_pos
+	for i in n:
+		camera.target_pos = start_pos + Vector2(sin(i / 90.0), cos(i / 130.0)) * 600.0
+		await get_tree().process_frame
+		var now := Time.get_ticks_usec()
+		times.append((now - last) / 1000.0)
+		sim_total += last_sim_ms
+		view_total += last_view_ms
+		proc_total += Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
+		rcpu_total += RenderingServer.viewport_get_measured_render_time_cpu(vp) + RenderingServer.get_frame_setup_time_cpu()
+		rgpu_total += RenderingServer.viewport_get_measured_render_time_gpu(vp)
+		last = now
+	times.sort()
+	var q := func(p: float) -> float: return times[mini(times.size() - 1, floori(times.size() * p))]
+	var total := 0.0
+	for t in times:
+		total += t
+	print("FRAMES %s" % JSON.stringify({
+		"settlers": sim.settlers.size(), "frames": n, "avgMs": snappedf(total / n, 0.01), "p50": snappedf(q.call(0.5), 0.01),
+		"p95": snappedf(q.call(0.95), 0.01), "p99": snappedf(q.call(0.99), 0.01), "max": snappedf(times[times.size() - 1], 0.01),
+		"fps": snappedf(1000.0 / (total / n), 0.1),
+		"simMsPerFrame": snappedf(sim_total / n, 0.01), "viewMsPerFrame": snappedf(view_total / n, 0.01),
+		"processMs": snappedf(proc_total / n, 0.01), "renderCpuMs": snappedf(rcpu_total / n, 0.01), "renderGpuMs": snappedf(rgpu_total / n, 0.01),
+		"sway": view.sway_enabled, "ground": view.ground_visible,
+		"drawCalls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
+		"objects": Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME),
+		"nodes": Performance.get_monitor(Performance.OBJECT_NODE_COUNT),
+		"staticMemMB": snappedf(Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0, 0.1),
+		"videoMemMB": snappedf(Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0, 0.1),
+		"gpu": RenderingServer.get_video_adapter_name(),
+	}))
 
 
 ## Places each building at the first valid spot near the hall (capture scenes only).
@@ -193,20 +249,18 @@ func save_now(label: String = "") -> void:
 func _process(delta: float) -> void:
 	if sim == null:
 		return
+	var t_sim := Time.get_ticks_usec()
 	if not paused and not hud.blocking():
 		_acc += delta * 1000.0 * speed
-		var steps := 0
-		while _acc >= TICK_MS and steps < MAX_STEPS_PER_FRAME * speed:
-			sim.step()
-			_acc -= TICK_MS
-			steps += 1
-		if steps >= MAX_STEPS_PER_FRAME * speed:
-			_acc = 0.0
+		_run_ticks(t_sim)
 		for e in sim.drain_events():
 			_on_event(e)
-	var alpha := clampf(_acc / TICK_MS, 0.0, 1.0)
+	var t_view := Time.get_ticks_usec()
+	last_sim_ms = (t_view - t_sim) / 1000.0
+	var alpha := clampf(_acc / TICK_MS, 0.0, 1.0) if sim.slice_next == -1 else 1.0
 	view.motion = settings.motion()
 	view.refresh(alpha, camera.view_rect(), delta)
+	last_view_ms = (Time.get_ticks_usec() - t_view) / 1000.0
 	for id: int in view.settler_views:
 		var v: SettlerView = view.settler_views[id]
 		v.selected = selected.has(id)
@@ -214,6 +268,34 @@ func _process(delta: float) -> void:
 	hud.refresh(delta)
 	if settings.autosave_minutes > 0 and Time.get_ticks_msec() / 1000.0 > _autosave_at:
 		save_now()
+
+
+## Runs due ticks in slices: each settler slice is a share of the tick spread over the frames the
+## tick lasts, and work stops for this frame once SIM_BUDGET_MS is spent (at least one slice).
+## If the simulation falls far behind (a slow device at 4×), the backlog is dropped instead of
+## freezing the game.
+func _run_ticks(started_usec: int) -> void:
+	var frames_per_tick := maxf(1.0, TICK_MS / (1000.0 / maxf(1.0, Engine.get_frames_per_second())) / speed)
+	var slice := maxi(8, ceili(sim.settlers.size() / frames_per_tick))
+	var done_ticks := 0
+	while true:
+		if sim.slice_next == -1:
+			if _acc < TICK_MS or done_ticks >= MAX_STEPS_PER_FRAME * speed:
+				break
+			sim.begin_tick()
+		var n := sim.settlers.size()
+		while sim.slice_next < n:
+			sim.update_settlers(sim.slice_next, sim.slice_next + slice)
+			# Behind schedule (more than a tick due): finish this tick whatever it costs.
+			if _acc < TICK_MS * 2.0 and (Time.get_ticks_usec() - started_usec) / 1000.0 > SIM_BUDGET_MS:
+				return
+		sim.end_tick()
+		_acc -= TICK_MS
+		done_ticks += 1
+		if (Time.get_ticks_usec() - started_usec) / 1000.0 > SIM_BUDGET_MS and _acc < TICK_MS * 2.0:
+			break
+	if _acc > TICK_MS * MAX_STEPS_PER_FRAME * speed:
+		_acc = 0.0
 
 
 func _on_event(e: Dictionary) -> void:
@@ -394,12 +476,17 @@ func click_select(screen: Vector2, additive: bool) -> void:
 		selected_building = b.id
 
 
-## The smart order: gather a resource under the cursor, otherwise walk there.
+## The smart order: work at a building under the cursor, gather a resource there, otherwise walk.
 func order_at(tile: Vector2i) -> void:
 	if selected.is_empty():
 		return
 	var o := sim.world.obj(tile.x, tile.y)
 	var p := (Vector2(tile) + Vector2(0.5, 0.5)) * WorldView.TILE_PX
+	var b := sim.building_at(tile.x, tile.y)
+	if b != null:
+		if bool(command({"type": "work", "ids": selected.duplicate(), "buildingId": b.id})["ok"]):
+			markers.append({"p": p, "t": Time.get_ticks_msec() / 1000.0, "kind": "work"})
+		return
 	if o != World.UNKNOWN and Tiles.object_resource[o] != "" and sim.world.amount(tile.x, tile.y) > 0:
 		if bool(command({"type": "gather", "ids": selected.duplicate(), "x": tile.x, "y": tile.y})["ok"]):
 			markers.append({"p": p, "t": Time.get_ticks_msec() / 1000.0, "kind": "work"})
