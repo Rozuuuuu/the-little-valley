@@ -7,7 +7,7 @@ class_name SettlerBrain
 ##      when exhausted
 ##   2. [children, soldiers]; Stop and Hold; [the ruler, learning a role, council posts]
 ##   3. the focus left by a direct gather order (keep working the same kind nearby)
-##   4. [the chief, travellers]; [the assigned work area]
+##   4. [the chief, travellers]; the assigned work area (its kind of work, inside it)
 ##   5. the work order (the settler's own, or their job's): build, haul, farm, gather, craft
 ##   6. otherwise idle, with the most relevant reason, and a short back-off before looking again
 ## Bracketed steps arrive with their systems.
@@ -64,6 +64,14 @@ static func assign_task(sim: Simulation, s: Settler) -> void:
 			return
 		s.focus = {}
 	var reason := ""
+	var area := sim.area(s.area_id)
+	if area != null:
+		var ra: Variant = find_area_work(sim, s, area, hands_full)
+		if ra is Task:
+			_start(sim, s, ra, wandering)
+			return
+		if ra is String:
+			reason = ra
 	var order := effective_priorities(s)
 	for kind in order:
 		if hands_full and kind != "farm" and kind != "build":
@@ -78,7 +86,7 @@ static func assign_task(sim: Simulation, s: Settler) -> void:
 		reason = "Storage is full — build a storehouse"
 	if s.hunger < EAT_THRESHOLD:
 		reason = "Hungry, but there is no food in storage"
-	if order.is_empty():
+	if order.is_empty() and area == null:
 		reason = "Every kind of work is switched off in their work order"
 	s.idle_reason = reason if reason != "" else "Nothing to do"
 	# Nothing to do rarely changes within a second: look again a little later.
@@ -150,12 +158,12 @@ static func _dist(s: Settler, x: float, y: float) -> float:
 
 # ---- build ------------------------------------------------------------------------------------
 
-static func _find_build(sim: Simulation, s: Settler) -> Variant:
+static func _find_build(sim: Simulation, s: Settler, area: WorkArea = null) -> Variant:
 	var best: Building = null
 	var best_slot := -1
 	var best_d := INF
 	for b: Building in sim.sites():
-		if not BuildingOps.materials_complete(b):
+		if not BuildingOps.materials_complete(b) or (area != null and not area.overlaps(b.x, b.y, b.w, b.h)):
 			continue
 		if sim.is_unreachable(s, Simulation.T_BUILDING + b.id):
 			continue
@@ -180,18 +188,25 @@ static func _find_build(sim: Simulation, s: Settler) -> Variant:
 
 # ---- haul -----------------------------------------------------------------------------------------
 
-## Goods construction sites and stocked stores still need: [{dst, res, need, priority, supply}].
-static func haul_needs(sim: Simulation) -> Array[Dictionary]:
+## Goods construction sites and stocked stores still need: [{dst, res, need, priority, supply}],
+## only for buildings overlapping `area` when one is given.
+static func haul_needs(sim: Simulation, area: WorkArea = null) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for b: Building in sim.sites():
+		if area != null and not area.overlaps(b.x, b.y, b.w, b.h):
+			continue
 		for e in Defs.cost_entries(b.type):
 			var need: int = int(e[1]) - int(b.delivered.get(e[0], 0)) - int(b.incoming.get(e[0], 0))
 			if need > 0:
 				out.append({"dst": b, "res": e[0], "need": need, "priority": 0, "supply": false})
 	for b: Building in sim.workshops():
+		if area != null and not area.overlaps(b.x, b.y, b.w, b.h):
+			continue
 		for n in Production.workshop_needs(sim, b):
 			out.append({"dst": b, "res": n["res"], "need": n["need"], "priority": 12, "supply": false})
 	for b: Building in sim.storages():
+		if area != null and not area.overlaps(b.x, b.y, b.w, b.h):
+			continue
 		if not b.wants.is_empty():
 			# Stock targets: keep this store supplied from others with a surplus.
 			var free := b.storage_capacity() - sim.storage_used(b) - Inv.total(b.incoming)
@@ -251,9 +266,9 @@ static func find_haul_for(sim: Simulation, s: Settler, dst: Building) -> Variant
 	return reason
 
 
-static func _find_haul(sim: Simulation, s: Settler) -> Variant:
+static func _find_haul(sim: Simulation, s: Settler, area: WorkArea = null) -> Variant:
 	var scored: Array[Array] = []
-	for n in haul_needs(sim):
+	for n in haul_needs(sim, area):
 		var dst: Building = n["dst"]
 		if sim.is_unreachable(s, Simulation.T_BUILDING + dst.id):
 			continue
@@ -272,7 +287,7 @@ static func _find_haul(sim: Simulation, s: Settler) -> Variant:
 
 # ---- farm -----------------------------------------------------------------------------------------
 
-static func _find_farm(sim: Simulation, s: Settler) -> Variant:
+static func _find_farm(sim: Simulation, s: Settler, area: WorkArea = null) -> Variant:
 	var best: Building = null
 	var best_score := INF
 	var action: StringName = &""
@@ -280,6 +295,8 @@ static func _find_farm(sim: Simulation, s: Settler) -> Variant:
 	var best_orchard: Building = null
 	var orchard_job: StringName = &""
 	for b: Building in sim.orchards():
+		if area != null and not area.overlaps(b.x, b.y, b.w, b.h):
+			continue
 		any_fields = true
 		var oa := Orchards.action(sim, b)
 		if oa == &"" or (oa == &"pick" and s.carrying()):
@@ -292,6 +309,8 @@ static func _find_farm(sim: Simulation, s: Settler) -> Variant:
 			best_orchard = b
 			orchard_job = oa
 	for b: Building in sim.fields():
+		if area != null and not area.contains(b.x, b.y):
+			continue
 		any_fields = true
 		var a := Farming.field_action(sim, b.field)
 		if a == &"" or (a == &"harvest" and s.carrying()):
@@ -311,6 +330,8 @@ static func _find_farm(sim: Simulation, s: Settler) -> Variant:
 	if best == null:
 		if any_fields and sim.season()["id"] == "winter":
 			return "Winter: the fields rest until spring"
+		if area != null:
+			return "Fields in %s are growing — nothing to tend" % area.name if any_fields else "%s has no fields — place some inside it" % area.name
 		var first := effective_priorities(s)
 		if not first.is_empty() and first[0] == "farm":
 			return "Fields are growing — nothing to tend" if any_fields else "No fields yet — place some from the Build menu"
@@ -406,6 +427,68 @@ static func _find_gather(sim: Simulation, s: Settler) -> Variant:
 		if t.x != -99999:
 			return _object_task(sim, s, t.x, t.y)
 	return "Nothing left to gather near storage — mark resources with the Harvest tool"
+
+
+# ---- work areas -----------------------------------------------------------------------------------
+
+## Work inside the settler's assigned area: a Task, a reason String, or null.
+static func find_area_work(sim: Simulation, s: Settler, area: WorkArea, hands_full: bool) -> Variant:
+	match area.kind:
+		"farm":
+			return _find_farm(sim, s, area)
+		"wood", "stone":
+			return null if hands_full else _find_area_gather(sim, s, area, area.kind)
+		"forage":
+			return null if hands_full else _find_area_gather(sim, s, area, "food")
+		"hunt":
+			return "Hunting grounds wait for the animals, which come in a later version"
+		"build":
+			var b: Variant = _find_build(sim, s, area)
+			if b is Task:
+				return b
+			if not hands_full:
+				var h: Variant = _find_haul(sim, s, area)
+				if h is Task or (h is String and h != ""):
+					return h
+			return "No construction in %s" % area.name
+	return null
+
+
+## The nearest object of a resource inside an area (row by row, the first of equals), found
+## through the resource index; or why there is none.
+static func _find_area_gather(sim: Simulation, s: Settler, area: WorkArea, res: String) -> Variant:
+	if sim.nearest_storage_with_space(s.x, s.y) == null:
+		return "Storage is full — build a storehouse"
+	var best_k := -1
+	var best_d := INF
+	var any := 0
+	var unreachable := 0
+	var ix: TileSetIndex = sim.resource_index.get(res)
+	var keys: Array[int] = ix.keys_in(area.rect()) if ix != null else ([] as Array[int])
+	for k in keys:
+		var x := Simulation.key_x(k)
+		var y := Simulation.key_y(k)
+		if sim.world.amount(x, y) <= 0 or not sim.world.explored(x, y):
+			continue
+		any += 1
+		if sim.is_unreachable(s, Simulation.T_OBJECT + k):
+			unreachable += 1
+			continue
+		if sim.is_reserved(Simulation.K_OBJ + k, s.id):
+			continue
+		var d := JsMath.hypot(x + 0.5 - s.x, y + 0.5 - s.y)
+		if d < best_d or (d == best_d and (y < Simulation.key_y(best_k) or (y == Simulation.key_y(best_k) and x < Simulation.key_x(best_k)))):
+			best_d = d
+			best_k = k
+	if best_k != -1:
+		return _object_task(sim, s, Simulation.key_x(best_k), Simulation.key_y(best_k))
+	var noun := "trees" if res == "wood" else ("berries" if res == "food" else "rocks")
+	if any == 0:
+		var hint := "the saplings are growing back, or " if res == "wood" else ("the bushes will fruit again, or " if res == "food" else "")
+		return "No %s left in %s — %sredraw the area" % [noun, area.name, hint]
+	if unreachable == any:
+		return "Can't reach the %s in %s — a path may be blocked" % [noun, area.name]
+	return "Every %s in %s already has a worker" % ["tree" if res == "wood" else ("bush" if res == "food" else "rock"), area.name]
 
 
 static func _find_focus(sim: Simulation, s: Settler) -> Task:

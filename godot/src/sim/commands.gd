@@ -5,7 +5,8 @@ class_name Commands
 ##
 ## Ported: move, gather, work, place, placeArea, remove, designate, setJob, setPriorities, setCrop,
 ## setRecipe, toggleWorkshop, assignWorker, unassignWorker, stop, hold, returnGoods,
-## formHousehold, requestChild, cancelChildRequest, adoptDeliberateGrowth, acceptRecruit, cancelRecruit.
+## formHousehold, requestChild, cancelChildRequest, adoptDeliberateGrowth, acceptRecruit, cancelRecruit,
+## createArea, updateArea, deleteArea, assignArea.
 ## Others report that they are not available yet.
 
 const MAX_AREA := 40 * 40
@@ -73,7 +74,7 @@ static func _replan(sim: Simulation, s: Settler) -> void:
 	if s.task == null:
 		return
 	var k := s.task.kind
-	if k == Task.GATHER or k == Task.FARM or k == Task.BUILD or (k == Task.HAUL and s.task.stage == &"toSrc"):
+	if k == Task.GATHER or k == Task.FARM or k == Task.BUILD or k == Task.CRAFT or (k == Task.HAUL and s.task.stage == &"toSrc"):
 		SettlerTasks.abort_task(sim, s)
 
 
@@ -276,6 +277,26 @@ static func _apply(sim: Simulation, cmd: Dictionary) -> Dictionary:
 
 		"work":
 			return _work(sim, cmd)
+
+		"createArea":
+			return _create_area(sim, cmd)
+
+		"updateArea":
+			return _update_area(sim, cmd)
+
+		"deleteArea":
+			var a := sim.area(int(cmd.get("areaId", -1)) if _is_int(cmd.get("areaId")) else -1)
+			if a == null:
+				return _err("That work area is gone")
+			sim.work_areas.erase(a)
+			for s in sim.settlers:
+				if s.area_id == a.id:
+					s.area_id = -1
+					_replan(sim, s)
+			return _ok("Removed %s. Its settlers went back to their usual work." % a.name)
+
+		"assignArea":
+			return _assign_area(sim, cmd)
 
 		"formHousehold":
 			return People.form_household(sim, cmd.get("ids"))
@@ -508,3 +529,129 @@ static func _crop_of(cmd: Dictionary) -> String:
 		return "turnip"
 	var c: Variant = cmd["crop"]
 	return str(c) if c != null and Defs.is_crop(str(c)) else ""
+
+
+# ---- work areas ---------------------------------------------------------------------------------
+
+## Why a rectangle can't be a work area, or "".
+static func _area_rect_problem(sim: Simulation, r: Variant) -> String:
+	if not r is Dictionary or not _rect_ok(r):
+		return "Invalid area"
+	var rect := _rect(r)
+	if rect.get_area() > MAX_AREA:
+		return "That area is too large (40×40 tiles at most)"
+	for y in range(rect.position.y, rect.end.y):
+		for x in range(rect.position.x, rect.end.x):
+			if sim.world.explored(x, y):
+				return ""
+	return "Explore this area first"
+
+
+static func _area_crop(sim: Simulation, c: Variant) -> String:
+	if c == null or not Defs.is_crop(str(c)) or not BuildingOps.is_unlocked(sim, Defs.crop(str(c)).get("unlock")):
+		return ""
+	return str(c)
+
+
+static func _set_rect(a: WorkArea, r: Dictionary) -> void:
+	var rect := _rect(r)
+	a.x0 = rect.position.x
+	a.y0 = rect.position.y
+	a.x1 = rect.end.x - 1
+	a.y1 = rect.end.y - 1
+
+
+static func _create_area(sim: Simulation, cmd: Dictionary) -> Dictionary:
+	var kind := str(cmd.get("kind", ""))
+	if not WorkArea.KINDS.has(kind):
+		return _err("Unknown kind of area")
+	var bad := _area_rect_problem(sim, cmd)
+	if bad != "":
+		return _err(bad)
+	var n := 1
+	for other in sim.work_areas:
+		if other.kind == kind:
+			n += 1
+	var a := WorkArea.new()
+	a.id = sim.alloc_id()
+	a.kind = kind
+	var given: String = str(cmd["name"]).strip_edges().left(30) if cmd.get("name") is String else ""
+	a.name = given if given != "" else "%s %d" % [WorkArea.LABELS[kind]["noun"], n]
+	_set_rect(a, cmd)
+	if _is_int(cmd.get("wanted")) and int(cmd["wanted"]) > 0:
+		a.wanted = mini(WorkArea.MAX_WORKERS, int(cmd["wanted"]))
+	if kind == "farm":
+		a.crop = _area_crop(sim, cmd.get("crop"))
+	sim.work_areas.append(a)
+	if a.crop != "":
+		Areas.lay_out_fields(sim, a)
+	sim.emit({"type": "important"})
+	var res := _ok("Created %s. %d free settlers will head there on their own." % [a.name, a.wanted] if a.wanted > 0 else "Created %s. Assign settlers to it from the Areas window." % a.name)
+	res["id"] = a.id
+	return res
+
+
+static func _update_area(sim: Simulation, cmd: Dictionary) -> Dictionary:
+	var a := sim.area(int(cmd["areaId"]) if _is_int(cmd.get("areaId")) else -1)
+	if a == null:
+		return _err("That work area is gone")
+	if cmd.get("rect") != null:
+		var bad := _area_rect_problem(sim, cmd["rect"])
+		if bad != "":
+			return _err(bad)
+		_set_rect(a, cmd["rect"])
+	if WorkArea.KINDS.has(str(cmd.get("kind", ""))):
+		a.kind = str(cmd["kind"])
+	if cmd.has("wanted"):
+		var w: Variant = cmd["wanted"]
+		if w == null or (_is_int(w) and int(w) == 0):
+			a.wanted = -1
+		elif _is_int(w) and int(w) > 0:
+			a.wanted = mini(WorkArea.MAX_WORKERS, int(w))
+	if cmd.has("crop"):
+		if cmd["crop"] == null:
+			a.crop = ""
+		elif _area_crop(sim, cmd["crop"]) != "":
+			a.crop = _area_crop(sim, cmd["crop"])
+	if a.kind == "farm" and a.crop != "":
+		Areas.lay_out_fields(sim, a)
+	if cmd.get("name") is String and str(cmd["name"]).strip_edges() != "":
+		a.name = str(cmd["name"]).strip_edges().left(30)
+	for s in sim.settlers:
+		if s.area_id == a.id:
+			_replan(sim, s)
+	return _ok()
+
+
+static func _assign_area(sim: Simulation, cmd: Dictionary) -> Dictionary:
+	var picked: Variant = _pick_workers(sim, cmd.get("ids"), "work in an area")
+	if picked is String:
+		return _err(picked)
+	var list: Array = picked
+	if cmd.get("areaId") == null:
+		for s: Settler in list:
+			s.area_id = -1
+			_replan(sim, s)
+		return _ok()
+	var a := sim.area(int(cmd["areaId"]) if _is_int(cmd.get("areaId")) else -1)
+	if a == null:
+		return _err("That work area is gone")
+	var count := Areas.crew_of(sim, a.id).size()
+	var added := 0
+	for s: Settler in list:
+		if s.area_id == a.id:
+			continue
+		if count >= WorkArea.MAX_WORKERS:
+			break
+		s.area_id = a.id
+		_replan(sim, s)
+		count += 1
+		added += 1
+	var skipped := 0
+	for s: Settler in list:
+		if s.area_id != a.id:
+			skipped += 1
+	var cap := WorkArea.MAX_WORKERS
+	if added == 0 and skipped > 0:
+		return _err("%s already has %d/%d workers" % [a.name, cap, cap])
+	return _ok("%d settler%s now work in %s (%d/%d).%s" % [added, "" if added == 1 else "s", a.name, count, cap, " %d didn't fit." % skipped if skipped > 0 else ""])

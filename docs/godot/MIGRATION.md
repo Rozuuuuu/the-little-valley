@@ -144,8 +144,8 @@ Status: **Done** (ported and tested against the browser game), **Started**, **Pl
 | Pathfinding (local) | `sim/pathfinding.ts` | `src/sim/path/nav_window.gd` (AStarGrid2D); `grid_astar.gd`, `dense_astar.gd` as exact references | 80-search golden corpus, validity and optimality, replanning; benchmark | **Done** |
 | Pathfinding (long routes) | same A* | Coarse chunk graph over NavWindows | Benchmark long routes | Planned |
 | Simulation state and step order | `sim/Simulation.ts` | `src/sim/simulation.gd` | 15 tests ported from simulation.test.ts | **Done (slice)** |
-| Commands | `sim/commands.ts` | `src/sim/commands.gd`: move, gather, place, placeArea, remove, designate, setJob, setPriorities, setCrop, stop, hold, returnGoods | Slice tests | **Started** (12 of about 60) |
-| Settler brain, tasks, priorities | `sim/settlers.ts`, `priorities.ts` | `src/sim/settler_brain.gd`, `settler_tasks.gd`: needs, gather, deliver, haul, build, farm, eat, sleep, move, focus, stop/hold | Slice tests, interruption test | **Started** (no work areas, crafting, hunting, herding or roles yet) |
+| Commands | `sim/commands.ts` | `src/sim/commands.gd`: move, gather, work, place, placeArea, remove, designate, setJob, setPriorities, setCrop, setRecipe, toggleWorkshop, assignWorker, unassignWorker, stop, hold, returnGoods, household and recruit commands, createArea, updateArea, deleteArea, assignArea | Slice, production, people and area tests | **Started** (27 of about 60) |
+| Settler brain, tasks, priorities | `sim/settlers.ts`, `priorities.ts` | `src/sim/settler_brain.gd`, `settler_tasks.gd`: needs, gather, deliver, haul, build, farm, eat, sleep, move, focus, stop/hold | Slice tests, interruption test | **Started** (work areas and crafting done; hunting, herding, mining and roles to do) |
 | Reservations | `Simulation.reservations` | int keys in `simulation.gd` | `reservation_problems()` in tests | **Done** |
 | Spatial index | none | `src/sim/tile_set_index.gd`: harvest marks and harvestable objects | Slice tests; benchmark (48 to 4 ms per tick at 100) | **Done** (buildings and storage not indexed; not needed so far) |
 | Buildings, construction, levels | `sim/buildings.ts`, `levels.ts` | `src/sim/building_ops.gd`: place, complete, remove, homes, regrowth, paths, bridges | Construction and refund tests | **Started** (no upgrades, spans, workshops, pens or mines) |
@@ -154,8 +154,8 @@ Status: **Done** (ported and tested against the browser game), **Started**, **Pl
 | Production, workshops | `sim/buildings.ts` | `src/sim/production.gd`: recipes, fuel, two-batch buffering, worker assignment, status explanations; work, assignWorker, setRecipe, toggleWorkshop commands | Planks, idle explanation, wheat → flour → bread conservation, worker limits | **Done** (quarries and mines come with mining) |
 | Hauling, stock targets | `sim/settlers.ts` | `src/sim/settlers/` | Conservation, no shuttling | Planned |
 | Population, households, recruitment | `population.ts`, `households.ts`, `travelers.ts` | `src/sim/people.gd`: visitors and welcomed travellers with escrow, households, bed claims, births, children, legacy arrivals; People window | 15 ported tests (claims, births across saves, refunds, refusals) | **Done** (no 300 cap: a 5,000 safety ceiling, owner's decision) |
-| Progression, milestones | `progression.ts` | `src/sim/progression.gd` | Through slice and production tests | **Done** (requirements for unported systems read 0) |
-| Work areas | `areas.ts` | `src/sim/` | areas-auto port | Planned |
+| Progression, milestones | `progression.ts` | `src/sim/progression.gd` | Through slice, production and area tests | **Done** (staffed areas count; requirements for unported systems read 0) |
+| Work areas | `areas.ts` | `src/sim/areas.gd`, `work_area.gd`: farm, woodlot (replanting), quarry, building and forage areas; self-staffing to a wanted number; farm areas laying out their own fields; createArea, updateArea, deleteArea, assignArea; Areas window (F3) and area drawing; saved | 11 tests ported from village.test.ts and areas-auto.test.ts | **Done** (hunting grounds are kept but idle until animals; the ruler, soldiers and councillors join the "not free" rule with their systems) |
 | Ruler, chief, roles, training | `ruler.ts`, `roles.ts` | `src/sim/people/` | roles/townhall ports | Planned |
 | Animals, hunting, herding | `animals.ts` | `src/sim/` | animals, hunting ports | Planned |
 | Mining, quarries | `mining.ts` | `src/sim/` | mining port | Planned |
@@ -170,7 +170,7 @@ Status: **Done** (ported and tested against the browser game), **Started**, **Pl
 | Art | code-drawn pixel sprites | `scripts/art/*` → 144 provisional SVG sprites; `docs/godot/ART_STYLE.md` | Contact sheets (`tools/art_sheet.gd`), screenshots | **Started** (provisional; animals, orchards, pens, military still to draw) |
 | Animation, effects | `particles.ts`, renderer | `src/presentation/fx/` | Frame benchmarks, reduced motion | Planned |
 | Input and bindings, touch | `input/*` | `src/ui/game.gd`, `camera_rig.gd`: mouse, keys, edge pan, touch tap, pan, pinch and box | Manual | **Started** (remapping UI to do) |
-| HUD, windows, tutorial, Valley today | React `ui/*`, `engine/*` | `src/ui/hud.gd`: title, top bar, selection, command card, toasts, menu with save points and settings | Screenshots | **Started** (People/Areas/Families windows, tutorial, Valley today to do) |
+| HUD, windows, tutorial, Valley today | React `ui/*`, `engine/*` | `src/ui/hud.gd`: title, top bar, selection, command card, toasts, menu with save points and settings | Screenshots | **Started** (People and Areas windows done; Families window, tutorial, Valley today to do) |
 | Settings | `engine/settings.ts` | `src/ui/settings.gd` (ConfigFile): reduced motion, effects, interface size, edge scroll, autosave | Manual | **Done** |
 | Audio | WebAudio synth | AudioStreamGenerator or rendered samples | Listening | Planned |
 | Asset Studio (new) | none | `src/ui/asset_studio/` | Pack round trip, size limits | Planned |

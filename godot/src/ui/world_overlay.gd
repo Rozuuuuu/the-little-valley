@@ -1,10 +1,13 @@
 class_name WorldOverlay
 extends Node2D
-## Planning and feedback drawn over the world: harvest marks, construction progress, the
+## Planning and feedback drawn over the world: work areas, harvest marks, construction progress, the
 ## placement ghost (mint when it fits, red and hatched when not, so colour is never the only cue),
 ## the drag box, the hovered tile and order markers.
 
 var game: Game
+var font: Font = load("res://fonts/AtkinsonHyperlegible-Bold.woff2")
+## Outline colours of work areas by kind (fill is the same, faint).
+const AREA_COLORS := {"farm": Color("#e3c26f"), "wood": Color("#7fc79a"), "stone": Color("#b9c6c4"), "build": Color("#e8a66a"), "hunt": Color("#d98a7a"), "forage": Color("#c49ad8")}
 
 
 func _ready() -> void:
@@ -17,6 +20,19 @@ func _draw() -> void:
 	var sim := game.sim
 	var T := WorldView.TILE_PX
 	var view := game.camera.view_rect().grow(T)
+	# Work areas: a faint fill, an outline and the name with the crew count, kept the same size on
+	# screen at any zoom.
+	var px := 1.0 / maxf(0.05, game.camera.zoom.x)
+	for a in sim.work_areas:
+		var r := Rect2(Vector2(a.x0, a.y0) * T, Vector2(a.x1 - a.x0 + 1, a.y1 - a.y0 + 1) * T)
+		if not r.intersects(view):
+			continue
+		var col: Color = AREA_COLORS.get(a.kind, WorldView.MINT)
+		var chosen := game.hud != null and game.hud.chosen_area == a.id
+		draw_rect(r, Color(col, 0.18 if chosen else 0.1))
+		draw_rect(r, Color(col, 1.0 if chosen else 0.85), false, (3.5 if chosen else 2.5) * px)
+		var label := "%s · %d" % [a.name, Areas.crew_of(sim, a.id).size()]
+		_label(r.position + Vector2(6, 20) * px, label, col, px)
 	# Harvest marks: a small gold diamond over each marked object.
 	var tiles := Rect2i(floori(view.position.x / T), floori(view.position.y / T), ceili(view.size.x / T) + 1, ceili(view.size.y / T) + 1)
 	for k: int in sim.designations.keys_in(tiles):
@@ -59,8 +75,20 @@ func _draw() -> void:
 				draw_line(r.end - Vector2(o, 0), r.end - Vector2(0, o), Color("#d9584f", 0.9), 2.0)
 	# Drag box.
 	if game.drag_box.has_area():
-		draw_rect(game.drag_box, Color(WorldView.MINT, 0.12))
-		draw_rect(game.drag_box, Color(WorldView.MINT, 0.9), false, 2.0)
+		if game.placing.begins_with("area:"):
+			# A new work area snaps to whole tiles.
+			var tr := game._tile_rect(game.drag_box)
+			var col: Color = AREA_COLORS.get(game.placing.substr(5), WorldView.MINT)
+			var too_big := tr.get_area() > Commands.MAX_AREA
+			if too_big:
+				col = Color("#d9584f")
+			var rr := Rect2(Vector2(tr.position) * T, Vector2(tr.size) * T)
+			draw_rect(rr, Color(col, 0.18))
+			draw_rect(rr, Color(col, 0.95), false, 2.5 * px)
+			_label(rr.end + Vector2(6, 0) * px, "%d×%d%s" % [tr.size.x, tr.size.y, " — too large" if too_big else ""], col, px)
+		else:
+			draw_rect(game.drag_box, Color(WorldView.MINT, 0.12))
+			draw_rect(game.drag_box, Color(WorldView.MINT, 0.9), false, 2.0)
 	# Order markers fade over 0.7 s.
 	var now := Time.get_ticks_msec() / 1000.0
 	for m: Dictionary in game.markers:
@@ -72,3 +100,11 @@ func _draw() -> void:
 		draw_set_transform(p, 0.0, Vector2(1.0, 0.5))
 		draw_arc(Vector2.ZERO, 10.0 + age * 30.0, 0.0, TAU, 24, Color(c, 1.0 - age / 0.7), 3.0, true)
 		draw_set_transform(Vector2.ZERO)
+
+
+## Text in world space drawn at a constant screen size (`px` world units per screen pixel).
+func _label(at: Vector2, text: String, col: Color, px: float) -> void:
+	draw_set_transform(at, 0.0, Vector2(px, px))
+	draw_string_outline(font, Vector2.ZERO, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, 5, Color(0.05, 0.16, 0.17, 0.92))
+	draw_string(font, Vector2.ZERO, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, col.lightened(0.35))
+	draw_set_transform(Vector2.ZERO)

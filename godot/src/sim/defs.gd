@@ -61,6 +61,14 @@ static func crop(id: String) -> Dictionary:
 	return all[id]
 
 
+## Crop ids in the browser game's order.
+static func crop_ids() -> Array[String]:
+	var out: Array[String] = []
+	for c: Variant in Content.get_value("crops", "CROP_IDS"):
+		out.append(str(c))
+	return out
+
+
 static func is_crop(id: String) -> bool:
 	var all: Dictionary = Content.get_value("crops", "CROPS")
 	return all.has(id)

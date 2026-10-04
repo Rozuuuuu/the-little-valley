@@ -12,6 +12,8 @@ const REVEAL_RADIUS := 6.5
 const RIVER_REVEAL_RADIUS := 12.0
 const WAKE_ENERGY := 60.0
 const STOP_TICKS := 40
+## A tree felled in a woodlot is a sapling again for this long, then grows back.
+const REPLANT_TICKS := roundi(Defs.DAY_TICKS * 0.75)
 
 const _GATHER_SFX := {"axe": "chop", "pick": "mine", "hand": "pick"}
 const _GATHER_FX := {"axe": "woodchips", "pick": "stonechips", "hand": "leaves"}
@@ -340,8 +342,12 @@ static func _run_gather(sim: Simulation, s: Settler, t: Task) -> void:
 		var depletes: int = od["depletesTo"]
 		sim.world.set_obj(t.x, t.y, depletes)
 		sim.designations.erase(Simulation.tile_key(t.x, t.y))
-		# Woodlot replanting comes with work areas.
-		BuildingOps.schedule_regrowth(sim, t.x, t.y)
+		# Woodlots are replanted at once: a sapling that grows back within a day.
+		if depletes == Tiles.O_STUMP and Areas.in_woodlot(sim, t.x, t.y):
+			sim.world.set_obj(t.x, t.y, Tiles.O_SAPLING)
+			sim.regrowth[Simulation.tile_key(t.x, t.y)] = [Tiles.O_OAK, sim.tick + REPLANT_TICKS]
+		else:
+			BuildingOps.schedule_regrowth(sim, t.x, t.y)
 		if depletes == Tiles.O_STUMP:
 			sim.emit({"type": "fx", "kind": "leaves", "x": t.x + 0.5, "y": float(t.y)})
 		abort_task(sim, s)

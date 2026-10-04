@@ -32,7 +32,8 @@ var paused := false
 var selected: Array[int] = []
 var selected_building := -1
 var hover_tile := Vector2i(-99999, 0)
-## Building type being placed, "mark"/"unmark" for harvest marks, or "".
+## Building type being placed, "mark"/"unmark" for harvest marks, "area:<kind>" for a new work
+## area, or "".
 var placing := ""
 var ghost_tiles: Array = []
 var drag_box := Rect2()
@@ -114,6 +115,9 @@ func _capture(opts: Dictionary) -> void:
 	Commands.apply(sim, {"type": "placeArea", "building": "field", "x0": 4, "y0": 4, "x1": 6, "y1": 6, "crop": "wheat"})
 	_place_near_hall(["house", "storehouse"])
 	Commands.apply(sim, {"type": "designate", "x0": -16, "y0": -16, "x1": 16, "y1": 16, "on": true})
+	if opts.get("areas", "0") == "1":
+		Commands.apply(sim, {"type": "createArea", "kind": "farm", "x0": -14, "y0": 8, "x1": -6, "y1": 13, "wanted": 2, "crop": "turnip"})
+		Commands.apply(sim, {"type": "createArea", "kind": "wood", "x0": 6, "y0": -14, "x1": 16, "y1": -6, "wanted": 2})
 	for i in int(opts.get("ticks", "600")):
 		sim.step()
 	sim.drain_events()
@@ -128,6 +132,8 @@ func _capture(opts: Dictionary) -> void:
 		camera.target_pos = camera.position
 	if opts.get("people", "0") == "1":
 		hud.toggle_people()
+	if opts.get("areas", "0") == "1":
+		hud.toggle_areas()
 	for i in 20:
 		await get_tree().process_frame
 	if opts.has("frames"):
@@ -421,7 +427,7 @@ func _pointer_moved(p: Vector2) -> void:
 
 func _update_ghost() -> void:
 	ghost_tiles = []
-	if placing == "" or hover_tile.x == -99999:
+	if placing == "" or hover_tile.x == -99999 or placing.begins_with("area:"):
 		return
 	if placing == "mark" or placing == "unmark" or Defs.building(placing).get("paint", false):
 		if drag_box.has_area():
@@ -470,6 +476,18 @@ func _primary_release(screen: Vector2, additive: bool) -> void:
 
 
 func _place(screen: Vector2, box: Rect2) -> void:
+	if placing.begins_with("area:"):
+		if not box.has_area():
+			return
+		var ar := _tile_rect(box)
+		var res := command({"type": "createArea", "kind": placing.substr(5), "x0": ar.position.x, "y0": ar.position.y, "x1": ar.end.x - 1, "y1": ar.end.y - 1})
+		if bool(res["ok"]):
+			# People selected while drawing go to work there.
+			if not selected.is_empty():
+				command({"type": "assignArea", "ids": selected.duplicate(), "areaId": res["id"]})
+			cancel_placing()
+			hud.show_areas()
+		return
 	if placing == "mark" or placing == "unmark":
 		var r := _tile_rect(box) if box.has_area() else Rect2i(_tile_at(screen), Vector2i.ONE)
 		command({"type": "designate", "x0": r.position.x, "y0": r.position.y, "x1": r.end.x - 1, "y1": r.end.y - 1, "on": placing == "mark"})
@@ -569,6 +587,8 @@ func _key(k: InputEventKey) -> void:
 			save_now()
 		KEY_F2:
 			hud.toggle_people()
+		KEY_F3:
+			hud.toggle_areas()
 		KEY_E:
 			selected.clear()
 			for s in sim.settlers:

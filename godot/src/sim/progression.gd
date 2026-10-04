@@ -3,7 +3,7 @@ class_name Progression
 ## content/progression.json, checked every GROWTH_STEP ticks (src/game/sim/progression.ts).
 ## Reached milestones are never removed.
 ##
-## Requirement kinds that belong to systems not yet ported (work areas, several settlements,
+## Requirement kinds that belong to systems not yet ported (several settlements,
 ## roads between them, the crown, treaties) report their progress as 0, which is true of a world
 ## without those systems.
 
@@ -38,6 +38,7 @@ static func requirement_progress(sim: Simulation, req: Dictionary) -> Dictionary
 					current += b.beds()
 			label = "Have %d beds in real homes (not hall bunks or bedrolls)" % target
 		"staffedAreas":
+			current = Areas.staffed_count(sim)
 			label = "Run %d work areas with settlers assigned" % target
 		"anyOf":
 			var options: Array[Dictionary] = []

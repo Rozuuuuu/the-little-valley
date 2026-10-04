@@ -51,6 +51,7 @@ var designations := TileSetIndex.new()
 var reservations := {}
 ## Tile key -> [object id it becomes, tick].
 var regrowth := {}
+var work_areas: Array[WorkArea] = []
 ## Target key -> [until tick, x, y] of the failed search (shared notes). Transient.
 var shared_unreachable := {}
 var _unreachable_count := {}
@@ -312,6 +313,15 @@ func wake_idle() -> void:
 func alloc_id() -> int:
 	next_id += 1
 	return next_id - 1
+
+
+func area(id: int) -> WorkArea:
+	if id == -1:
+		return null
+	for a in work_areas:
+		if a.id == id:
+			return a
+	return null
 
 
 func settler(id: int) -> Settler:
@@ -626,6 +636,8 @@ func end_tick() -> void:
 	slice_next = -1
 	if tick % 10 == 0:
 		Production.update_workshops(self)
+	if tick % Areas.AREA_STEP == 0:
+		Areas.update(self)
 	# Where each settler stood at the start and end of this tick, for drawing between ticks.
 	for s in settlers:
 		s.rpx = s.px

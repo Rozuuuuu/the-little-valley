@@ -88,7 +88,7 @@ static func encode(sim: Simulation, save_name: String, created_at: int, view: Di
 			"settlers": settlers, "buildings": buildings, "designations": designations, "regrowth": regrowth,
 			"stats": sim.stats.duplicate(), "reached": sim.reached.duplicate(),
 			"weather": {"raining": sim.raining, "nextChange": sim.weather_next_change},
-			"workAreas": [], "chronicle": sim.chronicle.duplicate(true),
+			"workAreas": sim.work_areas.map(func(a: WorkArea) -> Dictionary: return a.to_json()), "chronicle": sim.chronicle.duplicate(true),
 			"session": sim.session.duplicate(true) if not sim.session.is_empty() else null,
 			"settlements": sim.settlements.duplicate(true),
 			# Systems not in this version yet, written empty so the layout stays complete.
@@ -283,9 +283,15 @@ static func decode(save: Variant) -> Dictionary:
 		s.household_id = int(sv["householdId"]) if sv.get("householdId") != null else -1
 		s.side_job = str(sv.get("sideJob", "")) if sv.get("sideJob") != null else ""
 		s.hold = bool(sv.get("hold", false))
+		s.area_id = int(sv["areaId"]) if sv.get("areaId") != null else -1
 		s.capacity = Simulation.SETTLER_CAPACITY
 		sim._add_settler_object(s)
 
+	for ad: Dictionary in sd.get("workAreas", []):
+		sim.work_areas.append(WorkArea.from_json(ad))
+	for s in sim.settlers:
+		if s.area_id != -1 and sim.area(s.area_id) == null:
+			s.area_id = -1
 	for p: Array in sd.get("designations", []):
 		sim.designations.add(Simulation.tile_key(int(p[0]), int(p[1])))
 	for r: Array in sd.get("regrowth", []):
@@ -351,6 +357,20 @@ static func validate(d: Dictionary) -> PackedStringArray:
 		if k >= int(sd["nextId"]):
 			out.append("id %d is not below nextId %d" % [k, int(sd["nextId"])])
 			break
+	if sd.has("workAreas") and not sd["workAreas"] is Array:
+		out.append("the work areas are damaged")
+	for av: Variant in (sd.get("workAreas", []) if sd.get("workAreas") is Array else []):
+		var ad: Dictionary = av if av is Dictionary else {}
+		var bounds_ok := true
+		for k: String in ["id", "x0", "y0", "x1", "y1"]:
+			if not (ad.get(k) is int or ad.get(k) is float):
+				bounds_ok = false
+		if not bounds_ok or not ad.get("name") is String or not WorkArea.KINDS.has(str(ad.get("kind", ""))):
+			out.append("a work area is damaged")
+		elif ad.get("wanted") != null and int(ad["wanted"]) < 0:
+			out.append("work area %d wants a negative number of workers" % int(ad["id"]))
+		elif ad.get("crop") != null and not Defs.is_crop(str(ad["crop"])):
+			out.append("work area %d has an unknown crop" % int(ad["id"]))
 	for st: Variant in sd.get("settlements", []):
 		if not building_ids.has(int((st as Dictionary).get("id", -1))):
 			out.append("a settlement's centre building does not exist")
@@ -369,13 +389,18 @@ static func unsupported(d: Dictionary) -> PackedStringArray:
 	var out: PackedStringArray = []
 	var sd: Dictionary = d["sim"]
 	var counts := {
-		"workAreas": "work area",
 		"routes": "supply route", "manifests": "caravan on the road", "parties": "merchant", "animals": "animal", "claims": "land claim",
 	}
 	for k: String in counts:
 		var n := (sd.get(k, []) as Array).size() if sd.get(k) is Array else 0
 		if n > 0:
 			out.append("%d %s%s" % [n, counts[k], "" if n == 1 else "s"])
+	var hunts := 0
+	for av: Variant in sd.get("workAreas", []):
+		if av is Dictionary and (av as Dictionary).get("kind") == "hunt":
+			hunts += 1
+	if hunts > 0:
+		out.append("%d hunting ground%s (kept; their hunters wait until animals arrive)" % [hunts, "" if hunts == 1 else "s"])
 	if sd.get("geology") is Dictionary and not (sd["geology"]["cells"] as Array).is_empty():
 		out.append("%d surveyed ground cells" % (sd["geology"]["cells"] as Array).size())
 	if sd.get("kingdoms") is Array:

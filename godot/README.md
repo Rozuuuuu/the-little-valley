@@ -57,6 +57,7 @@ address:
 | `--zoom=Z` | Camera zoom |
 | `--frames=N` | Frame benchmark over N frames |
 | `--people=1` | Open the People window |
+| `--areas=1` | Add a farm area and a woodlot, and open the Areas window |
 
 On the web, use `?bench=N&settlers=M` instead.
 

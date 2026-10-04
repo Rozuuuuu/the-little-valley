@@ -34,6 +34,13 @@ var _people := PanelContainer.new()
 var _people_text := RichTextLabel.new()
 var _people_buttons := VBoxContainer.new()
 var _people_key := ""
+var _areas := PanelContainer.new()
+var _areas_text := RichTextLabel.new()
+var _areas_list := VBoxContainer.new()
+var _areas_scroll := ScrollContainer.new()
+var _areas_key := ""
+## The work area highlighted in the Areas window (-1: none).
+var chosen_area := -1
 var _busy_label := Label.new()
 var _card_mode := ""
 var _refresh_timer := 0.0
@@ -62,6 +69,7 @@ func _ready() -> void:
 	_toasts.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_toasts)
 	_build_people()
+	_build_areas()
 	for p: Control in [_title, _menu, _busy]:
 		p.set_anchors_preset(Control.PRESET_CENTER)
 		p.visible = false
@@ -164,6 +172,7 @@ func _build_top() -> void:
 			refresh_now(), "Pause (Space)" if v == 0 else "Speed %d× (%s)" % [v, {1: "1", 2: "2", 4: "3"}[v]]))
 	row.add_child(_speed_box)
 	row.add_child(_button("People", toggle_people, "Visitors, travellers, households and children (F2)"))
+	row.add_child(_button("Areas", toggle_areas, "Work areas: farms, woodlots, quarries, building areas (F3)"))
 	row.add_child(_button("Save", func() -> void: game.save_now(), "Save now (F5)"))
 	row.add_child(_button("Menu", toggle_menu, "Menu (Esc)"))
 	_top.visible = false
@@ -224,6 +233,8 @@ func _build_people() -> void:
 
 func toggle_people() -> void:
 	_people.visible = not _people.visible
+	if _people.visible:
+		_areas.visible = false
 	_people_key = ""
 	refresh_now()
 
@@ -326,6 +337,144 @@ func _refresh_people() -> void:
 		hint.text = "Select two adults to start a household."
 		hint.add_theme_color_override("font_color", _c("textDim"))
 		_people_buttons.add_child(hint)
+
+
+# ---- areas window -------------------------------------------------------------------------------
+
+func _build_areas() -> void:
+	_areas.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_areas.offset_right = -8
+	_areas.offset_top = 64
+	_areas.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	var v := VBoxContainer.new()
+	v.custom_minimum_size = Vector2(470, 0)
+	_areas.add_child(v)
+	_areas_text.bbcode_enabled = true
+	_areas_text.fit_content = true
+	_areas_text.scroll_active = false
+	v.add_child(_areas_text)
+	_areas_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_areas_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_areas_scroll.add_child(_areas_list)
+	v.add_child(_areas_scroll)
+	_areas.visible = false
+	_root.add_child(_areas)
+
+
+func toggle_areas() -> void:
+	_areas.visible = not _areas.visible
+	if _areas.visible:
+		_people.visible = false
+	_areas_key = ""
+	refresh_now()
+
+
+func show_areas() -> void:
+	if not _areas.visible:
+		toggle_areas()
+
+
+## The Areas window: each area's kind, crew and settings, with buttons to change them.
+func _refresh_areas() -> void:
+	if not _areas.visible:
+		return
+	var sim := game.sim
+	var lines: PackedStringArray = ["[b]Work areas[/b]"]
+	if sim.work_areas.is_empty():
+		lines.append("Settlers in an area work only inside it: a farm tends its fields, a woodlot fells and replants its trees, a quarry breaks its rocks.")
+	lines.append("[color=%s]New area: pick a kind, then drag on the map. People selected while drawing are assigned to it.[/color]" % _c("textDim").to_html())
+	_areas_text.text = "\n".join(lines)
+	var key := "%d|%d" % [game.selected.size(), chosen_area]
+	for a in sim.work_areas:
+		key += "|%d:%s:%d:%s:%d:%d:%d:%d:%d" % [a.id, a.name, a.wanted, a.crop, Areas.crew_of(sim, a.id).size(), a.x0, a.y0, a.x1, a.y1]
+	if key == _areas_key:
+		return
+	_areas_key = key
+	for c in _areas_list.get_children():
+		_areas_list.remove_child(c)
+		c.queue_free()
+	var kinds := HFlowContainer.new()
+	for k: String in WorkArea.KINDS:
+		kinds.add_child(_button(str(WorkArea.LABELS[k]["name"]), func() -> void:
+			game.start_placing("area:" + k)
+			refresh_now(), str(WorkArea.LABELS[k]["does"])))
+	_areas_list.add_child(kinds)
+	var crops: Array[String] = []
+	for c: String in Defs.crop_ids():
+		if BuildingOps.is_unlocked(sim, Defs.crop(c).get("unlock")):
+			crops.append(c)
+	for a in sim.work_areas:
+		_areas_list.add_child(_area_row(a, crops))
+	if not game.selected.is_empty():
+		_areas_list.add_child(_button("Release the selected from their areas", func() -> void:
+			game.command({"type": "assignArea", "ids": game.selected.duplicate(), "areaId": null})
+			refresh_now()))
+	_fit_areas.call_deferred()
+
+
+## Sizes the Areas list to its contents, scrolling past most of the screen height. Runs after
+## layout: wrapped text only knows its height once its width is set.
+func _fit_areas() -> void:
+	await get_tree().process_frame
+	var vh := get_viewport().get_visible_rect().size.y / maxf(0.1, _root.scale.y)
+	_areas_scroll.custom_minimum_size.y = minf(_areas_list.get_combined_minimum_size().y + 4, maxf(160.0, vh - 300.0))
+	# Shrink the window to its new contents (containers only ever grow on their own).
+	_areas.reset_size()
+
+
+func _area_row(a: WorkArea, crops: Array[String]) -> Control:
+	var sim := game.sim
+	var id := a.id
+	var box := VBoxContainer.new()
+	var crew := Areas.crew_of(sim, id)
+	var head := RichTextLabel.new()
+	head.bbcode_enabled = true
+	head.fit_content = true
+	head.scroll_active = false
+	var names: PackedStringArray = []
+	for s in crew:
+		names.append(s.name)
+	var staffing := "staffs itself with %d" % a.wanted if a.wanted >= 0 else "assigned by hand"
+	var text := "[b]%s[/b] — %s, %d×%d · %d/%d workers (%s)" % [a.name, str(WorkArea.LABELS[a.kind]["name"]).to_lower(), a.x1 - a.x0 + 1, a.y1 - a.y0 + 1,
+		crew.size(), WorkArea.MAX_WORKERS, staffing]
+	if not names.is_empty():
+		text += "\n" + ", ".join(names)
+	if a.kind == "farm":
+		text += "\nNew fields: %s" % (a.crop.capitalize() if a.crop != "" else "placed by hand")
+	head.text = text
+	box.add_child(head)
+	var row := HFlowContainer.new()
+	row.add_child(_button("Show", func() -> void:
+		chosen_area = id
+		var ar := sim.area(id)
+		if ar != null:
+			game.camera.target_pos = Vector2((ar.x0 + ar.x1 + 1) / 2.0, (ar.y0 + ar.y1 + 1) / 2.0) * WorldView.TILE_PX
+		_areas_key = ""
+		refresh_now(), "Centre the view on this area"))
+	var have := a.wanted if a.wanted >= 0 else crew.size()
+	row.add_child(_button("−", func() -> void:
+		game.command({"type": "updateArea", "areaId": id, "wanted": maxi(0, have - 1)})
+		refresh_now(), "Fewer workers (at 0 the area is staffed by hand)"))
+	row.add_child(_button("+", func() -> void:
+		game.command({"type": "updateArea", "areaId": id, "wanted": mini(WorkArea.MAX_WORKERS, have + 1)})
+		refresh_now(), "More workers: free adults head there on their own"))
+	if a.kind == "farm" and not crops.is_empty():
+		var i := crops.find(a.crop)
+		var next := crops[0] if a.crop == "" else (crops[i + 1] if i + 1 < crops.size() and i >= 0 else "")
+		row.add_child(_button("Fields: %s" % (next.capitalize() if next != "" else "by hand"), func() -> void:
+			game.command({"type": "updateArea", "areaId": id, "crop": next if next != "" else null})
+			refresh_now(), "Lay out fields of this crop on every free tile inside"))
+	if not game.selected.is_empty():
+		row.add_child(_button("Assign selected", func() -> void:
+			game.command({"type": "assignArea", "ids": game.selected.duplicate(), "areaId": id})
+			refresh_now()))
+	row.add_child(_button("Remove", func() -> void:
+		game.command({"type": "deleteArea", "areaId": id})
+		if chosen_area == id:
+			chosen_area = -1
+		refresh_now(), "Its settlers go back to their usual work; its fields stay"))
+	box.add_child(row)
+	return box
 
 
 # ---- states ------------------------------------------------------------------------------------
@@ -547,6 +696,7 @@ func refresh_now() -> void:
 	_refresh_selection()
 	_refresh_card()
 	_refresh_people()
+	_refresh_areas()
 
 
 func _refresh_selection() -> void:
@@ -586,6 +736,9 @@ func _settler_text(s: Settler) -> String:
 	lines.append("Hunger %s  ·  Energy %s" % [_bar(s.hunger), _bar(s.energy)])
 	if s.carrying():
 		lines.append("Carrying %d %s" % [s.carry_amount, str(Defs.resource(s.carry_res)["name"]).to_lower()])
+	var area := game.sim.area(s.area_id)
+	if area != null:
+		lines.append("Works in %s" % area.name)
 	if s.home_id != -1:
 		var h: Building = game.sim.buildings.get(s.home_id)
 		if h != null:
@@ -688,6 +841,9 @@ func _building_text(b: Building) -> String:
 func _placing_text() -> String:
 	if game.placing == "mark":
 		return "[b]Mark for harvest[/b]\nDrag over trees, rocks and bushes. Right-click or Esc to stop."
+	if game.placing.begins_with("area:"):
+		var k := game.placing.substr(5)
+		return "[b]New %s[/b]\n%s.\nDrag a rectangle (up to 40×40) over explored land. Right-click or Esc to stop." % [str(WorkArea.LABELS[k]["name"]).to_lower(), WorkArea.LABELS[k]["does"]]
 	if game.placing == "unmark":
 		return "[b]Remove marks[/b]\nDrag over marked things. Right-click or Esc to stop."
 	var d := Defs.building(game.placing)
