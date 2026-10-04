@@ -1,0 +1,156 @@
+{
+ "RESOURCES": {
+  "food": {
+   "id": "food",
+   "name": "Food",
+   "description": "Berries and harvested crops. Settlers eat it, and a surplus attracts newcomers."
+  },
+  "wood": {
+   "id": "wood",
+   "name": "Wood",
+   "description": "Chopped from trees. The backbone of early construction."
+  },
+  "stone": {
+   "id": "stone",
+   "name": "Stone",
+   "description": "Mined from rocks and boulders."
+  },
+  "planks": {
+   "id": "planks",
+   "name": "Planks",
+   "description": "Sawn at a workshop from wood. Used for bridges and finer buildings."
+  },
+  "tools": {
+   "id": "tools",
+   "name": "Tools",
+   "description": "Crafted at a workshop. A well-equipped settlement works faster."
+  },
+  "wheat": {
+   "id": "wheat",
+   "name": "Wheat",
+   "description": "Harvested from wheat fields. A mill grinds it into flour."
+  },
+  "flour": {
+   "id": "flour",
+   "name": "Flour",
+   "description": "Ground at a mill. A bakery turns it into bread (food)."
+  },
+  "coal": {
+   "id": "coal",
+   "name": "Coal",
+   "description": "Mined from coal seams. Fuel for the smelter, burning like charcoal."
+  },
+  "charcoal": {
+   "id": "charcoal",
+   "name": "Charcoal",
+   "description": "Wood slow-burned in a charcoal kiln. Fuel for the smelter when there is no coal."
+  },
+  "copperOre": {
+   "id": "copperOre",
+   "name": "Copper ore",
+   "description": "Mined from a copper deposit. A smelter turns it into copper ingots."
+  },
+  "ironOre": {
+   "id": "ironOre",
+   "name": "Iron ore",
+   "description": "Mined from an iron deposit. A smelter turns it into iron ingots."
+  },
+  "copperIngot": {
+   "id": "copperIngot",
+   "name": "Copper ingot",
+   "description": "Smelted copper. A forge makes tools from it."
+  },
+  "ironIngot": {
+   "id": "ironIngot",
+   "name": "Iron ingot",
+   "description": "Smelted iron. A forge makes twice the tools from it."
+  },
+  "silverOre": {
+   "id": "silverOre",
+   "name": "Silver ore",
+   "description": "Valued by traders. Not needed for any building or tool."
+  },
+  "goldOre": {
+   "id": "goldOre",
+   "name": "Gold ore",
+   "description": "Rare and prized by traders. Not needed for any building or tool."
+  },
+  "diamonds": {
+   "id": "diamonds",
+   "name": "Diamonds",
+   "description": "Very rare gems for prestige and trade. Not needed for any building or tool."
+  },
+  "swords": {
+   "id": "swords",
+   "name": "Swords",
+   "description": "Forged from iron. Infantry and knights each carry one."
+  },
+  "bows": {
+   "id": "bows",
+   "name": "Bows",
+   "description": "Made from planks at a workshop. Each archer carries one."
+  },
+  "armor": {
+   "id": "armor",
+   "name": "Armour",
+   "description": "Forged from iron. Knights need a suit."
+  },
+  "horses": {
+   "id": "horses",
+   "name": "Horses",
+   "description": "Bought from merchants. Kept only in stable stalls, where each eats 1 food a day. Knights need one."
+  },
+  "apples": {
+   "id": "apples",
+   "name": "Apples",
+   "description": "Picked in orchards. A workshop dries them into food, and merchants buy them."
+  },
+  "hides": {
+   "id": "hides",
+   "name": "Hides",
+   "description": "From hunted game and culled livestock. A tannery turns them into leather."
+  },
+  "wool": {
+   "id": "wool",
+   "name": "Wool",
+   "description": "Shorn from sheep in their pen. A weaver spins it into cloth."
+  },
+  "leather": {
+   "id": "leather",
+   "name": "Leather",
+   "description": "Tanned hides. Used for saddles, armour straps and finer buildings."
+  },
+  "cloth": {
+   "id": "cloth",
+   "name": "Cloth",
+   "description": "Woven wool. Banners, sails, bedding and the grandest halls need it."
+  }
+ },
+ "RESOURCE_IDS": [
+  "food",
+  "wood",
+  "stone",
+  "planks",
+  "tools",
+  "wheat",
+  "flour",
+  "coal",
+  "charcoal",
+  "copperOre",
+  "ironOre",
+  "copperIngot",
+  "ironIngot",
+  "silverOre",
+  "goldOre",
+  "diamonds",
+  "swords",
+  "bows",
+  "armor",
+  "horses",
+  "apples",
+  "hides",
+  "wool",
+  "leather",
+  "cloth"
+ ]
+}

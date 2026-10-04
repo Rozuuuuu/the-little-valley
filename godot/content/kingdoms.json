@@ -1,0 +1,85 @@
+{
+ "BANNER_COLORS": [
+  "#3a6ea5",
+  "#a53a3a",
+  "#3a8a4a",
+  "#d9a93a",
+  "#6a4a9a",
+  "#2e2e3a",
+  "#e8e0cc",
+  "#c96a2e"
+ ],
+ "CLAIM_COST": 20,
+ "COUNCIL_POSTS": {
+  "steward": {
+   "name": "Steward",
+   "duty": "Keeps the accounts: public trust grows by 1 more each day."
+  },
+  "envoy": {
+   "name": "Envoy",
+   "duty": "Carries letters to other kingdoms: needed to propose treaties and to investigate reports."
+  },
+  "marshal": {
+   "name": "Marshal",
+   "duty": "Organises the realm’s defence: needed to train soldiers."
+  }
+ },
+ "COUNCIL_POST_IDS": [
+  "steward",
+  "envoy",
+  "marshal"
+ ],
+ "EMBLEMS": [
+  "oak",
+  "wheat",
+  "tower",
+  "star",
+  "fish",
+  "hammer",
+  "crown",
+  "sun"
+ ],
+ "HOMELAND_CHUNKS": {
+  "from": -1,
+  "to": 1
+ },
+ "MERCHANT_PURSE": {
+  "min": 40,
+  "max": 100
+ },
+ "POLICIES": {
+  "none": {
+   "id": "none",
+   "name": "No taxes",
+   "tradeTax": 0,
+   "trustPerDay": 1,
+   "merchantDelay": 1,
+   "description": "No levy on trade. Trust grows by 1 a day."
+  },
+  "modest": {
+   "id": "modest",
+   "name": "Modest tax",
+   "tradeTax": 0.1,
+   "trustPerDay": 0,
+   "merchantDelay": 1,
+   "description": "Merchants pay 10% of each trade to the treasury. Trust holds steady."
+  },
+  "high": {
+   "id": "high",
+   "name": "High tax",
+   "tradeTax": 0.25,
+   "trustPerDay": -2,
+   "merchantDelay": 1.5,
+   "description": "Merchants pay 25% of each trade and come less often. Trust falls by 2 a day."
+  }
+ },
+ "POLICY_IDS": [
+  "none",
+  "modest",
+  "high"
+ ],
+ "RIVAL_LAND": 2,
+ "SECTOR": 16,
+ "START_TRUST": 60,
+ "TRUST_MIN_RECRUIT": 25
+}

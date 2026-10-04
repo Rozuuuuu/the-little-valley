@@ -1,0 +1,212 @@
+{
+ "O": {
+  "None": 0,
+  "Oak": 1,
+  "Pine": 2,
+  "Berry": 3,
+  "BerryEmpty": 4,
+  "Rock": 5,
+  "Boulder": 6,
+  "Stump": 7,
+  "Sapling": 8
+ },
+ "OBJECTS": {
+  "0": {
+   "name": "Nothing",
+   "blocks": false,
+   "amount": 0,
+   "workTicks": 0,
+   "depletesTo": 0
+  },
+  "1": {
+   "name": "Oak tree",
+   "blocks": true,
+   "resource": "wood",
+   "amount": 10,
+   "workTicks": 11,
+   "depletesTo": 7,
+   "tool": "axe"
+  },
+  "2": {
+   "name": "Pine tree",
+   "blocks": true,
+   "resource": "wood",
+   "amount": 8,
+   "workTicks": 10,
+   "depletesTo": 7,
+   "tool": "axe"
+  },
+  "3": {
+   "name": "Berry bush",
+   "blocks": true,
+   "resource": "food",
+   "amount": 5,
+   "workTicks": 9,
+   "depletesTo": 4,
+   "tool": "hand"
+  },
+  "4": {
+   "name": "Picked berry bush",
+   "blocks": true,
+   "amount": 0,
+   "workTicks": 0,
+   "depletesTo": 4,
+   "regrow": {
+    "to": 3,
+    "ticks": 3600
+   }
+  },
+  "5": {
+   "name": "Rock",
+   "blocks": true,
+   "resource": "stone",
+   "amount": 6,
+   "workTicks": 15,
+   "depletesTo": 0,
+   "tool": "pick"
+  },
+  "6": {
+   "name": "Boulder",
+   "blocks": true,
+   "resource": "stone",
+   "amount": 16,
+   "workTicks": 17,
+   "depletesTo": 0,
+   "tool": "pick"
+  },
+  "7": {
+   "name": "Tree stump",
+   "blocks": false,
+   "amount": 0,
+   "workTicks": 0,
+   "depletesTo": 7,
+   "regrow": {
+    "to": 8,
+    "ticks": 5200
+   }
+  },
+  "8": {
+   "name": "Sapling",
+   "blocks": false,
+   "amount": 0,
+   "workTicks": 0,
+   "depletesTo": 8,
+   "regrow": {
+    "to": 1,
+    "ticks": 5200
+   }
+  }
+ },
+ "T": {
+  "DeepWater": 0,
+  "Water": 1,
+  "Sand": 2,
+  "Grass": 3,
+  "Meadow": 4,
+  "Forest": 5,
+  "Rocky": 6,
+  "Road": 7,
+  "Bridge": 8,
+  "StoneBridge": 9,
+  "Hill": 10,
+  "Mountain": 11
+ },
+ "TERRAIN": {
+  "0": {
+   "name": "Deep water",
+   "walkable": false,
+   "buildable": false,
+   "fertility": 0,
+   "moveCost": 1,
+   "priority": 0
+  },
+  "1": {
+   "name": "Shallow water",
+   "walkable": false,
+   "buildable": false,
+   "fertility": 0,
+   "moveCost": 1,
+   "priority": 1
+  },
+  "2": {
+   "name": "Sandy bank",
+   "walkable": true,
+   "buildable": true,
+   "fertility": 0,
+   "moveCost": 1.1,
+   "priority": 2
+  },
+  "3": {
+   "name": "Grassland",
+   "walkable": true,
+   "buildable": true,
+   "fertility": 1,
+   "moveCost": 1,
+   "priority": 4
+  },
+  "4": {
+   "name": "Fertile meadow",
+   "walkable": true,
+   "buildable": true,
+   "fertility": 1.35,
+   "moveCost": 1,
+   "priority": 5
+  },
+  "5": {
+   "name": "Forest floor",
+   "walkable": true,
+   "buildable": true,
+   "fertility": 0.9,
+   "moveCost": 1.1,
+   "priority": 6
+  },
+  "6": {
+   "name": "Rocky hillside",
+   "walkable": true,
+   "buildable": true,
+   "fertility": 0,
+   "moveCost": 1.25,
+   "priority": 3
+  },
+  "7": {
+   "name": "Path",
+   "walkable": true,
+   "buildable": false,
+   "fertility": 0,
+   "moveCost": 0.6,
+   "priority": 8
+  },
+  "8": {
+   "name": "Bridge",
+   "walkable": true,
+   "buildable": false,
+   "fertility": 0,
+   "moveCost": 0.6,
+   "priority": 9
+  },
+  "9": {
+   "name": "Stone bridge",
+   "walkable": true,
+   "buildable": false,
+   "fertility": 0,
+   "moveCost": 0.6,
+   "priority": 10
+  },
+  "10": {
+   "name": "Hill slope",
+   "walkable": true,
+   "buildable": true,
+   "fertility": 0.6,
+   "moveCost": 1.45,
+   "priority": 7
+  },
+  "11": {
+   "name": "Mountain face",
+   "walkable": false,
+   "buildable": false,
+   "fertility": 0,
+   "moveCost": 1,
+   "priority": 11
+  }
+ }
+}

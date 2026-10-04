@@ -1,0 +1,60 @@
+{
+ "MINERALS": {
+  "coal": {
+   "id": "coal",
+   "name": "Coal",
+   "resource": "coal",
+   "weight": 30,
+   "amount": 180,
+   "description": "Burns hotter than charcoal. Fuel for the smelter."
+  },
+  "copper": {
+   "id": "copper",
+   "name": "Copper",
+   "resource": "copperOre",
+   "weight": 25,
+   "amount": 140,
+   "description": "Soft red ore. Smelted into copper ingots for simple tools."
+  },
+  "iron": {
+   "id": "iron",
+   "name": "Iron",
+   "resource": "ironOre",
+   "weight": 25,
+   "amount": 140,
+   "description": "Smelted into iron ingots: the best tools come from these."
+  },
+  "silver": {
+   "id": "silver",
+   "name": "Silver",
+   "resource": "silverOre",
+   "weight": 12,
+   "amount": 70,
+   "description": "Valued by traders. Not needed for any building or tool."
+  },
+  "gold": {
+   "id": "gold",
+   "name": "Gold",
+   "resource": "goldOre",
+   "weight": 6,
+   "amount": 40,
+   "description": "Rare and prized by traders. Not needed for any building or tool."
+  },
+  "diamond": {
+   "id": "diamond",
+   "name": "Diamond",
+   "resource": "diamonds",
+   "weight": 2,
+   "amount": 12,
+   "description": "Very rare gems, for prestige and trade. Not needed for any building or tool."
+  }
+ },
+ "MINERAL_IDS": [
+  "coal",
+  "copper",
+  "iron",
+  "silver",
+  "gold",
+  "diamond"
+ ]
+}

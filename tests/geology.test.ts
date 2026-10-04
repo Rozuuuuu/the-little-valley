@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { DAY_TICKS } from '../src/game/core/constants';
+import type { HabitatId } from '../src/game/data/habitats';
 import { MINERALS, MINERAL_IDS } from '../src/game/data/minerals';
 import { migrate } from '../src/game/save/migrations';
 import { deserializeSim, serializeSim } from '../src/game/save/serialize';
@@ -35,6 +36,16 @@ describe('generators', () => {
         const c = generateChunk(seed, cx, cy, gen);
         expect([fnv(c.terrain), fnv(c.obj)], `gen ${gen} chunk ${k}`).toEqual([t, o]);
       }
+    }
+  });
+
+  it('generator 4 still produces exactly its fingerprinted chunks in every habitat', () => {
+    const fp = JSON.parse(readFileSync('tests/fixtures/gen-v4-fingerprint.json', 'utf8')) as Record<string, [number, number]>;
+    expect(Object.keys(fp).length).toBe(135);
+    for (const [k, [t, o]] of Object.entries(fp)) {
+      const [habitat, seed, cx, cy] = k.split(':');
+      const c = generateChunk(Number(seed), Number(cx), Number(cy), 4, habitat as HabitatId);
+      expect([fnv(c.terrain), fnv(c.obj)], `gen 4 chunk ${k}`).toEqual([t, o]);
     }
   });
 

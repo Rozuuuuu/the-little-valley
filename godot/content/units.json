@@ -1,0 +1,52 @@
+{
+ "COMPANY_SIZE": 4,
+ "HORSE_FEED": 1,
+ "HUNGRY_READINESS_LOSS": 25,
+ "MARCH_SPEED": 0.12,
+ "RATION": 1,
+ "UNITS": {
+  "infantry": {
+   "id": "infantry",
+   "name": "Infantry",
+   "gear": {
+    "swords": 1
+   },
+   "trainTicks": 1440,
+   "trainedAt": "barracks",
+   "strength": 10,
+   "range": 1,
+   "description": "Sword and shield. Holds ground."
+  },
+  "archer": {
+   "id": "archer",
+   "name": "Archers",
+   "gear": {
+    "bows": 1
+   },
+   "trainTicks": 1440,
+   "trainedAt": "archeryRange",
+   "strength": 8,
+   "range": 4,
+   "description": "Bows. Strike from a distance, weak up close."
+  },
+  "knight": {
+   "id": "knight",
+   "name": "Knights",
+   "gear": {
+    "swords": 1,
+    "armor": 1,
+    "horses": 1
+   },
+   "trainTicks": 2880,
+   "trainedAt": "barracks",
+   "strength": 22,
+   "range": 1,
+   "description": "Armoured riders: need a horse and armour, and long training."
+  }
+ },
+ "UNIT_TYPES": [
+  "infantry",
+  "archer",
+  "knight"
+ ]
+}

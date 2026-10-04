@@ -1,0 +1,51 @@
+{
+ "SEASONS": {
+  "spring": {
+   "id": "spring",
+   "name": "Spring",
+   "arrival": "Spring has come. The soil is soft and ready for seeds.",
+   "growth": 1.1,
+   "drying": 0.9,
+   "rainChance": 0.7,
+   "planting": true,
+   "berriesRegrow": true
+  },
+  "summer": {
+   "id": "summer",
+   "name": "Summer",
+   "arrival": "Summer is here. Crops grow fast, but fields dry quickly.",
+   "growth": 1.2,
+   "drying": 1.5,
+   "rainChance": 0.45,
+   "planting": true,
+   "berriesRegrow": true
+  },
+  "autumn": {
+   "id": "autumn",
+   "name": "Autumn",
+   "arrival": "Autumn colours the valley. Bring in the harvest before winter.",
+   "growth": 0.9,
+   "drying": 0.8,
+   "rainChance": 0.6,
+   "planting": true,
+   "berriesRegrow": true
+  },
+  "winter": {
+   "id": "winter",
+   "name": "Winter",
+   "arrival": "Winter settles in. Fields rest until spring — the stores will feed everyone.",
+   "growth": 0,
+   "drying": 0.3,
+   "rainChance": 0.5,
+   "planting": false,
+   "berriesRegrow": false
+  }
+ },
+ "SEASON_DAYS": 4,
+ "SEASON_ORDER": [
+  "spring",
+  "summer",
+  "autumn",
+  "winter"
+ ]
+}

@@ -1,0 +1,252 @@
+{
+ "MILESTONES": {
+  "camp": {
+   "id": "camp",
+   "name": "Camp",
+   "tier": 0,
+   "description": "Direct your settlers by hand, and secure food: spare food welcomes travellers who want to settle.",
+   "requirements": [],
+   "unlocks": [
+    "House, Family Home, Field, Orchard, Storehouse, Workshop, Path, Fence, Flower Bed"
+   ]
+  },
+  "hamlet": {
+   "id": "hamlet",
+   "name": "Hamlet",
+   "tier": 1,
+   "description": "Six adults and a real home: welcome a traveller with food, then organise housing, storage and work areas.",
+   "requirements": [
+    {
+     "kind": "population",
+     "count": 6
+    },
+    {
+     "kind": "beds",
+     "count": 2
+    },
+    {
+     "kind": "stat",
+     "stat": "harvested",
+     "count": 10,
+     "label": "Harvest 10 food from fields"
+    }
+   ],
+   "unlocks": [
+    "Mill and Bakery",
+    "Stone Bridge project",
+    "Pumpkins",
+    "Wooden bridges",
+    "Lantern Posts"
+   ]
+  },
+  "village": {
+   "id": "village",
+   "name": "Village",
+   "tier": 2,
+   "description": "Grow to 10 settlers with 8 real beds, then finish any 2 village projects, in whatever order suits your valley.",
+   "requirements": [
+    {
+     "kind": "population",
+     "count": 10
+    },
+    {
+     "kind": "beds",
+     "count": 8
+    },
+    {
+     "kind": "anyOf",
+     "count": 2,
+     "label": "Finish 2 of these village projects",
+     "options": [
+      {
+       "kind": "stat",
+       "stat": "bakedFood",
+       "count": 30,
+       "label": "Bake 30 food at a bakery"
+      },
+      {
+       "kind": "staffedAreas",
+       "count": 2
+      },
+      {
+       "kind": "built",
+       "building": "stoneBridge",
+       "count": 1,
+       "label": "Complete a stone bridge"
+      },
+      {
+       "kind": "stat",
+       "stat": "pathsBuilt",
+       "count": 25,
+       "label": "Lay 25 path tiles"
+      }
+     ]
+    }
+   ],
+   "unlocks": [
+    "Cottages (4 beds)",
+    "Waystations: found a second settlement",
+    "Grand Market project",
+    "Benches",
+    "The camp becomes a village hall"
+   ]
+  },
+  "town": {
+   "id": "town",
+   "name": "Town",
+   "tier": 3,
+   "description": "Grow past a single village: 16 settlers with 16 home beds, then any 2 town projects.",
+   "requirements": [
+    {
+     "kind": "population",
+     "count": 16
+    },
+    {
+     "kind": "beds",
+     "count": 16
+    },
+    {
+     "kind": "anyOf",
+     "count": 2,
+     "label": "Finish 2 of these town projects",
+     "options": [
+      {
+       "kind": "settlements",
+       "count": 2,
+       "minResidents": 4
+      },
+      {
+       "kind": "roadLink"
+      },
+      {
+       "kind": "built",
+       "building": "market",
+       "count": 1,
+       "label": "Build the Grand Market"
+      },
+      {
+       "kind": "stat",
+       "stat": "toolsCrafted",
+       "count": 10,
+       "label": "Craft 10 tools"
+      }
+     ]
+    }
+   ],
+   "unlocks": [
+    "Royal Hall",
+    "Council posts",
+    "The road to Region: caravans, trade and a crown"
+   ]
+  },
+  "region": {
+   "id": "region",
+   "name": "Region",
+   "tier": 4,
+   "description": "Two thriving settlements joined by caravans, then any 2 of: metal tools, trade, or a royal hall. Then crown your ruler.",
+   "requirements": [
+    {
+     "kind": "settlements",
+     "count": 2,
+     "minResidents": 4
+    },
+    {
+     "kind": "stat",
+     "stat": "caravanDeliveries",
+     "count": 1,
+     "label": "Deliver goods along a supply route"
+    },
+    {
+     "kind": "anyOf",
+     "count": 2,
+     "label": "Finish 2 of these regional projects",
+     "options": [
+      {
+       "kind": "statSum",
+       "stats": [
+        "copperToolsForged",
+        "ironToolsForged"
+       ],
+       "count": 10,
+       "label": "Forge 10 metal tools"
+      },
+      {
+       "kind": "stat",
+       "stat": "trades",
+       "count": 3,
+       "label": "Trade 3 times with merchants"
+      },
+      {
+       "kind": "built",
+       "building": "royalHall",
+       "count": 1,
+       "label": "Build the Royal Hall"
+      }
+     ]
+    }
+   ],
+   "unlocks": [
+    "Coronation (Kingdom panel)",
+    "Frontier land claims",
+    "Taxes on trade and public trust"
+   ]
+  },
+  "civilization": {
+   "id": "civilization",
+   "name": "Civilization",
+   "tier": 5,
+   "description": "A crowned realm with working supply lines, then any 2 of: 20 pieces of equipment, a trade treaty, or a council hall. War is never required.",
+   "requirements": [
+    {
+     "kind": "crowned"
+    },
+    {
+     "kind": "stat",
+     "stat": "caravanDeliveries",
+     "count": 5,
+     "label": "Make 5 caravan deliveries"
+    },
+    {
+     "kind": "anyOf",
+     "count": 2,
+     "label": "Finish 2 of these",
+     "options": [
+      {
+       "kind": "statSum",
+       "stats": [
+        "swordsMade",
+        "bowsMade",
+        "armorMade"
+       ],
+       "count": 20,
+       "label": "Make 20 pieces of equipment"
+      },
+      {
+       "kind": "treaty",
+       "treaty": "trade",
+       "label": "Keep a trade treaty with another kingdom"
+      },
+      {
+       "kind": "built",
+       "building": "councilHall",
+       "count": 1,
+       "label": "Build the Council Hall"
+      }
+     ]
+    }
+   ],
+   "unlocks": [
+    "Open the frontier to conflict (Realm tab): border campaigns, war and peace",
+    "Launch prepared campaigns with your allies"
+   ]
+  }
+ },
+ "MILESTONE_ORDER": [
+  "camp",
+  "hamlet",
+  "village",
+  "town",
+  "region",
+  "civilization"
+ ]
+}
