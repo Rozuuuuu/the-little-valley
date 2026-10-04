@@ -4,7 +4,8 @@ class_name Commands
 ## Commands are plain Dictionaries with a "type", the same shapes as the browser game's.
 ##
 ## Ported: move, gather, work, place, placeArea, remove, designate, setJob, setPriorities, setCrop,
-## setRecipe, toggleWorkshop, assignWorker, unassignWorker, stop, hold, returnGoods.
+## setRecipe, toggleWorkshop, assignWorker, unassignWorker, stop, hold, returnGoods,
+## formHousehold, requestChild, cancelChildRequest, adoptDeliberateGrowth, acceptRecruit, cancelRecruit.
 ## Others report that they are not available yet.
 
 const MAX_AREA := 40 * 40
@@ -275,6 +276,24 @@ static func _apply(sim: Simulation, cmd: Dictionary) -> Dictionary:
 
 		"work":
 			return _work(sim, cmd)
+
+		"formHousehold":
+			return People.form_household(sim, cmd.get("ids"))
+
+		"requestChild":
+			return People.request_child(sim, cmd.get("householdId"))
+
+		"cancelChildRequest":
+			return People.cancel_child_request(sim, cmd.get("householdId"))
+
+		"adoptDeliberateGrowth":
+			return People.adopt_deliberate_growth(sim)
+
+		"acceptRecruit":
+			return People.accept_recruit(sim, cmd.get("offerId"), cmd.get("settlementId"))
+
+		"cancelRecruit":
+			return People.cancel_recruit(sim, cmd.get("recruitId"))
 
 		"assignWorker":
 			return _assign_worker(sim, cmd)

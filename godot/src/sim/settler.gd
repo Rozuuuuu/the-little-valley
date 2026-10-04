@@ -30,6 +30,9 @@ var priorities: Array = []
 var has_priorities := false
 var settlement_id := -1
 var life_stage := "adult"
+## Ticks lived as a child (0 for adults).
+var age_ticks := 0
+var household_id := -1
 var hold := false
 var side_job := ""
 

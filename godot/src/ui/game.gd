@@ -105,6 +105,8 @@ func _capture(opts: Dictionary) -> void:
 	if opts.has("x"):
 		camera.position = Vector2(float(opts["x"]), float(opts["y"])) * WorldView.TILE_PX
 		camera.target_pos = camera.position
+	if opts.get("people", "0") == "1":
+		hud.toggle_people()
 	for i in 20:
 		await get_tree().process_frame
 	if opts.has("frames"):
@@ -532,6 +534,8 @@ func _key(k: InputEventKey) -> void:
 				selected_building = -1
 		KEY_F5:
 			save_now()
+		KEY_F2:
+			hud.toggle_people()
 		KEY_E:
 			selected.clear()
 			for s in sim.settlers:

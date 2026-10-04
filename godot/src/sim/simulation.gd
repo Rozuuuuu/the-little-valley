@@ -66,6 +66,21 @@ var chronicle: Array[Dictionary] = []
 var session := {}
 var last_season := ""
 var path_searches_left := PATH_SEARCHES_PER_TICK
+## Growth (People): "deliberate" for new valleys, "legacy" for worlds from before families.
+var growth_mode := "legacy"
+## {id, adults [a, b], children [], pending {requestedTick, stableTicks, claimId, blocked} or null, cooldownUntil}
+var households: Array[Dictionary] = []
+## Beds held for expected children and accepted travellers: {id, homeId, owner {kind, id}}.
+var bed_claims: Array[Dictionary] = []
+## The visitor waiting for an answer ({} when none): {id, name, appearance, arrivedTick, expiresTick}.
+var offer := {}
+var next_visitor := 0
+## Accepted travellers: {id, name, appearance, settlementId, claimId, state, escrow, arrivesTick, blocked}.
+var recruits: Array[Dictionary] = []
+var last_recruit := -1000000000
+var last_arrival := 0
+## What growth is waiting on, in plain words.
+var population_status := ""
 var nav: NavWindow
 ## Building id -> [reachable from the camp, tick checked] (BuildingOps.bed_reachable). Transient.
 var bed_reach_cache := {}
@@ -596,6 +611,9 @@ func end_tick() -> void:
 		s.rx = s.x
 		s.ry = s.y
 	if tick % GROWTH_STEP == 0:
+		People.update_households(self)
+		People.update_travelers(self)
+		People.update_population(self)
 		_check_storage()
 		Progression.check(self)
 		_prune_unreachable()

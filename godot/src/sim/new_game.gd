@@ -13,6 +13,9 @@ const START_CHUNKS := 3
 
 static func create(seed_value: int, gen: int = WorldGen.CURRENT_GEN, habitat: String = "valley") -> Simulation:
 	var sim := Simulation.new(seed_value, 0, gen, habitat)
+	# New valleys grow through families and welcomed travellers.
+	sim.growth_mode = "deliberate"
+	sim.next_visitor = int(Content.get_value("kingdomBalance", "FIRST_VISITOR_TICK"))
 	# The land around the hall is generated up front (on worker threads where available).
 	for cy in range(-START_CHUNKS, START_CHUNKS):
 		for cx in range(-START_CHUNKS, START_CHUNKS):

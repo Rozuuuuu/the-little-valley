@@ -153,7 +153,7 @@ Status: **Done** (ported and tested against the browser game), **Started**, **Pl
 | Orchards | `sim/orchards.ts` | `src/sim/` | Orchard tests | Planned |
 | Production, workshops | `sim/buildings.ts` | `src/sim/production.gd`: recipes, fuel, two-batch buffering, worker assignment, status explanations; work, assignWorker, setRecipe, toggleWorkshop commands | Planks, idle explanation, wheat → flour → bread conservation, worker limits | **Done** (quarries and mines come with mining) |
 | Hauling, stock targets | `sim/settlers.ts` | `src/sim/settlers/` | Conservation, no shuttling | Planned |
-| Population, households, recruitment | `population.ts`, `households.ts`, `travelers.ts` | `src/sim/people/` | Ported tests | Planned |
+| Population, households, recruitment | `population.ts`, `households.ts`, `travelers.ts` | `src/sim/people.gd`: visitors and welcomed travellers with escrow, households, bed claims, births, children, legacy arrivals; People window | 15 ported tests (claims, births across saves, refunds, refusals) | **Done** (no 300 cap: a 5,000 safety ceiling, owner's decision) |
 | Progression, milestones | `progression.ts` | `src/sim/progression.gd` | Through slice and production tests | **Done** (requirements for unported systems read 0) |
 | Work areas | `areas.ts` | `src/sim/` | areas-auto port | Planned |
 | Ruler, chief, roles, training | `ruler.ts`, `roles.ts` | `src/sim/people/` | roles/townhall ports | Planned |

@@ -72,7 +72,9 @@ func refresh(s: Settler, pos: Vector2, delta: float, motion: float) -> void:
 	var job_key := s.job
 	if dir != _dir or _hat.visible != (ROLE_HATS.get(job_key, "") != ""):
 		_apply_dir(dir, job_key)
-	_parts.scale.x = -1.0 if s.facing == 3 else 1.0
+	# Children are drawn smaller.
+	var k := 0.72 if s.life_stage == "child" else 1.0
+	_parts.scale = Vector2(-k if s.facing == 3 else k, k)
 	var moved := pos.distance_to(_last_pos)
 	_last_pos = pos
 	var sleeping := s.anim == &"sleep"

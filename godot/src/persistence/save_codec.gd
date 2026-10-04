@@ -26,7 +26,7 @@ static func encode(sim: Simulation, save_name: String, created_at: int, view: Di
 			"hunger": s.hunger, "energy": s.energy, "homeId": _id_or_null(s.home_id), "appearance": s.appearance.duplicate(),
 			"focus": s.focus.duplicate() if not s.focus.is_empty() else null,
 			"areaId": _id_or_null(s.area_id), "priorities": s.priorities.duplicate() if s.has_priorities else null,
-			"settlementId": _id_or_null(s.settlement_id), "lifeStage": s.life_stage, "ageTicks": 0, "householdId": null,
+			"settlementId": _id_or_null(s.settlement_id), "lifeStage": s.life_stage, "ageTicks": s.age_ticks, "householdId": _id_or_null(s.household_id),
 			"awayOn": null, "kingdomId": 0, "military": null, "captive": null,
 		}
 		if s.side_job != "":
@@ -82,7 +82,7 @@ static func encode(sim: Simulation, save_name: String, created_at: int, view: Di
 			"day": sim.day(), "population": adults, "milestone": sim.reached[sim.reached.size() - 1],
 		},
 		"sim": {
-			"tick": sim.tick, "nextId": sim.next_id, "rngState": sim.rng.state, "lastArrival": 0,
+			"tick": sim.tick, "nextId": sim.next_id, "rngState": sim.rng.state,
 			"settlers": settlers, "buildings": buildings, "designations": designations, "regrowth": regrowth,
 			"stats": sim.stats.duplicate(), "reached": sim.reached.duplicate(),
 			"weather": {"raining": sim.raining, "nextChange": sim.weather_next_change},
@@ -90,7 +90,10 @@ static func encode(sim: Simulation, save_name: String, created_at: int, view: Di
 			"session": sim.session.duplicate(true) if not sim.session.is_empty() else null,
 			"settlements": sim.settlements.duplicate(true),
 			# Systems not in this version yet, written empty so the layout stays complete.
-			"growthMode": "deliberate", "households": [], "bedClaims": [], "offer": null, "nextVisitor": 0, "recruits": [], "lastRecruit": null,
+			"growthMode": sim.growth_mode, "households": _households_out(sim), "bedClaims": sim.bed_claims.duplicate(true),
+			"offer": sim.offer.duplicate(true) if not sim.offer.is_empty() else null, "nextVisitor": sim.next_visitor,
+			"recruits": _recruits_out(sim), "lastRecruit": sim.last_recruit if sim.last_recruit > -1000000000 else null,
+			"lastArrival": sim.last_arrival,
 			"geology": {"version": 1, "cells": []}, "routes": [], "manifests": [], "parties": [], "knownRegions": [], "nextMerchant": 0,
 			"claims": [], "horseDay": 0, "animals": [],
 		},
@@ -101,6 +104,26 @@ static func encode(sim: Simulation, save_name: String, created_at: int, view: Di
 
 static func _id_or_null(id: int) -> Variant:
 	return null if id == -1 else id
+
+
+## Households in the browser layout (claim ids: -1 internally, null in the file).
+static func _households_out(sim: Simulation) -> Array:
+	var out: Array = []
+	for h: Dictionary in sim.households:
+		var d := h.duplicate(true)
+		if d["pending"] != null:
+			(d["pending"] as Dictionary)["claimId"] = _id_or_null(int(d["pending"]["claimId"]))
+		out.append(d)
+	return out
+
+
+static func _recruits_out(sim: Simulation) -> Array:
+	var out: Array = []
+	for r: Dictionary in sim.recruits:
+		var d := r.duplicate(true)
+		d["claimId"] = _id_or_null(int(d["claimId"]))
+		out.append(d)
+	return out
 
 
 ## Chunks that must be saved: explored or modified.
@@ -159,6 +182,26 @@ static func decode(save: Variant) -> Dictionary:
 		sim.session = (sd["session"] as Dictionary).duplicate(true)
 	for st: Dictionary in sd.get("settlements", []):
 		sim.settlements.append({"id": int(st["id"]), "name": str(st["name"])})
+	sim.growth_mode = str(sd.get("growthMode", "legacy"))
+	sim.next_visitor = int(sd.get("nextVisitor", 0))
+	sim.last_recruit = int(sd["lastRecruit"]) if sd.get("lastRecruit") != null else -1000000000
+	sim.last_arrival = int(sd.get("lastArrival", 0))
+	if sd.get("offer") is Dictionary:
+		sim.offer = (sd["offer"] as Dictionary).duplicate(true)
+	for h: Dictionary in sd.get("households", []):
+		var hd := {"id": int(h["id"]), "adults": [int(h["adults"][0]), int(h["adults"][1])], "children": (h.get("children", []) as Array).map(func(v: Variant) -> int: return int(v)),
+			"cooldownUntil": int(h.get("cooldownUntil", 0)), "pending": null}
+		if h.get("pending") is Dictionary:
+			var p: Dictionary = h["pending"]
+			hd["pending"] = {"requestedTick": int(p.get("requestedTick", 0)), "stableTicks": int(p.get("stableTicks", 0)),
+				"claimId": int(p["claimId"]) if p.get("claimId") != null else -1, "blocked": str(p.get("blocked", ""))}
+		sim.households.append(hd)
+	for c: Dictionary in sd.get("bedClaims", []):
+		sim.bed_claims.append({"id": int(c["id"]), "homeId": int(c["homeId"]), "owner": {"kind": str(c["owner"]["kind"]), "id": int(c["owner"]["id"])}})
+	for r: Dictionary in sd.get("recruits", []):
+		sim.recruits.append({"id": int(r["id"]), "name": str(r["name"]), "appearance": (r.get("appearance", {}) as Dictionary).duplicate(),
+			"settlementId": int(r["settlementId"]), "claimId": int(r["claimId"]) if r.get("claimId") != null else -1, "state": str(r["state"]),
+			"escrow": Inv.from_json(r.get("escrow", {})), "arrivesTick": int(r.get("arrivesTick", 0)), "blocked": str(r.get("blocked", ""))})
 
 	# World: modified chunks are restored as saved; explored-only chunks keep their bitset and
 	# regenerate when needed (the generator is bit-identical to the one that made them).
@@ -231,6 +274,8 @@ static func decode(save: Variant) -> Dictionary:
 				s.priorities.append(str(k))
 		s.settlement_id = int(sv["settlementId"]) if sv.get("settlementId") != null else -1
 		s.life_stage = str(sv.get("lifeStage", "adult"))
+		s.age_ticks = int(sv.get("ageTicks", 0))
+		s.household_id = int(sv["householdId"]) if sv.get("householdId") != null else -1
 		s.side_job = str(sv.get("sideJob", "")) if sv.get("sideJob") != null else ""
 		s.hold = bool(sv.get("hold", false))
 		s.capacity = Simulation.SETTLER_CAPACITY
@@ -251,6 +296,10 @@ static func decode(save: Variant) -> Dictionary:
 			sim.world.request(cx, cy)
 	sim.world.finish_pending()
 	sim.setup_nav(centre.x, centre.y)
+	# Households that lost an adult are dropped; claims on missing or full homes are released.
+	sim.households = sim.households.filter(func(h: Dictionary) -> bool:
+		return sim.settler(int(h["adults"][0])) != null and sim.settler(int(h["adults"][1])) != null)
+	People.validate_claims(sim)
 	BuildingOps.assign_homes(sim)
 	sim.last_season = str(sim.season()["id"])
 	return {"sim": sim, "error": "", "report": report}
@@ -322,15 +371,13 @@ static func unsupported(d: Dictionary) -> PackedStringArray:
 	var out: PackedStringArray = []
 	var sd: Dictionary = d["sim"]
 	var counts := {
-		"workAreas": "work area", "households": "household", "bedClaims": "promised bed", "recruits": "traveller on the way",
+		"workAreas": "work area",
 		"routes": "supply route", "manifests": "caravan on the road", "parties": "merchant", "animals": "animal", "claims": "land claim",
 	}
 	for k: String in counts:
 		var n := (sd.get(k, []) as Array).size() if sd.get(k) is Array else 0
 		if n > 0:
 			out.append("%d %s%s" % [n, counts[k], "" if n == 1 else "s"])
-	if sd.get("offer") is Dictionary:
-		out.append("a visitor waiting to be welcomed")
 	if sd.get("geology") is Dictionary and not (sd["geology"]["cells"] as Array).is_empty():
 		out.append("%d surveyed ground cells" % (sd["geology"]["cells"] as Array).size())
 	if sd.get("kingdoms") is Array:
@@ -364,8 +411,6 @@ static func unsupported(d: Dictionary) -> PackedStringArray:
 		out.append("%d soldiers" % special["military"])
 	if special["training"] > 0:
 		out.append("%d settlers training a new role" % special["training"])
-	if special["child"] > 0:
-		out.append("%d children (growing up is not in this version yet)" % special["child"])
 	var simulated := {"townHall": true, "camp": true, "house": true, "familyHome": true, "cottage": true, "storehouse": true, "field": true, "path": true, "bridge": true,
 		"workshop": true, "mill": true, "bakery": true, "charcoalKiln": true, "smelter": true, "forge": true, "tannery": true, "weaver": true, "granary": true}
 	var others := {}

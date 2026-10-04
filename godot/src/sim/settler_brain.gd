@@ -44,6 +44,9 @@ static func assign_task(sim: Simulation, s: Settler) -> void:
 		var home := _home_for(sim, s)
 		_start(sim, s, Task.sleep(home.id if home != null else -1), wandering)
 		return
+	if s.life_stage == "child":
+		People.play_near_home(sim, s, _home_for(sim, s))
+		return
 	# Warcraft-style Stop and Hold: stand still (needs above still come first).
 	if s.stopped_until != -1:
 		if s.stopped_until > sim.tick:

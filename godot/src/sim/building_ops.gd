@@ -203,6 +203,11 @@ static func remove(sim: Simulation, b: Building) -> String:
 			s.inside_id = -1
 			s.hidden = false
 	sim.map_changed()
+	# Beds promised to an expected child or a traveller move elsewhere, or wait.
+	for c: Dictionary in sim.bed_claims:
+		if int(c["homeId"]) == b.id:
+			People.relocate_claims(sim, b.id)
+			break
 	var homeless := assign_homes(sim) if displaced > 0 else 0
 	sim.emit({"type": "fx", "kind": "dust", "x": cx, "y": cy})
 	sim.emit({"type": "important"})
@@ -258,7 +263,8 @@ static func find_free_bed(sim: Simulation, counts: Dictionary, permanent_only: b
 ## and gives anyone left over a hall bunk if one is free. Returns how many are left without a bed.
 ## (Bed claims for expected children and travellers come with households.)
 static func assign_homes(sim: Simulation) -> int:
-	var counts := {}
+	# Claimed beds (an expected child, a traveller on the way) are not free.
+	var counts := People.claim_counts(sim)
 	for s in sim.settlers:
 		if s.home_id == -1:
 			continue

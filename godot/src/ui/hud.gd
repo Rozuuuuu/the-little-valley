@@ -30,6 +30,10 @@ var _toasts := VBoxContainer.new()
 var _title := PanelContainer.new()
 var _menu := PanelContainer.new()
 var _busy := PanelContainer.new()
+var _people := PanelContainer.new()
+var _people_text := RichTextLabel.new()
+var _people_buttons := VBoxContainer.new()
+var _people_key := ""
 var _busy_label := Label.new()
 var _card_mode := ""
 var _refresh_timer := 0.0
@@ -57,6 +61,7 @@ func _ready() -> void:
 	_toasts.custom_minimum_size = Vector2(520, 0)
 	_toasts.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_toasts)
+	_build_people()
 	for p: Control in [_title, _menu, _busy]:
 		p.set_anchors_preset(Control.PRESET_CENTER)
 		p.visible = false
@@ -158,6 +163,7 @@ func _build_top() -> void:
 				game.speed = v
 			refresh_now(), "Pause (Space)" if v == 0 else "Speed %d× (%s)" % [v, {1: "1", 2: "2", 4: "3"}[v]]))
 	row.add_child(_speed_box)
+	row.add_child(_button("People", toggle_people, "Visitors, travellers, households and children (F2)"))
 	row.add_child(_button("Save", func() -> void: game.save_now(), "Save now (F5)"))
 	row.add_child(_button("Menu", toggle_menu, "Menu (Esc)"))
 	_top.visible = false
@@ -195,6 +201,131 @@ func _build_card() -> void:
 	v.add_child(_card_grid)
 	_card.visible = false
 	_root.add_child(_card)
+
+
+# ---- people window ------------------------------------------------------------------------------
+
+func _build_people() -> void:
+	_people.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_people.offset_right = -8
+	_people.offset_top = 64
+	_people.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	var v := VBoxContainer.new()
+	v.custom_minimum_size = Vector2(430, 0)
+	_people.add_child(v)
+	_people_text.bbcode_enabled = true
+	_people_text.fit_content = true
+	_people_text.scroll_active = false
+	v.add_child(_people_text)
+	v.add_child(_people_buttons)
+	_people.visible = false
+	_root.add_child(_people)
+
+
+func toggle_people() -> void:
+	_people.visible = not _people.visible
+	_people_key = ""
+	refresh_now()
+
+
+## The People window: what growth is waiting on, the visitor, travellers on the way, households.
+func _refresh_people() -> void:
+	if not _people.visible:
+		return
+	var sim := game.sim
+	var lines: PackedStringArray = ["[b]People[/b]"]
+	var adults := 0
+	var kids: PackedStringArray = []
+	for s in sim.settlers:
+		if s.life_stage == "adult":
+			adults += 1
+		else:
+			var days := maxi(1, ceili(float(int(Content.get_value("kingdomBalance", "CHILD_ADULT_TICKS")) - s.age_ticks) / Defs.DAY_TICKS))
+			kids.append("%s (grows up in %d day%s)" % [s.name, days, "" if days == 1 else "s"])
+	var home_beds := 0
+	var used := 0
+	for b: Building in sim.buildings.values():
+		if b.is_permanent_home():
+			home_beds += b.beds()
+			for s in sim.settlers:
+				if s.home_id == b.id:
+					used += 1
+	lines.append("%d adults%s · beds in homes %d/%d" % [adults, ", %d children" % kids.size() if not kids.is_empty() else "", used, home_beds])
+	# The visitor gets their own line below, so the status line is only shown without one.
+	if sim.population_status != "" and sim.offer.is_empty():
+		lines.append("[color=%s]%s[/color]" % [_c("textDim").to_html(), sim.population_status])
+	if not kids.is_empty():
+		lines.append("Children: " + ", ".join(kids))
+	# Buttons are rebuilt only when what they act on changes.
+	var key := "%s|%s|%s|%s|%s" % [sim.offer.get("id", -1), sim.recruits.size(), sim.households.size(), game.selected.size(), sim.growth_mode]
+	for h: Dictionary in sim.households:
+		key += "|%s%s" % [h["pending"] != null, sim.tick >= int(h["cooldownUntil"])]
+		var a := sim.settler(int(h["adults"][0]))
+		var b := sim.settler(int(h["adults"][1]))
+		var line := "Household: %s and %s" % [a.name if a else "?", b.name if b else "?"]
+		if h["pending"] != null:
+			var p: Dictionary = h["pending"]
+			var stable := int(Content.get_value("kingdomBalance", "CHILD_STABLE_TICKS"))
+			line += " — expecting (%d%%)" % roundi(float(p["stableTicks"]) / stable * 100)
+			if str(p["blocked"]) != "":
+				line += " [color=%s]paused: %s[/color]" % [_c("accent").to_html(), p["blocked"]]
+		elif sim.tick < int(h["cooldownUntil"]):
+			line += " — resting %s" % People._days(int(h["cooldownUntil"]) - sim.tick)
+		lines.append(line)
+	for r: Dictionary in sim.recruits:
+		lines.append("%s is on the way%s" % [r["name"], " — " + str(r["blocked"]) if str(r["blocked"]) != "" else ""])
+	if not sim.offer.is_empty():
+		var needs := People.recruit_needs(sim, int(sim.settlements[0]["id"]))
+		lines.append("[b]A visitor, %s,[/b] would settle for %d food.%s" % [sim.offer["name"], int(Content.get_value("kingdomBalance", "RECRUIT_FOOD")),
+			" Still needed: %s." % ", ".join(needs) if not needs.is_empty() else ""])
+	_people_text.text = "\n".join(lines)
+	if key == _people_key:
+		return
+	_people_key = key
+	for c in _people_buttons.get_children():
+		c.queue_free()
+	if sim.growth_mode != "deliberate":
+		_people_buttons.add_child(_button("Adopt deliberate growth", func() -> void:
+			game.command({"type": "adoptDeliberateGrowth"})
+			_people_key = ""
+			refresh_now(), "Newcomers then come only as welcomed travellers and from households"))
+	if not sim.offer.is_empty():
+		var offer_id: int = sim.offer["id"]
+		_people_buttons.add_child(_button("Welcome %s (%d food)" % [sim.offer["name"], int(Content.get_value("kingdomBalance", "RECRUIT_FOOD"))], func() -> void:
+			game.command({"type": "acceptRecruit", "offerId": offer_id, "settlementId": sim.settlements[0]["id"]})
+			_people_key = ""
+			refresh_now()))
+	for r: Dictionary in sim.recruits:
+		var rid: int = r["id"]
+		if r["state"] == "travelling":
+			_people_buttons.add_child(_button("Call off %s (food back)" % r["name"], func() -> void:
+				game.command({"type": "cancelRecruit", "recruitId": rid})
+				_people_key = ""
+				refresh_now()))
+	for h: Dictionary in sim.households:
+		var hid: int = h["id"]
+		var a := sim.settler(int(h["adults"][0]))
+		var names := "%s's household" % (a.name if a else "a")
+		if h["pending"] == null:
+			_people_buttons.add_child(_button("Ask for a child — %s" % names, func() -> void:
+				game.command({"type": "requestChild", "householdId": hid})
+				_people_key = ""
+				refresh_now(), "Holds a bed; the baby arrives after two steady days of food and shelter"))
+		else:
+			_people_buttons.add_child(_button("Wait — %s" % names, func() -> void:
+				game.command({"type": "cancelChildRequest", "householdId": hid})
+				_people_key = ""
+				refresh_now()))
+	if game.selected.size() == 2:
+		_people_buttons.add_child(_button("Start a household with the two selected", func() -> void:
+			game.command({"type": "formHousehold", "ids": game.selected.duplicate()})
+			_people_key = ""
+			refresh_now()))
+	else:
+		var hint := Label.new()
+		hint.text = "Select two adults to start a household."
+		hint.add_theme_color_override("font_color", _c("textDim"))
+		_people_buttons.add_child(hint)
 
 
 # ---- states ------------------------------------------------------------------------------------
@@ -413,6 +544,7 @@ func refresh_now() -> void:
 	_clock.text = "%s · Day %d of %s · %02d:%02d%s" % [season["def"]["name"], int(season["day"]), str(season["def"]["name"]).to_lower(), int(t), int(fmod(t, 1.0) * 60.0), "  ⏸" if game.paused else ("  %d×" % game.speed if game.speed > 1 else "")]
 	_refresh_selection()
 	_refresh_card()
+	_refresh_people()
 
 
 func _refresh_selection() -> void:
