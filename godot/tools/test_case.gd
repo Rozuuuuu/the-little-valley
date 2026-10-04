@@ -4,6 +4,8 @@ extends RefCounted
 ## Run every test: see tools/run_tests.gd.
 
 var failures: PackedStringArray = []
+## Engine errors a test causes on purpose (substrings); the runner ignores matching errors.
+var allowed_errors: PackedStringArray = []
 var checks := 0
 ## Stop reporting after this many failures in one test, so one broken table can't flood the log.
 const MAX_REPORTED := 12

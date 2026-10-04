@@ -149,6 +149,58 @@ Two things follow from the measurements:
 
 GridAStar and DenseAStar stay in the code as the exact reference for tests.
 
+## Simulation in GDScript (the slice)
+
+`godot/tools/bench_sim.gd N ticks` runs the browser profiler's village where the slice allows:
+generator 3, seed 777001, 16 cottages, 3 storehouses, about 120 fields, construction sites, and
+a 61×61 marked area. Not included yet: the mill, bakery, workshop and the four work areas.
+Daytime ticks, in ms:
+
+| Settlers | avg | p50 | p95 | p99 | max | Node (browser game) p50 / p95 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 25 | 1.8 | 1.2 | 5.7 | 6.8 | 13.9 | 0.10 / 0.85 |
+| 100 | 4.1 | 3.7 | 7.7 | 9.8 | 15.8 | 0.36 / 1.56 |
+| 300 | 9.0 | 8.5 | 13.8 | 16.4 | 23.2 | 0.96 / 2.24 |
+| 1,000 (600 ticks) | 27.3 | 26.4 | 37.7 | 51.1 | 57.4 | not measured |
+
+At 300, nights spike to p95 35 ms and max 51 ms. That is the bedtime rush of 226 homeless
+settlers looking for spots by the hall, an artefact of the scenario (too few beds).
+
+How we got there, at 100 settlers:
+
+| Change | avg | p95 |
+| --- | --- | --- |
+| Straight port | 48.5 | 92 |
+| Cached content lookups and season; lists of sites, fields and stores | 10.6 | 24 |
+| Harvest marks in a spatial index | 7.5 | 15 |
+| Harvestable objects in a resource index, searched within the gather radius | 4.0 | 7.7 |
+
+Section profiles come from `PROF=1` (see `Prof`). The biggest single cost was gatherers
+scanning a 37×37 square tile by tile: 3.1 ms per decision.
+
+**Supported scale, from this evidence (reference machine, desktop, 1× speed):**
+- **Up to about 300 settlers**, a tick fits inside one 60 FPS frame on average (p99 16 ms).
+- **1,000 settlers do not:** about 27 ms per tick means a dropped frame on every tick.
+
+Next step (Phase 3): run the simulation on its own thread. It has no nodes, so this is safe,
+and frames would then never wait for a tick. Where threads are unavailable, ticks are
+time-sliced. Pathfinding is not the bottleneck: 1.3–4.6 native searches per tick at about
+0.15 ms each.
+
+## Saves
+
+- Godot saves use the browser game's v15 JSON layout. A genuine v15 browser save
+  (`tests/fixtures/v15-save.json`) imports with every settler, building, stock count and explored
+  tile intact. The 18 wild animals and the ruler are reported as not in this version yet,
+  never silently dropped.
+- **Godot's JSON reader rounds 17-digit numbers inexactly** (measured: a hunger value of
+  57.3333333333274 came back a few units off in the last place). Reloads therefore match to
+  about 1e-13, not bit for bit. Gameplay cannot notice this. A binary format for Godot's own
+  saves would make them exact; that is planned with the save history UI.
+- In the store test each save took about 2 s, which is far too slow. Most of it is the
+  read-back check regenerating 36 chunks. The check will validate without rebuilding the world
+  (planned; measured again then).
+
 ## Commands
 
 ```bash
@@ -160,4 +212,5 @@ npx tsx scripts/bench-paths.ts
 # Godot (from godot/):
 godot --headless --path . -s res://tools/bench_gen.gd -- 12
 godot --headless --path . -s res://tools/bench_path.gd
+godot --headless --path . -s res://tools/bench_sim.gd -- 100 2880        # PROF=1 for sections
 ```

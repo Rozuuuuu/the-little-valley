@@ -143,13 +143,13 @@ Status: **Done** (ported and tested against the browser game), **Started**, **Pl
 | Geology, regions | `world/geology.ts`, `regions.ts` | `src/world/` | Deposit/region goldens | Planned |
 | Pathfinding (local) | `sim/pathfinding.ts` | `src/sim/path/nav_window.gd` (AStarGrid2D); `grid_astar.gd`, `dense_astar.gd` as exact references | 80-search golden corpus, validity and optimality, replanning; benchmark | **Done** |
 | Pathfinding (long routes) | same A* | Coarse chunk graph over NavWindows | Benchmark long routes | Planned |
-| Simulation state and step order | `sim/Simulation.ts` | `src/sim/simulation.gd` | Ported tests | Planned |
-| Commands | `sim/commands.ts` | `src/sim/commands/` | Ported command tests | Planned |
-| Settler brain, tasks, priorities | `sim/settlers.ts`, `priorities.ts` | `src/sim/settlers/` | village.test port, reservation invariant | Planned |
-| Reservations | `Simulation.reservations` | `src/sim/reservations.gd` | Invariant checked every test tick | Planned |
-| Spatial index | none | `src/sim/index/` | Equivalence with brute force | Planned |
-| Buildings, construction, levels | `sim/buildings.ts`, `levels.ts` | `src/sim/buildings/` | Cost, refund, completion tests | Planned |
-| Farming, weather, seasons | `sim/farming.ts`, `seasons.ts` | `src/sim/` | Farming-cycle tests | Planned |
+| Simulation state and step order | `sim/Simulation.ts` | `src/sim/simulation.gd` | 15 tests ported from simulation.test.ts | **Done (slice)** |
+| Commands | `sim/commands.ts` | `src/sim/commands.gd`: move, gather, place, placeArea, remove, designate, setJob, setPriorities, setCrop, stop, hold, returnGoods | Slice tests | **Started** (12 of about 60) |
+| Settler brain, tasks, priorities | `sim/settlers.ts`, `priorities.ts` | `src/sim/settler_brain.gd`, `settler_tasks.gd`: needs, gather, deliver, haul, build, farm, eat, sleep, move, focus, stop/hold | Slice tests, interruption test | **Started** (no work areas, crafting, hunting, herding or roles yet) |
+| Reservations | `Simulation.reservations` | int keys in `simulation.gd` | `reservation_problems()` in tests | **Done** |
+| Spatial index | none | `src/sim/tile_set_index.gd`: harvest marks and harvestable objects | Slice tests; benchmark (48 to 4 ms per tick at 100) | **Done** (buildings and storage not indexed; not needed so far) |
+| Buildings, construction, levels | `sim/buildings.ts`, `levels.ts` | `src/sim/building_ops.gd`: place, complete, remove, homes, regrowth, paths, bridges | Construction and refund tests | **Started** (no upgrades, spans, workshops, pens or mines) |
+| Farming, weather, seasons | `sim/farming.ts`, `seasons.ts` | `src/sim/farming.gd`, `seasons.gd` | Farming-cycle, dry-field, crop-unlock tests | **Done** (wells come with the well) |
 | Orchards | `sim/orchards.ts` | `src/sim/` | Orchard tests | Planned |
 | Production, workshops | `sim/buildings.ts` | `src/sim/` | Conservation tests | Planned |
 | Hauling, stock targets | `sim/settlers.ts` | `src/sim/settlers/` | Conservation, no shuttling | Planned |
@@ -164,8 +164,8 @@ Status: **Done** (ported and tested against the browser game), **Started**, **Pl
 | Kingdoms, territory | `kingdoms.ts`, `territory.ts` | `src/sim/realm/` | Ported tests | Planned |
 | News, concern, diplomacy, campaigns | `news.ts`, `concern.ts`, `diplomacy.ts`, `campaigns.ts` | `src/sim/realm/` | Ported tests | Planned |
 | Military, war | `military.ts`, `combat.ts` | `src/sim/war/` | Ported tests | Planned |
-| Saves: format, migrations, history, files | `save/*` | `src/persistence/` | Round trips, fixtures v2–v15 | Planned |
-| Old-save import | n/a | `src/persistence/` | Genuine fixtures and a real export | Planned |
+| Saves: format, migrations, history, files | `save/*` | `src/persistence/save_codec.gd`, `save_store.gd`: v15 layout, validation, 10 automatic plus named points, safe writes | Round trip, damaged saves, store history and fallback | **Started** (migrations v2–v14 and save files on the web to do) |
+| Old-save import | n/a | `SaveCodec.decode` with an unsupported-data report | Genuine v15 browser fixture | **Started** (reading the old IndexedDB on the web to do) |
 | Rendering | `render/*` | `src/presentation/` | Screenshots, frame benchmarks | Planned |
 | Art | code-drawn pixel sprites | SVG-sourced illustrated assets | Style review sheet | Planned |
 | Animation, effects | `particles.ts`, renderer | `src/presentation/fx/` | Frame benchmarks, reduced motion | Planned |
@@ -182,7 +182,7 @@ Status: **Done** (ported and tested against the browser game), **Started**, **Pl
 | --- | --- | --- | --- |
 | 0. Baseline | Tests, profiles, soak, gen-4 fingerprint, golden data, content export | Baseline report; browser tests green | **Done** |
 | 1. Godot core | Numeric ports, worldgen, streaming world, pathfinding | Bit-exact goldens; streaming tests; pathfinding benchmarked and chosen | **Done** (the settler-loop cost moves to Phase 2, where it is measured on the real ported loop rather than a synthetic one) |
-| 2. Slice simulation | Settlers (needs, gather, deliver, haul, build, farm), Town Hall, storehouse, house, field, commands, saves | Ported conservation, reservation, farming and construction tests pass headless; 20-day soak bounded | Planned |
+| 2. Slice simulation | Settlers (needs, gather, deliver, haul, build, farm), Town Hall, storehouse, house, field, commands, saves | Ported conservation, reservation, farming and construction tests pass headless; 20-day soak bounded | **Done** except the 20-day Godot soak (with the Phase 4 benchmarks) |
 | 3. Slice presentation | Illustrated ground, objects, settlers with walk, idle, carry and work animation, camera, selection, minimal HUD, reduced motion | 60 FPS at 100 settlers on the reference machine; your review of crowded scenes | Planned |
 | 4. Slice evaluation | Benchmarks at 25/100/300/1,000, soak, a web build on a phone | Report and your sign-off | Planned |
 | 5+. Systems | Production → people → seasons and areas → animals → mining → settlements and trade → realm → military → full UI → audio → old-save import → Asset Studio → install and update | Each with ported tests and a matrix update | Planned |

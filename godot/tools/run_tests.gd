@@ -63,7 +63,12 @@ func _initialize() -> void:
 			test.call(method_name)
 			var ms := (Time.get_ticks_usec() - t0) / 1000.0
 			for e in catcher.take():
-				test.failures.append("error: " + e)
+				var allowed := false
+				for a in test.allowed_errors:
+					if e.contains(a):
+						allowed = true
+				if not allowed:
+					test.failures.append("error: " + e)
 			if test.checks == 0:
 				test.failures.append("made no checks (did it stop early?)")
 			if test.failures.is_empty():
