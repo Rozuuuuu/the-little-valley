@@ -38,6 +38,10 @@ static var fertility := PackedFloat64Array()
 ## Per-object data, indexed by object id.
 static var blocks := PackedByteArray()
 static var start_amount := PackedByteArray()
+## Resource the object yields ("" for none), work ticks per unit, and display name.
+static var object_resource := PackedStringArray()
+static var object_work_ticks := PackedFloat64Array()
+static var object_name := PackedStringArray()
 static var _loaded := false
 
 
@@ -61,10 +65,17 @@ static func ensure_loaded() -> void:
 	var objects: Dictionary = Content.get_value("tiles", "OBJECTS")
 	blocks.resize(objects.size())
 	start_amount.resize(objects.size())
+	object_resource.resize(objects.size())
+	object_work_ticks.resize(objects.size())
+	object_name.resize(objects.size())
 	for k: String in objects:
 		var d: Dictionary = objects[k]
-		blocks[int(k)] = 1 if d["blocks"] else 0
-		start_amount[int(k)] = int(d["amount"])
+		var i := int(k)
+		blocks[i] = 1 if d["blocks"] else 0
+		start_amount[i] = int(d["amount"])
+		object_resource[i] = d.get("resource", "")
+		object_work_ticks[i] = float(d["workTicks"])
+		object_name[i] = d["name"]
 
 
 static func object_def(o: int) -> Dictionary:

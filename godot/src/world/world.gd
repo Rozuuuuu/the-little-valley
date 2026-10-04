@@ -40,6 +40,15 @@ var _in_flight := {}
 var _done := {}
 var _mutex := Mutex.new()
 
+## Called with (x, y) after a tile's terrain or object changes, and with a chunk after it is
+## installed (generated or restored), so navigation can refresh. Set by the simulation.
+var on_tile_changed: Callable
+var on_chunk_installed: Callable
+## Called with (x, y) after a tile's object or amount changes, and with a chunk before it is
+## unloaded. Set by the simulation to keep its resource index current.
+var on_object_changed: Callable
+var on_chunk_evicted: Callable
+
 ## Counters for tests, benchmarks and the debug overlay.
 var generated_count := 0
 var evicted_count := 0
@@ -188,6 +197,8 @@ func _install(k: int, c: Chunk) -> void:
 		_explored_unloaded.erase(k)
 	_chunks[k] = c
 	generated_count += 1
+	if on_chunk_installed.is_valid():
+		on_chunk_installed.call(c)
 
 
 ## Installs a chunk restored from a save (modified terrain, objects and amounts).
@@ -200,6 +211,8 @@ func install_saved(cx: int, cy: int, terrain: PackedByteArray, obj: PackedByteAr
 	c.modified = true
 	c.explored_count = unpack_bits(explored_bits, c.explored)
 	_chunks[key(cx, cy)] = c
+	if on_chunk_installed.is_valid():
+		on_chunk_installed.call(c)
 
 
 ## Records exploration of a chunk that is not loaded (from a save, or revealed while unloaded).
@@ -225,6 +238,8 @@ func evict(keep: Dictionary) -> int:
 			continue
 		if c.explored_count > 0:
 			_explored_unloaded[k] = pack_bits(c.explored)
+		if on_chunk_evicted.is_valid():
+			on_chunk_evicted.call(c)
 		_chunks.erase(k)
 		dropped += 1
 	evicted_count += dropped
@@ -287,21 +302,30 @@ func set_terrain(x: int, y: int, t: int) -> void:
 			var n: Chunk = _chunks.get(key((x + dx) >> Chunk.SHIFT, (y + dy) >> Chunk.SHIFT))
 			if n != null:
 				n.terrain_version += 1
+	if on_tile_changed.is_valid():
+		on_tile_changed.call(x, y)
 
 
 func set_obj(x: int, y: int, o: int, amt_value: int = -1) -> void:
 	var c := _loaded_for_change(x, y)
 	var i := index_in_chunk(x, y)
+	var was_blocking := Tiles.blocks[c.obj[i]] == 1
 	c.obj[i] = o
 	c.amt[i] = Tiles.start_amount[o] if amt_value < 0 else amt_value
 	c.modified = true
 	c.version += 1
+	if on_tile_changed.is_valid() and was_blocking != (Tiles.blocks[o] == 1):
+		on_tile_changed.call(x, y)
+	if on_object_changed.is_valid():
+		on_object_changed.call(x, y)
 
 
 func set_amount(x: int, y: int, value: int) -> void:
 	var c := _loaded_for_change(x, y)
 	c.amt[index_in_chunk(x, y)] = value
 	c.modified = true
+	if on_object_changed.is_valid():
+		on_object_changed.call(x, y)
 
 
 ## Reveals a disc of tiles; returns how many were newly explored. Tiles in unloaded chunks are
@@ -310,6 +334,8 @@ func reveal(cx: float, cy: float, r: float) -> int:
 	var count := 0
 	var r2 := r * r
 	var touched := {}
+	var last_k := -1
+	var c: Chunk = null
 	for y in range(floori(cy - r), ceili(cy + r) + 1):
 		for x in range(floori(cx - r), ceili(cx + r) + 1):
 			var dx := x + 0.5 - cx
@@ -318,7 +344,9 @@ func reveal(cx: float, cy: float, r: float) -> int:
 				continue
 			var k := key(x >> Chunk.SHIFT, y >> Chunk.SHIFT)
 			var i := index_in_chunk(x, y)
-			var c: Chunk = _chunks.get(k)
+			if k != last_k:
+				last_k = k
+				c = _chunks.get(k)
 			if c != null:
 				if c.explored[i] == 0:
 					c.explored[i] = 1
@@ -335,13 +363,13 @@ func reveal(cx: float, cy: float, r: float) -> int:
 				_explored_unloaded[k] = bits
 				request(x >> Chunk.SHIFT, y >> Chunk.SHIFT)
 	for k: int in touched:
-		var c: Chunk = touched[k]
-		c.fog_version += 1
+		var tc: Chunk = touched[k]
+		tc.fog_version += 1
 		# Neighbours sample our edge when drawing soft fog, so they refresh too.
 		for ny in range(-1, 2):
 			for nx in range(-1, 2):
-				var n: Chunk = _chunks.get(key(c.cx + nx, c.cy + ny))
-				if n != null and n != c:
+				var n: Chunk = _chunks.get(key(tc.cx + nx, tc.cy + ny))
+				if n != null and n != tc:
 					n.fog_version += 1
 	return count
 
