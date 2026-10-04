@@ -329,6 +329,8 @@ func _building_look(b: Building, night: bool) -> String:
 		return "site:%d:%d" % [b.w, b.h]
 	if not b.orchard.is_empty():
 		return "orchard:%s" % Orchards.look(sim, b)
+	if not b.quarry.is_empty():
+		return "quarry:%d" % Mining.quarry_stage(b)
 	return "%s:%s" % [b.type, night]
 
 
@@ -354,11 +356,16 @@ func _make_building(b: Building, look: String) -> Node2D:
 		holder.tree_exiting.connect(func() -> void: soil.queue_free())
 		entities.add_child(holder)
 		return holder
+	var ground_sprite := ""
 	if b.built and b.def().has("pen") and art.has(b.type):
-		# Pens lie on the ground layer, so the animals inside are always in view.
+		ground_sprite = b.type
+	elif b.built and not b.quarry.is_empty():
+		ground_sprite = "quarry_%d" % Mining.quarry_stage(b)
+	if ground_sprite != "":
+		# Pens and quarry pits lie on the ground layer, so whoever is inside is always in view.
 		var pen_holder := Node2D.new()
 		var yard := Sprite2D.new()
-		art.apply(yard, b.type)
+		art.apply(yard, ground_sprite)
 		yard.position = base
 		_field_layer.add_child(yard)
 		pen_holder.tree_exiting.connect(func() -> void: yard.queue_free())

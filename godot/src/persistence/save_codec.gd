@@ -48,6 +48,10 @@ static func encode(sim: Simulation, save_name: String, created_at: int, view: Di
 			d["field"] = {"crop": f["crop"] if f["crop"] != "" else null, "state": f["state"], "growth": f["growth"], "moisture": f["moisture"]}
 		if not b.orchard.is_empty():
 			d["orchard"] = b.orchard.duplicate()
+		if not b.mine.is_empty():
+			d["mine"] = b.mine.duplicate()
+		if not b.quarry.is_empty():
+			d["quarry"] = b.quarry.duplicate()
 		if not b.pen.is_empty():
 			d["pen"] = {"breed": b.pen["breed"], "ready": b.pen["ready"]}
 		if not b.workshop.is_empty():
@@ -102,7 +106,7 @@ static func encode(sim: Simulation, save_name: String, created_at: int, view: Di
 			"offer": sim.offer.duplicate(true) if not sim.offer.is_empty() else null, "nextVisitor": sim.next_visitor,
 			"recruits": _recruits_out(sim), "lastRecruit": sim.last_recruit if sim.last_recruit > -1000000000 else null,
 			"lastArrival": sim.last_arrival,
-			"geology": {"version": 1, "cells": []}, "routes": [], "manifests": [], "parties": [], "knownRegions": [], "nextMerchant": 0,
+			"geology": {"version": Geology.VERSION, "cells": sim.geology.keys().map(func(id: int) -> Array: return [id, sim.geology[id]])}, "routes": [], "manifests": [], "parties": [], "knownRegions": [], "nextMerchant": 0,
 			"claims": [], "horseDay": 0, "animals": sim.animals.map(_animal_out), "animalRng": sim.animal_rng.state,
 		},
 		"world": {"genVersion": sim.world.gen, "habitat": sim.world.habitat_id, "chunks": chunks},
@@ -253,6 +257,10 @@ static func decode(save: Variant) -> Dictionary:
 		if bd.get("field") is Dictionary:
 			var f: Dictionary = bd["field"]
 			b.field = {"crop": "" if f["crop"] == null else str(f["crop"]), "state": str(f["state"]), "growth": float(f["growth"]), "moisture": float(f["moisture"])}
+		if bd.get("mine") is Dictionary:
+			b.mine = {"depositId": int(bd["mine"]["depositId"]), "level": int(bd["mine"].get("level", 1))}
+		if bd.get("quarry") is Dictionary:
+			b.quarry = {"extracted": int(bd["quarry"].get("extracted", 0))}
 		if bd.get("pen") is Dictionary:
 			b.pen = {"breed": float(bd["pen"].get("breed", 0)), "ready": float(bd["pen"].get("ready", 0))}
 		if bd.get("orchard") is Dictionary:
@@ -307,6 +315,9 @@ static func decode(save: Variant) -> Dictionary:
 		s.capacity = Simulation.SETTLER_CAPACITY
 		sim._add_settler_object(s)
 
+	if sd.get("geology") is Dictionary:
+		for c: Array in sd["geology"].get("cells", []):
+			sim.geology[int(c[0])] = int(c[1]) if c[1] != null else null
 	if sd.get("animalRng") != null:
 		sim.animal_rng.state = int(sd["animalRng"])
 	for av: Dictionary in sd.get("animals", []):
@@ -437,8 +448,6 @@ static func unsupported(d: Dictionary) -> PackedStringArray:
 		var n := (sd.get(k, []) as Array).size() if sd.get(k) is Array else 0
 		if n > 0:
 			out.append("%d %s%s" % [n, counts[k], "" if n == 1 else "s"])
-	if sd.get("geology") is Dictionary and not (sd["geology"]["cells"] as Array).is_empty():
-		out.append("%d surveyed ground cells" % (sd["geology"]["cells"] as Array).size())
 	if sd.get("kingdoms") is Array:
 		var ks: Array = sd["kingdoms"]
 		if ks.size() > 1:

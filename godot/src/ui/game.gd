@@ -116,6 +116,28 @@ func _capture(opts: Dictionary) -> void:
 	Commands.apply(sim, {"type": "placeArea", "building": "field", "x0": 4, "y0": 4, "x1": 6, "y1": 6, "crop": "wheat"})
 	_place_near_hall(["house", "storehouse"])
 	Commands.apply(sim, {"type": "designate", "x0": -16, "y0": -16, "x1": 16, "y1": 16, "on": true})
+	if opts.get("mining", "0") == "1":
+		# The starter copper surveyed with a finished mine on it, and a quarry beside it.
+		sim.reached.append("hamlet")
+		var dep: Dictionary = Geology.starter_deposits(sim.seed_value, 3)["copper"]
+		var dx := int(dep["x"])
+		var dy := int(dep["y"])
+		sim.world.reveal(dx, dy, 12)
+		Mining.complete_survey(sim, sim.settlers[0], dx, dy)
+		for type: String in ["mine", "quarry"]:
+			var done := false
+			for r in 8:
+				for oy in range(-r, r + 1):
+					for ox in range(-r, r + 1):
+						if not done and bool(BuildingOps.check_placement(sim, type, dx + ox, dy + oy)["ok"]):
+							var mb := BuildingOps.place(sim, type, dx + ox, dy + oy)
+							mb.delivered = BuildingOps.cost_of(mb).duplicate()
+							BuildingOps.complete(sim, mb, true)
+							if type == "quarry":
+								mb.quarry["extracted"] = 70
+							done = true
+		opts["x"] = str(dx)
+		opts["y"] = str(dy)
 	if opts.get("animals", "0") == "1":
 		sim.reached.append("hamlet")
 		_place_near_hall(["chickenCoop", "sheepPen", "hunterLodge"])
@@ -443,7 +465,7 @@ func _pointer_moved(p: Vector2) -> void:
 
 func _update_ghost() -> void:
 	ghost_tiles = []
-	if placing == "" or hover_tile.x == -99999 or placing.begins_with("area:"):
+	if placing == "" or hover_tile.x == -99999 or placing.begins_with("area:") or placing == "survey":
 		return
 	if placing == "mark" or placing == "unmark" or Defs.building(placing).get("paint", false):
 		if drag_box.has_area():
@@ -492,6 +514,12 @@ func _primary_release(screen: Vector2, additive: bool) -> void:
 
 
 func _place(screen: Vector2, box: Rect2) -> void:
+	if placing == "survey":
+		if not selected.is_empty():
+			var t := _tile_at(screen)
+			if bool(command({"type": "surveyDeposit", "settlerId": selected[0], "x": t.x, "y": t.y})["ok"]):
+				cancel_placing()
+		return
 	if placing.begins_with("area:"):
 		if not box.has_area():
 			return

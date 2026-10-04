@@ -7,6 +7,7 @@ extends Node2D
 var game: Game
 var font: Font = load("res://fonts/AtkinsonHyperlegible-Bold.woff2")
 ## Outline colours of work areas by kind (fill is the same, faint).
+const ORE_COLORS := {"coal": Color("#3b3b3b"), "copper": Color("#d07a43"), "iron": Color("#a7a2a0"), "silver": Color("#dfe6ea"), "gold": Color("#e6b65a"), "diamond": Color("#9fe3f0")}
 const AREA_COLORS := {"farm": Color("#e3c26f"), "wood": Color("#7fc79a"), "stone": Color("#b9c6c4"), "build": Color("#e8a66a"), "hunt": Color("#d98a7a"), "forage": Color("#c49ad8")}
 
 
@@ -23,6 +24,12 @@ func _draw() -> void:
 	# Work areas: a faint fill, an outline and the name with the crew count, kept the same size on
 	# screen at any zoom.
 	var px := 1.0 / maxf(0.05, game.camera.zoom.x)
+	if game.placing == "survey" and game.hover_tile.x != -99999:
+		# The whole geology cell a survey would cover.
+		var gc := Geology.cell_of(game.hover_tile.x, game.hover_tile.y)
+		var cr := Rect2(Vector2(gc) * Geology.CELL * T, Vector2.ONE * Geology.CELL * T)
+		draw_rect(cr, Color(WorldView.GOLD, 0.08))
+		draw_rect(cr, Color(WorldView.GOLD, 0.8), false, 2.0 * px)
 	for a in sim.work_areas:
 		var r := Rect2(Vector2(a.x0, a.y0) * T, Vector2(a.x1 - a.x0 + 1, a.y1 - a.y0 + 1) * T)
 		if not r.intersects(view):
@@ -33,6 +40,18 @@ func _draw() -> void:
 		draw_rect(r, Color(col, 1.0 if chosen else 0.85), false, (3.5 if chosen else 2.5) * px)
 		var label := "%s · %d" % [a.name, Areas.crew_of(sim, a.id).size()]
 		_label(r.position + Vector2(6, 20) * px, label, col, px)
+	# Surveyed ore: a coloured stone with the mineral's name once zoomed in.
+	for d in Mining.known_deposits(sim):
+		var dp := Vector2(int(d["x"]) + 0.5, int(d["y"]) + 0.5) * T
+		if not view.has_point(dp):
+			continue
+		var mcol: Color = ORE_COLORS.get(str(d["mineral"]), WorldView.GOLD)
+		if int(d["remaining"]) <= 0:
+			mcol = Color(0.55, 0.55, 0.55)
+		draw_circle(dp, 9.0 * px, Color(0.05, 0.16, 0.17, 0.85))
+		draw_circle(dp, 6.5 * px, mcol)
+		if game.camera.zoom.x >= 0.6:
+			_label(dp + Vector2(12, 5) * px, str(Geology.mineral(str(d["mineral"]))["name"]), mcol, px)
 	# Harvest marks: a small gold diamond over each marked object.
 	var tiles := Rect2i(floori(view.position.x / T), floori(view.position.y / T), ceili(view.size.x / T) + 1, ceili(view.size.y / T) + 1)
 	for k: int in sim.designations.keys_in(tiles):

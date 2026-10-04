@@ -85,6 +85,10 @@ static func run_task(sim: Simulation, s: Settler) -> void:
 			Production.run_craft(sim, s, t)
 		Task.ORCHARD:
 			Orchards.run(sim, s, t)
+		Task.SURVEY:
+			Mining.run_survey(sim, s, t)
+		Task.EXTRACT:
+			Mining.run_extract(sim, s, t)
 		Task.HUNT:
 			Husbandry.run_hunt(sim, s, t)
 		Task.HERD:
@@ -225,6 +229,8 @@ static func task_keys(s: Settler) -> Array[int]:
 			return [Simulation.K_CRAFT + t.site]
 		Task.ORCHARD:
 			return [Simulation.K_ORCHARD + t.field]
+		Task.EXTRACT:
+			return [Mining.extract_key(t.site, t.slot)]
 		Task.HUNT:
 			return [Simulation.K_HUNT + t.animal]
 		Task.HERD:
@@ -252,6 +258,9 @@ static func _release_task(sim: Simulation, s: Settler) -> void:
 			sim.release(Simulation.K_CRAFT + t.site, s.id)
 		Task.ORCHARD:
 			sim.release(Simulation.K_ORCHARD + t.field, s.id)
+		Task.EXTRACT:
+			sim.release(Mining.extract_key(t.site, t.slot), s.id)
+			Mining.release_extraction(sim, t.site, t.amount)
 		Task.HUNT:
 			sim.release(Simulation.K_HUNT + t.animal, s.id)
 			var a := Animals.find(sim, t.animal)

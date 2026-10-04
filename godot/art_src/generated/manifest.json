@@ -426,6 +426,22 @@
    "kind": "night",
    "provisional": true
   },
+  "fisherHut": {
+   "w": 216,
+   "h": 288,
+   "ax": 12,
+   "ay": 278,
+   "kind": "building",
+   "provisional": true
+  },
+  "fisherHut_lit": {
+   "w": 216,
+   "h": 288,
+   "ax": 12,
+   "ay": 278,
+   "kind": "night",
+   "provisional": true
+  },
   "stable": {
    "w": 312,
    "h": 296,
@@ -864,6 +880,46 @@
    "ax": 8,
    "ay": 342,
    "kind": "pen",
+   "provisional": true
+  },
+  "quarry_0": {
+   "w": 208,
+   "h": 222,
+   "ax": 8,
+   "ay": 216,
+   "kind": "pen",
+   "provisional": true
+  },
+  "quarry_1": {
+   "w": 208,
+   "h": 222,
+   "ax": 8,
+   "ay": 216,
+   "kind": "pen",
+   "provisional": true
+  },
+  "quarry_2": {
+   "w": 208,
+   "h": 222,
+   "ax": 8,
+   "ay": 216,
+   "kind": "pen",
+   "provisional": true
+  },
+  "quarry_3": {
+   "w": 208,
+   "h": 222,
+   "ax": 8,
+   "ay": 216,
+   "kind": "pen",
+   "provisional": true
+  },
+  "mine": {
+   "w": 208,
+   "h": 302,
+   "ax": 8,
+   "ay": 296,
+   "kind": "building",
    "provisional": true
   },
   "site_1x1": {

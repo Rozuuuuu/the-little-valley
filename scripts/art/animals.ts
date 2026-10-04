@@ -272,3 +272,55 @@ export function penYard(w: number, h: number, kind: string): { w: number; h: num
   void SHADOW;
   return { w: W, h: H, ax: x0, ay: yBase, body: o };
 }
+
+
+/** A quarry pit, deeper with each stage (0–3), drawn on the ground layer. */
+export function quarryPit(stage: number): { w: number; h: number; ax: number; ay: number; body: string } {
+  const T = 96;
+  const fw = 2 * T;
+  const W = fw + 16;
+  const H = 2 * T + 30;
+  const x0 = 8;
+  const yBase = H - 6;
+  const top = yBase - 2 * T;
+  const cx = x0 + fw / 2;
+  const cy = top + T;
+  let o = `<path d="${blob(cx, cy, fw * 0.47, T * 0.92, 41, 0.08, 14)}" fill="${M.stone[2]}" stroke="${outlineOf(M.stone)}" stroke-width="3"/>`;
+  // Terraced steps cut deeper each stage.
+  for (let i = 0; i <= stage; i++) {
+    const k = 1 - (i + 1) * 0.2;
+    o += `<path d="${blob(cx + i * 3, cy + i * 4, fw * 0.47 * k, T * 0.92 * k, 41 + i, 0.08, 14)}" fill="${mix(M.stone[1], M.stone[0], i / 4)}" stroke="${outlineOf(M.stone)}" stroke-width="2"/>`;
+  }
+  // Cut blocks stacked at the rim and a ladder down.
+  o += shaded(rrect(x0 + fw - 58, yBase - 40, 34, 22, 4), { tones: M.stone, outline: outlineOf(M.stone), shadow: 3, light: 2 });
+  o += shaded(rrect(x0 + fw - 48, yBase - 58, 30, 20, 4), { tones: M.stone, outline: outlineOf(M.stone), shadow: 3, light: 2 });
+  o += `<path d="M${cx - 30},${cy - 30} l18,40 M${cx - 18},${cy - 34} l18,40" stroke="${M.wood[1]}" stroke-width="4"/>`;
+  for (let i = 0; i < 4; i++) o += `<path d="M${cx - 28 + i * 4.5},${cy - 26 + i * 10} l12,-4" stroke="${M.wood[1]}" stroke-width="3"/>`;
+  return { w: W, h: H, ax: x0, ay: yBase, body: o };
+}
+
+/** A mine: a timbered adit into the slope under a small headframe with a winch. */
+export function mineEntrance(): { w: number; h: number; ax: number; ay: number; body: string } {
+  const T = 96;
+  const fw = 2 * T;
+  const W = fw + 16;
+  const H = 2 * T + 110;
+  const x0 = 8;
+  const yBase = H - 6;
+  const cx = x0 + fw / 2;
+  let o = groundShadow(cx + 6, yBase - 6, fw * 0.5, 18, SHADOW);
+  // Spoil heap and rock face.
+  o += shaded(blob(cx, yBase - 70, fw * 0.48, 72, 9, 0.12, 14), { tones: M.stone, outline: outlineOf(M.stone), shadow: 8, light: 6 });
+  // Timbered entrance.
+  o += `<path d="${rrect(cx - 30, yBase - 92, 60, 74, 10)}" fill="#1e1a17"/>`;
+  o += `<path d="M${cx - 34},${yBase - 18} V${yBase - 96} H${cx + 34} V${yBase - 18}" stroke="${M.wood[1]}" stroke-width="9" fill="none" stroke-linejoin="round"/>`;
+  // Rails out of the adit and an ore cart.
+  o += `<path d="M${cx - 14},${yBase - 22} L${cx - 24},${yBase - 2} M${cx + 14},${yBase - 22} L${cx + 24},${yBase - 2}" stroke="${M.stone[0]}" stroke-width="3"/>`;
+  o += shaded(rrect(cx + 34, yBase - 34, 40, 24, 5), { tones: M.wood, outline: outlineOf(M.wood), shadow: 3, light: 2 });
+  o += `<circle cx="${cx + 44}" cy="${yBase - 8}" r="6" fill="${M.stone[0]}"/><circle cx="${cx + 66}" cy="${yBase - 8}" r="6" fill="${M.stone[0]}"/>`;
+  o += `<path d="${blob(cx + 54, yBase - 36, 16, 7, 3, 0.3)}" fill="${M.stone[2]}"/>`;
+  // Headframe with a winch wheel.
+  o += `<path d="M${cx - 50},${yBase - 100} L${cx - 20},${yBase - 190} L${cx + 10},${yBase - 100}" stroke="${M.wood[0]}" stroke-width="6" fill="none"/>`;
+  o += `<circle cx="${cx - 20}" cy="${yBase - 186}" r="14" fill="none" stroke="${M.wood[1]}" stroke-width="5"/><circle cx="${cx - 20}" cy="${yBase - 186}" r="3" fill="${P.core.gold}"/>`;
+  return { w: W, h: H, ax: x0, ay: yBase, body: o };
+}

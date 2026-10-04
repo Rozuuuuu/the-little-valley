@@ -17,6 +17,8 @@ const ORCHARD := &"orchard"      ## field (the orchard), action tend|pick, stage
 const SLEEP := &"sleep"          ## home (building id or -1), stage walk|sleep
 const HUNT := &"hunt"            ## animal, site (lodge or -1), target (area or -1), direct, x, y (last seen), stage stalk|aim, timer
 const HERD := &"herd"            ## site (the pen), stage walk|work, timer
+const SURVEY := &"survey"        ## x, y, stage walk|work, timer
+const EXTRACT := &"extract"      ## site (quarry, mine or fisher's hut), slot, amount (ore promised), stage walk|work, timer
 
 var kind: StringName
 var stage: StringName = &"walk"
@@ -133,4 +135,21 @@ static func herd(pen_id: int) -> Task:
 	var t := Task.new()
 	t.kind = HERD
 	t.site = pen_id
+	return t
+
+
+static func survey(tx: int, ty: int) -> Task:
+	var t := Task.new()
+	t.kind = SURVEY
+	t.x = tx
+	t.y = ty
+	return t
+
+
+static func extract(site_id: int, slot_index: int, promised: int) -> Task:
+	var t := Task.new()
+	t.kind = EXTRACT
+	t.site = site_id
+	t.slot = slot_index
+	t.amount = promised
 	return t

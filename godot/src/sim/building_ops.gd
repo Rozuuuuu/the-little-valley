@@ -83,6 +83,13 @@ static func check_placement(sim: Simulation, type: String, x: int, y: int) -> Di
 			if p != "" and reason == "":
 				reason = p
 			tiles.append([x + dx, y + dy, p == ""])
+	# Settlement spacing and territory come with those systems.
+	var site := Mining.site_problem(sim, type, x, y) if d.has("site") else ""
+	if site != "":
+		if reason == "":
+			reason = site
+		for t: Array in tiles:
+			t[2] = false
 	return {"ok": reason == "", "reason": reason, "tiles": tiles}
 
 
@@ -123,6 +130,7 @@ static func place(sim: Simulation, type: String, x: int, y: int, crop: String = 
 			sim.designations.erase(k)
 	if type == "field":
 		b.field = Farming.new_field(crop)
+	Mining.init_site(sim, b)
 	sim.buildings_changed()
 	sim.refresh_nav_rect(b.x, b.y, b.w, b.h)
 	if work_of(b) == 0.0 and cost_of(b).is_empty():

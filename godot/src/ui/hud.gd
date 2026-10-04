@@ -7,7 +7,8 @@ extends CanvasLayer
 
 const BUILD_LIST: Array[String] = ["house", "familyHome", "storehouse", "field", "orchard", "path", "bridge",
 	"workshop", "mill", "bakery", "granary", "charcoalKiln", "cottage", "hunterLodge", "chickenCoop", "pigsty",
-	"sheepPen", "goatPen", "cattlePasture", "horsePaddock", "tannery", "weaver"]
+	"sheepPen", "goatPen", "cattlePasture", "horsePaddock", "tannery", "weaver", "quarry", "mine", "fisherHut",
+	"smelter", "forge"]
 const JOBS: Array[String] = ["laborer", "farmer", "gatherer", "builder", "hauler", "hunter", "herder"]
 const STOCKS: Array[String] = ["food", "wood", "stone", "planks", "wheat"]
 
@@ -805,6 +806,13 @@ func _describe(s: Settler) -> String:
 			var f: Building = sim.buildings.get(t.field)
 			var crop := str(f.field["crop"]) if f != null and f.is_field() else ""
 			return {&"till": "Tilling a field", &"plant": "Planting %s" % crop, &"water": "Watering the %s" % crop, &"harvest": "Harvesting %s" % crop}.get(t.action, "Farming")
+		Task.SURVEY:
+			return "Surveying for ore" if t.stage == &"work" else "On the way to survey"
+		Task.EXTRACT:
+			var xb: Building = sim.buildings.get(t.site)
+			if xb != null and xb.def().get("extraction") == "fish":
+				return "Fishing from the jetty"
+			return "Cutting stone at the quarry" if xb != null and not xb.quarry.is_empty() else "Digging ore in the mine"
 		Task.HUNT:
 			var a := Animals.find(sim, t.animal)
 			var an := str(a.def()["name"]).to_lower() if a != null else "game"
@@ -867,7 +875,9 @@ func _building_text(b: Building) -> String:
 			var weapon: Dictionary = (Animals.value("WEAPONS") as Dictionary)[Animals.weapon_of_lodge(b)]
 			var near := Animals.prey_near(game.sim, b).size()
 			lines.append("Hunters carry: %s · %d game within %d tiles" % [str(weapon["name"]).to_lower(), near, roundi(Animals.hunt_radius_of(b))])
-		if b.def().has("hunting") or b.def().has("pen"):
+		if b.def().has("extraction"):
+			lines.append(Mining.extraction_status(game.sim, b))
+		if b.def().has("hunting") or b.def().has("pen") or b.def().has("extraction"):
 			var wn: PackedStringArray = []
 			for id in b.workers:
 				var w := game.sim.settler(id)
@@ -906,6 +916,8 @@ func _building_text(b: Building) -> String:
 func _placing_text() -> String:
 	if game.placing == "mark":
 		return "[b]Mark for harvest[/b]\nDrag over trees, rocks and bushes. Right-click or Esc to stop."
+	if game.placing == "survey":
+		return "[b]Survey for ore[/b]\nClick rocky ground, a rock or a hill below a mountain face. The whole 16×16 patch is surveyed.\nRight-click or Esc to stop."
 	if game.placing.begins_with("area:"):
 		var k := game.placing.substr(5)
 		return "[b]New %s[/b]\n%s.\nDrag a rectangle (up to 40×40) over explored land. Right-click or Esc to stop." % [str(WorkArea.LABELS[k]["name"]).to_lower(), WorkArea.LABELS[k]["does"]]
@@ -921,6 +933,7 @@ func _refresh_card() -> void:
 	var key := "%s|%s|%d|%d|%s" % [_card_mode, game.placing, game.selected.size(), game.selected_building, sim.reached]
 	var sel: Building = sim.buildings.get(game.selected_building)
 	if sel != null:
+		key += "|%s" % sel.mine.get("level", 0)
 		key += "|%d|%s|%d|%s" % [sel.level, sel.upgrade.is_empty(), sel.type.hash(), Levels.upgrade_problem(sim, sel) if sel.upgrade.is_empty() else ""]
 	if key == _last_card_key:
 		return
@@ -957,6 +970,8 @@ func _refresh_card() -> void:
 		_card_grid.add_child(_button("Stop", func() -> void: game.command({"type": "stop", "ids": game.selected.duplicate()}), "Stand still for a moment (S)"))
 		_card_grid.add_child(_button("Hold", func() -> void: game.command({"type": "hold", "ids": game.selected.duplicate()}), "Hold position until given another order (H)"))
 		_card_grid.add_child(_button("Return goods", func() -> void: game.command({"type": "returnGoods", "ids": game.selected.duplicate()}), "Take what they carry to storage (C)"))
+		if game.selected.size() == 1:
+			_card_grid.add_child(_button("Survey", func() -> void: game.start_placing("survey"), "Send them to survey the ground for ore"))
 		_card_grid.add_child(_button("Job…", func() -> void:
 			_card_mode = "job"
 			refresh_now()))
@@ -982,6 +997,12 @@ func _refresh_card() -> void:
 					game.command({"type": "toggleWorkshop", "buildingId": b.id})
 					_last_card_key = ""
 					refresh_now(), "Pause or resume production (P)"))
+			if b.built and not b.mine.is_empty() and int(b.mine["level"]) < 3:
+				var nl := int(b.mine["level"]) + 1
+				_card_grid.add_child(_button("Deepen shaft", func() -> void:
+					game.command({"type": "upgradeMine", "buildingId": b.id})
+					_last_card_key = ""
+					refresh_now(), "Level %d: %d ore per trip · costs %s" % [nl, Mining.MINE_YIELD[nl], Inv.format(Mining.MINE_UPGRADES[nl])]))
 			if b.built and not Levels.levels_of(b).is_empty():
 				if not b.upgrade.is_empty():
 					_card_grid.add_child(_button("Cancel upgrade", func() -> void:

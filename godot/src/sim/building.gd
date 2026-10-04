@@ -24,6 +24,10 @@ var workshop := {}
 var orchard := {}
 ## Pens only: {breed, ready}.
 var pen := {}
+## Mines only: {depositId, level}.
+var mine := {}
+## Quarries only: {extracted}.
+var quarry := {}
 var level := 1
 ## An upgrade under way: {to, progress, paid}, or empty.
 var upgrade := {}

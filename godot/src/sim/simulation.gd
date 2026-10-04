@@ -36,6 +36,7 @@ const K_CRAFT := 4 << 48
 const K_ORCHARD := 5 << 48
 const K_HUNT := 6 << 48
 const K_HERD := 7 << 48
+const K_EXTRACT := 8 << 48
 const T_BUILDING := 1 << 48
 const T_OBJECT := 2 << 48
 const T_ANIMAL := 3 << 48
@@ -58,6 +59,10 @@ var work_areas: Array[WorkArea] = []
 ## Ids of buildings with an upgrade under way (rebuilt from buildings on load).
 var upgrading := {}
 var animals: Array[Animal] = []
+## Surveyed geology cells (saved): cell id -> ore left (null when the cell holds no deposit).
+var geology := {}
+## Ore promised to miners on their way, per deposit (cell id). Not saved: digs re-plan on load.
+var ore_reserved := {}
 ## Animals draw from their own stream, so they never change what settlers do.
 var animal_rng: Rng
 ## Target key -> [until tick, x, y] of the failed search (shared notes). Transient.
@@ -104,6 +109,7 @@ var _workshops: Array[Building] = []
 var _orchards: Array[Building] = []
 var _lodges: Array[Building] = []
 var _pens: Array[Building] = []
+var _extraction: Array[Building] = []
 ## Settler id -> the building they are assigned to work at.
 var _workplace := {}
 var _workplace_tick := -1
@@ -453,7 +459,10 @@ func _refresh_lists() -> void:
 	_orchards.clear()
 	_lodges.clear()
 	_pens.clear()
+	_extraction.clear()
 	for b: Building in buildings.values():
+		if b.built and b.def().has("extraction"):
+			_extraction.append(b)
 		if b.built and b.def().has("hunting"):
 			_lodges.append(b)
 		if b.built and b.def().has("pen"):
@@ -468,6 +477,12 @@ func _refresh_lists() -> void:
 			_workshops.append(b)
 		if b.is_field():
 			_fields.append(b)
+
+
+## Finished quarries, mines and fisher's huts.
+func extraction_sites() -> Array[Building]:
+	_refresh_lists()
+	return _extraction
 
 
 ## Finished hunting lodges.

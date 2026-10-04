@@ -6,7 +6,8 @@ class_name Commands
 ## Ported: move, gather, work, place, placeArea, remove, designate, setJob, setPriorities, setCrop,
 ## setRecipe, toggleWorkshop, assignWorker, unassignWorker, stop, hold, returnGoods,
 ## formHousehold, requestChild, cancelChildRequest, adoptDeliberateGrowth, acceptRecruit, cancelRecruit,
-## createArea, updateArea, deleteArea, assignArea, upgradeBuilding, cancelUpgrade, hunt.
+## createArea, updateArea, deleteArea, assignArea, upgradeBuilding, cancelUpgrade, hunt,
+## surveyDeposit, upgradeMine.
 ## Others report that they are not available yet.
 
 const MAX_AREA := 40 * 40
@@ -281,6 +282,12 @@ static func _apply(sim: Simulation, cmd: Dictionary) -> Dictionary:
 		"createArea":
 			return _create_area(sim, cmd)
 
+		"surveyDeposit":
+			return Mining.survey(sim, cmd.get("settlerId"), cmd.get("x"), cmd.get("y"))
+
+		"upgradeMine":
+			return Mining.upgrade_mine(sim, cmd.get("buildingId"))
+
 		"hunt":
 			var hunters: Variant = _pick_workers(sim, cmd.get("ids"), "hunt")
 			if hunters is String:
@@ -499,8 +506,9 @@ static func _assign_worker(sim: Simulation, cmd: Dictionary) -> Dictionary:
 	var b: Building = sim.buildings.get(int(cmd.get("buildingId", -1)))
 	var hunting := b != null and b.def().has("hunting")
 	var penned := b != null and b.def().has("pen")
-	if b == null or (b.workshop.is_empty() and not hunting and not penned) or not b.built:
-		return _err("Workers can only be assigned to finished workshops, mills, bakeries, kilns, smelters, forges, lodges and pens")
+	var digs := b != null and b.def().has("extraction")
+	if b == null or (b.workshop.is_empty() and not hunting and not penned and not digs) or not b.built:
+		return _err("Workers can only be assigned to finished workshops, mills, bakeries, quarries, mines, fisheries, kilns, smelters, forges, lodges and pens")
 	var picked: Variant = _pick_workers(sim, cmd.get("ids"), "work at a workshop")
 	if picked is String:
 		return _err(picked)

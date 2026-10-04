@@ -10,6 +10,7 @@ import { TERRAIN } from '../src/game/world/tiles';
 import { World } from '../src/game/world/World';
 import { createNewGame } from '../src/game/sim/newGame';
 import { CURRENT_GEN } from '../src/game/world/worldgen';
+import { depositInCell, starterDeposits } from '../src/game/world/geology';
 
 const OUT = 'godot/tests/golden';
 mkdirSync(OUT, { recursive: true });
@@ -122,5 +123,18 @@ const wildlife = (Object.keys(HABITATS) as HabitatId[]).map((h) => {
   return { habitat: h, animals: sim.animals.map((a) => [a.species, bits(a.x), bits(a.y), a.homeX, a.homeY, a.facing]), rng: sim.animalRng.state };
 });
 writeFileSync(`${OUT}/wildlife.json`, JSON.stringify(wildlife));
+
+// Ore deposits: every cell in a window, for each generator and (on generator 4) each habitat.
+const geology: unknown[] = [];
+for (const [seed, gen, habitat] of [[424242, 1, 'valley'], [424242, 2, 'valley'], [12345, 3, 'valley'], ...(Object.keys(HABITATS) as HabitatId[]).map((h) => [777, 4, h])] as [number, number, HabitatId][]) {
+  const cells: unknown[] = [];
+  for (let cy = -4; cy <= 3; cy++) for (let cx = -4; cx <= 3; cx++) {
+    const d = depositInCell(seed, gen, cx, cy, habitat);
+    cells.push(d ? [cx, cy, d.id, d.mineral, d.x, d.y, d.initial] : [cx, cy, null]);
+  }
+  const st = starterDeposits(seed, gen, habitat);
+  geology.push({ seed, gen, habitat, cells, starter: [st.copper ? [st.copper.x, st.copper.y] : null, st.iron ? [st.iron.x, st.iron.y] : null] });
+}
+writeFileSync(`${OUT}/geology.json`, JSON.stringify(geology));
 for (const gen of [1, 2, 3, 4]) copyFileSync(`tests/fixtures/gen-v${gen}-fingerprint.json`, `${OUT}/gen-v${gen}-fingerprint.json`);
 console.log(`golden data written to ${OUT}`);

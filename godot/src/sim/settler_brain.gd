@@ -147,8 +147,7 @@ static func _find_kind(sim: Simulation, s: Settler, kind: String) -> Variant:
 		"gather":
 			return Husbandry.find_gather_or_hunt(sim, s, func() -> Variant: return _find_gather(sim, s))
 		"craft":
-			# Quarries and mines (digging) come with mining.
-			return Production.find_craft(sim, s)
+			return Mining.find_craft_or_dig(sim, s)
 	return null
 
 

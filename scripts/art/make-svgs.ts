@@ -13,7 +13,7 @@ import { blob, groundShadow, mix, poly, rng, rrect, shaded, smoothPath, svg, TIL
 import { M, OUTLINE, outlineOf, P, RIM, SHADOW } from './palette';
 import { building, SPECS } from './buildings';
 import { orchard, ORCHARD_LOOKS } from './orchard';
-import { animal, penYard, SPECIES_ART } from './animals';
+import { animal, mineEntrance, penYard, quarryPit, SPECIES_ART } from './animals';
 
 /** SVG sources for review and replacement (ignored by Godot's importer via .gdignore). */
 const OUT = 'godot/art_src/generated';
@@ -404,6 +404,14 @@ for (const [k, d] of Object.entries(buildingDefs)) {
   if (!d.pen) continue;
   const y = penYard(d.size.w, d.size.h, k);
   emit(k, y.w, y.h, y.ax, y.ay, 'pen', y.body);
+}
+for (let st = 0; st < 4; st++) {
+  const q = quarryPit(st);
+  emit(`quarry_${st}`, q.w, q.h, q.ax, q.ay, 'pen', q.body);
+}
+{
+  const m = mineEntrance();
+  emit('mine', m.w, m.h, m.ax, m.ay, 'building', m.body);
 }
 for (const [tw, th] of [[1, 1], [2, 2], [3, 2], [4, 3]]) {
   const b = site(tw, th);

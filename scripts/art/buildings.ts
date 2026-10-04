@@ -162,6 +162,17 @@ export const SPECS: Record<string, BuildingSpec> = {
         + `<path d="${blob(f.x0 + f.fw + 20, f.yBase - 26, 13, 16, 12)}" fill="#a87c52" stroke="${outlineOf(M.wood)}" stroke-width="2"/>`;
     },
   },
+  fisherHut: {
+    size: [2, 2], rise: 84, wall: M.wood.slice(1), roof: M.roofSlate, shape: 'gable', windows: 1,
+    extra: (f) => {
+      // Nets hung to dry and a fish basket.
+      const x = f.x0 + f.fw;
+      return `<path d="M${x - 6},${f.yBase} V${f.yBase - 52} M${x + 30},${f.yBase} V${f.yBase - 52}" stroke="${M.wood[0]}" stroke-width="4"/>`
+        + `<path d="M${x - 6},${f.yBase - 48} Q${x + 12},${f.yBase - 20} ${x + 30},${f.yBase - 48}" stroke="${P.core.sage}" stroke-width="2" fill="${P.core.sage}" fill-opacity="0.25"/>`
+        + `<path d="M${x - 4},${f.yBase - 40} l30,0 M${x},${f.yBase - 32} l22,0" stroke="${P.core.sage}" stroke-width="1.5"/>`
+        + shaded(rrect(f.x0 + 6, f.yBase - 22, 26, 20, 7), { tones: M.wheat, outline: M.wheat[0], shadow: 3, light: 2 });
+    },
+  },
   stable: {
     size: [3, 2], rise: 92, wall: ['#7a3f30', '#9c5240', '#bd6d56'], roof: M.roofSlate, shape: 'barn', door: 'barn', windows: 2,
     extra: (f) => {
