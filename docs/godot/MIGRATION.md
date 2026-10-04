@@ -109,10 +109,17 @@ The browser game uses bounded A* with:
 - partial paths for move orders;
 - a per-tick node budget and shared unreachable notes.
 
-Godot's `AStarGrid2D` lacks rectangle goals, node budgets and partial paths, and needs a fixed
-region. Plan: port the existing A* faithfully, benchmark it against `AStarGrid2D` over a
-windowed region, and adopt the native one only behind the same interface if it wins.
-Hierarchical (chunk-portal) routing comes only if long routes prove to be the bottleneck.
+**Measured and decided** (BASELINE.md, "Pathfinding"):
+- The faithful GDScript port matches every golden search step for step, but is 29x slower than the
+  browser at 57.7 µs per node.
+- A flat-array version is still 5.5x slower.
+- Godot's native `AStarGrid2D` is 53x faster than that, with equal path costs.
+
+So local paths use `NavWindow`, which wraps AStarGrid2D in a bounded window around each
+settlement and adds rectangle and adjacent goals and partial paths. Because of memory (about 90
+bytes per tile) and the cost of unreachable or very long searches, windows stay small. Long
+routes get a coarse chunk-level graph, and searches are budgeted by time with unreachable
+notes kept.
 
 ### Distant activity
 
@@ -132,9 +139,10 @@ Status: **Done** (ported and tested against the browser game), **Started**, **Pl
 | Content tables | `game/data/*` | `content/*.json` via `scripts/export-content.ts` | Export `--check`; float bits | **Done** |
 | Terrain/object ids | `world/tiles.ts` | `src/world/tiles.gd` | Compared with content | **Done** |
 | Worldgen gens 1–4, habitats | `world/worldgen.ts` | `src/world/world_gen.gd` | 189 fingerprints, 18 dumps, bit-exact | **Done** |
-| World, chunks, streaming | `world/World.ts`, `Chunk.ts` | `src/world/chunk.gd`; `world.gd` next | Load/unload, no-generate query tests, soak | Started |
+| World, chunks, streaming | `world/World.ts`, `Chunk.ts` | `src/world/world.gd`, `chunk.gd`: queries never generate, threaded generation, eviction keeps exploration | 7 streaming tests; soak with the simulation (Phase 2) | **Done** (soak pending) |
 | Geology, regions | `world/geology.ts`, `regions.ts` | `src/world/` | Deposit/region goldens | Planned |
-| Pathfinding | `sim/pathfinding.ts` | `src/sim/path/` | Path corpus, blocked/changing paths, bench vs AStarGrid2D | Planned |
+| Pathfinding (local) | `sim/pathfinding.ts` | `src/sim/path/nav_window.gd` (AStarGrid2D); `grid_astar.gd`, `dense_astar.gd` as exact references | 80-search golden corpus, validity and optimality, replanning; benchmark | **Done** |
+| Pathfinding (long routes) | same A* | Coarse chunk graph over NavWindows | Benchmark long routes | Planned |
 | Simulation state and step order | `sim/Simulation.ts` | `src/sim/simulation.gd` | Ported tests | Planned |
 | Commands | `sim/commands.ts` | `src/sim/commands/` | Ported command tests | Planned |
 | Settler brain, tasks, priorities | `sim/settlers.ts`, `priorities.ts` | `src/sim/settlers/` | village.test port, reservation invariant | Planned |
@@ -173,7 +181,7 @@ Status: **Done** (ported and tested against the browser game), **Started**, **Pl
 | Phase | Content | Done when | Status |
 | --- | --- | --- | --- |
 | 0. Baseline | Tests, profiles, soak, gen-4 fingerprint, golden data, content export | Baseline report; browser tests green | **Done** |
-| 1. Godot core | Numeric ports, worldgen, streaming world, A*, a GDScript perf gate for the settler loop | Bit-exact goldens; world soak shows a bounded working set; A* bench; settler-loop cost at 100/300/1,000 measured | Started (numerics and worldgen done) |
+| 1. Godot core | Numeric ports, worldgen, streaming world, pathfinding | Bit-exact goldens; streaming tests; pathfinding benchmarked and chosen | **Done** (the settler-loop cost moves to Phase 2, where it is measured on the real ported loop rather than a synthetic one) |
 | 2. Slice simulation | Settlers (needs, gather, deliver, haul, build, farm), Town Hall, storehouse, house, field, commands, saves | Ported conservation, reservation, farming and construction tests pass headless; 20-day soak bounded | Planned |
 | 3. Slice presentation | Illustrated ground, objects, settlers with walk, idle, carry and work animation, camera, selection, minimal HUD, reduced motion | 60 FPS at 100 settlers on the reference machine; your review of crowded scenes | Planned |
 | 4. Slice evaluation | Benchmarks at 25/100/300/1,000, soak, a web build on a phone | Report and your sign-off | Planned |

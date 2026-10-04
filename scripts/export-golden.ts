@@ -5,6 +5,9 @@ import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { fbm, hash2, Rng, valueNoise } from '../src/game/core/rng';
 import { HABITATS, type HabitatId } from '../src/game/data/habitats';
 import { generateChunk, riverCenter } from '../src/game/world/worldgen';
+import { findPath, lastPathStats, type Goal } from '../src/game/sim/pathfinding';
+import { TERRAIN } from '../src/game/world/tiles';
+import { World } from '../src/game/world/World';
 
 const OUT = 'godot/tests/golden';
 mkdirSync(OUT, { recursive: true });
@@ -71,6 +74,37 @@ for (const habitat of Object.keys(HABITATS) as HabitatId[]) for (const [cx, cy] 
   const c = generateChunk(12345, cx, cy, 4, habitat);
   chunks.push({ gen: 4, habitat, seed: 12345, cx, cy, terrain: hex(c.terrain), obj: hex(c.obj), amt: hex(c.amt) });
 }
+
+// Path searches over a fixed region of real terrain (chunks -3..3 of seed 12345, generator 4
+// valley): the Godot A* must return exactly the same steps and expand the same number of nodes.
+const pw = new World(12345, 4, 'valley');
+for (let cy = -3; cy <= 3; cy++) for (let cx = -3; cx <= 3; cx++) pw.chunk(cx, cy);
+const LO = -96;
+const HI = 127;
+const inside = (x: number, y: number) => x >= LO && x <= HI && y >= LO && y <= HI;
+const grid = {
+  walkable: (x: number, y: number) => inside(x, y) && pw.naturallyWalkable(x, y),
+  cost: (x: number, y: number) => TERRAIN[pw.terrain(x, y)].moveCost,
+};
+const pr = new Rng(99);
+const paths: unknown[] = [];
+while (paths.length < 80) {
+  const sx = LO + pr.int(HI - LO + 1);
+  const sy = LO + pr.int(HI - LO + 1);
+  if (!grid.walkable(sx, sy)) continue;
+  const near = pr.chance(0.6);
+  const span = near ? 40 : HI - LO;
+  const goal: Goal = {
+    x: Math.max(LO, Math.min(HI, (near ? sx : LO) + pr.int(span) - (near ? 20 : 0))),
+    y: Math.max(LO, Math.min(HI, (near ? sy : LO) + pr.int(span) - (near ? 20 : 0))),
+    w: 1 + pr.int(3), h: 1 + pr.int(3), adjacent: pr.chance(0.5),
+  };
+  const maxNodes = [200, 4000, 20000][pr.int(3)];
+  const partial = pr.chance(0.25);
+  const steps = findPath(grid, sx, sy, goal, maxNodes, partial);
+  paths.push({ sx, sy, goal, maxNodes, partial, expanded: lastPathStats.expanded, steps: steps ? steps.flatMap((p) => [p.x, p.y]) : null });
+}
+writeFileSync(`${OUT}/paths.json`, JSON.stringify({ seed: 12345, gen: 4, habitat: 'valley', lo: LO, hi: HI, paths }));
 
 writeFileSync(`${OUT}/rng.json`, JSON.stringify({ rng, hashes }));
 writeFileSync(`${OUT}/noise.json`, JSON.stringify(noise));

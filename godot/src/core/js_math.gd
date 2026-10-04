@@ -7,7 +7,6 @@ class_name JsMath
 ## Measured on Godot 4.7.2 / Windows: the engine's own `sin` differed from V8 in the last bit for
 ## 90 of 2,574 generator arguments, so `sin_js` is a port of fdlibm (which V8 uses), not `sin`.
 
-static var _buf := PackedByteArray([0, 0, 0, 0, 0, 0, 0, 0])
 
 
 ## A double from its IEEE-754 bits (16 hex digits, big-endian).
@@ -51,16 +50,20 @@ static func round_js(x: float) -> float:
 # Constants are fdlibm's, given by their bits (see `from_bits`).
 
 ## The high 32 bits of a double (sign, exponent, top of the mantissa), as a signed int32.
+## Uses its own buffer, so world generation can run on worker threads.
 static func _high_word(x: float) -> int:
-	_buf.encode_double(0, x)
-	return _buf.decode_s32(4)
+	var buf := PackedByteArray()
+	buf.resize(8)
+	buf.encode_double(0, x)
+	return buf.decode_s32(4)
 
 
 ## A double from a high word and a zero low word.
 static func _from_high_word(hi: int) -> float:
-	_buf.encode_u32(0, 0)
-	_buf.encode_u32(4, hi & 0xFFFFFFFF)
-	return _buf.decode_double(0)
+	var buf := PackedByteArray()
+	buf.resize(8)
+	buf.encode_u32(4, hi & 0xFFFFFFFF)
+	return buf.decode_double(0)
 
 
 static var _S1 := from_bits("bfc5555555555549")

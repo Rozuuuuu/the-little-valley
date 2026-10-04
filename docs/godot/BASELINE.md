@@ -111,6 +111,44 @@ the port, and it shapes the Godot world design: chunks are generated off the mai
 under a per-frame budget, never as a side effect of pathfinding or queries, and loading does not
 regenerate all explored land at once (see `MIGRATION.md`).
 
+## Pathfinding
+
+The golden corpus (`godot/tests/golden/paths.json`) holds 80 recorded searches over real
+generator-4 terrain (224×224 tiles), with rectangle and adjacent goals, node caps of 200, 4,000 and
+20,000, and some partial paths. 51 of them find a path, and they expand 244,925 nodes in total.
+
+| Solver | Exact match with the browser game | Speed |
+| --- | --- | --- |
+| Browser A* in Node (`scripts/bench-paths.ts`) | n/a | **2.0 µs per node** (490–540 ms for the corpus) |
+| GridAStar: faithful GDScript port | all 80 searches, step for step | 57.7–62 µs per node (29x slower than Node) |
+| DenseAStar: same algorithm on flat arrays | all 80 searches, step for step | 10.9–11.7 µs per node (5.5x slower than Node) |
+| AStarGrid2D: Godot's native solver (single-tile targets) | same reachability; **equal path cost in 63 of 63** | **0.75 ms per search** vs 39.7 ms for DenseAStar (53x faster) |
+
+`godot/tools/bench_path.gd` runs the last three. The browser game's per-tick budget is 6,000
+nodes. In GDScript that would cost 65 ms (DenseAStar) to 350 ms (faithful port) per tick, so
+GDScript A* cannot be the game's pathfinder.
+
+AStarGrid2D costs, measured with a 512×512 region:
+
+| What | Cost |
+| --- | --- |
+| Memory | 22.5 MB (about 90 bytes per tile) |
+| `update()` | 21 ms; it also clears every solid tile, so the window is refilled afterwards |
+| 1,024 tile updates | 0.18 ms |
+| Unreachable target | 55.6 ms (explores everything reachable) |
+| Reachable 300-tile route | 25 ms |
+
+**Decision:** `NavWindow` wraps AStarGrid2D for local paths inside a bounded window around each
+settlement. Rectangle and adjacent goals try the 4 nearest goal tiles. On the corpus it agrees
+with the exact search on reachability in every case, and 49 of 52 paths have exactly the
+optimal cost; the other 3 are within 5%.
+
+Two things follow from the measurements:
+- long routes need a coarse chunk-level graph;
+- callers keep unreachable notes and budget searches by time.
+
+GridAStar and DenseAStar stay in the code as the exact reference for tests.
+
 ## Commands
 
 ```bash
@@ -118,6 +156,8 @@ npx vitest run
 npx tsx scripts/profile-village.ts 100
 NODE_OPTIONS=--expose-gc npx tsx scripts/soak-village.ts 100 20
 npx tsx scripts/bench-gen.ts
+npx tsx scripts/bench-paths.ts
 # Godot (from godot/):
 godot --headless --path . -s res://tools/bench_gen.gd -- 12
+godot --headless --path . -s res://tools/bench_path.gd
 ```
