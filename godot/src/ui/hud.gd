@@ -534,6 +534,10 @@ func show_title(message: String = "") -> void:
 	name_edit.placeholder_text = "Name your valley"
 	name_edit.text = "Home"
 	v.add_child(name_edit)
+	var ruler_edit := LineEdit.new()
+	ruler_edit.placeholder_text = "Your ruler's name"
+	ruler_edit.max_length = 24
+	v.add_child(ruler_edit)
 	var habitat := OptionButton.new()
 	var habitats: Dictionary = Content.get_value("habitats", "HABITATS")
 	for k: String in habitats:
@@ -546,9 +550,10 @@ func show_title(message: String = "") -> void:
 	v.add_child(_button("Start a new valley", func() -> void:
 		var seed_text := seed_edit.text.strip_edges()
 		var seed_value := int(seed_text) if seed_text.is_valid_int() else (seed_text.hash() if seed_text != "" else randi() % 2147483647)
-		game.new_world(seed_value, str(habitat.get_item_metadata(habitat.selected)), name_edit.text.strip_edges() if name_edit.text.strip_edges() != "" else "Home")))
+		game.new_world(seed_value, str(habitat.get_item_metadata(habitat.selected)), name_edit.text.strip_edges() if name_edit.text.strip_edges() != "" else "Home",
+			ruler_edit.text.strip_edges() if ruler_edit.text.strip_edges() != "" else "Your Majesty")))
 	var note := Label.new()
-	note.text = "Godot preview: farming, gathering, hauling and building. Time stands still while the game is closed."
+	note.text = "Godot preview: farming, crafts, animals, mining, work areas, roles and growing families. Time stands still while the game is closed."
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.add_theme_color_override("font_color", _c("textDim"))
 	note.add_theme_font_size_override("font_size", 14)
@@ -575,6 +580,15 @@ func toggle_menu() -> void:
 		game.save_now(label_edit.text.strip_edges())
 		toggle_menu()
 		toggle_menu()))
+	if game.sim != null and game.sim.ruler() == null:
+		# Valleys from before the ruler walked the map.
+		var throne_edit := LineEdit.new()
+		throne_edit.placeholder_text = "Your ruler's name"
+		throne_edit.max_length = 24
+		v.add_child(throne_edit)
+		v.add_child(_button("Take the throne", func() -> void:
+			if bool(game.command({"type": "takeThrone", "name": throne_edit.text})["ok"]):
+				_menu.visible = false, "Walk the map as your valley's ruler: people near you work faster, and Rally inspires them"))
 	var head := Label.new()
 	head.text = "Save points"
 	head.add_theme_color_override("font_color", _c("textDim"))
@@ -758,8 +772,15 @@ func _set_text(l: Label, t: String) -> void:
 
 
 func _settler_text(s: Settler) -> String:
-	var job := str(Defs.job(s.job)["name"])
+	var job := "Ruler" if s.ruler else str(Defs.job(s.job)["name"])
 	var lines := ["[b]%s[/b] — %s" % [s.name, job]]
+	if s.ruler:
+		var wait := game.sim.rally_ready_at - game.sim.tick
+		lines.append("People nearby work faster. %s" % ("Rally (R) is ready." if wait <= 0 else "Rally again in %d min." % ceili(wait / 600.0)))
+	if not s.training.is_empty():
+		lines.append("Training as a %s: %d%%" % [Roles.job_name(str(s.training["role"])), floori(float(s.training["progress"]) / float(Content.get_value("jobs", "ROLE_TRAIN_TICKS")) * 100)])
+	elif s.boost_until > game.sim.tick:
+		lines.append("[color=%s]Rallied: working 30%% faster[/color]" % _c("good").to_html())
 	lines.append(_describe(s))
 	lines.append("Hunger %s  ·  Energy %s%s" % [_bar(s.hunger), _bar(s.energy), "  ·  Health %s" % _bar(s.hp) if s.hp < 100.0 else ""])
 	if s.carrying():
@@ -779,6 +800,10 @@ func _settler_text(s: Settler) -> String:
 ## What a settler is doing, or why they are idle, in plain words.
 func _describe(s: Settler) -> String:
 	var sim := game.sim
+	if s.ruler and (s.task == null or s.task.kind == Task.WANDER):
+		return "Watching over the realm"
+	if s.job == "chief" and (s.task == null or s.task.kind == Task.MOVE):
+		return "Bringing advice to the ruler" if bool(sim.chief["adviceReady"]) else "Walking among the people, watching them work"
 	if s.task == null:
 		var reason := s.idle_reason if s.idle_reason != "" else "Looking for something to do"
 		return "[color=%s]Idle: %s[/color]" % [_c("accent").to_html(), reason]
@@ -806,6 +831,8 @@ func _describe(s: Settler) -> String:
 			var f: Building = sim.buildings.get(t.field)
 			var crop := str(f.field["crop"]) if f != null and f.is_field() else ""
 			return {&"till": "Tilling a field", &"plant": "Planting %s" % crop, &"water": "Watering the %s" % crop, &"harvest": "Harvesting %s" % crop}.get(t.action, "Farming")
+		Task.LEARN:
+			return "Training as a %s" % (Roles.job_name(str(s.training["role"])) if not s.training.is_empty() else "new role")
 		Task.SURVEY:
 			return "Surveying for ore" if t.stage == &"work" else "On the way to survey"
 		Task.EXTRACT:
@@ -965,6 +992,32 @@ func _refresh_card() -> void:
 			_card_mode = ""
 			refresh_now()))
 		return
+	if _card_mode == "train":
+		_card_title.text = "Train at the Town Hall"
+		var hall := Roles.hall_for(sim, sim.settler(game.selected[0])) if not game.selected.is_empty() and sim.settler(game.selected[0]) != null else null
+		var lvl := hall.level if hall != null else 0
+		for j: String in Content.get_value("jobs", "JOB_IDS"):
+			var need := int(Defs.job(j).get("hallLevel", 1))
+			var names: Array = Content.get_value("jobs", "HALL_LEVEL_NAMES")
+			var tb := _button(Roles.job_name(j), func() -> void:
+				game.command({"type": "trainRole", "ids": game.selected.duplicate(), "role": j})
+				_card_mode = ""
+				refresh_now(), str(Defs.job(j).get("description", "")) + ("" if need <= lvl else "\nNeeds a %s" % names[mini(need, names.size() - 1)]))
+			tb.disabled = need > lvl
+			_card_grid.add_child(tb)
+		_card_grid.add_child(_button("Back", func() -> void:
+			_card_mode = ""
+			refresh_now()))
+		return
+	var ruler := sim.ruler()
+	if game.selected.size() == 1 and ruler != null and game.selected[0] == ruler.id:
+		_card_title.text = "The ruler"
+		_card_grid.add_child(_button("Rally", func() -> void: game.command({"type": "rally"}), "Inspire everyone close by to work 30% faster for an hour; once a day (R)"))
+		_card_grid.add_child(_button("Stop", func() -> void: game.command({"type": "stop", "ids": game.selected.duplicate()}), "Stand still for a moment (S)"))
+		_card_grid.add_child(_button("Deselect", func() -> void:
+			game.selected.clear()
+			refresh_now()))
+		return
 	if not game.selected.is_empty():
 		_card_title.text = "Orders"
 		_card_grid.add_child(_button("Stop", func() -> void: game.command({"type": "stop", "ids": game.selected.duplicate()}), "Stand still for a moment (S)"))
@@ -972,6 +1025,12 @@ func _refresh_card() -> void:
 		_card_grid.add_child(_button("Return goods", func() -> void: game.command({"type": "returnGoods", "ids": game.selected.duplicate()}), "Take what they carry to storage (C)"))
 		if game.selected.size() == 1:
 			_card_grid.add_child(_button("Survey", func() -> void: game.start_placing("survey"), "Send them to survey the ground for ore"))
+			var one := sim.settler(game.selected[0])
+			if one != null and not one.training.is_empty():
+				_card_grid.add_child(_button("Stop training", func() -> void: game.command({"type": "cancelRoleTraining", "settlerId": one.id})))
+		_card_grid.add_child(_button("Train…", func() -> void:
+			_card_mode = "train"
+			refresh_now(), "Learn a new role at the Town Hall"))
 		_card_grid.add_child(_button("Job…", func() -> void:
 			_card_mode = "job"
 			refresh_now()))

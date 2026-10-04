@@ -17,6 +17,7 @@ const ORCHARD := &"orchard"      ## field (the orchard), action tend|pick, stage
 const SLEEP := &"sleep"          ## home (building id or -1), stage walk|sleep
 const HUNT := &"hunt"            ## animal, site (lodge or -1), target (area or -1), direct, x, y (last seen), stage stalk|aim, timer
 const HERD := &"herd"            ## site (the pen), stage walk|work, timer
+const LEARN := &"learn"          ## site (the Town Hall), stage walk|study
 const SURVEY := &"survey"        ## x, y, stage walk|work, timer
 const EXTRACT := &"extract"      ## site (quarry, mine or fisher's hut), slot, amount (ore promised), stage walk|work, timer
 
@@ -152,4 +153,11 @@ static func extract(site_id: int, slot_index: int, promised: int) -> Task:
 	t.site = site_id
 	t.slot = slot_index
 	t.amount = promised
+	return t
+
+
+static func learn(hall_id: int) -> Task:
+	var t := Task.new()
+	t.kind = LEARN
+	t.site = hall_id
 	return t

@@ -5,9 +5,9 @@ class_name SettlerBrain
 ##
 ##   1. needs: deliver goods in hand (if storage has room), eat when hungry, sleep at bedtime or
 ##      when exhausted
-##   2. [children, soldiers]; Stop and Hold; [the ruler, learning a role, council posts]
+##   2. children, [soldiers]; Stop and Hold; the ruler, learning a role, [council posts]
 ##   3. the focus left by a direct gather order (keep working the same kind nearby)
-##   4. [the chief, travellers]; the assigned work area (its kind of work, inside it)
+##   4. the chief, travellers; the assigned work area (its kind of work, inside it)
 ##   5. the work order (the settler's own, or their job's): build, haul, farm, gather, craft
 ##   6. otherwise idle, with the most relevant reason, and a short back-off before looking again
 ## Bracketed steps arrive with their systems.
@@ -57,12 +57,25 @@ static func assign_task(sim: Simulation, s: Settler) -> void:
 		s.idle_reason = "Holding position — give any order to release"
 		s.next_think = sim.tick + IDLE_BACKOFF * 3
 		return
+	if s.ruler:
+		Roles.ruler_routine(sim, s)
+		return
+	# Learning a new role at the Town Hall comes before any work.
+	if not s.training.is_empty():
+		_start(sim, s, Task.learn(int(s.training["hall"])), wandering)
+		return
 	if not s.focus.is_empty():
 		var ft := _find_focus(sim, s)
 		if ft != null:
 			_start(sim, s, ft, wandering)
 			return
 		s.focus = {}
+	if s.job == "chief":
+		Roles.chief_routine(sim, s)
+		return
+	# Travellers explore; with nowhere left to go they do their side job's work.
+	if s.job == "traveler" and Roles.traveler_routine(sim, s):
+		return
 	var reason := ""
 	var area := sim.area(s.area_id)
 	if area != null:

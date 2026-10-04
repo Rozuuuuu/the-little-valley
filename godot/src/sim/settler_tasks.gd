@@ -85,6 +85,8 @@ static func run_task(sim: Simulation, s: Settler) -> void:
 			Production.run_craft(sim, s, t)
 		Task.ORCHARD:
 			Orchards.run(sim, s, t)
+		Task.LEARN:
+			Roles.run_learn(sim, s, t)
 		Task.SURVEY:
 			Mining.run_survey(sim, s, t)
 		Task.EXTRACT:
@@ -107,8 +109,8 @@ static func work_speed(sim: Simulation, s: Settler) -> float:
 		v *= 0.8
 	if sim.well_equipped():
 		v *= 1.25
-	# The ruler's aura and Rally, and a castle town's bonus, come with the ruler and levels.
-	return v
+	# A castle town, the ruler's presence and Rally.
+	return v * Roles.speed_factor(sim, s)
 
 
 static func move_speed(sim: Simulation, s: Settler) -> float:

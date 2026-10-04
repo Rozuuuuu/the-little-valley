@@ -7,7 +7,7 @@ class_name Commands
 ## setRecipe, toggleWorkshop, assignWorker, unassignWorker, stop, hold, returnGoods,
 ## formHousehold, requestChild, cancelChildRequest, adoptDeliberateGrowth, acceptRecruit, cancelRecruit,
 ## createArea, updateArea, deleteArea, assignArea, upgradeBuilding, cancelUpgrade, hunt,
-## surveyDeposit, upgradeMine.
+## surveyDeposit, upgradeMine, rally, takeThrone, trainRole, cancelRoleTraining, hearAdvice.
 ## Others report that they are not available yet.
 
 const MAX_AREA := 40 * 40
@@ -51,10 +51,13 @@ static func _pick_workers(sim: Simulation, ids: Variant, what: String) -> Varian
 		return "Select a settler first"
 	var list: Array[Settler] = []
 	for s in all:
-		if s.life_stage != "child":
+		if s.life_stage != "child" and not s.ruler:
 			list.append(s)
 	if not list.is_empty():
 		return list
+	for s in all:
+		if s.ruler:
+			return "%s is the ruler — rulers give orders and inspire, but don't do chores. Right-click the ground to walk there." % s.name
 	var who := "%s is a child" % all[0].name if all.size() == 1 else "These are children"
 	return "%s — children play near home and can't %s until they grow up" % [who, what]
 
@@ -281,6 +284,27 @@ static func _apply(sim: Simulation, cmd: Dictionary) -> Dictionary:
 
 		"createArea":
 			return _create_area(sim, cmd)
+
+		"rally":
+			return Roles.rally(sim)
+
+		"takeThrone":
+			return Roles.take_throne(sim, cmd.get("name"))
+
+		"trainRole":
+			var role := str(cmd.get("role", ""))
+			if not Defs.is_job(role):
+				return _err("Unknown role")
+			var trainees: Variant = _pick_workers(sim, cmd.get("ids"), "train for a role")
+			if trainees is String:
+				return _err(trainees)
+			return Roles.train_role(sim, trainees, role)
+
+		"cancelRoleTraining":
+			return Roles.cancel_training(sim, sim.settler(int(cmd["settlerId"])) if _is_int(cmd.get("settlerId")) else null)
+
+		"hearAdvice":
+			return Roles.hear_advice(sim)
 
 		"surveyDeposit":
 			return Mining.survey(sim, cmd.get("settlerId"), cmd.get("x"), cmd.get("y"))

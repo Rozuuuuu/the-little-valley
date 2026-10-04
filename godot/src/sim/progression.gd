@@ -16,9 +16,7 @@ static func requirement_progress(sim: Simulation, req: Dictionary) -> Dictionary
 	var target := int(req.get("count", 1))
 	match kind:
 		"population":
-			for s in sim.settlers:
-				if s.life_stage == "adult":
-					current += 1
+			current = People.adults(sim).size()
 			label = "Reach %d adult settlers" % target
 		"built":
 			for b: Building in sim.buildings.values():

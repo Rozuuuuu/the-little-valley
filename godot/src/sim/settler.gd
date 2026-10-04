@@ -37,6 +37,12 @@ var hold := false
 var side_job := ""
 ## Health, 0..100 (hunters hurt by dangerous game heal over time).
 var hp := 100.0
+## The player on the map.
+var ruler := false
+## Rally's boost lasts until this tick.
+var boost_until := -1
+## Learning a new role at the Town Hall: {role, hall, progress}, or empty.
+var training := {}
 
 # ---- transient -------------------------------------------------------------------------------
 ## Position at the start of the tick being simulated.

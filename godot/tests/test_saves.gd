@@ -81,7 +81,12 @@ func test_genuine_browser_save_imports_with_a_report() -> void:
 	var text := "; ".join(report)
 	check_eq(sim.animals.size(), (data["sim"]["animals"] as Array).size(), "every animal arrives")
 	check(not text.contains("animal"), "animals are simulated now, so not reported: %s" % text)
-	check(text.contains("ruler"), "the ruler is reported: %s" % text)
+	var rulers := 0
+	for sv: Dictionary in data["sim"]["settlers"]:
+		if sv.get("ruler", false):
+			rulers += 1
+	check_eq(1 if sim.ruler() != null else 0, rulers, "the ruler arrives as the ruler")
+	check(not text.contains("ruler"), "the ruler is simulated now, so not reported: %s" % text)
 	check_eq(sim.settlers.size(), (data["sim"]["settlers"] as Array).size(), "every settler arrives")
 	check_eq(sim.buildings.size(), (data["sim"]["buildings"] as Array).size(), "every building arrives")
 	for bd: Dictionary in data["sim"]["buildings"]:

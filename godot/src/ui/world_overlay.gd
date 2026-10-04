@@ -133,6 +133,23 @@ func _draw() -> void:
 		else:
 			draw_rect(game.drag_box, Color(WorldView.MINT, 0.12))
 			draw_rect(game.drag_box, Color(WorldView.MINT, 0.9), false, 2.0)
+	# A small gold crown over the ruler, so the player can always find themselves.
+	var ruler := sim.ruler()
+	if ruler != null and not ruler.hidden:
+		var v: Node2D = game.view.settler_views.get(ruler.id)
+		var cp := (v.position if v != null else Vector2(ruler.x, ruler.y) * T) + Vector2(0, -78)
+		var crown := PackedVector2Array([cp + Vector2(-9, 5), cp + Vector2(-10, -5), cp + Vector2(-4, 0), cp + Vector2(0, -8), cp + Vector2(4, 0), cp + Vector2(10, -5), cp + Vector2(9, 5)])
+		draw_colored_polygon(crown, WorldView.GOLD)
+		crown.append(crown[0])
+		draw_polyline(crown, Color("#7a5a20"), 1.5, true)
+	# The Assistant Chief's "?" while they wait beside the ruler with advice.
+	var adviser := Roles.advice_showing(sim)
+	if adviser != null:
+		var qp := Vector2(lerpf(adviser.rpx, adviser.rx, 1.0), lerpf(adviser.rpy, adviser.ry, 1.0) - 1.6) * T
+		var bob := sin(Time.get_ticks_msec() / 300.0) * 3.0
+		draw_circle(qp + Vector2(0, bob), 14.0, Color(0.05, 0.16, 0.17, 0.9))
+		draw_circle(qp + Vector2(0, bob), 11.0, WorldView.GOLD)
+		draw_string(font, qp + Vector2(-5, 7 + bob), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(0.09, 0.23, 0.24))
 	# Order markers fade over 0.7 s.
 	var now := Time.get_ticks_msec() / 1000.0
 	for m: Dictionary in game.markers:

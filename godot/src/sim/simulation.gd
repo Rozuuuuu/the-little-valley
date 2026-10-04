@@ -61,6 +61,11 @@ var upgrading := {}
 var animals: Array[Animal] = []
 ## Surveyed geology cells (saved): cell id -> ore left (null when the cell holds no deposit).
 var geology := {}
+## The ruler's name (kept for the kingdom record when the ruler is away).
+var ruler_name := ""
+var rally_ready_at := 0
+## The Assistant Chief's advice: {nextAt, adviceReady, advice, waitUntil}.
+var chief := {"nextAt": 0, "adviceReady": false, "advice": "", "waitUntil": 0}
 ## Ore promised to miners on their way, per deposit (cell id). Not saved: digs re-plan on load.
 var ore_reserved := {}
 ## Animals draw from their own stream, so they never change what settlers do.
@@ -341,6 +346,14 @@ func area(id: int) -> WorkArea:
 	for a in work_areas:
 		if a.id == id:
 			return a
+	return null
+
+
+## The ruler on the map, or null.
+func ruler() -> Settler:
+	for s in settlers:
+		if s.ruler:
+			return s
 	return null
 
 

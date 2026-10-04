@@ -105,7 +105,7 @@ func _capture(opts: Dictionary) -> void:
 	world_name = "Capture"
 	world_id = "capture"
 	var t0 := Time.get_ticks_msec()
-	_start(NewGame.create(int(opts.get("seed", "4242")), WorldGen.CURRENT_GEN, str(opts.get("habitat", "valley"))))
+	_start(NewGame.create(int(opts.get("seed", "4242")), WorldGen.CURRENT_GEN, str(opts.get("habitat", "valley")), str(opts.get("ruler", ""))))
 	startup["newValley"] = Time.get_ticks_msec() - t0
 	print("STARTUP %s" % JSON.stringify(startup))
 	var extra := int(opts.get("settlers", "0"))
@@ -245,10 +245,10 @@ func _place_near_hall(types: Array) -> void:
 
 # ---- worlds -----------------------------------------------------------------------------------
 
-func new_world(seed_value: int, habitat: String, valley_name: String) -> void:
+func new_world(seed_value: int, habitat: String, valley_name: String, ruler_name: String = "") -> void:
 	hud.show_busy("Shaping the valley…")
 	await get_tree().process_frame
-	var s := NewGame.create(seed_value, WorldGen.CURRENT_GEN, habitat)
+	var s := NewGame.create(seed_value, WorldGen.CURRENT_GEN, habitat, ruler_name)
 	world_id = "valley-%d-%d" % [seed_value, Time.get_ticks_msec()]
 	world_name = valley_name
 	created_at = int(Time.get_unix_time_from_system() * 1000)
@@ -559,6 +559,10 @@ func click_select(screen: Vector2, additive: bool) -> void:
 		if d < best_d:
 			best_d = d
 			best = s.id
+	var adviser := Roles.advice_showing(sim)
+	if adviser != null and Vector2(adviser.x, adviser.y - 1.6).distance_to(w) < 0.6:
+		command({"type": "hearAdvice"})
+		return
 	if not additive:
 		selected.clear()
 	selected_building = -1
@@ -658,6 +662,9 @@ func _key(k: InputEventKey) -> void:
 			hud.toggle_people()
 		KEY_F3:
 			hud.toggle_areas()
+		KEY_R:
+			if sim.ruler() != null and selected.has(sim.ruler().id):
+				command({"type": "rally"})
 		KEY_E:
 			selected.clear()
 			for s in sim.settlers:

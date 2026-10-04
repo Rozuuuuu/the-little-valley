@@ -408,6 +408,19 @@ func explored_chunk_keys() -> Array[int]:
 	return out
 
 
+## Explored tiles in the whole world, loaded or not.
+func explored_tile_count() -> int:
+	var n := 0
+	for c: Chunk in _chunks.values():
+		n += c.explored_count
+	for bits: PackedByteArray in _explored_unloaded.values():
+		for byte in bits:
+			while byte != 0:
+				n += byte & 1
+				byte >>= 1
+	return n
+
+
 ## The exploration bitset of any chunk (empty if nothing explored there).
 func explored_bits(cx: int, cy: int) -> PackedByteArray:
 	var k := key(cx, cy)

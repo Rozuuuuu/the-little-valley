@@ -35,10 +35,11 @@ static func _days(ticks: int) -> String:
 
 # ---- counts --------------------------------------------------------------------------------
 
+## Adult settlers: the workforce. The ruler is not counted.
 static func adults(sim: Simulation) -> Array[Settler]:
 	var out: Array[Settler] = []
 	for s in sim.settlers:
-		if s.life_stage == "adult":
+		if s.life_stage == "adult" and not s.ruler:
 			out.append(s)
 	return out
 
@@ -227,6 +228,8 @@ static func form_household(sim: Simulation, ids: Variant) -> Dictionary:
 		return _err("Those settlers are not here any more")
 	if a.life_stage == "child" or b.life_stage == "child":
 		return _err("Only adults can start a household — a child must grow up first")
+	if a.ruler or b.ruler:
+		return _err("The ruler stands apart from the households of the realm")
 	for s: Settler in [a, b]:
 		if s.household_id != -1:
 			return _err("%s is already part of a household" % s.name)

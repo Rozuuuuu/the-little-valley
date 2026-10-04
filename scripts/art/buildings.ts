@@ -33,7 +33,7 @@ interface BuildingSpec {
   glow?: (f: Frame) => string;
 }
 
-const CLOTH = [P.people.shirt[3], P.people.shirt[1], '#9fc3dd'];
+const CLOTH = [P.people.shirt[4], P.people.shirt[1], '#9fc3dd'];
 
 export const SPECS: Record<string, BuildingSpec> = {
   townHall: {

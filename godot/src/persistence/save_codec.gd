@@ -35,6 +35,12 @@ static func encode(sim: Simulation, save_name: String, created_at: int, view: Di
 			d["hold"] = true
 		if s.hp < 100.0:
 			d["hp"] = s.hp
+		if s.ruler:
+			d["ruler"] = true
+		if s.boost_until > sim.tick:
+			d["boostUntil"] = s.boost_until
+		if not s.training.is_empty():
+			d["training"] = s.training.duplicate()
 		settlers.append(d)
 	var buildings: Array = []
 	for b: Building in sim.buildings.values():
@@ -107,7 +113,8 @@ static func encode(sim: Simulation, save_name: String, created_at: int, view: Di
 			"recruits": _recruits_out(sim), "lastRecruit": sim.last_recruit if sim.last_recruit > -1000000000 else null,
 			"lastArrival": sim.last_arrival,
 			"geology": {"version": Geology.VERSION, "cells": sim.geology.keys().map(func(id: int) -> Array: return [id, sim.geology[id]])}, "routes": [], "manifests": [], "parties": [], "knownRegions": [], "nextMerchant": 0,
-			"claims": [], "horseDay": 0, "animals": sim.animals.map(_animal_out), "animalRng": sim.animal_rng.state,
+			"claims": [], "horseDay": 0, "animals": sim.animals.map(_animal_out), "animalRng": sim.animal_rng.state, "rallyReadyAt": sim.rally_ready_at,
+			"chief": {"nextAt": sim.chief["nextAt"], "adviceReady": sim.chief["adviceReady"], "advice": sim.chief["advice"]},
 		},
 		"world": {"genVersion": sim.world.gen, "habitat": sim.world.habitat_id, "chunks": chunks},
 		"view": view,
@@ -312,9 +319,21 @@ static func decode(save: Variant) -> Dictionary:
 		s.hold = bool(sv.get("hold", false))
 		s.area_id = int(sv["areaId"]) if sv.get("areaId") != null else -1
 		s.hp = float(sv["hp"]) if sv.get("hp") != null else 100.0
+		s.ruler = sv.get("ruler") == true
+		s.boost_until = int(sv["boostUntil"]) if sv.get("boostUntil") != null else -1
+		if sv.get("training") is Dictionary:
+			var tr: Dictionary = sv["training"]
+			s.training = {"role": str(tr["role"]), "hall": int(tr["hall"]), "progress": float(tr.get("progress", 0))}
+		if s.ruler:
+			sim.ruler_name = s.name
 		s.capacity = Simulation.SETTLER_CAPACITY
 		sim._add_settler_object(s)
 
+	sim.rally_ready_at = int(sd.get("rallyReadyAt", 0))
+	if sd.get("chief") is Dictionary:
+		var ch: Dictionary = sd["chief"]
+		sim.chief = {"nextAt": int(ch.get("nextAt", 0)), "adviceReady": bool(ch.get("adviceReady", false)), "advice": str(ch.get("advice", "")),
+			"waitUntil": sim.tick + Defs.DAY_TICKS / 4 if bool(ch.get("adviceReady", false)) else 0}
 	if sd.get("geology") is Dictionary:
 		for c: Array in sd["geology"].get("cells", []):
 			sim.geology[int(c[0])] = int(c[1]) if c[1] != null else null
@@ -473,14 +492,12 @@ static func unsupported(d: Dictionary) -> PackedStringArray:
 			special["training"] += 1
 		if sv.get("lifeStage", "adult") == "child":
 			special["child"] += 1
-	if special["ruler"] > 0:
-		out.append("the ruler (they would load as an ordinary settler)")
 	if special["military"] > 0:
 		out.append("%d soldiers" % special["military"])
-	if special["training"] > 0:
-		out.append("%d settlers training a new role" % special["training"])
 	var simulated := {"townHall": true, "camp": true, "house": true, "familyHome": true, "cottage": true, "storehouse": true, "field": true, "path": true, "bridge": true,
-		"orchard": true, "workshop": true, "mill": true, "bakery": true, "charcoalKiln": true, "smelter": true, "forge": true, "tannery": true, "weaver": true, "granary": true}
+		"orchard": true, "workshop": true, "mill": true, "bakery": true, "charcoalKiln": true, "smelter": true, "forge": true, "tannery": true, "weaver": true, "granary": true,
+		"crate": true, "hunterLodge": true, "chickenCoop": true, "pigsty": true, "sheepPen": true, "goatPen": true, "cattlePasture": true, "horsePaddock": true,
+		"quarry": true, "mine": true, "fisherHut": true}
 	var others := {}
 	for bd: Dictionary in sd.get("buildings", []):
 		var t := str(bd["type"])

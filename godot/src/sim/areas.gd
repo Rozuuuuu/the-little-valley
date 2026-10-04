@@ -13,7 +13,7 @@ const FIELDS_PER_STEP := 24
 ## Adults nobody has claimed: no area and no workplace. (Rulers, soldiers, councillors and
 ## people away are excluded too once those systems are ported.)
 static func _free(s: Settler, assigned: Dictionary) -> bool:
-	return s.life_stage == "adult" and s.area_id == -1 and not assigned.has(s.id)
+	return s.life_stage == "adult" and not s.ruler and s.area_id == -1 and not assigned.has(s.id)
 
 
 static func lay_out_fields(sim: Simulation, a: WorkArea) -> int:
