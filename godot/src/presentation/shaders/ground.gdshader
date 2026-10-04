@@ -151,9 +151,11 @@ void fragment() {
 		// Damp sand right at the waterline.
 		col = mix(col, col * 0.86, smoothstep(0.3, 0.5, wet));
 		// Mountains: a lit rim where open ground lies above, a dark foot below.
+		// Sampled on the same warped grid as the contours, so the rim follows the curved edge.
 		if (land_a == 11) {
-			if (id_at(tile - vec2(0.0, 0.55)) != 11) col = mix(col, vec3(0.80, 0.93, 0.86), 0.3);
-			if (id_at(tile + vec2(0.0, 0.55)) != 11) col *= 0.72;
+			vec2 q = tile + warp * 0.55;
+			if (id_at(q - vec2(0.0, 0.55)) != 11) col = mix(col, vec3(0.80, 0.93, 0.86), 0.3);
+			if (id_at(q + vec2(0.0, 0.55)) != 11) col *= 0.72;
 		}
 	}
 	// Fog of war, soft-edged and slightly mottled.
