@@ -45,6 +45,8 @@ var boost_until := -1
 var training := {}
 ## The caravan manifest a teamster is away with (-1: at home).
 var away_on := -1
+## Saved fields of systems not simulated yet (soldiering, captivity...), kept verbatim.
+var extra := {}
 
 # ---- transient -------------------------------------------------------------------------------
 ## Position at the start of the tick being simulated.

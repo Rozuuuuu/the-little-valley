@@ -165,7 +165,7 @@ Status: **Done** (ported and tested against the browser game), **Started**, **Pl
 | News, concern, diplomacy, campaigns | `news.ts`, `concern.ts`, `diplomacy.ts`, `campaigns.ts` | `src/sim/realm/` | Ported tests | Planned |
 | Military, war | `military.ts`, `combat.ts` | `src/sim/war/` | Ported tests | Planned |
 | Saves: format, migrations, history, files | `save/*` | `src/persistence/save_codec.gd`, `save_store.gd`: v15 layout, validation, 10 automatic plus named points, safe writes | Round trip, damaged saves, store history and fallback | **Started** (migrations v2–v14 and save files on the web to do) |
-| Old-save import | n/a | `SaveCodec.decode` with an unsupported-data report | Genuine v15 browser fixture | **Started** (reading the old IndexedDB on the web to do) |
+| Old-save import | n/a | `SaveCodec.decode` with an unsupported-data report; everything not simulated yet (kingdoms, diplomacy, war, soldiers...) is kept verbatim and written back unchanged; Godot saves carry the browser's full layout and load in the browser game (`tools/write_sample_save.gd` + `scripts/check-godot-save.ts`) | Genuine v15 browser fixture; pass-through and layout tests | **Started** (reading the old IndexedDB on the web to do) |
 | Rendering | `render/*` | `src/presentation/`: ground shader, WorldView, SettlerView, overlay | Capture screenshots, frame benchmarks (BASELINE) | **Done for the slice** |
 | Art | code-drawn pixel sprites | `scripts/art/*` → 144 provisional SVG sprites; `docs/godot/ART_STYLE.md` | Contact sheets (`tools/art_sheet.gd`), screenshots | **Started** (provisional; military, mines and level looks still to draw) |
 | Animation, effects | `particles.ts`, renderer | `src/presentation/fx/` | Frame benchmarks, reduced motion | Planned |

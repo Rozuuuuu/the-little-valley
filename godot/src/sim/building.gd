@@ -31,6 +31,8 @@ var quarry := {}
 var level := 1
 ## An upgrade under way: {to, progress, paid}, or empty.
 var upgrade := {}
+## Saved fields of systems not simulated yet, kept verbatim.
+var extra := {}
 var placed_tick := 0
 ## Settler ids assigned to work here (production buildings).
 var workers: Array[int] = []

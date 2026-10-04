@@ -41,6 +41,7 @@ static func encode(sim: Simulation, save_name: String, created_at: int, view: Di
 			d["boostUntil"] = s.boost_until
 		if not s.training.is_empty():
 			d["training"] = s.training.duplicate()
+		d.merge(s.extra.duplicate(true), true)
 		settlers.append(d)
 	var buildings: Array = []
 	for b: Building in sim.buildings.values():
@@ -66,6 +67,7 @@ static func encode(sim: Simulation, save_name: String, created_at: int, view: Di
 			d["level"] = b.level
 		if not b.upgrade.is_empty():
 			d["upgrade"] = {"to": b.upgrade["to"], "progress": b.upgrade["progress"], "paid": (b.upgrade["paid"] as Dictionary).duplicate()}
+		d.merge(b.extra.duplicate(true), true)
 		buildings.append(d)
 	var designations: Array = []
 	for k: int in sim.designations.keys():
@@ -92,7 +94,7 @@ static func encode(sim: Simulation, save_name: String, created_at: int, view: Di
 	for s in sim.settlers:
 		if s.life_stage == "adult":
 			adults += 1
-	return {
+	var out := {
 		"version": VERSION,
 		"producer": PRODUCER,
 		"meta": {
@@ -116,10 +118,47 @@ static func encode(sim: Simulation, save_name: String, created_at: int, view: Di
 			"manifests": sim.manifests.map(func(m: Dictionary) -> Dictionary: return m.duplicate(true)), "parties": [], "knownRegions": [], "nextMerchant": 0,
 			"claims": [], "horseDay": 0, "animals": sim.animals.map(_animal_out), "animalRng": sim.animal_rng.state, "rallyReadyAt": sim.rally_ready_at,
 			"chief": {"nextAt": sim.chief["nextAt"], "adviceReady": sim.chief["adviceReady"], "advice": sim.chief["advice"]},
+			# Defaults for the realm, diplomacy and war (a loaded save's own data replaces these).
+			"kingdoms": [_default_kingdom(sim)],
+			"war": {"states": [], "sieges": [], "occupationTimers": []},
+			"diplomacy": {"worldEvents": [], "reports": [], "newsSummaries": [], "stances": [], "trust": [], "wars": [], "offers": [], "incidents": [],
+				"warnings": [], "concernStates": [], "warPlans": [], "commitments": [], "diplomacyDay": 0, "lastProsperity": 0},
 		},
 		"world": {"genVersion": sim.world.gen, "habitat": sim.world.habitat_id, "chunks": chunks},
 		"view": view,
 	}
+	# What this version does not simulate goes back exactly as it came.
+	(out["sim"] as Dictionary).merge(sim.passthrough.duplicate(true), true)
+	return out
+
+
+## Settler, building and sim fields this version reads and writes itself; everything else in a
+## loaded save is kept verbatim (Simulation.passthrough, Settler.extra, Building.extra).
+const OWNED_SIM := ["tick", "nextId", "rngState", "settlers", "buildings", "designations", "regrowth", "stats", "reached", "weather",
+	"workAreas", "chronicle", "session", "settlements", "growthMode", "households", "bedClaims", "offer", "nextVisitor", "recruits",
+	"lastRecruit", "lastArrival", "geology", "routes", "manifests", "animals", "animalRng", "rallyReadyAt", "chief"]
+const OWNED_SETTLER := ["id", "name", "x", "y", "facing", "job", "carrying", "hunger", "energy", "homeId", "appearance", "focus", "areaId",
+	"priorities", "settlementId", "lifeStage", "ageTicks", "householdId", "awayOn", "sideJob", "hold", "hp", "ruler", "boostUntil", "training"]
+const OWNED_BUILDING := ["id", "type", "x", "y", "w", "h", "built", "progress", "delivered", "inventory", "placedTick", "workers", "wants",
+	"field", "orchard", "workshop", "level", "upgrade", "mine", "quarry", "pen"]
+
+
+static func _extras(d: Dictionary, owned: Array) -> Dictionary:
+	var out := {}
+	for k: String in d:
+		if not owned.has(k):
+			out[k] = (d[k] as Variant)
+	return out.duplicate(true)
+
+
+## The player's kingdom as a new browser game has it (kingdoms.ts newPlayerKingdom).
+static func _default_kingdom(sim: Simulation) -> Dictionary:
+	var r := sim.ruler()
+	return {"id": 0, "name": str(sim.settlements[0]["name"]) if not sim.settlements.is_empty() else "The Valley", "player": true, "crowned": false,
+		"ruler": {"name": r.name, "appearance": r.appearance.duplicate()} if r != null else null,
+		"banner": {"color": "#3a6ea5", "emblem": "oak"}, "treasury": 0, "taxCollected": 0, "policy": "none", "trust": 60, "trustDay": 0,
+		"council": {"steward": null, "envoy": null, "marshal": null}, "homeland": null, "conflictMode": "protected-frontier",
+		"modeLocked": false, "frontierActive": false, "capitalRegion": null, "capital": {"x": 0, "y": 0}, "personality": "cautious", "companies": []}
 
 
 static func _animal_out(a: Animal) -> Dictionary:
@@ -195,6 +234,7 @@ static func decode(save: Variant) -> Dictionary:
 	var sim := Simulation.new(int(meta["seed"]), int(sd["rngState"]), gen, str(w.get("habitat", "valley")), true)
 	sim.tick = int(sd["tick"])
 	sim.next_id = int(sd["nextId"])
+	sim.passthrough = _extras(sd, OWNED_SIM)
 	sim.reached.clear()
 	for m: Variant in sd.get("reached", ["camp"]):
 		sim.reached.append(str(m))
@@ -279,6 +319,7 @@ static func decode(save: Variant) -> Dictionary:
 			b.workshop = {"recipe": "" if wsd.get("recipe") == null else str(wsd["recipe"]), "progress": float(wsd.get("progress", 0.0)), "paused": bool(wsd.get("paused", false)), "status": ""}
 		elif b.built and b.def().has("recipes"):
 			Production.init_workshop(b)
+		b.extra = _extras(bd, OWNED_BUILDING)
 		sim.buildings[b.id] = b
 		for dy in b.h:
 			for dx in b.w:
@@ -329,6 +370,7 @@ static func decode(save: Variant) -> Dictionary:
 		if s.ruler:
 			sim.ruler_name = s.name
 		s.capacity = Simulation.SETTLER_CAPACITY
+		s.extra = _extras(sv, OWNED_SETTLER)
 		sim._add_settler_object(s)
 
 	for rd: Dictionary in sd.get("routes", []):

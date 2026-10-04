@@ -61,6 +61,9 @@ var upgrading := {}
 var animals: Array[Animal] = []
 ## Surveyed geology cells (saved): cell id -> ore left (null when the cell holds no deposit).
 var geology := {}
+## Save data this version does not simulate yet (kingdoms, diplomacy, war...), kept verbatim from
+## the loaded save and written back unchanged, so nothing is lost by playing a save here.
+var passthrough := {}
 var routes: Array[Dictionary] = []
 var manifests: Array[Dictionary] = []
 ## Road links between settlements and cart legs, cached until the map changes.

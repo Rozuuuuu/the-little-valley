@@ -166,3 +166,43 @@ static func _first_diff(a: Variant, b: Variant, path: String) -> String:
 	if a is float and b is float and absf(float(a) - float(b)) <= 1e-9 * maxf(1.0, absf(float(a))):
 		return ""
 	return "" if a == b else "%s: %s before, %s after" % [path, str(a), str(b)]
+
+
+func test_unsimulated_browser_data_survives_a_godot_save_unchanged() -> void:
+	var data: Dictionary = load_json("res://tests/golden/v15-save.json")
+	if data == null:
+		return
+	var r := SaveCodec.decode(data)
+	if not check(r["sim"] != null, "loads: %s" % r["error"]):
+		return
+	var out := SaveCodec.encode(r["sim"], "Again", 1)
+	var sd: Dictionary = data["sim"]
+	var od: Dictionary = out["sim"]
+	for k: String in sd:
+		if not SaveCodec.OWNED_SIM.has(k):
+			check_eq(JSON.stringify(od.get(k)), JSON.stringify(sd[k]), "sim.%s kept verbatim" % k)
+	var by_id := {}
+	for sv: Dictionary in od["settlers"]:
+		by_id[int(sv["id"])] = sv
+	for sv: Dictionary in sd["settlers"]:
+		var o: Dictionary = by_id.get(int(sv["id"]), {})
+		for k: String in sv:
+			if not SaveCodec.OWNED_SETTLER.has(k):
+				check_eq(JSON.stringify(o.get(k)), JSON.stringify(sv[k]), "settler %d %s kept" % [int(sv["id"]), k])
+	var bby := {}
+	for bd: Dictionary in od["buildings"]:
+		bby[int(bd["id"])] = bd
+	for bd: Dictionary in sd["buildings"]:
+		var o: Dictionary = bby.get(int(bd["id"]), {})
+		for k: String in bd:
+			if not SaveCodec.OWNED_BUILDING.has(k):
+				check_eq(JSON.stringify(o.get(k)), JSON.stringify(bd[k]), "building %d %s kept" % [int(bd["id"]), k])
+
+
+func test_a_new_godot_save_has_the_whole_browser_layout() -> void:
+	var out := SaveCodec.encode(NewGame.create(4242, WorldGen.CURRENT_GEN, "valley", "Lloyd"), "Layout", 1)
+	var sd: Dictionary = out["sim"]
+	for k: String in ["kingdoms", "war", "diplomacy", "claims", "parties", "knownRegions", "nextMerchant", "horseDay"]:
+		check(sd.has(k), "sim.%s present" % k)
+	var k0: Dictionary = (sd["kingdoms"] as Array)[0]
+	check(k0["player"] == true and (k0["ruler"] as Dictionary)["name"] == "Lloyd", "the player's kingdom names the ruler")
