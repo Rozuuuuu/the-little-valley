@@ -12,12 +12,48 @@
    "provisional": false,
    "pixel": true
   },
+  "oak_0_summer_lean_l": {
+   "w": 198,
+   "h": 228,
+   "ax": 102,
+   "ay": 216,
+   "kind": "sway",
+   "provisional": false,
+   "pixel": true
+  },
+  "oak_0_summer_lean_r": {
+   "w": 198,
+   "h": 228,
+   "ax": 96,
+   "ay": 216,
+   "kind": "sway",
+   "provisional": false,
+   "pixel": true
+  },
   "oak_0_autumn": {
    "w": 192,
    "h": 228,
    "ax": 96,
    "ay": 216,
    "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "oak_0_autumn_lean_l": {
+   "w": 198,
+   "h": 228,
+   "ax": 102,
+   "ay": 216,
+   "kind": "sway",
+   "provisional": false,
+   "pixel": true
+  },
+  "oak_0_autumn_lean_r": {
+   "w": 198,
+   "h": 228,
+   "ax": 96,
+   "ay": 216,
+   "kind": "sway",
    "provisional": false,
    "pixel": true
   },
@@ -39,12 +75,48 @@
    "provisional": false,
    "pixel": true
   },
+  "oak_1_summer_lean_l": {
+   "w": 198,
+   "h": 228,
+   "ax": 102,
+   "ay": 216,
+   "kind": "sway",
+   "provisional": false,
+   "pixel": true
+  },
+  "oak_1_summer_lean_r": {
+   "w": 198,
+   "h": 228,
+   "ax": 96,
+   "ay": 216,
+   "kind": "sway",
+   "provisional": false,
+   "pixel": true
+  },
   "oak_1_autumn": {
    "w": 192,
    "h": 228,
    "ax": 96,
    "ay": 216,
    "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "oak_1_autumn_lean_l": {
+   "w": 198,
+   "h": 228,
+   "ax": 102,
+   "ay": 216,
+   "kind": "sway",
+   "provisional": false,
+   "pixel": true
+  },
+  "oak_1_autumn_lean_r": {
+   "w": 198,
+   "h": 228,
+   "ax": 96,
+   "ay": 216,
+   "kind": "sway",
    "provisional": false,
    "pixel": true
   },
@@ -66,12 +138,48 @@
    "provisional": false,
    "pixel": true
   },
+  "oak_2_summer_lean_l": {
+   "w": 198,
+   "h": 228,
+   "ax": 102,
+   "ay": 216,
+   "kind": "sway",
+   "provisional": false,
+   "pixel": true
+  },
+  "oak_2_summer_lean_r": {
+   "w": 198,
+   "h": 228,
+   "ax": 96,
+   "ay": 216,
+   "kind": "sway",
+   "provisional": false,
+   "pixel": true
+  },
   "oak_2_autumn": {
    "w": 192,
    "h": 228,
    "ax": 96,
    "ay": 216,
    "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "oak_2_autumn_lean_l": {
+   "w": 198,
+   "h": 228,
+   "ax": 102,
+   "ay": 216,
+   "kind": "sway",
+   "provisional": false,
+   "pixel": true
+  },
+  "oak_2_autumn_lean_r": {
+   "w": 198,
+   "h": 228,
+   "ax": 96,
+   "ay": 216,
+   "kind": "sway",
    "provisional": false,
    "pixel": true
   },
@@ -93,12 +201,48 @@
    "provisional": false,
    "pixel": true
   },
+  "pine_0_summer_lean_l": {
+   "w": 162,
+   "h": 240,
+   "ax": 84,
+   "ay": 228,
+   "kind": "sway",
+   "provisional": false,
+   "pixel": true
+  },
+  "pine_0_summer_lean_r": {
+   "w": 162,
+   "h": 240,
+   "ax": 78,
+   "ay": 228,
+   "kind": "sway",
+   "provisional": false,
+   "pixel": true
+  },
   "pine_0_winter": {
    "w": 156,
    "h": 240,
    "ax": 78,
    "ay": 228,
    "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "pine_0_winter_lean_l": {
+   "w": 162,
+   "h": 240,
+   "ax": 84,
+   "ay": 228,
+   "kind": "sway",
+   "provisional": false,
+   "pixel": true
+  },
+  "pine_0_winter_lean_r": {
+   "w": 162,
+   "h": 240,
+   "ax": 78,
+   "ay": 228,
+   "kind": "sway",
    "provisional": false,
    "pixel": true
   },
@@ -111,12 +255,48 @@
    "provisional": false,
    "pixel": true
   },
+  "pine_1_summer_lean_l": {
+   "w": 162,
+   "h": 240,
+   "ax": 84,
+   "ay": 228,
+   "kind": "sway",
+   "provisional": false,
+   "pixel": true
+  },
+  "pine_1_summer_lean_r": {
+   "w": 162,
+   "h": 240,
+   "ax": 78,
+   "ay": 228,
+   "kind": "sway",
+   "provisional": false,
+   "pixel": true
+  },
   "pine_1_winter": {
    "w": 156,
    "h": 240,
    "ax": 78,
    "ay": 228,
    "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "pine_1_winter_lean_l": {
+   "w": 162,
+   "h": 240,
+   "ax": 84,
+   "ay": 228,
+   "kind": "sway",
+   "provisional": false,
+   "pixel": true
+  },
+  "pine_1_winter_lean_r": {
+   "w": 162,
+   "h": 240,
+   "ax": 78,
+   "ay": 228,
+   "kind": "sway",
    "provisional": false,
    "pixel": true
   },
@@ -2127,6 +2307,42 @@
    "provisional": false,
    "pixel": true
   },
+  "animal_rabbit_2": {
+   "w": 84,
+   "h": 96,
+   "ax": 42,
+   "ay": 84,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_rabbit_3": {
+   "w": 84,
+   "h": 96,
+   "ax": 42,
+   "ay": 84,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_rabbit_4": {
+   "w": 84,
+   "h": 96,
+   "ax": 42,
+   "ay": 84,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_rabbit_5": {
+   "w": 84,
+   "h": 96,
+   "ax": 42,
+   "ay": 84,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
   "animal_hare_0": {
    "w": 84,
    "h": 96,
@@ -2137,6 +2353,42 @@
    "pixel": true
   },
   "animal_hare_1": {
+   "w": 84,
+   "h": 96,
+   "ax": 42,
+   "ay": 84,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_hare_2": {
+   "w": 84,
+   "h": 96,
+   "ax": 42,
+   "ay": 84,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_hare_3": {
+   "w": 84,
+   "h": 96,
+   "ax": 42,
+   "ay": 84,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_hare_4": {
+   "w": 84,
+   "h": 96,
+   "ax": 42,
+   "ay": 84,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_hare_5": {
    "w": 84,
    "h": 96,
    "ax": 42,
@@ -2163,6 +2415,42 @@
    "provisional": false,
    "pixel": true
   },
+  "animal_duck_2": {
+   "w": 84,
+   "h": 96,
+   "ax": 42,
+   "ay": 84,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_duck_3": {
+   "w": 84,
+   "h": 96,
+   "ax": 42,
+   "ay": 84,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_duck_4": {
+   "w": 84,
+   "h": 96,
+   "ax": 42,
+   "ay": 84,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_duck_5": {
+   "w": 84,
+   "h": 96,
+   "ax": 42,
+   "ay": 84,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
   "animal_chicken_0": {
    "w": 84,
    "h": 96,
@@ -2173,6 +2461,42 @@
    "pixel": true
   },
   "animal_chicken_1": {
+   "w": 84,
+   "h": 96,
+   "ax": 42,
+   "ay": 84,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_chicken_2": {
+   "w": 84,
+   "h": 96,
+   "ax": 42,
+   "ay": 84,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_chicken_3": {
+   "w": 84,
+   "h": 96,
+   "ax": 42,
+   "ay": 84,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_chicken_4": {
+   "w": 84,
+   "h": 96,
+   "ax": 42,
+   "ay": 84,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_chicken_5": {
    "w": 84,
    "h": 96,
    "ax": 42,
@@ -2199,6 +2523,42 @@
    "provisional": false,
    "pixel": true
   },
+  "animal_fox_2": {
+   "w": 132,
+   "h": 132,
+   "ax": 66,
+   "ay": 120,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_fox_3": {
+   "w": 132,
+   "h": 132,
+   "ax": 66,
+   "ay": 120,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_fox_4": {
+   "w": 132,
+   "h": 132,
+   "ax": 66,
+   "ay": 120,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_fox_5": {
+   "w": 132,
+   "h": 132,
+   "ax": 66,
+   "ay": 120,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
   "animal_beaver_0": {
    "w": 126,
    "h": 120,
@@ -2209,6 +2569,42 @@
    "pixel": true
   },
   "animal_beaver_1": {
+   "w": 126,
+   "h": 120,
+   "ax": 66,
+   "ay": 108,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_beaver_2": {
+   "w": 126,
+   "h": 120,
+   "ax": 66,
+   "ay": 108,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_beaver_3": {
+   "w": 126,
+   "h": 120,
+   "ax": 66,
+   "ay": 108,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_beaver_4": {
+   "w": 126,
+   "h": 120,
+   "ax": 66,
+   "ay": 108,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_beaver_5": {
    "w": 126,
    "h": 120,
    "ax": 66,
@@ -2235,6 +2631,42 @@
    "provisional": false,
    "pixel": true
   },
+  "animal_deer_2": {
+   "w": 144,
+   "h": 150,
+   "ax": 72,
+   "ay": 138,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_deer_3": {
+   "w": 144,
+   "h": 150,
+   "ax": 72,
+   "ay": 138,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_deer_4": {
+   "w": 144,
+   "h": 150,
+   "ax": 72,
+   "ay": 138,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_deer_5": {
+   "w": 144,
+   "h": 150,
+   "ax": 72,
+   "ay": 138,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
   "animal_boar_0": {
    "w": 144,
    "h": 138,
@@ -2245,6 +2677,42 @@
    "pixel": true
   },
   "animal_boar_1": {
+   "w": 144,
+   "h": 138,
+   "ax": 72,
+   "ay": 126,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_boar_2": {
+   "w": 144,
+   "h": 138,
+   "ax": 72,
+   "ay": 126,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_boar_3": {
+   "w": 144,
+   "h": 138,
+   "ax": 72,
+   "ay": 126,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_boar_4": {
+   "w": 144,
+   "h": 138,
+   "ax": 72,
+   "ay": 126,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_boar_5": {
    "w": 144,
    "h": 138,
    "ax": 72,
@@ -2271,6 +2739,42 @@
    "provisional": false,
    "pixel": true
   },
+  "animal_pig_2": {
+   "w": 144,
+   "h": 138,
+   "ax": 72,
+   "ay": 126,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_pig_3": {
+   "w": 144,
+   "h": 138,
+   "ax": 72,
+   "ay": 126,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_pig_4": {
+   "w": 144,
+   "h": 138,
+   "ax": 72,
+   "ay": 126,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_pig_5": {
+   "w": 144,
+   "h": 138,
+   "ax": 72,
+   "ay": 126,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
   "animal_wolf_0": {
    "w": 144,
    "h": 144,
@@ -2281,6 +2785,42 @@
    "pixel": true
   },
   "animal_wolf_1": {
+   "w": 144,
+   "h": 144,
+   "ax": 72,
+   "ay": 132,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_wolf_2": {
+   "w": 144,
+   "h": 144,
+   "ax": 72,
+   "ay": 132,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_wolf_3": {
+   "w": 144,
+   "h": 144,
+   "ax": 72,
+   "ay": 132,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_wolf_4": {
+   "w": 144,
+   "h": 144,
+   "ax": 72,
+   "ay": 132,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_wolf_5": {
    "w": 144,
    "h": 144,
    "ax": 72,
@@ -2307,6 +2847,42 @@
    "provisional": false,
    "pixel": true
   },
+  "animal_ibex_2": {
+   "w": 138,
+   "h": 144,
+   "ax": 72,
+   "ay": 132,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_ibex_3": {
+   "w": 138,
+   "h": 144,
+   "ax": 72,
+   "ay": 132,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_ibex_4": {
+   "w": 138,
+   "h": 144,
+   "ax": 72,
+   "ay": 132,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_ibex_5": {
+   "w": 138,
+   "h": 144,
+   "ax": 72,
+   "ay": 132,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
   "animal_sheep_0": {
    "w": 144,
    "h": 144,
@@ -2317,6 +2893,42 @@
    "pixel": true
   },
   "animal_sheep_1": {
+   "w": 144,
+   "h": 144,
+   "ax": 72,
+   "ay": 132,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_sheep_2": {
+   "w": 144,
+   "h": 144,
+   "ax": 72,
+   "ay": 132,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_sheep_3": {
+   "w": 144,
+   "h": 144,
+   "ax": 72,
+   "ay": 132,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_sheep_4": {
+   "w": 144,
+   "h": 144,
+   "ax": 72,
+   "ay": 132,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_sheep_5": {
    "w": 144,
    "h": 144,
    "ax": 72,
@@ -2343,6 +2955,42 @@
    "provisional": false,
    "pixel": true
   },
+  "animal_goat_2": {
+   "w": 138,
+   "h": 144,
+   "ax": 72,
+   "ay": 132,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_goat_3": {
+   "w": 138,
+   "h": 144,
+   "ax": 72,
+   "ay": 132,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_goat_4": {
+   "w": 138,
+   "h": 144,
+   "ax": 72,
+   "ay": 132,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_goat_5": {
+   "w": 138,
+   "h": 144,
+   "ax": 72,
+   "ay": 132,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
   "animal_cow_0": {
    "w": 168,
    "h": 156,
@@ -2353,6 +3001,42 @@
    "pixel": true
   },
   "animal_cow_1": {
+   "w": 168,
+   "h": 156,
+   "ax": 84,
+   "ay": 144,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_cow_2": {
+   "w": 168,
+   "h": 156,
+   "ax": 84,
+   "ay": 144,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_cow_3": {
+   "w": 168,
+   "h": 156,
+   "ax": 84,
+   "ay": 144,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_cow_4": {
+   "w": 168,
+   "h": 156,
+   "ax": 84,
+   "ay": 144,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_cow_5": {
    "w": 168,
    "h": 156,
    "ax": 84,
@@ -2379,6 +3063,42 @@
    "provisional": false,
    "pixel": true
   },
+  "animal_horse_2": {
+   "w": 162,
+   "h": 162,
+   "ax": 84,
+   "ay": 150,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_horse_3": {
+   "w": 162,
+   "h": 162,
+   "ax": 84,
+   "ay": 150,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_horse_4": {
+   "w": 162,
+   "h": 162,
+   "ax": 84,
+   "ay": 150,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_horse_5": {
+   "w": 162,
+   "h": 162,
+   "ax": 84,
+   "ay": 150,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
   "animal_wildHorse_0": {
    "w": 162,
    "h": 162,
@@ -2389,6 +3109,42 @@
    "pixel": true
   },
   "animal_wildHorse_1": {
+   "w": 162,
+   "h": 162,
+   "ax": 84,
+   "ay": 150,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_wildHorse_2": {
+   "w": 162,
+   "h": 162,
+   "ax": 84,
+   "ay": 150,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_wildHorse_3": {
+   "w": 162,
+   "h": 162,
+   "ax": 84,
+   "ay": 150,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_wildHorse_4": {
+   "w": 162,
+   "h": 162,
+   "ax": 84,
+   "ay": 150,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_wildHorse_5": {
    "w": 162,
    "h": 162,
    "ax": 84,
@@ -2415,6 +3171,42 @@
    "provisional": false,
    "pixel": true
   },
+  "animal_bison_2": {
+   "w": 168,
+   "h": 156,
+   "ax": 84,
+   "ay": 144,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_bison_3": {
+   "w": 168,
+   "h": 156,
+   "ax": 84,
+   "ay": 144,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_bison_4": {
+   "w": 168,
+   "h": 156,
+   "ax": 84,
+   "ay": 144,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_bison_5": {
+   "w": 168,
+   "h": 156,
+   "ax": 84,
+   "ay": 144,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
   "animal_moose_0": {
    "w": 162,
    "h": 168,
@@ -2433,6 +3225,42 @@
    "provisional": false,
    "pixel": true
   },
+  "animal_moose_2": {
+   "w": 162,
+   "h": 168,
+   "ax": 84,
+   "ay": 156,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_moose_3": {
+   "w": 162,
+   "h": 168,
+   "ax": 84,
+   "ay": 156,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_moose_4": {
+   "w": 162,
+   "h": 168,
+   "ax": 84,
+   "ay": 156,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_moose_5": {
+   "w": 162,
+   "h": 168,
+   "ax": 84,
+   "ay": 156,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
   "animal_bear_0": {
    "w": 168,
    "h": 162,
@@ -2443,6 +3271,42 @@
    "pixel": true
   },
   "animal_bear_1": {
+   "w": 168,
+   "h": 162,
+   "ax": 84,
+   "ay": 150,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_bear_2": {
+   "w": 168,
+   "h": 162,
+   "ax": 84,
+   "ay": 150,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_bear_3": {
+   "w": 168,
+   "h": 162,
+   "ax": 84,
+   "ay": 150,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_bear_4": {
+   "w": 168,
+   "h": 162,
+   "ax": 84,
+   "ay": 150,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_bear_5": {
    "w": 168,
    "h": 162,
    "ax": 84,

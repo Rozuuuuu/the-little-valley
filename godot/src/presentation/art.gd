@@ -29,6 +29,8 @@ var raster_scale := 1.0
 var pixel := false
 ## The generated manifest entries by name (for reloading single sprites).
 var _entries := {}
+## Sprites drawn from the player's or final art instead of the generated bundle.
+var _custom := {}
 
 
 ## Loads every sprite. `raster_scale` < 1 rasterises smaller (for low-memory devices).
@@ -85,6 +87,7 @@ func _finish_atlas(atlas: Image, placed: Array[Array]) -> void:
 
 
 func _load_image(sprite_name: String, entry: Dictionary) -> Image:
+	_custom.erase(sprite_name)
 	var target := Vector2i(roundi(float(entry["w"]) * raster_scale), roundi(float(entry["h"]) * raster_scale))
 	for dir: String in [OVERRIDE_DIR, FINAL_DIR]:
 		for ext: String in ["png", "svg"]:
@@ -96,6 +99,7 @@ func _load_image(sprite_name: String, entry: Dictionary) -> Image:
 					if im.get_size() != target:
 						im.resize(target.x, target.y, Image.INTERPOLATE_NEAREST if pixel else Image.INTERPOLATE_LANCZOS)
 					im.convert(Image.FORMAT_RGBA8)
+					_custom[sprite_name] = true
 					return im
 	var gen := Image.new()
 	if entry.has("png"):
@@ -110,6 +114,11 @@ func _load_image(sprite_name: String, entry: Dictionary) -> Image:
 
 func has(sprite_name: String) -> bool:
 	return sprites.has(sprite_name)
+
+
+## True when this sprite comes from the player's art (or res://art/final), not the bundle.
+func is_custom(sprite_name: String) -> bool:
+	return _custom.has(sprite_name)
 
 
 ## Configures a Sprite2D to draw `sprite_name` with its anchor at the node's position.

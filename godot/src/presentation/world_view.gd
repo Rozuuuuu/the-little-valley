@@ -17,14 +17,14 @@ const KEEP_MARGIN := 2
 var sim: Simulation
 var art: Art
 var motion := 1.0
-## Wind sway on trees, bushes and crops (benchmarks can turn it off to measure batching).
+## Trees leaning a pixel in the wind (benchmarks can turn it off). Pixel art moves in whole
+## pixels, never a smooth bend, which would blur and shimmer it.
 var sway_enabled := true
 ## Benchmarks can hide the ground to measure its cost.
 var ground_visible := true
 
 var _palette: Dictionary
 var _ground_shader: Shader
-var _sway: ShaderMaterial
 var _ground_layer := Node2D.new()
 var _field_layer := Node2D.new()
 var entities := Node2D.new()
@@ -59,13 +59,8 @@ func _init() -> void:
 func setup(simulation: Simulation, sprites: Art) -> void:
 	sim = simulation
 	art = sprites
-	# Pixel art moves in whole pixels; a smooth wind bend would blur and shimmer it.
-	if art.pixel:
-		sway_enabled = false
 	_palette = JSON.parse_string(FileAccess.get_file_as_string("res://art/palette.json"))
 	_ground_shader = load("res://src/presentation/shaders/ground.gdshader")
-	_sway = ShaderMaterial.new()
-	_sway.shader = load("res://src/presentation/shaders/sway.gdshader")
 	var white := Image.create(1, 1, false, Image.FORMAT_RGBA8)
 	white.fill(Color.WHITE)
 	_white = ImageTexture.create_from_image(white)
@@ -130,6 +125,8 @@ func refresh(alpha: float, view: Rect2, delta: float) -> void:
 		var k := World.key(p.x, p.y)
 		_sync_ground(k, c)
 		_sync_objects(k, c)
+		if p.x >= c0.x - 1 and p.x <= c1.x + 1 and p.y >= c0.y - 1 and p.y <= c1.y + 1:
+			_sway_trees(k)
 	_free_far(_ground, c0, c1)
 	_free_far(_objects, c0, c1)
 	_sync_buildings()
@@ -268,6 +265,7 @@ func _sync_objects(k: int, c: Chunk) -> void:
 	var node := Node2D.new()
 	node.y_sort_enabled = true
 	entities.add_child(node)
+	var trees: Array[Array] = []
 	var ox := c.cx * Chunk.SIZE
 	var oy := c.cy * Chunk.SIZE
 	for i in Chunk.AREA:
@@ -285,10 +283,28 @@ func _sync_objects(k: int, c: Chunk) -> void:
 		art.apply(sp, sprite_name)
 		# The foot of the tile, where the browser game stands its trees and rocks.
 		sp.position = Vector2(tx + 0.5, ty + 1.0) * TILE_PX
-		if sway_enabled and (o == Tiles.O_OAK or o == Tiles.O_PINE or o == Tiles.O_BERRY or o == Tiles.O_BERRY_EMPTY or o == Tiles.O_SAPLING):
-			sp.material = _sway
+		# Trees lean a whole pixel in the wind, the canopy only, as in the browser (its baked
+		# sway frames). A tree the player redrew in the Asset Studio stands still.
+		if (o == Tiles.O_OAK or o == Tiles.O_PINE) and art.has(sprite_name + "_lean_l") and not art.is_custom(sprite_name):
+			trees.append([sp, sprite_name, tx * 0.9 + ty * 0.4, 0])
 		node.add_child(sp)
-	_objects[k] = {"node": node, "version": version}
+	_objects[k] = {"node": node, "version": version, "trees": trees}
+
+
+## Swaps each tree to its wind frame: round(sin(t·1.3 + phase)·0.7), -1, 0 or 1 pixel, as the
+## browser's drawObject. Only frames that change are applied.
+func _sway_trees(k: int) -> void:
+	var d: Dictionary = _objects.get(k, {})
+	if d.is_empty():
+		return
+	var t := Time.get_ticks_msec() / 1000.0
+	var still := not sway_enabled or motion <= 0.0
+	for tree: Array in d["trees"]:
+		var lean := 0 if still else roundi(sin(t * 1.3 + float(tree[2])) * 0.7)
+		if lean != int(tree[3]):
+			tree[3] = lean
+			var base: String = tree[1]
+			art.apply(tree[0] as Sprite2D, base if lean == 0 else base + ("_lean_l" if lean < 0 else "_lean_r"))
 
 
 func _object_sprite(o: int, tx: int, ty: int) -> String:
@@ -391,8 +407,6 @@ func _make_building(b: Building, look: String) -> Node2D:
 			var crop := Sprite2D.new()
 			art.apply(crop, "crop_%s_%d" % [f["crop"], stage])
 			crop.position = base
-			if sway_enabled:
-				crop.material = _sway
 			holder.add_child(crop)
 		holder.tree_exiting.connect(func() -> void: soil.queue_free())
 		entities.add_child(holder)
@@ -431,6 +445,14 @@ func _make_building(b: Building, look: String) -> Node2D:
 	entities.add_child(node)
 	if b.built and b.type == "mill" and art.has("mill_sails_0"):
 		node.add_child(_mill_sails(b))
+	if BuildingLife.wanted(b):
+		var life := BuildingLife.new()
+		life.view = self
+		life.type = b.type
+		life.id = b.id
+		life.level = b.level
+		life.h_tiles = b.h
+		node.add_child(life)
 	if b.built and look.ends_with("true") and art.has(name + "_lit"):
 		# Lit windows sit above the night tint, so they glow. Pixel art's overlay holds the lit
 		# window pixels themselves, drawn as they are; smooth art's is a glow, added on.
@@ -577,8 +599,19 @@ func _sync_animals(alpha: float, area: Rect2) -> void:
 			sp.visible = false
 			continue
 		sp.visible = true
+		# The browser's cycle: four walking frames (twice as fast when fleeing); standing animals
+		# graze now and then (frame 5) and otherwise stand (frame 4).
 		var walking := absf(a.rx - a.rpx) + absf(a.ry - a.rpy) > 0.001
-		var frame := (int(now / 180.0) + a.id) % 2 if walking and motion > 0.0 else 0
+		var t := now / 1000.0
+		var frame := 0
+		if motion <= 0.0:
+			frame = 4
+		elif walking:
+			frame = floori(t * (16.0 if a.flee else 8.0) + a.id * 0.37) % 4
+		else:
+			frame = 5 if fmod(t * 0.5 + a.id * 0.23, 3.0) < 1.0 else 4
+		if not art.has("animal_%s_%d" % [a.species, frame]):
+			frame = 0
 		if int(sp.get_meta("frame")) != frame:
 			sp.set_meta("frame", frame)
 			art.apply(sp, "animal_%s_%d" % [a.species, frame])

@@ -61,11 +61,12 @@ function litOnly(day: Sprite, night: Sprite): HTMLCanvasElement | null {
   return c;
 }
 
-/** A tree's shadow, trunk and canopy in one picture, as the browser bakes it (no sway). */
-function bakedTree(trunk: Sprite, canopy: Sprite): Sprite {
-  const x0 = Math.min(-7, -trunk.ax, -canopy.ax);
+/** A tree's shadow, trunk and canopy in one picture, as the browser bakes it: the canopy shifted
+ *  `sway` pixels (-1, 0 or 1) in the wind while the trunk stays planted. */
+function bakedTree(trunk: Sprite, canopy: Sprite, sway = 0): Sprite {
+  const x0 = Math.min(-7, -trunk.ax, sway - canopy.ax);
   const y0 = Math.min(-3, -trunk.ay, -canopy.ay);
-  const x1 = Math.max(7, trunk.w - trunk.ax, canopy.w - canopy.ax);
+  const x1 = Math.max(7, trunk.w - trunk.ax, sway + canopy.w - canopy.ax);
   const y1 = Math.max(0, trunk.h - trunk.ay, canopy.h - canopy.ay);
   const c = makeCanvas(x1 - x0, y1 - y0);
   const g = c.getContext('2d')!;
@@ -74,8 +75,18 @@ function bakedTree(trunk: Sprite, canopy: Sprite): Sprite {
   g.fillRect(-7 - x0, -3 - y0, 14, 3);
   g.globalAlpha = 1;
   g.drawImage(trunk.canvas, -trunk.ax - x0, -trunk.ay - y0);
-  g.drawImage(canopy.canvas, -canopy.ax - x0, -canopy.ay - y0);
+  g.drawImage(canopy.canvas, sway - canopy.ax - x0, -canopy.ay - y0);
   return { canvas: c, ax: -x0, ay: -y0, w: c.width, h: c.height };
+}
+
+/** A tree and its two wind frames (`_lean_l`, `_lean_r`; kind "sway", hidden from the Asset Studio). */
+function addTree(name: string, trunk: Sprite, canopy: Sprite): void {
+  const t = bakedTree(trunk, canopy);
+  add(name, t.canvas, t.ax, t.ay, 'object');
+  for (const [suffix, sway] of [['l', -1], ['r', 1]] as const) {
+    const s = bakedTree(trunk, canopy, sway);
+    add(`${name}_lean_${suffix}`, s.canvas, s.ax, s.ay, 'sway');
+  }
 }
 
 function footprint(type: string): { w: number; h: number } {
@@ -127,16 +138,14 @@ export function exportAll(): Out[] {
   // Objects: anchored at the foot of their tile (the browser blits stumps and saplings 2px up).
   for (let v = 0; v < 3; v++) {
     for (const [season, set] of [['summer', bank.oaks], ['autumn', bank.autumnOaks]] as const) {
-      const t = bakedTree(set[v].trunk, set[v].canopy);
-      add(`oak_${v}_${season}`, t.canvas, t.ax, t.ay, 'object');
+      addTree(`oak_${v}_${season}`, set[v].trunk, set[v].canopy);
     }
     const w = bank.winterOaks[v];
     add(`oak_${v}_winter`, w.canvas, w.ax, w.ay, 'object');
   }
   for (let v = 0; v < 2; v++) {
     for (const [season, set] of [['summer', bank.pines], ['winter', bank.winterPines]] as const) {
-      const t = bakedTree(set[v].trunk, set[v].canopy);
-      add(`pine_${v}_${season}`, t.canvas, t.ax, t.ay, 'object');
+      addTree(`pine_${v}_${season}`, set[v].trunk, set[v].canopy);
     }
   }
   const obj = (name: string, s: Sprite, lift = 0) => add(name, s.canvas, s.ax, s.ay + lift, 'object');
@@ -189,10 +198,11 @@ export function exportAll(): Out[] {
       add(`crop_${id}_${st}`, s.canvas, s.ax, s.ay + TILE, 'crop');
     }
   }
-  // Animals face left in the browser; Godot's face right. Walk frames 0 and 2.
+  // Animals face left in the browser; Godot's face right. All six frames, as the browser draws
+  // them: 0-3 walk, 4 stands, 5 grazes.
   for (const [id, frames] of Object.entries(bank.animals)) {
-    [0, 2].forEach((f, i) => {
-      const m = mirrored(frames[Math.min(f, frames.length - 1)]);
+    frames.forEach((f, i) => {
+      const m = mirrored(f);
       add(`animal_${id}_${i}`, m.canvas, m.ax, m.ay, 'animal');
     });
   }

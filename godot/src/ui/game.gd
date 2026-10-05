@@ -445,7 +445,7 @@ func _frame_benchmark(n: int) -> void:
 func _place_near_hall(types: Array) -> void:
 	for type: String in types:
 		var done := false
-		for r in range(3, 14):
+		for r in range(5, 16):
 			for y in range(-r, r + 1):
 				for x in range(-r, r + 1):
 					if not done and bool(Commands.apply(sim, {"type": "place", "building": type, "x": x, "y": y})["ok"]):
