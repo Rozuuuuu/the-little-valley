@@ -729,15 +729,28 @@ func show_title(message: String = "") -> void:
 		c.queue_free()
 	var v := VBoxContainer.new()
 	v.custom_minimum_size = Vector2(460, 0)
-	v.add_theme_constant_override("separation", 10)
+	v.add_theme_constant_override("separation", 8)
 	_title.add_child(v)
-	var h := Label.new()
-	h.text = "Little Valley"
-	h.add_theme_font_override("font", _bold)
-	h.add_theme_font_size_override("font_size", 40)
-	h.add_theme_color_override("font_color", _c("accent"))
-	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	v.add_child(h)
+	# The logo: "Little" in cream over "Valley" in gold, as on the old game's title.
+	var logo := VBoxContainer.new()
+	logo.add_theme_constant_override("separation", -30)
+	v.add_child(logo)
+	for part: Array in [["Little", _c("text")], ["Valley", _c("accent")]]:
+		var h := Label.new()
+		h.text = part[0]
+		h.add_theme_font_override("font", _bold)
+		h.add_theme_font_size_override("font_size", 64)
+		h.add_theme_color_override("font_color", part[1])
+		h.add_theme_color_override("font_outline_color", Color(0.16, 0.09, 0.04))
+		h.add_theme_constant_override("outline_size", 10)
+		h.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.35))
+		h.add_theme_constant_override("shadow_offset_y", 4)
+		logo.add_child(h)
+	var tag := Label.new()
+	tag.text = "Clear a meadow, plant the first rows, and grow a Town Hall into a kingdom one season at a time."
+	tag.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tag.add_theme_color_override("font_color", _c("textDim"))
+	v.add_child(tag)
 	if message != "":
 		var m := Label.new()
 		m.text = message
@@ -756,23 +769,32 @@ func show_title(message: String = "") -> void:
 		_offer_old_game(v)
 		if not Pwa.runs_as_app():
 			_offer_install(v)
+	# A new valley's details, two to a row to keep the title compact.
+	var row1 := HBoxContainer.new()
+	var row2 := HBoxContainer.new()
+	v.add_child(row1)
+	v.add_child(row2)
 	var name_edit := LineEdit.new()
 	name_edit.placeholder_text = "Name your valley"
 	name_edit.text = "Home"
-	v.add_child(name_edit)
+	name_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row1.add_child(name_edit)
 	var ruler_edit := LineEdit.new()
 	ruler_edit.placeholder_text = "Your ruler's name"
 	ruler_edit.max_length = 24
-	v.add_child(ruler_edit)
+	ruler_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row1.add_child(ruler_edit)
 	var habitat := OptionButton.new()
+	habitat.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var habitats: Dictionary = Content.get_value("habitats", "HABITATS")
 	for k: String in habitats:
 		habitat.add_item(str(habitats[k]["name"]))
 		habitat.set_item_metadata(habitat.item_count - 1, k)
-	v.add_child(habitat)
+	row2.add_child(habitat)
 	var seed_edit := LineEdit.new()
 	seed_edit.placeholder_text = "Seed (optional)"
-	v.add_child(seed_edit)
+	seed_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row2.add_child(seed_edit)
 	var intro := CheckButton.new()
 	intro.text = "Show the introduction"
 	intro.button_pressed = true
@@ -790,7 +812,16 @@ func show_title(message: String = "") -> void:
 	note.add_theme_font_size_override("font_size", 14)
 	v.add_child(note)
 	_title.visible = true
-	_center(_title)
+	if game.sim == null:
+		_place_title()
+	else:
+		_center(_title)
+
+
+## On the opening title the menu stands at the left, leaving the valley in view on the right.
+func _place_title() -> void:
+	await get_tree().process_frame
+	_title.position = Vector2(maxf(16.0, _root.size.x * 0.06), maxf(16.0, (_root.size.y - _title.size.y) / 2.0))
 
 
 ## Adds "Bring in valleys from the old game" to the title when the old browser game has valleys

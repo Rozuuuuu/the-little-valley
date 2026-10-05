@@ -91,6 +91,7 @@ func _ready() -> void:
 	pwa.update_ready.connect(_on_update_ready)
 	add_child(pwa)
 	if not _capture_requested():
+		_show_backdrop()
 		hud.show_title()
 
 
@@ -119,8 +120,25 @@ func _capture_requested() -> bool:
 		return true
 	if not opts.has("shot"):
 		return false
+	if opts.get("title", "0") == "1":
+		_title_capture.call_deferred(opts)
+		return true
 	_capture.call_deferred(opts)
 	return true
+
+
+## `--title=1`: the opening title over its living backdrop, as a player first sees it.
+func _title_capture(opts: Dictionary) -> void:
+	_show_backdrop()
+	hud.show_title()
+	for i in 90:
+		await get_tree().process_frame
+	if str(opts["shot"]) != "":
+		get_viewport().get_texture().get_image().save_png(str(opts["shot"]))
+		print("captured title %s" % opts["shot"])
+	print("CAPTURE DONE")
+	if not OS.has_feature("web"):
+		get_tree().quit()
 
 
 ## Web check (scripts/godot-web-oldsaves.ts): brings the old game's valleys in, opens each, and
@@ -380,6 +398,67 @@ func _place_near_hall(types: Array) -> void:
 						done = true
 
 
+# ---- title backdrop -----------------------------------------------------------------------------
+
+## The title's backdrop: a small finished hamlet with fields, drifting by behind the menu while
+## its settlers go about their day. It is never saved; the first real valley replaces it.
+const BACKDROP_SEED := 4242
+var backdrop: Simulation = null
+var _backdrop_acc := 0.0
+
+
+func _show_backdrop() -> void:
+	var s := NewGame.create(BACKDROP_SEED)
+	for type: String in ["house", "familyHome", "storehouse", "workshop", "well", "house", "flowerbed", "haystack"]:
+		_build_near_hall(s, type)
+	Commands.apply(s, {"type": "placeArea", "building": "field", "x0": -9, "y0": 4, "x1": -6, "y1": 7, "crop": "wheat"})
+	Commands.apply(s, {"type": "placeArea", "building": "field", "x0": 5, "y0": 5, "x1": 7, "y1": 7, "crop": "turnip"})
+	for b: Building in s.fields():
+		b.field["state"] = "growing"
+		b.field["growth"] = float(Defs.crop(b.field["crop"])["growTicks"]) * 0.6
+	backdrop = s
+	if view.art == null:
+		view.setup(s, art)
+	else:
+		view.set_simulation(s)
+	var camp := BuildingOps.camp_of(s)
+	# Framed so the hamlet sits right of the menu panel.
+	var focus := Vector2(camp.center_x() - 7, camp.y + camp.h) if camp != null else Vector2.ZERO
+	camera.position = focus * WorldView.TILE_PX
+	camera.target_pos = camera.position
+	camera.target_zoom = 0.8
+	camera.zoom = Vector2.ONE * 0.8
+
+
+## Places a finished building at the first valid spot near the hall of `s`.
+func _build_near_hall(s: Simulation, type: String) -> void:
+	for r in range(3, 16):
+		for y in range(-r, r + 1):
+			for x in range(-r, r + 1):
+				if maxi(absi(x), absi(y)) != r or not bool(BuildingOps.check_placement(s, type, x, y)["ok"]):
+					continue
+				var b := BuildingOps.place(s, type, x, y)
+				b.delivered = BuildingOps.cost_of(b).duplicate()
+				BuildingOps.complete(s, b)
+				return
+
+
+## Runs the backdrop at normal speed and drifts the camera slowly east.
+func _step_backdrop(delta: float) -> void:
+	_backdrop_acc = minf(_backdrop_acc + delta * 1000.0, TICK_MS * 2)
+	while _backdrop_acc >= TICK_MS:
+		backdrop.begin_tick()
+		backdrop.update_settlers(0, backdrop.settlers.size())
+		backdrop.end_tick()
+		backdrop.drain_events()
+		_backdrop_acc -= TICK_MS
+	if settings.motion() > 0.0:
+		camera.target_pos.x += delta * 10.0
+	view.motion = settings.motion()
+	view.refresh(1.0, camera.view_rect(), delta)
+	particles.step(delta, backdrop, camera.view_rect(), art, settings.effects == "low", backdrop.is_night())
+
+
 # ---- worlds -----------------------------------------------------------------------------------
 
 func new_world(seed_value: int, habitat: String, valley_name: String, ruler_name: String = "", introduction: bool = true) -> void:
@@ -541,6 +620,7 @@ func focus_target(t: Variant) -> void:
 
 func _start(s: Simulation) -> void:
 	sim = s
+	backdrop = null
 	view.set_simulation(s)
 	if view.art == null:
 		view.setup(s, art)
@@ -584,6 +664,8 @@ func _process(delta: float) -> void:
 	camera.keyboard_enabled = sim != null and not hud.blocking() and not (focus is LineEdit or focus is TextEdit)
 	if sim == null:
 		audio.busy = false
+		if backdrop != null:
+			_step_backdrop(delta)
 		return
 	var t_sim := Time.get_ticks_usec()
 	if not paused and not hud.blocking():

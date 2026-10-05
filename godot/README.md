@@ -85,6 +85,7 @@ address:
 | `--today=1` | Show Valley today and the introduction |
 | `--army=1` | A company marching, soldiers at home and a rival company in the field |
 | `--studio=1` | The Asset Studio on a house with a sample image (in a separate capture pack) |
+| `--title=1` | The opening title over its living backdrop valley (no valley is started) |
 
 On the web, use `?bench=N&settlers=M` instead.
 
