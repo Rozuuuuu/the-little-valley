@@ -728,6 +728,16 @@ func _commands() -> Array:
 	var wait_n := find_list("waiting").size()
 	slots[7] = _cmd("Waiting", "ui_hungry", "", "[b]Waiting buildings[/b]\nBuildings short of materials or workers.", func() -> void: find_next("waiting"), {"badge": str(wait_n) if wait_n > 0 else ""})
 	slots[8] = _cmd("Today", "ui_sun", "today", "[b]Valley today[/b]\nWhat needs attention and what to do next.", func() -> void: game.open_today())
+	var chief := Roles.chief_of(sim)
+	if chief != null:
+		var ready := bool(sim.chief["adviceReady"])
+		slots[9] = _cmd("Advice", "", "advice", "[b]Advice from %s[/b]
+%s" % [chief.name, "Your Assistant Chief is waiting with advice." if ready else "Find your Assistant Chief."], func() -> void:
+			if Roles.advice_showing(sim) != null:
+				game.hear_advice()
+			else:
+				game.selected = [chief.id]
+				game.camera.jump_to(Vector2(chief.x, chief.y) * WorldView.TILE_PX), {"on": ready})
 	slots[10] = _cmd("You" if ruler != null else "Throne", "ui_crown", "findRuler", ("[b]%s[/b]\nSelect yourself and jump to where you stand." % ruler.name) if ruler != null else "[b]Take the throne[/b]", func() -> void: find_ruler())
 	return slots
 

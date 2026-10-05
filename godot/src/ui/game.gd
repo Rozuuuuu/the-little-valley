@@ -397,6 +397,13 @@ func _capture(opts: Dictionary) -> void:
 		print("captured %s after returning to the title" % opts["shot"])
 		get_tree().quit()
 		return
+	if opts.get("night", "0") == "1":
+		# Jump the clock (only the clock) to the middle of the night, to see the lights.
+		while sim.time_of_day() < 0.93 and sim.time_of_day() > 0.1:
+			sim.tick += 1
+	if opts.get("rain", "0") == "1":
+		sim.raining = true
+		view.life._weather.rain_amount = 1.0
 	if opts.get("story", "0") == "1":
 		hud.show_origin_story()
 	if opts.has("celebrate"):
