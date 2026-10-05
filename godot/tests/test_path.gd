@@ -17,8 +17,10 @@ class RegionGrid:
 		return Tiles.move_cost[world.terrain(x, y)]
 
 
-static var _grid: RegionGrid
-static var _data: Dictionary
+## Keep fixture ownership within the test instance. Static RegionGrid references retain the
+## world/script dependency graph in Godot 4.7.2 under source-then-test loading order.
+var _grid: RegionGrid
+var _data: Dictionary
 
 
 func _setup() -> bool:

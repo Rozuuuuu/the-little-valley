@@ -52,7 +52,8 @@ func _run() -> void:
 	game.hud._apply_scale()
 	for _frame: int in 3:
 		await process_frame
-	check(game.hud._menu.size.y * 1.5 <= root.size.y, "larger interface settings keep the menu within the viewport")
+	check(game.hud._menu.size.y * 1.5 <= root.get_visible_rect().size.y,
+		"larger interface settings keep the menu within the viewport (menu %.1f, viewport %.1f)" % [game.hud._menu.size.y * 1.5, root.get_visible_rect().size.y])
 	game.settings.ui_scale = 1.0
 	game.hud._apply_scale()
 	game._key(event)

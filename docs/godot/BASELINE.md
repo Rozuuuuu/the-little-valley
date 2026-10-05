@@ -324,3 +324,23 @@ instances / 79 resources retained at checker exit**. Deferring shutdown did not 
 that result and was reverted. This diagnostic remains unresolved; the clean normal-game
 exit does not establish that long-play memory behavior is clean. No new long-play soak or
 supported-population result was produced in this checkpoint.
+
+## Script-checker ownership fix (2026-10-05)
+
+The retained-resource diagnostic above is now resolved. Source, tool and test groups each
+loaded cleanly in isolation. Source-first loading followed by the particles and path tests
+reproduced the 138-instance / 79-resource warning; reversing the group order avoided it.
+Holding loaded scripts explicitly and deferring shutdown did not fix it.
+
+Removing the two static fixture variables in `tests/test_path.gd` gives the test instance
+ownership of its grid/world and golden data. The unchanged batch checker now reports zero
+failed scripts and exits without warnings or errors. No stderr filtering or load-order
+workaround was added. Godot's direct `--check-only` on that test also exits cleanly.
+
+The focused path run passed six matching tests in 43.7 seconds, including all 80 golden
+searches, dense-grid parity, navigation validity and changing obstacles. Normal headless
+startup/shutdown and the scene controls check also exited cleanly. The controls check now
+compares UI size with the logical viewport, matching HUD sizing; comparing with the OS window
+size incorrectly failed in headless mode. The full gameplay suite was not repeated for these
+test-only changes; its previous 232-test result remains historical. This fix establishes
+clean diagnostic shutdown, not long-play memory behavior.
