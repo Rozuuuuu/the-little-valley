@@ -32,6 +32,10 @@ var _toasts := VBoxContainer.new()
 var _title := PanelContainer.new()
 var _menu := PanelContainer.new()
 var _busy := PanelContainer.new()
+var _today := PanelContainer.new()
+var _tutorial := PanelContainer.new()
+var _tutorial_box := VBoxContainer.new()
+var _tutorial_key := ""
 var _people := PanelContainer.new()
 var _people_text := RichTextLabel.new()
 var _people_buttons := VBoxContainer.new()
@@ -86,10 +90,17 @@ func _ready() -> void:
 	_root.add_child(_towns)
 	_realm.setup(self)
 	_root.add_child(_realm)
-	for p: Control in [_title, _menu, _busy]:
+	for p: Control in [_title, _menu, _busy, _today]:
 		p.set_anchors_preset(Control.PRESET_CENTER)
 		p.visible = false
 		_root.add_child(p)
+	_tutorial.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_tutorial.offset_left = 8
+	_tutorial.offset_top = 64
+	_tutorial_box.custom_minimum_size = Vector2(360, 0)
+	_tutorial.add_child(_tutorial_box)
+	_tutorial.visible = false
+	_root.add_child(_tutorial)
 	_busy.add_child(_busy_label)
 
 
@@ -191,6 +202,7 @@ func _build_top() -> void:
 	row.add_child(_button("Areas", toggle_areas, "Work areas: farms, woodlots, quarries, building areas (F3)"))
 	row.add_child(_button("Towns", toggle_towns, "Settlements, supply routes and caravans (F4)"))
 	row.add_child(_button("Realm", toggle_realm, "Crown, land, kingdoms, news, army and war (F6)"))
+	row.add_child(_button("Today", func() -> void: game.open_today(), "Valley today: what needs attention and what to do next (F9)"))
 	row.add_child(_button("Save", func() -> void: game.save_now(), "Save now (F5)"))
 	row.add_child(_button("Menu", toggle_menu, "Menu (Esc)"))
 	_top.visible = false
@@ -638,7 +650,7 @@ func _area_row(a: WorkArea, crops: Array[String]) -> Control:
 # ---- states ------------------------------------------------------------------------------------
 
 func blocking() -> bool:
-	return _title.visible or _menu.visible or _busy.visible
+	return _title.visible or _menu.visible or _busy.visible or _today.visible
 
 
 func show_busy(text: String) -> void:
@@ -649,6 +661,7 @@ func show_busy(text: String) -> void:
 
 
 func show_play() -> void:
+	_today.visible = false
 	_busy.visible = false
 	_title.visible = false
 	_menu.visible = false
@@ -658,6 +671,8 @@ func show_play() -> void:
 
 
 func show_title(message: String = "") -> void:
+	_today.visible = false
+	_tutorial.visible = false
 	_busy.visible = false
 	_menu.visible = false
 	_top.visible = false
@@ -706,11 +721,16 @@ func show_title(message: String = "") -> void:
 	var seed_edit := LineEdit.new()
 	seed_edit.placeholder_text = "Seed (optional)"
 	v.add_child(seed_edit)
+	var intro := CheckButton.new()
+	intro.text = "Show the introduction"
+	intro.button_pressed = true
+	intro.focus_mode = Control.FOCUS_NONE
+	v.add_child(intro)
 	v.add_child(_button("Start a new valley", func() -> void:
 		var seed_text := seed_edit.text.strip_edges()
 		var seed_value := int(seed_text) if seed_text.is_valid_int() else (seed_text.hash() if seed_text != "" else randi() % 2147483647)
 		game.new_world(seed_value, str(habitat.get_item_metadata(habitat.selected)), name_edit.text.strip_edges() if name_edit.text.strip_edges() != "" else "Home",
-			ruler_edit.text.strip_edges() if ruler_edit.text.strip_edges() != "" else "Your Majesty")))
+			ruler_edit.text.strip_edges() if ruler_edit.text.strip_edges() != "" else "Your Majesty", intro.button_pressed)))
 	var note := Label.new()
 	note.text = "Godot preview: farming, crafts, animals, mining, work areas, roles and growing families. Time stands still while the game is closed."
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -738,6 +758,136 @@ func _offer_old_game(v: VBoxContainer) -> void:
 	v.move_child(b, 1)
 
 
+## The introduction's current step (or its closing words), top left.
+func _refresh_tutorial() -> void:
+	var t: Dictionary = game.tutorial
+	var outro: bool = t["done"] and Time.get_ticks_msec() < game.tutorial_outro_until
+	var key := "%s|%s|%s" % [t["step"], t["done"], outro]
+	_tutorial.visible = outro or not t["done"]
+	if key == _tutorial_key:
+		return
+	_tutorial_key = key
+	for c in _tutorial_box.get_children():
+		c.queue_free()
+	if not _tutorial.visible:
+		return
+	var i := int(t["step"])
+	var step: Dictionary = Tutorial.STEPS[mini(i, Tutorial.STEPS.size() - 1)]
+	var h := Label.new()
+	h.text = "Your valley awaits" if outro else str(step["title"])
+	h.add_theme_font_override("font", _bold)
+	h.add_theme_color_override("font_color", _c("accent"))
+	_tutorial_box.add_child(h)
+	var body := Label.new()
+	body.text = Tutorial.OUTRO if outro else str(step["text"])
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.custom_minimum_size = Vector2(360, 0)
+	_tutorial_box.add_child(body)
+	if outro:
+		return
+	var foot := HBoxContainer.new()
+	var pips := Label.new()
+	var marks := ""
+	for n in Tutorial.STEPS.size():
+		marks += "●" if n <= i else "○"
+	pips.text = marks
+	pips.tooltip_text = "Step %d of %d" % [i + 1, Tutorial.STEPS.size()]
+	pips.mouse_filter = Control.MOUSE_FILTER_PASS
+	pips.add_theme_color_override("font_color", _c("accent"))
+	pips.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	foot.add_child(pips)
+	foot.add_child(_button("Skip introduction", func() -> void:
+		game.skip_tutorial()
+		refresh_now()))
+	_tutorial_box.add_child(foot)
+
+
+## Valley today (src/ui/Village.tsx): last session's recap, what needs attention, ideas for
+## today and the next milestone. Every line jumps to what it talks about.
+func show_today(o: Dictionary) -> void:
+	for c in _today.get_children():
+		c.queue_free()
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(560, mini(640, int(_root.size.y) - 80))
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_today.add_child(scroll)
+	var pad := MarginContainer.new()
+	pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for side: String in ["left", "right", "top", "bottom"]:
+		pad.add_theme_constant_override("margin_" + side, 14)
+	scroll.add_child(pad)
+	var v := VBoxContainer.new()
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	v.add_theme_constant_override("separation", 6)
+	pad.add_child(v)
+	var head := HBoxContainer.new()
+	var h := Label.new()
+	h.text = "%s today" % (game.world_name if game.world_name != "" else "Your valley")
+	h.add_theme_font_override("font", _bold)
+	h.add_theme_font_size_override("font_size", 24)
+	h.add_theme_color_override("font_color", _c("accent"))
+	h.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(h)
+	head.add_child(_button("Close", _close_today))
+	v.add_child(head)
+	v.add_child(_wrapped(str(o["sinceNote"]), _c("textDim")))
+	if o["since"] is Array:
+		for line: String in o["since"]:
+			v.add_child(_wrapped("•  " + line, _c("text")))
+	for section: Array in [["Needs attention", o["issues"], "!"], ["Ideas for today", o["goals"], "→"]]:
+		var items: Array = section[1]
+		if items.is_empty():
+			continue
+		v.add_child(_wrapped(section[0], _c("textDim")))
+		for item: Dictionary in items:
+			var detail := str(item.get("detail", ""))
+			var b := _button("%s  %s" % [section[2], item["text"]], _go_today.bind(item), detail)
+			b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			v.add_child(b)
+			if detail != "":
+				var indent := MarginContainer.new()
+				indent.add_theme_constant_override("margin_left", 28)
+				var dl := _wrapped(detail, _c("textDim"))
+				dl.custom_minimum_size = Vector2(440, 0)
+				indent.add_child(dl)
+				v.add_child(indent)
+	var ms: Dictionary = o["milestone"]
+	if ms["next"] != null:
+		v.add_child(_wrapped("%s → %s" % [ms["current"], ms["next"]], _c("textDim")))
+		for r: Dictionary in ms["reqs"]:
+			var done: bool = r["done"]
+			v.add_child(_wrapped("%s %s%s" % ["☑" if done else "☐", r["label"], "" if done else "  (%d/%d)" % [int(r["current"]), int(r["target"])]],
+				_c("good") if done else _c("text")))
+	v.add_child(_button("Start playing", _close_today))
+	_root.move_child(_today, -1)
+	_today.visible = true
+	# As tall as its content, up to the screen.
+	await get_tree().process_frame
+	scroll.custom_minimum_size.y = minf(pad.get_combined_minimum_size().y, _root.size.y - 80)
+	_today.reset_size()
+	_center(_today)
+
+
+func _close_today() -> void:
+	_today.visible = false
+
+
+func _go_today(item: Dictionary) -> void:
+	_today.visible = false
+	game.focus_target(item["target"])
+	refresh_now()
+
+
+func _wrapped(text: String, color: Color) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.custom_minimum_size = Vector2(480, 0)
+	l.add_theme_color_override("font_color", color)
+	return l
+
+
 func toggle_menu() -> void:
 	if _menu.visible:
 		_menu.visible = false
@@ -756,6 +906,12 @@ func toggle_menu() -> void:
 		game.save_now(label_edit.text.strip_edges())
 		toggle_menu()
 		toggle_menu()))
+	v.add_child(_button("Restart the introduction" if game.tutorial["done"] else "Skip the introduction", func() -> void:
+		if game.tutorial["done"]:
+			game.restart_tutorial()
+		else:
+			game.skip_tutorial()
+		_menu.visible = false))
 	v.add_child(_button("Download save file", func() -> void: game.download_save(), "A copy of this valley as a file, to keep or move to another device"))
 	if game.sim != null and game.sim.ruler() == null:
 		# Valleys from before the ruler walked the map.
@@ -891,6 +1047,7 @@ func refresh_now() -> void:
 	_refresh_people()
 	_refresh_areas()
 	_refresh_towns()
+	_refresh_tutorial()
 	_realm.refresh()
 
 

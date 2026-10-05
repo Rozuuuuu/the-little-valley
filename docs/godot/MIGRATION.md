@@ -170,7 +170,7 @@ Status: **Done** (ported and tested against the browser game), **Started**, **Pl
 | Art | code-drawn pixel sprites | `scripts/art/*` → 144 provisional SVG sprites; `docs/godot/ART_STYLE.md` | Contact sheets (`tools/art_sheet.gd`), screenshots | **Started** (provisional; military, mines and level looks still to draw) |
 | Animation, effects | `particles.ts`, renderer | `src/presentation/fx/` | Frame benchmarks, reduced motion | Planned |
 | Input and bindings, touch | `input/*` | `src/ui/game.gd`, `camera_rig.gd`: mouse, keys, edge pan, touch tap, pan, pinch and box | Manual | **Started** (remapping UI to do) |
-| HUD, windows, tutorial, Valley today | React `ui/*`, `engine/*` | `src/ui/hud.gd`: title, top bar, selection, command card, toasts, menu with save points and settings | Screenshots | **Started** (People, Areas, Towns and Realm windows done; barter at the inn, enlisting at the barracks; tutorial and Valley today to do) |
+| HUD, windows, tutorial, Valley today | React `ui/*`, `engine/*` | `src/ui/hud.gd`: title, top bar, selection, command card, toasts, menu with save points and settings | Screenshots | **Started** (People, Areas, Towns and Realm windows, barter, enlisting, the introduction (`tutorial.gd`, saved in the file's `tutorial`) and Valley today (`valley_today.gd`, on resume, F9 or Today; the session mark now restarts on load) done; key remapping to do) |
 | Settings | `engine/settings.ts` | `src/ui/settings.gd` (ConfigFile): reduced motion, effects, interface size, edge scroll, autosave | Manual | **Done** |
 | Audio | WebAudio synth | AudioStreamGenerator or rendered samples | Listening | Planned |
 | Asset Studio (new) | none | `src/ui/asset_studio/` | Pack round trip, size limits | Planned |

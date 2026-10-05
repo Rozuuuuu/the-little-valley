@@ -65,6 +65,7 @@ address:
 | `--mining=1` | Survey the starter copper and build a mine and a quarry there |
 | `--animals=1` | Place a coop, a sheep pen and a hunting lodge near the hall |
 | `--upgrade=1` | Start upgrading the storehouse and select it |
+| `--today=1` | Show Valley today and the introduction |
 
 On the web, use `?bench=N&settlers=M` instead.
 

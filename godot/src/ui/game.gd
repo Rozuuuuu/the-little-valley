@@ -48,6 +48,14 @@ var last_sim_ms := 0.0
 var last_view_ms := 0.0
 var _drag_start: Variant = null
 var _autosave_at := 0.0
+## The introduction: {step, done}; kept in the save file.
+var tutorial := {"step": 0, "done": true}
+var _tutorial_saved := false
+## While the introduction's closing words show (msec).
+var tutorial_outro_until := 0
+## Valley today opens once settlers have picked their work (tick), summarising this session mark.
+var _today_at := -1
+var _today_prev := {}
 var _touches := {}
 var _pinch := 0.0
 var _touch_down_at := 0.0
@@ -224,6 +232,13 @@ func _capture(opts: Dictionary) -> void:
 		hud.toggle_areas()
 	if opts.get("towns", "0") == "1":
 		hud.toggle_towns()
+	if opts.get("today", "0") == "1":
+		# The introduction on its third step, and Valley today with a recorded session.
+		tutorial = {"step": 2, "done": false}
+		var mark := {"startTick": 0, "startStats": Simulation.empty_stats(), "startPopulation": sim.settlers.size()}
+		sim.record("built", "Built a storehouse")
+		hud.show_today(ValleyToday.build(sim, mark))
+		hud.refresh_now()
 	if opts.has("realm"):
 		hud.toggle_realm()
 		hud._realm.tab = str(opts["realm"]) if str(opts["realm"]) in RealmWindow.TABS else "Kingdoms"
@@ -314,7 +329,7 @@ func _place_near_hall(types: Array) -> void:
 
 # ---- worlds -----------------------------------------------------------------------------------
 
-func new_world(seed_value: int, habitat: String, valley_name: String, ruler_name: String = "") -> void:
+func new_world(seed_value: int, habitat: String, valley_name: String, ruler_name: String = "", introduction: bool = true) -> void:
 	hud.show_busy("Shaping the valley…")
 	await get_tree().process_frame
 	var s := NewGame.create(seed_value, WorldGen.CURRENT_GEN, habitat, ruler_name)
@@ -322,7 +337,9 @@ func new_world(seed_value: int, habitat: String, valley_name: String, ruler_name
 	world_name = valley_name
 	created_at = int(Time.get_unix_time_from_system() * 1000)
 	_start(s)
+	tutorial = {"step": 0, "done": not introduction}
 	save_now("New valley")
+	_tutorial_saved = false
 
 
 func load_world(id: String, point: String = "") -> void:
@@ -337,10 +354,18 @@ func load_world(id: String, point: String = "") -> void:
 		hud.show_title("This valley could not be opened: %s. Nothing was changed or deleted." % r["error"])
 		return
 	world_id = id
+	# Summarise the previous session before this one starts overwriting the mark; settlers pick
+	# their work during the first second, so the summary is gathered a moment later.
+	var s: Simulation = r["sim"]
+	_today_prev = s.session.duplicate(true)
+	s.start_session()
+	var tut: Variant = got["data"].get("tutorial")
 	var meta: Dictionary = got["data"]["meta"]
 	world_name = str(meta.get("name", id))
 	created_at = int(meta.get("createdAt", 0))
-	_start(r["sim"])
+	_start(s)
+	_today_at = s.tick + 12
+	tutorial = {"step": int(tut.get("step", 0)), "done": tut.get("done", true) == true} if tut is Dictionary else {"step": 0, "done": true}
 	if str(got["error"]) != "":
 		hud.toast(got["error"], "warn")
 	var report: PackedStringArray = r["report"]
@@ -418,6 +443,35 @@ func download_save() -> void:
 		hud.toast("Saved a copy to %s" % r["path"], "good")
 
 
+## Valley today on request: how things stand now (no session recap).
+func open_today() -> void:
+	if sim != null:
+		hud.show_today(ValleyToday.build(sim, {}))
+
+
+func skip_tutorial() -> void:
+	tutorial["done"] = true
+
+
+func restart_tutorial() -> void:
+	tutorial = {"step": 0, "done": false}
+	_tutorial_saved = false
+
+
+## Moves the camera to a Valley today target and selects what it names.
+func focus_target(t: Variant) -> void:
+	if not t is Dictionary:
+		return
+	var c := Vector2(float(t["x"]) + float(t["w"]) / 2.0, float(t["y"]) + float(t["h"]) / 2.0) * WorldView.TILE_PX
+	camera.target_pos = c
+	if t.has("settlerId"):
+		selected = [int(t["settlerId"])]
+		selected_building = -1
+	elif t.has("buildingId"):
+		selected.clear()
+		selected_building = int(t["buildingId"])
+
+
 func _start(s: Simulation) -> void:
 	sim = s
 	view.set_simulation(s)
@@ -434,6 +488,9 @@ func _start(s: Simulation) -> void:
 	camera.zoom = Vector2.ONE * 0.6
 	_autosave_at = Time.get_ticks_msec() / 1000.0 + settings.autosave_minutes * 60.0
 	paused = false
+	_today_at = -1
+	_tutorial_saved = false
+	tutorial_outro_until = 0
 	hud.show_play()
 
 
@@ -441,7 +498,10 @@ func save_now(label: String = "") -> void:
 	if sim == null:
 		return
 	var data := SaveCodec.encode(sim, world_name, created_at, {"camX": camera.position.x, "camY": camera.position.y, "zoom": camera.zoom.x})
+	data["tutorial"] = tutorial.duplicate()
 	var r := store.save(world_id, world_name, data, label)
+	if bool(r["ok"]):
+		_tutorial_saved = true
 	if bool(r["ok"]):
 		hud.toast("Saved." if label == "" else "Saved: %s" % label, "good")
 	else:
@@ -460,6 +520,11 @@ func _process(delta: float) -> void:
 		_run_ticks(t_sim)
 		for e in sim.drain_events():
 			_on_event(e)
+	if _today_at != -1 and sim.tick >= _today_at:
+		_today_at = -1
+		hud.show_today(ValleyToday.build(sim, _today_prev))
+	if Tutorial.advance(tutorial, sim, selected.size(), _tutorial_saved):
+		tutorial_outro_until = Time.get_ticks_msec() + 12000
 	var t_view := Time.get_ticks_usec()
 	last_sim_ms = (t_view - t_sim) / 1000.0
 	var alpha := clampf(_acc / TICK_MS, 0.0, 1.0) if sim.slice_next == -1 else 1.0
@@ -824,6 +889,8 @@ func _key(k: InputEventKey) -> void:
 			hud.toggle_areas()
 		KEY_F4:
 			hud.toggle_towns()
+		KEY_F9:
+			open_today()
 		KEY_F6:
 			hud.toggle_realm()
 		KEY_R:
