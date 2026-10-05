@@ -47,6 +47,8 @@ var placing := ""
 var ghost_tiles: Array = []
 ## The building being placed, drawn see-through at its spot (red where it can't go): its sprite
 ## name, footprint bottom-left tile and whether the spot is allowed. "" when none.
+## What Valley today or a "find" just pointed at: {rect (tiles), t0 (seconds)}, or empty.
+var highlight := {}
 var ghost_sprite := ""
 var ghost_at := Vector2i.ZERO
 var ghost_ok := false
@@ -758,6 +760,8 @@ func focus_target(t: Variant) -> void:
 		return
 	var c := Vector2(float(t["x"]) + float(t["w"]) / 2.0, float(t["y"]) + float(t["h"]) / 2.0) * WorldView.TILE_PX
 	camera.target_pos = c
+	# Pulsing corner brackets round what was named (Renderer.drawHighlight).
+	highlight = {"rect": Rect2(float(t["x"]), float(t["y"]), float(t["w"]), float(t["h"])), "t0": Time.get_ticks_msec() / 1000.0}
 	if t.has("settlerId"):
 		selected = [int(t["settlerId"])]
 		selected_building = -1

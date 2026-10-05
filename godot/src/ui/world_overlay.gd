@@ -165,8 +165,10 @@ func _draw() -> void:
 	# claims, held land and other kingdoms' land, each sector outlined in its colour.
 	if (game.hud != null and game.hud.realm_open()) or game.placing == "claim":
 		_draw_borders(sim, view, T, px)
-	# Companies in the field (ours and others'), drawn as banners with their strength.
+	# Other kingdoms' companies are drawn by WorldLife as soldiers; here, their strength.
 	for k: Dictionary in sim.kingdoms:
+		if k["player"]:
+			continue
 		var kc := Color(str(k["banner"]["color"]))
 		for c: Dictionary in k["companies"]:
 			if c.get("state") != "deployed" and c.get("state") != "returning":
@@ -174,13 +176,7 @@ func _draw() -> void:
 			var cp := Vector2(float(c.get("x", 0)), float(c.get("y", 0))) * T
 			if not view.has_point(cp):
 				continue
-			draw_set_transform(cp, 0.0, Vector2.ONE * px)
-			draw_line(Vector2(0, 0), Vector2(0, -34), Color("#3a2a1f"), 3.0)
-			draw_colored_polygon(PackedVector2Array([Vector2(0, -34), Vector2(20, -28), Vector2(0, -22)]), kc)
-			draw_circle(Vector2(0, 0), 7, Color(0.05, 0.16, 0.17, 0.85))
-			draw_circle(Vector2(0, 0), 5, kc)
-			draw_set_transform(Vector2.ZERO)
-			_label(cp + Vector2(10, -4) * px, "%s %d" % [str(Military.unit(c["kind"])["name"]), int(c.get("health", 100))], kc.lightened(0.2), px)
+			_label(cp + Vector2(-40, -150), "%s %d" % [str(Military.unit(c["kind"])["name"]), int(c.get("health", 100))], kc.lightened(0.2), px)
 	# Merchants and caravan carts are drawn by WorldLife, in pixel art.
 	# The Assistant Chief's big gold "?" (ui_advice) while they wait beside the ruler with advice:
 	# it bobs and pulses, to be clicked (the ruler's own crown is on their SettlerView).
@@ -190,6 +186,19 @@ func _draw() -> void:
 		var ap := av.position if av != null else Vector2(adviser.x, adviser.y) * T
 		var tq := Time.get_ticks_msec() / 1000.0
 		_draw_sprite("ui_advice", ap + Vector2(0, (-25.0 + roundf(sin(tq * 4.0) * 1.5)) * 4.0), 0.85 + 0.15 * sin(tq * 6.0))
+	# Highlight: corner brackets that pulse round what was just pointed at, for 2.6 s.
+	if not game.highlight.is_empty():
+		var age := Time.get_ticks_msec() / 1000.0 - float(game.highlight["t0"])
+		if age > 2.6:
+			game.highlight = {}
+		else:
+			var hr: Rect2 = game.highlight["rect"]
+			var a4 := 4.0
+			var pulse := (2.0 + roundf((sin(age * 8.0) + 1.0) * 1.5)) * a4
+			var alpha := minf(1.0, (2.6 - age) * 1.5)
+			var r := Rect2(hr.position * T, hr.size * T).grow(pulse)
+			_brackets(r.grow(a4), Color(Color("#ffcf5a"), alpha), a4)
+			_brackets(r, Color(Color("#fff6c2"), alpha), a4)
 	# Order markers fade over 0.7 s.
 	var now := Time.get_ticks_msec() / 1000.0
 	for m: Dictionary in game.markers:
@@ -257,3 +266,13 @@ func _draw_sprite(sprite_name: String, at: Vector2, alpha: float = 1.0, tint: Co
 	var size := Vector2(float(sp["w"]), float(sp["h"])) * k
 	var anchor := Vector2(float(sp["ax"]), float(sp["ay"])) * k
 	draw_texture_rect(sp["texture"] as Texture2D, Rect2(at - anchor, size), false, Color(tint.r, tint.g, tint.b, alpha))
+
+
+## Four corner brackets round `r` (Renderer.drawBrackets), lines `a` px thick and 4 a long.
+func _brackets(r: Rect2, c: Color, a: float) -> void:
+	var l := a * 5.0
+	for corner: Vector2 in [r.position, Vector2(r.end.x, r.position.y), Vector2(r.position.x, r.end.y), r.end]:
+		var sx := 1.0 if corner.x == r.position.x else -1.0
+		var sy := 1.0 if corner.y == r.position.y else -1.0
+		draw_rect(Rect2(corner.x - (0.0 if sx > 0 else l), corner.y - (0.0 if sy > 0 else a), l, a), c)
+		draw_rect(Rect2(corner.x - (0.0 if sx > 0 else a), corner.y - (0.0 if sy > 0 else l), a, l), c)

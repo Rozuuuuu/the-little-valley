@@ -26,6 +26,8 @@ var _corpses: Array[Dictionary] = []
 var _travellers := {}
 ## manifest id -> {node: Node2D, cart: Sprite2D, load: Sprite2D, at: Vector2}
 var _carts := {}
+## "kingdom:company" -> {node, figures: Array[Sprite2D], at}
+var _foreign := {}
 
 
 func _init() -> void:
@@ -55,6 +57,9 @@ func clear() -> void:
 	for d: Dictionary in _carts.values():
 		(d["node"] as Node).queue_free()
 	_carts.clear()
+	for d: Dictionary in _foreign.values():
+		(d["node"] as Node).queue_free()
+	_foreign.clear()
 
 
 func refresh(sim: Simulation, area: Rect2, delta: float, night_tint: Color, night_rect: Rect2) -> void:
@@ -67,6 +72,7 @@ func refresh(sim: Simulation, area: Rect2, delta: float, night_tint: Color, nigh
 	_update_corpses(t)
 	_update_travellers(sim, area, delta, t, still)
 	_update_carts(sim, area, delta, t, still)
+	_update_foreign(sim, area, delta, t, still)
 
 
 # ---- lights ---------------------------------------------------------------------------------------
@@ -409,3 +415,82 @@ func _update_carts(sim: Simulation, area: Rect2, delta: float, t: float, still: 
 		if not seen.has(id):
 			(_carts[id]["node"] as Node).queue_free()
 			_carts.erase(id)
+
+
+# ---- other kingdoms' companies ------------------------------------------------------------------
+
+## Another kingdom's company in the field (Renderer.drawForeignCompany): four soldiers in a block,
+## with horses for knights, their weapons over their shoulders, and a banner in their colour.
+func _update_foreign(sim: Simulation, area: Rect2, delta: float, t: float, still: bool) -> void:
+	var seen := {}
+	var k := 1.0 - exp(-delta * 10.0)
+	for kd: Dictionary in sim.kingdoms:
+		if kd["player"]:
+			continue
+		var color := Color(str(kd["banner"]["color"]))
+		for c: Dictionary in kd["companies"]:
+			if c.get("state") != "deployed" and c.get("state") != "returning":
+				continue
+			var target := Vector2(float(c.get("x", 0)), float(c.get("y", 0))) * WorldView.TILE_PX
+			if not area.grow(200).has_point(target):
+				continue
+			var id := "%s:%s" % [kd["id"], c["id"]]
+			seen[id] = true
+			var d: Dictionary = _foreign.get(id, {})
+			if d.is_empty():
+				d = _make_company(int(c["id"]), str(c.get("kind", "")), color)
+				d["at"] = target
+				_foreign[id] = d
+			var at: Vector2 = (d["at"] as Vector2).lerp(target, k)
+			var moving := at.distance_to(target) > 2.0
+			d["at"] = at
+			(d["node"] as Node2D).position = at
+			var facing := 1 if c.get("state") == "returning" else 0
+			var figs: Array = d["figures"]
+			for i in figs.size():
+				var frame := int(PixelPeople.FRAME["walk" if moving else "idle"]) + (0 if still else (floori(t * 8.0) + i) % (4 if moving else 2))
+				(figs[i] as Sprite2D).region_rect = Rect2(frame * PixelPeople.FW, facing * PixelPeople.FH, PixelPeople.FW, PixelPeople.FH)
+	for id: String in _foreign.keys():
+		if not seen.has(id):
+			(_foreign[id]["node"] as Node).queue_free()
+			_foreign.erase(id)
+
+
+func _make_company(cid: int, kind: String, color: Color) -> Dictionary:
+	var node := Node2D.new()
+	var look := {"skin": cid % 4, "hair": (cid >> 2) % 6, "hairStyle": cid % 3, "shirt": 5, "pants": 2}
+	var figs: Array[Sprite2D] = []
+	for i in 4:
+		var off := Vector2((i % 2) * 10 - 5, floori(i / 2.0) * 7 - 3) * PX
+		if kind == "knight" and view.art.has("icon_horses"):
+			var horse := Sprite2D.new()
+			view.art.apply(horse, "icon_horses")
+			horse.position = off + Vector2(0, 2 * PX)
+			node.add_child(horse)
+		var fig := Sprite2D.new()
+		fig.texture = SettlerView.people().sheet(look)
+		fig.region_enabled = true
+		fig.centered = false
+		fig.offset = Vector2(-PixelPeople.AX, -PixelPeople.AY)
+		fig.scale = Vector2(PX, PX)
+		fig.position = off
+		node.add_child(fig)
+		figs.append(fig)
+		var gear_name := "icon_bows" if kind == "archer" else "icon_swords"
+		if view.art.has(gear_name):
+			var gear := Sprite2D.new()
+			view.art.apply(gear, gear_name)
+			gear.position = off + Vector2(5, -8) * PX
+			node.add_child(gear)
+	var pole := ColorRect.new()
+	pole.color = Color("#5c3a22")
+	pole.position = Vector2(10, -30) * PX
+	pole.size = Vector2(1, 22) * PX
+	node.add_child(pole)
+	var flag := ColorRect.new()
+	flag.color = color
+	flag.position = Vector2(11, -30) * PX
+	flag.size = Vector2(7, 5) * PX
+	node.add_child(flag)
+	view.entities.add_child(node)
+	return {"node": node, "figures": figs}

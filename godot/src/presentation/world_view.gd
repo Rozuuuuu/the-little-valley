@@ -53,6 +53,8 @@ var fog := FogView.new()
 ## Lights, weather, the ruler's aura, corpses, merchants and carts (see WorldLife).
 var life := WorldLife.new()
 var _ground_motion := 1.0
+## Ripe grain crops: [Sprite2D, base position, field x in tiles].
+var _swaying: Array[Array] = []
 
 
 func _init() -> void:
@@ -146,6 +148,15 @@ func refresh(alpha: float, view: Rect2, delta: float) -> void:
 		_ground_motion = motion
 		for g: Dictionary in _ground.values():
 			((g["node"] as Sprite2D).material as ShaderMaterial).set_shader_parameter("motion", motion)
+	var tsway := Time.get_ticks_msec() / 1000.0
+	var keep: Array[Array] = []
+	for cs: Array in _swaying:
+		if not is_instance_valid(cs[0]):
+			continue
+		keep.append(cs)
+		var shift := 0.0 if motion <= 0.0 else roundf(sin(tsway * 1.6 + float(cs[2]) * 0.7) * 0.6)
+		(cs[0] as Sprite2D).position = (cs[1] as Vector2) + Vector2(shift * TILE_PX / 16.0, 0)
+	_swaying = keep
 	fog.refresh(view, delta)
 	_ground_layer.visible = ground_visible
 	var tint := _night_tint()
@@ -419,6 +430,9 @@ func _make_building(b: Building, look: String) -> Node2D:
 			art.apply(crop, "crop_%s_%d" % [f["crop"], stage])
 			crop.position = base
 			holder.add_child(crop)
+			# Ripe grain sways a pixel in the wind (Renderer.drawField).
+			if f["state"] == "ripe" and str((Defs.crop(str(f["crop"])).get("art", {}) as Dictionary).get("style", "")) == "grain":
+				_swaying.append([crop, base, float(b.x)])
 		holder.tree_exiting.connect(func() -> void: soil.queue_free())
 		entities.add_child(holder)
 		return holder
