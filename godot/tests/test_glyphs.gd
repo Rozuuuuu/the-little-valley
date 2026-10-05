@@ -1,11 +1,11 @@
 extends TestCase
-## Every character the interface can show is in the bundled font. On the web there is no system
-## font to fall back on, so a missing glyph shows as a box.
+## Every character the interface can show is in the bundled fonts (the pixel font or its bundled
+## fallback). On the web there is no system font to fall back on, so a missing glyph shows as a box.
 
 
 func test_the_font_has_every_character_in_the_interface() -> void:
-	var font: FontFile = load("res://fonts/AtkinsonHyperlegible-Regular.woff2")
-	var bold: FontFile = load("res://fonts/AtkinsonHyperlegible-Bold.woff2")
+	var font := UiFonts.regular()
+	var bold := UiFonts.bold()
 	var string := RegEx.create_from_string(r'"(?:[^"\\]|\\.)*"')
 	check(string.is_valid(), "string-literal scanner compiles")
 	if not string.is_valid():
@@ -31,6 +31,6 @@ func test_the_font_has_every_character_in_the_interface() -> void:
 				var t := m.get_string()
 				for i in t.length():
 					var c := t.unicode_at(i)
-					if c > 127 and not (font.has_char(c) and bold.has_char(c)):
+					if c > 127 and not (UiFonts.covers(font, c) and UiFonts.covers(bold, c)):
 						missing[t[i]] = path.get_file()
 	check(missing.is_empty(), "characters the font lacks: %s" % str(missing))

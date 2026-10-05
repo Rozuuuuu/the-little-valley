@@ -63,8 +63,8 @@ var _storage_label: Label
 
 func _ready() -> void:
 	_pal = JSON.parse_string(FileAccess.get_file_as_string("res://art/palette.json"))
-	_font = load("res://fonts/AtkinsonHyperlegible-Regular.woff2")
-	_bold = load("res://fonts/AtkinsonHyperlegible-Bold.woff2")
+	_font = UiFonts.regular()
+	_bold = UiFonts.bold()
 	_theme = _make_theme()
 	_root.theme = _theme
 	# _apply_scale owns the root size; stretched anchors would override that size and warn.
@@ -128,62 +128,97 @@ func _c(key: String) -> Color:
 	return Color(str(_pal["ui"][key]))
 
 
-func _box(bg: Color, border: Color, radius: int = 8, pad: int = 8) -> StyleBoxFlat:
+func _box(bg: Color, border: Color, radius: int = 0, pad: int = 8) -> StyleBoxFlat:
 	var b := StyleBoxFlat.new()
 	b.bg_color = bg
 	b.border_color = border
-	b.set_border_width_all(1)
+	b.set_border_width_all(2)
 	b.set_corner_radius_all(radius)
 	b.set_content_margin_all(pad)
-	b.shadow_color = Color(0.08, 0.05, 0.02, 0.35)
-	b.shadow_size = 5
+	return b
+
+
+## A pixel button as the browser's (src/ui/pixel.css): soil with a turf edge and a dark drop.
+func _soil_button(bg: Color, edge: Color) -> StyleBoxFlat:
+	var b := _box(bg, edge, 0, 6)
+	b.shadow_color = _c("lineDark")
+	b.shadow_size = 0
 	b.shadow_offset = Vector2(0, 2)
-	b.anti_aliasing = true
+	b.expand_margin_bottom = 0
+	b.content_margin_left = 10
+	b.content_margin_right = 10
 	return b
 
 
-## A wooden button: a lit top edge and a thick dark lip below, so it reads as a raised plank.
-func _plank(bg: Color, rim: Color, lip: int = 3) -> StyleBoxFlat:
-	var b := _box(bg, rim, 6, 7)
-	b.border_width_top = 1
-	b.border_width_left = 1
-	b.border_width_right = 1
-	b.border_width_bottom = lip
-	b.border_color = rim
-	b.shadow_size = 2
-	b.content_margin_bottom = 7 + lip - 1
-	return b
+## The browser's 12×12 grass frame (src/ui/pixel.css): blades along the top, a dark rim and a
+## dirt-edge line inside. a/b blade greens, c rim, d grass, e dirt edge; "." is the dirt inside.
+const GRASS_FRAME := [
+	".a..a..a..a.",
+	".abbabbabba.",
+	"cdddddbdddbc",
+	"cbdeeeeeebdc",
+	"cdbe....eddc",
+	"cdde....eddc",
+	"cdde....edbc",
+	"cbde....eddc",
+	"cddeeeeeebdc",
+	"cdbddddbdddc",
+	"cdbdddbdddbc",
+	".cccccccccc.",
+]
+const FRAME_COLOURS := {"a": "#a8e070", "b": "#7cc050", "c": "#1c3416", "d": "#4f8a3c", "e": "#3a2414"}
+const FRAME_SCALE := 2
+
+
+## A dirt panel in the grass frame, as a nine-patch: the blades repeat along the top edge.
+func _grass_panel() -> StyleBoxTexture:
+	var im := Image.create(12, 12, false, Image.FORMAT_RGBA8)
+	for y in 12:
+		var row: String = GRASS_FRAME[y]
+		for x in 12:
+			var ch := row[x]
+			if FRAME_COLOURS.has(ch):
+				im.set_pixel(x, y, Color(str(FRAME_COLOURS[ch])))
+			elif (y >= 4 and y <= 7 and x >= 4 and x <= 7):
+				im.set_pixel(x, y, Color(_c("panel"), 0.97))
+	im.resize(12 * FRAME_SCALE, 12 * FRAME_SCALE, Image.INTERPOLATE_NEAREST)
+	var s := StyleBoxTexture.new()
+	s.texture = ImageTexture.create_from_image(im)
+	for side: Side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
+		s.set_texture_margin(side, 4 * FRAME_SCALE)
+		s.set_content_margin(side, 4 * FRAME_SCALE + 6)
+	s.set_content_margin(SIDE_TOP, 4 * FRAME_SCALE + 8)
+	s.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_TILE_FIT
+	s.axis_stretch_vertical = StyleBoxTexture.AXIS_STRETCH_MODE_STRETCH
+	return s
 
 
 func _make_theme() -> Theme:
 	var t := Theme.new()
 	t.default_font = _font
 	t.default_font_size = 17
-	var panel := _c("panel")
-	panel.a = 0.95
-	# Panels: dark walnut with a gold trim, like a carved signboard.
-	var pbox := _box(panel, Color(_c("line"), 0.75), 10, 12)
-	pbox.set_border_width_all(2)
-	t.set_stylebox("panel", "PanelContainer", pbox)
-	var hi := _c("panelHi")
-	var lip := hi.darkened(0.45)
-	t.set_stylebox("normal", "Button", _plank(hi, lip))
-	t.set_stylebox("hover", "Button", _plank(hi.lightened(0.12), Color(_c("line"), 0.9)))
-	var pressed := _plank(hi.darkened(0.15), lip, 1)
-	pressed.content_margin_top = 9
-	t.set_stylebox("pressed", "Button", pressed)
-	t.set_stylebox("focus", "Button", _box(Color(0, 0, 0, 0), _c("accent"), 6, 7))
-	t.set_stylebox("disabled", "Button", _plank(Color(hi, 0.5), Color(lip, 0.5)))
+	t.set_stylebox("panel", "PanelContainer", _grass_panel())
+	var soil := _c("panelHi")
+	t.set_stylebox("normal", "Button", _soil_button(soil, _c("line")))
+	t.set_stylebox("hover", "Button", _soil_button(Color("#8a5c36"), _c("lineHi")))
+	t.set_stylebox("pressed", "Button", _soil_button(Color(_c("on")), _c("accent")))
+	t.set_stylebox("focus", "Button", _box(Color(0, 0, 0, 0), _c("accent"), 0, 6))
+	t.set_stylebox("disabled", "Button", _soil_button(Color(soil, 0.55), Color(_c("line"), 0.5)))
 	t.set_color("font_color", "Button", _c("text"))
 	t.set_color("font_hover_color", "Button", _c("accent"))
-	t.set_color("font_pressed_color", "Button", _c("accent"))
+	t.set_color("font_pressed_color", "Button", Color("#fffbe8"))
 	t.set_color("font_disabled_color", "Button", Color(_c("textDim"), 0.6))
-	t.set_color("font_outline_color", "Button", Color(0.12, 0.07, 0.03, 0.6))
-	t.set_constant("outline_size", "Button", 2)
+	# The green primary button (Continue, Start), as the browser's .btn.primary.
+	t.set_type_variation("PrimaryButton", "Button")
+	t.set_stylebox("normal", "PrimaryButton", _soil_button(Color(_c("primary")), Color(_c("primaryEdge"))))
+	t.set_stylebox("hover", "PrimaryButton", _soil_button(Color("#5e9a45"), Color(_c("primaryEdge"))))
+	t.set_color("font_color", "PrimaryButton", Color("#fffbe8"))
 	t.set_color("font_color", "Label", _c("text"))
 	t.set_color("default_color", "RichTextLabel", _c("text"))
-	t.set_stylebox("normal", "LineEdit", _box(_c("panelHi").darkened(0.35), Color(_c("line"), 0.5), 6, 6))
+	t.set_stylebox("normal", "LineEdit", _box(_c("panelHi"), _c("panelEdge"), 0, 6))
 	t.set_color("font_color", "LineEdit", _c("text"))
+	t.set_stylebox("normal", "OptionButton", _soil_button(soil, _c("line")))
+	t.set_stylebox("hover", "OptionButton", _soil_button(Color("#8a5c36"), _c("lineHi")))
 	t.set_font("bold_font", "RichTextLabel", _bold)
 	return t
 
@@ -760,7 +795,9 @@ func show_title(message: String = "") -> void:
 	for w: Dictionary in game.store.worlds().slice(0, 4):
 		var p: Dictionary = (w["points"] as Array)[0]
 		var id: String = w["id"]
-		v.add_child(_button("Continue %s — day %d, %d people" % [w["name"], int(p.get("day", 0)), int(p.get("population", 0))], func() -> void: game.load_world(id)))
+		var cont := _button("Continue %s — day %d, %d people" % [w["name"], int(p.get("day", 0)), int(p.get("population", 0))], func() -> void: game.load_world(id))
+		cont.theme_type_variation = &"PrimaryButton"
+		v.add_child(cont)
 	v.add_child(_button("Load a save file", func() -> void: game.load_from_file(), "A save downloaded from this game or the old browser game"))
 	v.add_child(_button("Asset Studio", open_studio, "Your own art for anything in the valley, kept on this device"))
 	if Files.is_web():
@@ -800,11 +837,13 @@ func show_title(message: String = "") -> void:
 	intro.button_pressed = true
 	intro.focus_mode = Control.FOCUS_NONE
 	v.add_child(intro)
-	v.add_child(_button("Start a new valley", func() -> void:
+	var start := _button("Start a new valley", func() -> void:
 		var seed_text := seed_edit.text.strip_edges()
 		var seed_value := int(seed_text) if seed_text.is_valid_int() else (seed_text.hash() if seed_text != "" else randi() % 2147483647)
 		game.new_world(seed_value, str(habitat.get_item_metadata(habitat.selected)), name_edit.text.strip_edges() if name_edit.text.strip_edges() != "" else "Home",
-			ruler_edit.text.strip_edges() if ruler_edit.text.strip_edges() != "" else "Your Majesty", intro.button_pressed)))
+			ruler_edit.text.strip_edges() if ruler_edit.text.strip_edges() != "" else "Your Majesty", intro.button_pressed))
+	start.theme_type_variation = &"PrimaryButton"
+	v.add_child(start)
 	var note := Label.new()
 	note.text = "Godot preview: farming, crafts, animals, mining, work areas, roles and growing families. Time stands still while the game is closed."
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

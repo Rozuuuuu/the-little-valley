@@ -125,13 +125,25 @@ static func recolour(im: Image, colors: PackedColorArray, strength: float) -> Im
 	return out
 
 
+static var _pixel: Variant = null
+
+
+## True when the game's art is the pixel bundle (its palette has the "pixel" colours).
+static func pixel_art() -> bool:
+	if _pixel == null:
+		var d: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://art/palette.json"))
+		_pixel = d is Dictionary and (d as Dictionary).has("pixel")
+	return bool(_pixel)
+
+
 ## Bakes one frame of an upload into a sprite's canvas: the upload's anchor point (ax, ay, in the
 ## frame's pixels) lands on the sprite's anchor, scaled by `scale`.
 static func bake(frame: Image, ax: float, ay: float, scale: float, canvas: Vector2i, anchor: Vector2) -> Image:
 	var scaled := frame.duplicate() as Image
 	var size := Vector2i(maxi(1, roundi(frame.get_width() * scale)), maxi(1, roundi(frame.get_height() * scale)))
 	if size != frame.get_size():
-		scaled.resize(size.x, size.y, Image.INTERPOLATE_LANCZOS)
+		# Pixel art is fitted with nearest-neighbour so its pixels stay hard squares.
+		scaled.resize(size.x, size.y, Image.INTERPOLATE_NEAREST if pixel_art() else Image.INTERPOLATE_LANCZOS)
 	var out := Image.create(canvas.x, canvas.y, false, Image.FORMAT_RGBA8)
 	var at := Vector2i(roundi(anchor.x - ax * scale), roundi(anchor.y - ay * scale))
 	out.blend_rect(scaled, Rect2i(Vector2i.ZERO, size), at)

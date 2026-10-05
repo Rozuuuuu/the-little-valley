@@ -1,8 +1,8 @@
-/** The art palette (godot/art/palette.json) and the colour helpers every generator module shares. */
+/** The retired storybook palette (scripts/art/storybook-palette.json) and the colour helpers every generator module shares. */
 import { readFileSync } from 'node:fs';
 import { mix, type Palette } from './svg-kit';
 
-export const P = JSON.parse(readFileSync('godot/art/palette.json', 'utf8')) as Palette;
+export const P = JSON.parse(readFileSync('scripts/art/storybook-palette.json', 'utf8')) as Palette;
 export const M = P.materials;
 export const OUTLINE = P.people.outline;
 export const RIM = P.core.mint;

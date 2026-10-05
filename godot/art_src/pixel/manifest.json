@@ -1,0 +1,2950 @@
+{
+ "tilePx": 96,
+ "artPxPerTile": 16,
+ "note": "The browser game's original pixel art (src/render/sprites), exported by scripts/pixel-art/export.ts at 6x nearest-neighbour.",
+ "sprites": {
+  "oak_0_summer": {
+   "w": 192,
+   "h": 228,
+   "ax": 96,
+   "ay": 216,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "oak_0_autumn": {
+   "w": 192,
+   "h": 228,
+   "ax": 96,
+   "ay": 216,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "oak_0_winter": {
+   "w": 192,
+   "h": 228,
+   "ax": 96,
+   "ay": 216,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "oak_1_summer": {
+   "w": 192,
+   "h": 228,
+   "ax": 96,
+   "ay": 216,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "oak_1_autumn": {
+   "w": 192,
+   "h": 228,
+   "ax": 96,
+   "ay": 216,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "oak_1_winter": {
+   "w": 192,
+   "h": 228,
+   "ax": 96,
+   "ay": 216,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "oak_2_summer": {
+   "w": 192,
+   "h": 228,
+   "ax": 96,
+   "ay": 216,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "oak_2_autumn": {
+   "w": 192,
+   "h": 228,
+   "ax": 96,
+   "ay": 216,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "oak_2_winter": {
+   "w": 192,
+   "h": 228,
+   "ax": 96,
+   "ay": 216,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "pine_0_summer": {
+   "w": 156,
+   "h": 240,
+   "ax": 78,
+   "ay": 228,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "pine_0_winter": {
+   "w": 156,
+   "h": 240,
+   "ax": 78,
+   "ay": 228,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "pine_1_summer": {
+   "w": 156,
+   "h": 240,
+   "ax": 78,
+   "ay": 228,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "pine_1_winter": {
+   "w": 156,
+   "h": 240,
+   "ax": 78,
+   "ay": 228,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "berry_full_summer": {
+   "w": 120,
+   "h": 108,
+   "ax": 60,
+   "ay": 96,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "berry_full_winter": {
+   "w": 120,
+   "h": 108,
+   "ax": 60,
+   "ay": 96,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "berry_empty_summer": {
+   "w": 120,
+   "h": 108,
+   "ax": 60,
+   "ay": 96,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "berry_empty_winter": {
+   "w": 120,
+   "h": 108,
+   "ax": 60,
+   "ay": 96,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "rock_0": {
+   "w": 108,
+   "h": 84,
+   "ax": 54,
+   "ay": 78,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "rock_1": {
+   "w": 108,
+   "h": 84,
+   "ax": 54,
+   "ay": 78,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "boulder": {
+   "w": 144,
+   "h": 126,
+   "ax": 72,
+   "ay": 120,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "stump": {
+   "w": 96,
+   "h": 72,
+   "ax": 48,
+   "ay": 78,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "sapling": {
+   "w": 72,
+   "h": 90,
+   "ax": 36,
+   "ay": 96,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "waystation": {
+   "w": 312,
+   "h": 348,
+   "ax": 12,
+   "ay": 360,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     144,
+     -360
+    ],
+    "chimney": [
+     216,
+     -228
+    ]
+   }
+  },
+  "waystation_lit": {
+   "w": 312,
+   "h": 348,
+   "ax": 12,
+   "ay": 360,
+   "kind": "night",
+   "provisional": false,
+   "pixel": true
+  },
+  "mill": {
+   "w": 240,
+   "h": 348,
+   "ax": 24,
+   "ay": 324,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     96,
+     -324
+    ]
+   }
+  },
+  "mill_lit": {
+   "w": 240,
+   "h": 348,
+   "ax": 24,
+   "ay": 324,
+   "kind": "night",
+   "provisional": false,
+   "pixel": true
+  },
+  "bakery": {
+   "w": 324,
+   "h": 312,
+   "ax": 18,
+   "ay": 312,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     144,
+     -312
+    ],
+    "chimney": [
+     240,
+     -228
+    ]
+   }
+  },
+  "bakery_lit": {
+   "w": 324,
+   "h": 312,
+   "ax": 18,
+   "ay": 312,
+   "kind": "night",
+   "provisional": false,
+   "pixel": true
+  },
+  "cottage": {
+   "w": 324,
+   "h": 300,
+   "ax": 18,
+   "ay": 294,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     144,
+     -294
+    ],
+    "chimney": [
+     228,
+     -240
+    ]
+   }
+  },
+  "cottage_lit": {
+   "w": 324,
+   "h": 300,
+   "ax": 18,
+   "ay": 294,
+   "kind": "night",
+   "provisional": false,
+   "pixel": true
+  },
+  "familyHome": {
+   "w": 324,
+   "h": 300,
+   "ax": 18,
+   "ay": 294,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     144,
+     -294
+    ],
+    "chimney": [
+     228,
+     -240
+    ]
+   }
+  },
+  "familyHome_lit": {
+   "w": 324,
+   "h": 300,
+   "ax": 18,
+   "ay": 294,
+   "kind": "night",
+   "provisional": false,
+   "pixel": true
+  },
+  "charcoalKiln": {
+   "w": 216,
+   "h": 300,
+   "ax": 12,
+   "ay": 288,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     96,
+     -288
+    ],
+    "chimney": [
+     96,
+     -228
+    ]
+   }
+  },
+  "charcoalKiln_lit": {
+   "w": 216,
+   "h": 300,
+   "ax": 12,
+   "ay": 288,
+   "kind": "night",
+   "provisional": false,
+   "pixel": true
+  },
+  "inn": {
+   "w": 324,
+   "h": 348,
+   "ax": 18,
+   "ay": 324,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     144,
+     -324
+    ],
+    "chimney": [
+     240,
+     -264
+    ]
+   }
+  },
+  "inn_lit": {
+   "w": 324,
+   "h": 348,
+   "ax": 18,
+   "ay": 324,
+   "kind": "night",
+   "provisional": false,
+   "pixel": true
+  },
+  "depot": {
+   "w": 324,
+   "h": 288,
+   "ax": 18,
+   "ay": 276,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     144,
+     -276
+    ]
+   }
+  },
+  "crate": {
+   "w": 108,
+   "h": 120,
+   "ax": 6,
+   "ay": 120,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -120
+    ]
+   }
+  },
+  "royalHall": {
+   "w": 420,
+   "h": 600,
+   "ax": 18,
+   "ay": 588,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     192,
+     -588
+    ]
+   }
+  },
+  "royalHall_lit": {
+   "w": 420,
+   "h": 600,
+   "ax": 18,
+   "ay": 588,
+   "kind": "night",
+   "provisional": false,
+   "pixel": true
+  },
+  "barracks": {
+   "w": 324,
+   "h": 360,
+   "ax": 18,
+   "ay": 348,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     144,
+     -348
+    ],
+    "chimney": [
+     60,
+     -216
+    ]
+   }
+  },
+  "barracks_lit": {
+   "w": 324,
+   "h": 360,
+   "ax": 18,
+   "ay": 348,
+   "kind": "night",
+   "provisional": false,
+   "pixel": true
+  },
+  "archeryRange": {
+   "w": 324,
+   "h": 240,
+   "ax": 18,
+   "ay": 228,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     144,
+     -228
+    ]
+   }
+  },
+  "armory": {
+   "w": 228,
+   "h": 276,
+   "ax": 18,
+   "ay": 276,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     96,
+     -276
+    ]
+   }
+  },
+  "armory_lit": {
+   "w": 228,
+   "h": 276,
+   "ax": 18,
+   "ay": 276,
+   "kind": "night",
+   "provisional": false,
+   "pixel": true
+  },
+  "stable": {
+   "w": 324,
+   "h": 276,
+   "ax": 18,
+   "ay": 264,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     144,
+     -264
+    ]
+   }
+  },
+  "councilHall": {
+   "w": 324,
+   "h": 252,
+   "ax": 18,
+   "ay": 240,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     144,
+     -240
+    ],
+    "chimney": [
+     240,
+     -204
+    ]
+   }
+  },
+  "councilHall_lit": {
+   "w": 324,
+   "h": 252,
+   "ax": 18,
+   "ay": 240,
+   "kind": "night",
+   "provisional": false,
+   "pixel": true
+  },
+  "smelter": {
+   "w": 216,
+   "h": 348,
+   "ax": 12,
+   "ay": 336,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     96,
+     -336
+    ],
+    "chimney": [
+     108,
+     -324
+    ],
+    "sparks": [
+     108,
+     -324
+    ]
+   }
+  },
+  "smelter_lit": {
+   "w": 216,
+   "h": 348,
+   "ax": 12,
+   "ay": 336,
+   "kind": "night",
+   "provisional": false,
+   "pixel": true
+  },
+  "forge": {
+   "w": 324,
+   "h": 276,
+   "ax": 18,
+   "ay": 264,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     144,
+     -264
+    ],
+    "chimney": [
+     240,
+     -228
+    ],
+    "sparks": [
+     144,
+     -60
+    ]
+   }
+  },
+  "forge_lit": {
+   "w": 324,
+   "h": 276,
+   "ax": 18,
+   "ay": 264,
+   "kind": "night",
+   "provisional": false,
+   "pixel": true
+  },
+  "camp": {
+   "w": 312,
+   "h": 276,
+   "ax": 12,
+   "ay": 264,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     144,
+     -264
+    ]
+   }
+  },
+  "travelCamp": {
+   "w": 312,
+   "h": 276,
+   "ax": 12,
+   "ay": 264,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     144,
+     -264
+    ]
+   }
+  },
+  "hunterLodge": {
+   "w": 216,
+   "h": 276,
+   "ax": 12,
+   "ay": 264,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     96,
+     -264
+    ],
+    "chimney": [
+     156,
+     -216
+    ]
+   }
+  },
+  "hunterLodge_lit": {
+   "w": 216,
+   "h": 276,
+   "ax": 12,
+   "ay": 264,
+   "kind": "night",
+   "provisional": false,
+   "pixel": true
+  },
+  "fisherHut": {
+   "w": 216,
+   "h": 264,
+   "ax": 12,
+   "ay": 252,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     96,
+     -252
+    ],
+    "chimney": [
+     36,
+     -204
+    ]
+   }
+  },
+  "fisherHut_lit": {
+   "w": 216,
+   "h": 264,
+   "ax": 12,
+   "ay": 252,
+   "kind": "night",
+   "provisional": false,
+   "pixel": true
+  },
+  "well": {
+   "w": 120,
+   "h": 180,
+   "ax": 12,
+   "ay": 168,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -168
+    ]
+   }
+  },
+  "granary": {
+   "w": 312,
+   "h": 276,
+   "ax": 12,
+   "ay": 264,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     144,
+     -264
+    ]
+   }
+  },
+  "granary_lit": {
+   "w": 312,
+   "h": 276,
+   "ax": 12,
+   "ay": 264,
+   "kind": "night",
+   "provisional": false,
+   "pixel": true
+  },
+  "tannery": {
+   "w": 312,
+   "h": 264,
+   "ax": 12,
+   "ay": 252,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     144,
+     -252
+    ],
+    "chimney": [
+     132,
+     -204
+    ]
+   }
+  },
+  "tannery_lit": {
+   "w": 312,
+   "h": 264,
+   "ax": 12,
+   "ay": 252,
+   "kind": "night",
+   "provisional": false,
+   "pixel": true
+  },
+  "weaver": {
+   "w": 216,
+   "h": 276,
+   "ax": 12,
+   "ay": 264,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     96,
+     -264
+    ],
+    "chimney": [
+     156,
+     -216
+    ]
+   }
+  },
+  "weaver_lit": {
+   "w": 216,
+   "h": 276,
+   "ax": 12,
+   "ay": 264,
+   "kind": "night",
+   "provisional": false,
+   "pixel": true
+  },
+  "watchtower": {
+   "w": 120,
+   "h": 348,
+   "ax": 12,
+   "ay": 336,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -336
+    ]
+   }
+  },
+  "watchtower_lit": {
+   "w": 120,
+   "h": 348,
+   "ax": 12,
+   "ay": 336,
+   "kind": "night",
+   "provisional": false,
+   "pixel": true
+  },
+  "house": {
+   "w": 216,
+   "h": 300,
+   "ax": 12,
+   "ay": 294,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     96,
+     -294
+    ],
+    "chimney": [
+     144,
+     -252
+    ]
+   }
+  },
+  "house_lit": {
+   "w": 216,
+   "h": 300,
+   "ax": 12,
+   "ay": 294,
+   "kind": "night",
+   "provisional": false,
+   "pixel": true
+  },
+  "storehouse": {
+   "w": 324,
+   "h": 276,
+   "ax": 18,
+   "ay": 270,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     144,
+     -270
+    ]
+   }
+  },
+  "workshop": {
+   "w": 324,
+   "h": 312,
+   "ax": 18,
+   "ay": 306,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     144,
+     -306
+    ],
+    "chimney": [
+     240,
+     -240
+    ]
+   }
+  },
+  "workshop_lit": {
+   "w": 324,
+   "h": 312,
+   "ax": 18,
+   "ay": 306,
+   "kind": "night",
+   "provisional": false,
+   "pixel": true
+  },
+  "market": {
+   "w": 504,
+   "h": 504,
+   "ax": 12,
+   "ay": 492,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     240,
+     -492
+    ]
+   }
+  },
+  "market_lit": {
+   "w": 504,
+   "h": 504,
+   "ax": 12,
+   "ay": 492,
+   "kind": "night",
+   "provisional": false,
+   "pixel": true
+  },
+  "flowerbed": {
+   "w": 108,
+   "h": 120,
+   "ax": 6,
+   "ay": 120,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -120
+    ]
+   }
+  },
+  "lamp": {
+   "w": 108,
+   "h": 204,
+   "ax": 6,
+   "ay": 198,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -198
+    ]
+   }
+  },
+  "lamp_lit": {
+   "w": 108,
+   "h": 204,
+   "ax": 6,
+   "ay": 198,
+   "kind": "night",
+   "provisional": false,
+   "pixel": true
+  },
+  "bench": {
+   "w": 204,
+   "h": 108,
+   "ax": 6,
+   "ay": 114,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     96,
+     -114
+    ]
+   }
+  },
+  "haystack": {
+   "w": 108,
+   "h": 132,
+   "ax": 6,
+   "ay": 120,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -120
+    ]
+   }
+  },
+  "barrels": {
+   "w": 108,
+   "h": 120,
+   "ax": 6,
+   "ay": 114,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -114
+    ]
+   }
+  },
+  "signpost": {
+   "w": 108,
+   "h": 216,
+   "ax": 6,
+   "ay": 204,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -204
+    ]
+   }
+  },
+  "garden": {
+   "w": 216,
+   "h": 228,
+   "ax": 12,
+   "ay": 216,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     96,
+     -216
+    ]
+   }
+  },
+  "statue": {
+   "w": 216,
+   "h": 324,
+   "ax": 12,
+   "ay": 312,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     96,
+     -312
+    ]
+   }
+  },
+  "townHall": {
+   "w": 408,
+   "h": 564,
+   "ax": 12,
+   "ay": 564,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     192,
+     -564
+    ],
+    "chimney": [
+     324,
+     -336
+    ]
+   }
+  },
+  "townHall_lit": {
+   "w": 408,
+   "h": 564,
+   "ax": 12,
+   "ay": 564,
+   "kind": "night",
+   "provisional": false,
+   "pixel": true
+  },
+  "townHall_2": {
+   "w": 408,
+   "h": 624,
+   "ax": 12,
+   "ay": 624,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     192,
+     -624
+    ],
+    "chimney": [
+     324,
+     -336
+    ]
+   }
+  },
+  "townHall_2_lit": {
+   "w": 408,
+   "h": 624,
+   "ax": 12,
+   "ay": 624,
+   "kind": "night",
+   "provisional": false,
+   "pixel": true
+  },
+  "townHall_3": {
+   "w": 408,
+   "h": 708,
+   "ax": 12,
+   "ay": 708,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     192,
+     -708
+    ],
+    "chimney": [
+     324,
+     -336
+    ]
+   }
+  },
+  "townHall_3_lit": {
+   "w": 408,
+   "h": 708,
+   "ax": 12,
+   "ay": 708,
+   "kind": "night",
+   "provisional": false,
+   "pixel": true
+  },
+  "villageHall": {
+   "w": 312,
+   "h": 348,
+   "ax": 12,
+   "ay": 360,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true
+  },
+  "villageHall_lit": {
+   "w": 312,
+   "h": 348,
+   "ax": 12,
+   "ay": 360,
+   "kind": "night",
+   "provisional": false,
+   "pixel": true
+  },
+  "mine": {
+   "w": 228,
+   "h": 336,
+   "ax": 18,
+   "ay": 336,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     96,
+     -336
+    ]
+   }
+  },
+  "mine_2": {
+   "w": 228,
+   "h": 336,
+   "ax": 18,
+   "ay": 336,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     96,
+     -336
+    ]
+   }
+  },
+  "mine_3": {
+   "w": 228,
+   "h": 336,
+   "ax": 18,
+   "ay": 336,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     96,
+     -336
+    ]
+   }
+  },
+  "mine_3_lit": {
+   "w": 228,
+   "h": 336,
+   "ax": 18,
+   "ay": 336,
+   "kind": "night",
+   "provisional": false,
+   "pixel": true
+  },
+  "mill_sails_0": {
+   "w": 234,
+   "h": 234,
+   "ax": 114,
+   "ay": 114,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "mill_sails_1": {
+   "w": 234,
+   "h": 234,
+   "ax": 114,
+   "ay": 114,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "mill_sails_2": {
+   "w": 234,
+   "h": 234,
+   "ax": 114,
+   "ay": 114,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "mill_sails_3": {
+   "w": 234,
+   "h": 234,
+   "ax": 114,
+   "ay": 114,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "mill_sails_4": {
+   "w": 234,
+   "h": 234,
+   "ax": 114,
+   "ay": 114,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "mill_sails_5": {
+   "w": 234,
+   "h": 234,
+   "ax": 114,
+   "ay": 114,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "mill_sails_6": {
+   "w": 234,
+   "h": 234,
+   "ax": 114,
+   "ay": 114,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "mill_sails_7": {
+   "w": 234,
+   "h": 234,
+   "ax": 114,
+   "ay": 114,
+   "kind": "object",
+   "provisional": false,
+   "pixel": true
+  },
+  "orchard_saplings": {
+   "w": 228,
+   "h": 276,
+   "ax": 18,
+   "ay": 276,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true
+  },
+  "orchard_bare": {
+   "w": 228,
+   "h": 276,
+   "ax": 18,
+   "ay": 276,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true
+  },
+  "orchard_leafy": {
+   "w": 228,
+   "h": 276,
+   "ax": 18,
+   "ay": 276,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true
+  },
+  "orchard_fruit1": {
+   "w": 228,
+   "h": 276,
+   "ax": 18,
+   "ay": 276,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true
+  },
+  "orchard_fruit2": {
+   "w": 228,
+   "h": 276,
+   "ax": 18,
+   "ay": 276,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true
+  },
+  "orchard_fruit3": {
+   "w": 228,
+   "h": 276,
+   "ax": 18,
+   "ay": 276,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true
+  },
+  "orchard_autumn": {
+   "w": 228,
+   "h": 276,
+   "ax": 18,
+   "ay": 276,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true
+  },
+  "orchard_winter": {
+   "w": 228,
+   "h": 276,
+   "ax": 18,
+   "ay": 276,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true
+  },
+  "fence": {
+   "w": 108,
+   "h": 132,
+   "ax": 6,
+   "ay": 126,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -126
+    ]
+   }
+  },
+  "fence_1": {
+   "w": 108,
+   "h": 132,
+   "ax": 6,
+   "ay": 126,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -126
+    ]
+   }
+  },
+  "fence_2": {
+   "w": 108,
+   "h": 132,
+   "ax": 6,
+   "ay": 126,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -126
+    ]
+   }
+  },
+  "fence_3": {
+   "w": 108,
+   "h": 132,
+   "ax": 6,
+   "ay": 126,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -126
+    ]
+   }
+  },
+  "fence_4": {
+   "w": 108,
+   "h": 132,
+   "ax": 6,
+   "ay": 126,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -126
+    ]
+   }
+  },
+  "fence_5": {
+   "w": 108,
+   "h": 132,
+   "ax": 6,
+   "ay": 126,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -126
+    ]
+   }
+  },
+  "fence_6": {
+   "w": 108,
+   "h": 132,
+   "ax": 6,
+   "ay": 126,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -126
+    ]
+   }
+  },
+  "fence_7": {
+   "w": 108,
+   "h": 132,
+   "ax": 6,
+   "ay": 126,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -126
+    ]
+   }
+  },
+  "fence_8": {
+   "w": 108,
+   "h": 132,
+   "ax": 6,
+   "ay": 126,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -126
+    ]
+   }
+  },
+  "fence_9": {
+   "w": 108,
+   "h": 132,
+   "ax": 6,
+   "ay": 126,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -126
+    ]
+   }
+  },
+  "fence_10": {
+   "w": 108,
+   "h": 132,
+   "ax": 6,
+   "ay": 126,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -126
+    ]
+   }
+  },
+  "fence_11": {
+   "w": 108,
+   "h": 132,
+   "ax": 6,
+   "ay": 126,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -126
+    ]
+   }
+  },
+  "fence_12": {
+   "w": 108,
+   "h": 132,
+   "ax": 6,
+   "ay": 126,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -126
+    ]
+   }
+  },
+  "fence_13": {
+   "w": 108,
+   "h": 132,
+   "ax": 6,
+   "ay": 126,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -126
+    ]
+   }
+  },
+  "fence_14": {
+   "w": 108,
+   "h": 132,
+   "ax": 6,
+   "ay": 126,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -126
+    ]
+   }
+  },
+  "fence_15": {
+   "w": 108,
+   "h": 132,
+   "ax": 6,
+   "ay": 126,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -126
+    ]
+   }
+  },
+  "stoneWall": {
+   "w": 120,
+   "h": 204,
+   "ax": 12,
+   "ay": 180,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -180
+    ]
+   }
+  },
+  "stoneWall_1": {
+   "w": 120,
+   "h": 204,
+   "ax": 12,
+   "ay": 180,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -180
+    ]
+   }
+  },
+  "stoneWall_2": {
+   "w": 120,
+   "h": 204,
+   "ax": 12,
+   "ay": 180,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -180
+    ]
+   }
+  },
+  "stoneWall_3": {
+   "w": 120,
+   "h": 204,
+   "ax": 12,
+   "ay": 180,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -180
+    ]
+   }
+  },
+  "stoneWall_4": {
+   "w": 120,
+   "h": 204,
+   "ax": 12,
+   "ay": 180,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -180
+    ]
+   }
+  },
+  "stoneWall_5": {
+   "w": 120,
+   "h": 204,
+   "ax": 12,
+   "ay": 180,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -180
+    ]
+   }
+  },
+  "stoneWall_6": {
+   "w": 120,
+   "h": 204,
+   "ax": 12,
+   "ay": 180,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -180
+    ]
+   }
+  },
+  "stoneWall_7": {
+   "w": 120,
+   "h": 204,
+   "ax": 12,
+   "ay": 180,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -180
+    ]
+   }
+  },
+  "stoneWall_8": {
+   "w": 120,
+   "h": 204,
+   "ax": 12,
+   "ay": 180,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -180
+    ]
+   }
+  },
+  "stoneWall_9": {
+   "w": 120,
+   "h": 204,
+   "ax": 12,
+   "ay": 180,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -180
+    ]
+   }
+  },
+  "stoneWall_10": {
+   "w": 120,
+   "h": 204,
+   "ax": 12,
+   "ay": 180,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -180
+    ]
+   }
+  },
+  "stoneWall_11": {
+   "w": 120,
+   "h": 204,
+   "ax": 12,
+   "ay": 180,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -180
+    ]
+   }
+  },
+  "stoneWall_12": {
+   "w": 120,
+   "h": 204,
+   "ax": 12,
+   "ay": 180,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -180
+    ]
+   }
+  },
+  "stoneWall_13": {
+   "w": 120,
+   "h": 204,
+   "ax": 12,
+   "ay": 180,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -180
+    ]
+   }
+  },
+  "stoneWall_14": {
+   "w": 120,
+   "h": 204,
+   "ax": 12,
+   "ay": 180,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -180
+    ]
+   }
+  },
+  "stoneWall_15": {
+   "w": 120,
+   "h": 204,
+   "ax": 12,
+   "ay": 180,
+   "kind": "building",
+   "provisional": false,
+   "pixel": true,
+   "points": {
+    "top": [
+     48,
+     -180
+    ]
+   }
+  },
+  "chickenCoop": {
+   "w": 216,
+   "h": 372,
+   "ax": 12,
+   "ay": 348,
+   "kind": "pen",
+   "provisional": false,
+   "pixel": true
+  },
+  "pigsty": {
+   "w": 312,
+   "h": 372,
+   "ax": 12,
+   "ay": 348,
+   "kind": "pen",
+   "provisional": false,
+   "pixel": true
+  },
+  "sheepPen": {
+   "w": 312,
+   "h": 468,
+   "ax": 12,
+   "ay": 444,
+   "kind": "pen",
+   "provisional": false,
+   "pixel": true
+  },
+  "goatPen": {
+   "w": 312,
+   "h": 372,
+   "ax": 12,
+   "ay": 348,
+   "kind": "pen",
+   "provisional": false,
+   "pixel": true
+  },
+  "cattlePasture": {
+   "w": 408,
+   "h": 468,
+   "ax": 12,
+   "ay": 444,
+   "kind": "pen",
+   "provisional": false,
+   "pixel": true
+  },
+  "horsePaddock": {
+   "w": 408,
+   "h": 468,
+   "ax": 12,
+   "ay": 444,
+   "kind": "pen",
+   "provisional": false,
+   "pixel": true
+  },
+  "quarry_0": {
+   "w": 216,
+   "h": 240,
+   "ax": 12,
+   "ay": 228,
+   "kind": "pen",
+   "provisional": false,
+   "pixel": true
+  },
+  "quarry_1": {
+   "w": 216,
+   "h": 240,
+   "ax": 12,
+   "ay": 228,
+   "kind": "pen",
+   "provisional": false,
+   "pixel": true
+  },
+  "quarry_2": {
+   "w": 216,
+   "h": 240,
+   "ax": 12,
+   "ay": 228,
+   "kind": "pen",
+   "provisional": false,
+   "pixel": true
+  },
+  "quarry_3": {
+   "w": 216,
+   "h": 240,
+   "ax": 12,
+   "ay": 228,
+   "kind": "pen",
+   "provisional": false,
+   "pixel": true
+  },
+  "site_1x1": {
+   "w": 108,
+   "h": 204,
+   "ax": 6,
+   "ay": 198,
+   "kind": "site",
+   "provisional": false,
+   "pixel": true
+  },
+  "site_2x2": {
+   "w": 204,
+   "h": 348,
+   "ax": 6,
+   "ay": 342,
+   "kind": "site",
+   "provisional": false,
+   "pixel": true
+  },
+  "site_3x2": {
+   "w": 300,
+   "h": 348,
+   "ax": 6,
+   "ay": 342,
+   "kind": "site",
+   "provisional": false,
+   "pixel": true
+  },
+  "site_4x3": {
+   "w": 396,
+   "h": 444,
+   "ax": 6,
+   "ay": 438,
+   "kind": "site",
+   "provisional": false,
+   "pixel": true
+  },
+  "site_2x1": {
+   "w": 204,
+   "h": 204,
+   "ax": 6,
+   "ay": 198,
+   "kind": "site",
+   "provisional": false,
+   "pixel": true
+  },
+  "site_5x4": {
+   "w": 492,
+   "h": 540,
+   "ax": 6,
+   "ay": 534,
+   "kind": "site",
+   "provisional": false,
+   "pixel": true
+  },
+  "soil_wild": {
+   "w": 96,
+   "h": 96,
+   "ax": 0,
+   "ay": 96,
+   "kind": "field",
+   "provisional": false,
+   "pixel": true
+  },
+  "soil_tilled": {
+   "w": 96,
+   "h": 96,
+   "ax": 0,
+   "ay": 96,
+   "kind": "field",
+   "provisional": false,
+   "pixel": true
+  },
+  "soil_wet": {
+   "w": 96,
+   "h": 96,
+   "ax": 0,
+   "ay": 96,
+   "kind": "field",
+   "provisional": false,
+   "pixel": true
+  },
+  "crop_turnip_0": {
+   "w": 96,
+   "h": 96,
+   "ax": 0,
+   "ay": 96,
+   "kind": "crop",
+   "provisional": false,
+   "pixel": true
+  },
+  "crop_turnip_1": {
+   "w": 96,
+   "h": 96,
+   "ax": 0,
+   "ay": 96,
+   "kind": "crop",
+   "provisional": false,
+   "pixel": true
+  },
+  "crop_turnip_2": {
+   "w": 96,
+   "h": 96,
+   "ax": 0,
+   "ay": 96,
+   "kind": "crop",
+   "provisional": false,
+   "pixel": true
+  },
+  "crop_turnip_3": {
+   "w": 96,
+   "h": 96,
+   "ax": 0,
+   "ay": 96,
+   "kind": "crop",
+   "provisional": false,
+   "pixel": true
+  },
+  "crop_wheat_0": {
+   "w": 96,
+   "h": 96,
+   "ax": 0,
+   "ay": 96,
+   "kind": "crop",
+   "provisional": false,
+   "pixel": true
+  },
+  "crop_wheat_1": {
+   "w": 96,
+   "h": 96,
+   "ax": 0,
+   "ay": 96,
+   "kind": "crop",
+   "provisional": false,
+   "pixel": true
+  },
+  "crop_wheat_2": {
+   "w": 96,
+   "h": 96,
+   "ax": 0,
+   "ay": 96,
+   "kind": "crop",
+   "provisional": false,
+   "pixel": true
+  },
+  "crop_wheat_3": {
+   "w": 96,
+   "h": 96,
+   "ax": 0,
+   "ay": 96,
+   "kind": "crop",
+   "provisional": false,
+   "pixel": true
+  },
+  "crop_pumpkin_0": {
+   "w": 96,
+   "h": 96,
+   "ax": 0,
+   "ay": 96,
+   "kind": "crop",
+   "provisional": false,
+   "pixel": true
+  },
+  "crop_pumpkin_1": {
+   "w": 96,
+   "h": 96,
+   "ax": 0,
+   "ay": 96,
+   "kind": "crop",
+   "provisional": false,
+   "pixel": true
+  },
+  "crop_pumpkin_2": {
+   "w": 96,
+   "h": 96,
+   "ax": 0,
+   "ay": 96,
+   "kind": "crop",
+   "provisional": false,
+   "pixel": true
+  },
+  "crop_pumpkin_3": {
+   "w": 96,
+   "h": 96,
+   "ax": 0,
+   "ay": 96,
+   "kind": "crop",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_rabbit_0": {
+   "w": 84,
+   "h": 96,
+   "ax": 42,
+   "ay": 84,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_rabbit_1": {
+   "w": 84,
+   "h": 96,
+   "ax": 42,
+   "ay": 84,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_hare_0": {
+   "w": 84,
+   "h": 96,
+   "ax": 42,
+   "ay": 84,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_hare_1": {
+   "w": 84,
+   "h": 96,
+   "ax": 42,
+   "ay": 84,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_duck_0": {
+   "w": 84,
+   "h": 96,
+   "ax": 42,
+   "ay": 84,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_duck_1": {
+   "w": 84,
+   "h": 96,
+   "ax": 42,
+   "ay": 84,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_chicken_0": {
+   "w": 84,
+   "h": 96,
+   "ax": 42,
+   "ay": 84,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_chicken_1": {
+   "w": 84,
+   "h": 96,
+   "ax": 42,
+   "ay": 84,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_fox_0": {
+   "w": 132,
+   "h": 132,
+   "ax": 66,
+   "ay": 120,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_fox_1": {
+   "w": 132,
+   "h": 132,
+   "ax": 66,
+   "ay": 120,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_beaver_0": {
+   "w": 126,
+   "h": 120,
+   "ax": 66,
+   "ay": 108,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_beaver_1": {
+   "w": 126,
+   "h": 120,
+   "ax": 66,
+   "ay": 108,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_deer_0": {
+   "w": 144,
+   "h": 150,
+   "ax": 72,
+   "ay": 138,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_deer_1": {
+   "w": 144,
+   "h": 150,
+   "ax": 72,
+   "ay": 138,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_boar_0": {
+   "w": 144,
+   "h": 138,
+   "ax": 72,
+   "ay": 126,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_boar_1": {
+   "w": 144,
+   "h": 138,
+   "ax": 72,
+   "ay": 126,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_pig_0": {
+   "w": 144,
+   "h": 138,
+   "ax": 72,
+   "ay": 126,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_pig_1": {
+   "w": 144,
+   "h": 138,
+   "ax": 72,
+   "ay": 126,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_wolf_0": {
+   "w": 144,
+   "h": 144,
+   "ax": 72,
+   "ay": 132,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_wolf_1": {
+   "w": 144,
+   "h": 144,
+   "ax": 72,
+   "ay": 132,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_ibex_0": {
+   "w": 138,
+   "h": 144,
+   "ax": 72,
+   "ay": 132,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_ibex_1": {
+   "w": 138,
+   "h": 144,
+   "ax": 72,
+   "ay": 132,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_sheep_0": {
+   "w": 144,
+   "h": 144,
+   "ax": 72,
+   "ay": 132,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_sheep_1": {
+   "w": 144,
+   "h": 144,
+   "ax": 72,
+   "ay": 132,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_goat_0": {
+   "w": 138,
+   "h": 144,
+   "ax": 72,
+   "ay": 132,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_goat_1": {
+   "w": 138,
+   "h": 144,
+   "ax": 72,
+   "ay": 132,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_cow_0": {
+   "w": 168,
+   "h": 156,
+   "ax": 84,
+   "ay": 144,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_cow_1": {
+   "w": 168,
+   "h": 156,
+   "ax": 84,
+   "ay": 144,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_horse_0": {
+   "w": 162,
+   "h": 162,
+   "ax": 84,
+   "ay": 150,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_horse_1": {
+   "w": 162,
+   "h": 162,
+   "ax": 84,
+   "ay": 150,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_wildHorse_0": {
+   "w": 162,
+   "h": 162,
+   "ax": 84,
+   "ay": 150,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_wildHorse_1": {
+   "w": 162,
+   "h": 162,
+   "ax": 84,
+   "ay": 150,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_bison_0": {
+   "w": 168,
+   "h": 156,
+   "ax": 84,
+   "ay": 144,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_bison_1": {
+   "w": 168,
+   "h": 156,
+   "ax": 84,
+   "ay": 144,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_moose_0": {
+   "w": 162,
+   "h": 168,
+   "ax": 84,
+   "ay": 156,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_moose_1": {
+   "w": 162,
+   "h": 168,
+   "ax": 84,
+   "ay": 156,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_bear_0": {
+   "w": 168,
+   "h": 162,
+   "ax": 84,
+   "ay": 150,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "animal_bear_1": {
+   "w": 168,
+   "h": 162,
+   "ax": 84,
+   "ay": 150,
+   "kind": "animal",
+   "provisional": false,
+   "pixel": true
+  },
+  "tool_axe": {
+   "w": 72,
+   "h": 72,
+   "ax": 12,
+   "ay": 60,
+   "kind": "tool",
+   "provisional": false,
+   "pixel": true
+  },
+  "tool_pick": {
+   "w": 72,
+   "h": 72,
+   "ax": 12,
+   "ay": 60,
+   "kind": "tool",
+   "provisional": false,
+   "pixel": true
+  },
+  "tool_hoe": {
+   "w": 72,
+   "h": 72,
+   "ax": 12,
+   "ay": 60,
+   "kind": "tool",
+   "provisional": false,
+   "pixel": true
+  },
+  "tool_hammer": {
+   "w": 72,
+   "h": 72,
+   "ax": 12,
+   "ay": 60,
+   "kind": "tool",
+   "provisional": false,
+   "pixel": true
+  },
+  "tool_can": {
+   "w": 72,
+   "h": 72,
+   "ax": 12,
+   "ay": 60,
+   "kind": "tool",
+   "provisional": false,
+   "pixel": true
+  },
+  "tool_sickle": {
+   "w": 72,
+   "h": 72,
+   "ax": 12,
+   "ay": 60,
+   "kind": "tool",
+   "provisional": false,
+   "pixel": true
+  },
+  "tool_saw": {
+   "w": 72,
+   "h": 72,
+   "ax": 12,
+   "ay": 60,
+   "kind": "tool",
+   "provisional": false,
+   "pixel": true
+  },
+  "tool_hand": {
+   "w": 72,
+   "h": 72,
+   "ax": 12,
+   "ay": 60,
+   "kind": "tool",
+   "provisional": false,
+   "pixel": true
+  },
+  "tool_knife": {
+   "w": 72,
+   "h": 72,
+   "ax": 12,
+   "ay": 60,
+   "kind": "tool",
+   "provisional": false,
+   "pixel": true
+  },
+  "tool_bow": {
+   "w": 72,
+   "h": 72,
+   "ax": 12,
+   "ay": 60,
+   "kind": "tool",
+   "provisional": false,
+   "pixel": true
+  },
+  "tool_sword": {
+   "w": 48,
+   "h": 72,
+   "ax": 18,
+   "ay": 54,
+   "kind": "tool",
+   "provisional": false,
+   "pixel": true
+  },
+  "icon_food": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "icon",
+   "provisional": false,
+   "pixel": true
+  },
+  "icon_wood": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "icon",
+   "provisional": false,
+   "pixel": true
+  },
+  "icon_stone": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "icon",
+   "provisional": false,
+   "pixel": true
+  },
+  "icon_planks": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "icon",
+   "provisional": false,
+   "pixel": true
+  },
+  "icon_wheat": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "icon",
+   "provisional": false,
+   "pixel": true
+  },
+  "icon_coal": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "icon",
+   "provisional": false,
+   "pixel": true
+  },
+  "icon_charcoal": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "icon",
+   "provisional": false,
+   "pixel": true
+  },
+  "icon_copperOre": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "icon",
+   "provisional": false,
+   "pixel": true
+  },
+  "icon_ironOre": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "icon",
+   "provisional": false,
+   "pixel": true
+  },
+  "icon_copperIngot": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "icon",
+   "provisional": false,
+   "pixel": true
+  },
+  "icon_ironIngot": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "icon",
+   "provisional": false,
+   "pixel": true
+  },
+  "icon_silverOre": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "icon",
+   "provisional": false,
+   "pixel": true
+  },
+  "icon_goldOre": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "icon",
+   "provisional": false,
+   "pixel": true
+  },
+  "icon_diamonds": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "icon",
+   "provisional": false,
+   "pixel": true
+  },
+  "icon_swords": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "icon",
+   "provisional": false,
+   "pixel": true
+  },
+  "icon_bows": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "icon",
+   "provisional": false,
+   "pixel": true
+  },
+  "icon_armor": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "icon",
+   "provisional": false,
+   "pixel": true
+  },
+  "icon_horses": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "icon",
+   "provisional": false,
+   "pixel": true
+  },
+  "icon_apples": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "icon",
+   "provisional": false,
+   "pixel": true
+  },
+  "icon_flour": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "icon",
+   "provisional": false,
+   "pixel": true
+  },
+  "icon_hides": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "icon",
+   "provisional": false,
+   "pixel": true
+  },
+  "icon_wool": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "icon",
+   "provisional": false,
+   "pixel": true
+  },
+  "icon_leather": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "icon",
+   "provisional": false,
+   "pixel": true
+  },
+  "icon_cloth": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "icon",
+   "provisional": false,
+   "pixel": true
+  },
+  "icon_tools": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "icon",
+   "provisional": false,
+   "pixel": true
+  },
+  "ui_people": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "ui",
+   "provisional": false,
+   "pixel": true
+  },
+  "ui_house": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "ui",
+   "provisional": false,
+   "pixel": true
+  },
+  "ui_sun": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "ui",
+   "provisional": false,
+   "pixel": true
+  },
+  "ui_moon": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "ui",
+   "provisional": false,
+   "pixel": true
+  },
+  "ui_rain": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "ui",
+   "provisional": false,
+   "pixel": true
+  },
+  "ui_star": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "ui",
+   "provisional": false,
+   "pixel": true
+  },
+  "ui_storage": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "ui",
+   "provisional": false,
+   "pixel": true
+  },
+  "ui_idle": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "ui",
+   "provisional": false,
+   "pixel": true
+  },
+  "ui_hungry": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "ui",
+   "provisional": false,
+   "pixel": true
+  },
+  "ui_warn": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "ui",
+   "provisional": false,
+   "pixel": true
+  },
+  "ui_drop": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "ui",
+   "provisional": false,
+   "pixel": true
+  },
+  "ui_axe": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "ui",
+   "provisional": false,
+   "pixel": true
+  },
+  "ui_pick": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "ui",
+   "provisional": false,
+   "pixel": true
+  },
+  "ui_basket": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "ui",
+   "provisional": false,
+   "pixel": true
+  },
+  "ui_zzz": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "ui",
+   "provisional": false,
+   "pixel": true
+  },
+  "ui_heart": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "ui",
+   "provisional": false,
+   "pixel": true
+  },
+  "ui_crown": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "ui",
+   "provisional": false,
+   "pixel": true
+  },
+  "ui_advice": {
+   "w": 96,
+   "h": 114,
+   "ax": 48,
+   "ay": 108,
+   "kind": "ui",
+   "provisional": false,
+   "pixel": true
+  },
+  "ui_chiefCap": {
+   "w": 72,
+   "h": 72,
+   "ax": 36,
+   "ay": 36,
+   "kind": "ui",
+   "provisional": false,
+   "pixel": true
+  }
+ }
+}

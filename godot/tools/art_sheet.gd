@@ -25,7 +25,7 @@ func _initialize() -> void:
 		return false)
 	names.sort()
 	var palette: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://art/palette.json"))
-	var bg := Color(str((palette["ground"]["meadow"] as Array)[1]))
+	var bg := Color(str(palette["pixel"]["meadow1"]))
 	var images: Array[Image] = []
 	var labels: Array[String] = []
 	# Assembled people first: one per role and direction.

@@ -23,7 +23,6 @@ var sway_enabled := true
 var ground_visible := true
 
 var _palette: Dictionary
-var _pal_tex: ImageTexture
 var _ground_shader: Shader
 var _sway: ShaderMaterial
 var _ground_layer := Node2D.new()
@@ -60,11 +59,13 @@ func _init() -> void:
 func setup(simulation: Simulation, sprites: Art) -> void:
 	sim = simulation
 	art = sprites
+	# Pixel art moves in whole pixels; a smooth wind bend would blur and shimmer it.
+	if art.pixel:
+		sway_enabled = false
 	_palette = JSON.parse_string(FileAccess.get_file_as_string("res://art/palette.json"))
 	_ground_shader = load("res://src/presentation/shaders/ground.gdshader")
 	_sway = ShaderMaterial.new()
 	_sway.shader = load("res://src/presentation/shaders/sway.gdshader")
-	_pal_tex = _make_palette_texture()
 	var white := Image.create(1, 1, false, Image.FORMAT_RGBA8)
 	white.fill(Color.WHITE)
 	_white = ImageTexture.create_from_image(white)
@@ -97,17 +98,6 @@ func set_simulation(simulation: Simulation) -> void:
 	_objects.clear()
 	_buildings.clear()
 	settler_views.clear()
-
-
-func _make_palette_texture() -> ImageTexture:
-	var g: Dictionary = _palette["ground"]
-	var order := ["deep", "water", "sand", "grass", "meadow", "forestFloor", "rocky", "road", "bridge", "stoneBridge", "hill", "mountain"]
-	var im := Image.create(3, order.size(), false, Image.FORMAT_RGBA8)
-	for row in order.size():
-		var tones: Array = g[order[row]]
-		for i in 3:
-			im.set_pixel(i, row, Color(str(tones[i])))
-	return ImageTexture.create_from_image(im)
 
 
 ## Called every frame. `alpha` interpolates settlers between the last two ticks; `view` is the
@@ -177,16 +167,16 @@ func _sync_ground(k: int, c: Chunk) -> void:
 		node.position = Vector2(c.cx, c.cy) * Chunk.SIZE * TILE_PX
 		var mat := ShaderMaterial.new()
 		mat.shader = _ground_shader
-		mat.set_shader_parameter("pal", _pal_tex)
+		mat.set_shader_parameter("pal", _season_palette(_season))
+		mat.set_shader_parameter("world_seed", sim.seed_value)
 		mat.set_shader_parameter("origin", Vector2(c.cx, c.cy) * Chunk.SIZE)
-		mat.set_shader_parameter("fog_color", Color(str(_palette["ground"]["fog"])))
-		mat.set_shader_parameter("foam_color", Color(str(_palette["ground"]["foam"])))
+		# The browser game's fog of war colour.
+		mat.set_shader_parameter("fog_color", Color("#17131f"))
 		node.material = mat
 		_ground_layer.add_child(node)
 		g = {"node": node, "terrain_version": -1, "fog_version": -1, "neighbours": -1}
 		_ground[k] = g
 	var mat: ShaderMaterial = (g["node"] as Sprite2D).material
-	mat.set_shader_parameter("motion", motion)
 	# Borders come from neighbouring chunks, so a neighbour loading later repaints us too.
 	var nsum := _neighbour_signature(c)
 	if int(g["terrain_version"]) != c.terrain_version or int(g["neighbours"]) != nsum:
@@ -244,8 +234,20 @@ func _set_season_look(season: String) -> void:
 
 
 func _apply_season(mat: ShaderMaterial, season: String) -> void:
-	mat.set_shader_parameter("autumn", 0.6 if season == "autumn" else 0.0)
-	mat.set_shader_parameter("snow", 0.75 if season == "winter" else 0.0)
+	mat.set_shader_parameter("pal", _season_palette(season))
+	mat.set_shader_parameter("autumn", season == "autumn")
+	mat.set_shader_parameter("winter", season == "winter")
+
+
+var _season_palettes := {}
+
+
+## The pixel ground's palette for a season (the browser's seasonal ground colours).
+func _season_palette(season: String) -> ImageTexture:
+	var key := season if season != "" else "spring"
+	if not _season_palettes.has(key):
+		_season_palettes[key] = PixelGround.palette(key)
+	return _season_palettes[key]
 
 
 # ---- objects -------------------------------------------------------------------------------------
@@ -277,7 +279,8 @@ func _sync_objects(k: int, c: Chunk) -> void:
 			continue
 		var sp := Sprite2D.new()
 		art.apply(sp, sprite_name)
-		sp.position = Vector2(tx + 0.5, ty + 0.78) * TILE_PX
+		# The foot of the tile, where the browser game stands its trees and rocks.
+		sp.position = Vector2(tx + 0.5, ty + 1.0) * TILE_PX
 		if sway_enabled and (o == Tiles.O_OAK or o == Tiles.O_PINE or o == Tiles.O_BERRY or o == Tiles.O_BERRY_EMPTY or o == Tiles.O_SAPLING):
 			sp.material = _sway
 		node.add_child(sp)
@@ -335,12 +338,37 @@ func _building_look(b: Building, night: bool) -> String:
 		var wet: bool = float(f["moisture"]) >= Farming.WATER_THRESHOLD and f["state"] != "wild"
 		return "field:%s:%s:%d:%s" % [f["state"], f["crop"], stage, wet]
 	if not b.built:
-		return "site:%d:%d" % [b.w, b.h]
+		# The finished building shows through as it rises, in twelfths of the work.
+		var work := BuildingOps.work_of(b)
+		var frac := clampf(b.progress / work, 0.0, 1.0) if work > 0 else 0.0
+		return "site:%d:%d:%d" % [b.w, b.h, int(frac * 12.0)]
 	if not b.orchard.is_empty():
 		return "orchard:%s" % Orchards.look(sim, b)
 	if not b.quarry.is_empty():
 		return "quarry:%d" % Mining.quarry_stage(b)
-	return "%s:%s" % [b.type, night]
+	return "%s:%s" % [_building_sprite(b), night]
+
+
+## The sprite for a finished building: fence and wall pieces join their neighbours, the hall and
+## mines show their level, and the camp becomes the village hall once the valley is a village.
+func _building_sprite(b: Building) -> String:
+	if b.type == "fence" or b.type == "stoneWall":
+		var mask := 0
+		for i in 4:
+			var o: Vector2i = [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)][i]
+			var n := sim.building_at(b.x + o.x, b.y + o.y)
+			if n != null and n.type == b.type:
+				mask |= 1 << i
+		var piece := "%s_%d" % [b.type, mask]
+		return piece if mask > 0 and art.has(piece) else b.type
+	if b.type == "townHall" and b.level > 1 and art.has("townHall_%d" % b.level):
+		return "townHall_%d" % b.level
+	if b.type == "mine":
+		var level := int(b.mine.get("level", 1))
+		return "mine_%d" % level if level > 1 and art.has("mine_%d" % level) else "mine"
+	if b.type == "camp" and sim.reached.has("village") and art.has("villageHall"):
+		return "villageHall"
+	return b.type
 
 
 func _make_building(b: Building, look: String) -> Node2D:
@@ -387,25 +415,82 @@ func _make_building(b: Building, look: String) -> Node2D:
 		entities.add_child(node)
 		return node
 	var sp := Sprite2D.new()
-	var name := "site_%dx%d" % [b.w, b.h] if not b.built else b.type
+	var name := "site_%dx%d" % [b.w, b.h] if not b.built else look.get_slice(":", 0)
 	if b.built and not b.orchard.is_empty():
 		name = "orchard_" + look.get_slice(":", 1)
 	if not art.has(name):
 		name = "site_%dx%d" % [mini(b.w, 4), mini(b.h, 3)] if art.has("site_%dx%d" % [mini(b.w, 4), mini(b.h, 3)]) else "site_1x1"
 	art.apply(sp, name)
 	node.add_child(sp)
+	if not b.built:
+		_add_rising(node, b, int(look.get_slice(":", 3)) / 12.0)
 	entities.add_child(node)
-	if b.built and look.ends_with("true") and art.has(b.type + "_lit"):
-		# Lit windows sit above the night tint, so they glow.
+	if b.built and b.type == "mill" and art.has("mill_sails_0"):
+		node.add_child(_mill_sails(b))
+	if b.built and look.ends_with("true") and art.has(name + "_lit"):
+		# Lit windows sit above the night tint, so they glow. Pixel art's overlay holds the lit
+		# window pixels themselves, drawn as they are; smooth art's is a glow, added on.
 		var lit := Sprite2D.new()
-		art.apply(lit, b.type + "_lit")
+		art.apply(lit, name + "_lit")
 		lit.position = base
-		var add := CanvasItemMaterial.new()
-		add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-		lit.material = add
+		if not art.pixel:
+			var add := CanvasItemMaterial.new()
+			add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+			lit.material = add
 		_lights.add_child(lit)
 		node.tree_exiting.connect(func() -> void: lit.queue_free())
 	return node
+
+
+## A building under construction as the browser draws it: a faint ghost of the finished
+## building, and the finished building itself revealed from the ground up as work progresses.
+func _add_rising(node: Node2D, b: Building, frac: float) -> void:
+	var final_name := b.type
+	if not art.has(final_name) or art.sprites[final_name]["texture"] == null:
+		return
+	var ghost := Sprite2D.new()
+	art.apply(ghost, final_name)
+	ghost.modulate = Color(1, 1, 1, 0.35)
+	node.add_child(ghost)
+	if frac <= 0.0:
+		return
+	var full: AtlasTexture = art.sprites[final_name]["texture"]
+	var h := full.region.size.y
+	var cut := floorf(h * (1.0 - frac))
+	var part := AtlasTexture.new()
+	part.atlas = full.atlas
+	part.region = Rect2(full.region.position + Vector2(0, cut), Vector2(full.region.size.x, h - cut))
+	var rising := Sprite2D.new()
+	art.apply(rising, final_name)
+	rising.texture = part
+	rising.offset.y += cut
+	node.add_child(rising)
+
+
+var _sails_frames: SpriteFrames = null
+
+
+## The mill's turning sails (the browser draws them 16px right of and 7px above the footprint).
+func _mill_sails(b: Building) -> AnimatedSprite2D:
+	var first: Dictionary = art.sprites["mill_sails_0"]
+	if _sails_frames == null:
+		_sails_frames = SpriteFrames.new()
+		var i := 0
+		while art.has("mill_sails_%d" % i):
+			_sails_frames.add_frame(&"default", art.sprites["mill_sails_%d" % i]["texture"])
+			i += 1
+		_sails_frames.set_animation_speed(&"default", 1.5)
+	var a := AnimatedSprite2D.new()
+	a.sprite_frames = _sails_frames
+	a.centered = false
+	var k := TILE_PX / Art.SOURCE_PX_PER_TILE
+	a.scale = Vector2(k, k) / art.raster_scale
+	a.offset = Vector2(-float(first["ax"]), -float(first["ay"])) * art.raster_scale
+	a.position = Vector2(16, -7 - b.h * 16) * (TILE_PX / 16.0)
+	a.frame = b.id % maxi(1, _sails_frames.get_frame_count(&"default"))
+	if motion > 0.0:
+		a.play()
+	return a
 
 
 # ---- settlers ------------------------------------------------------------------------------------

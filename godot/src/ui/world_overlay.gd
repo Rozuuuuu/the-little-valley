@@ -5,7 +5,7 @@ extends Node2D
 ## the drag box, the hovered tile and order markers.
 
 var game: Game
-var font: Font = load("res://fonts/AtkinsonHyperlegible-Bold.woff2")
+var font: Font = UiFonts.bold()
 ## Outline colours of work areas by kind (fill is the same, faint).
 const ORE_COLORS := {"coal": Color("#3b3b3b"), "copper": Color("#d07a43"), "iron": Color("#a7a2a0"), "silver": Color("#dfe6ea"), "gold": Color("#e6b65a"), "diamond": Color("#9fe3f0")}
 const AREA_COLORS := {"farm": Color("#e3c26f"), "wood": Color("#7fc79a"), "stone": Color("#b9c6c4"), "build": Color("#e8a66a"), "hunt": Color("#d98a7a"), "forage": Color("#c49ad8")}

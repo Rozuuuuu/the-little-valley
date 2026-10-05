@@ -3,9 +3,10 @@ extends RefCounted
 ## The game's sprites: every generated SVG in res://art/generated rasterised once, packed into a
 ## shared atlas texture (so many sprites draw in few batches), and looked up by name.
 ##
-## Scale: the art is authored at 96 px per tile and drawn at World TILE_PX (64) per tile, so
-## sprites are scaled by DRAW_SCALE; the atlas keeps full resolution plus mipmaps, which keeps
-## edges smooth when zoomed in or out (never pixel-snapped).
+## Scale: sprites are 96 px per tile and drawn at World TILE_PX (64) per tile. The shipped art
+## is the browser game's pixel art at 16 art px per tile, stored 6x nearest-neighbour, so one art
+## pixel is exactly 4 screen px at zoom 1; it is drawn with nearest filtering and no mipmaps.
+## (Smooth SVG art, if a bundle holds it, keeps mipmaps and linear filtering.)
 ##
 ## Replacement pipeline: a PNG or SVG with the same name in user://art_overrides (the Asset
 ## Studio's folder) or res://art/final is used instead of the generated one, provided it
@@ -23,6 +24,9 @@ const PAD := 4
 var sprites := {}
 var atlases: Array[ImageTexture] = []
 var raster_scale := 1.0
+## True when the bundle is pixel art (PNG sprites): drawn with nearest-neighbour filtering and
+## no mipmaps, so every art pixel stays a crisp square.
+var pixel := false
 ## The generated manifest entries by name (for reloading single sprites).
 var _entries := {}
 
@@ -33,6 +37,7 @@ func load_all(scale: float = 1.0) -> void:
 	var bundle: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(BUNDLE))
 	var entries: Dictionary = bundle["sprites"]
 	_entries = entries
+	pixel = bundle.has("artPxPerTile")
 	var images := {}
 	var names: Array = entries.keys()
 	for n: String in names:
@@ -65,7 +70,8 @@ func load_all(scale: float = 1.0) -> void:
 
 
 func _finish_atlas(atlas: Image, placed: Array[Array]) -> void:
-	atlas.generate_mipmaps()
+	if not pixel:
+		atlas.generate_mipmaps()
 	var tex := ImageTexture.create_from_image(atlas)
 	atlases.append(tex)
 	for p in placed:
@@ -88,11 +94,16 @@ func _load_image(sprite_name: String, entry: Dictionary) -> Image:
 				var err := im.load_svg_from_string(FileAccess.get_file_as_string(path), raster_scale) if ext == "svg" else im.load(path)
 				if err == OK:
 					if im.get_size() != target:
-						im.resize(target.x, target.y, Image.INTERPOLATE_LANCZOS)
+						im.resize(target.x, target.y, Image.INTERPOLATE_NEAREST if pixel else Image.INTERPOLATE_LANCZOS)
 					im.convert(Image.FORMAT_RGBA8)
 					return im
 	var gen := Image.new()
-	gen.load_svg_from_string(str(entry["svg"]), raster_scale)
+	if entry.has("png"):
+		gen.load_png_from_buffer(Marshalls.base64_to_raw(str(entry["png"])))
+		if raster_scale != 1.0:
+			gen.resize(target.x, target.y, Image.INTERPOLATE_NEAREST)
+	else:
+		gen.load_svg_from_string(str(entry["svg"]), raster_scale)
 	gen.convert(Image.FORMAT_RGBA8)
 	return gen
 
@@ -132,6 +143,7 @@ func reload(names: Array[String]) -> void:
 		if not _entries.has(n):
 			continue
 		var im := _load_image(n, _entries[n])
-		im.generate_mipmaps()
+		if not pixel:
+			im.generate_mipmaps()
 		var e: Dictionary = _entries[n]
 		sprites[n] = {"texture": ImageTexture.create_from_image(im), "ax": float(e["ax"]), "ay": float(e["ay"]), "w": float(e["w"]), "h": float(e["h"]), "points": e.get("points", {})}

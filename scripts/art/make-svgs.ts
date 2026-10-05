@@ -20,7 +20,8 @@ import { animal, mineEntrance, penYard, quarryPit, SPECIES_ART } from './animals
 /** SVG sources for review and replacement (ignored by Godot's importer via .gdignore). */
 const OUT = 'godot/art_src/generated';
 /** What the game loads: every sprite's SVG plus its size and anchor, in one file. */
-const BUNDLE = 'godot/art/sprites.json';
+/** Retired: the game now ships the pixel art (scripts/pixel-art/export.ts); this bundle is kept for reference. */
+const BUNDLE = 'godot/art_src/storybook-sprites.json';
 
 interface Entry {
   /** Canvas size in art pixels (96 per tile). */

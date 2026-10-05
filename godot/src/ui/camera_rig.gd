@@ -1,7 +1,8 @@
 class_name CameraRig
 extends Camera2D
 ## The game camera: smooth panning (keys, screen edge, drag) and zoom toward the cursor, eased
-## each frame. Positions and zoom are floats; nothing snaps to pixels.
+## each frame. With pixel art, zoom settles on steps of 0.25, where one art pixel (4 world px)
+## covers a whole number of screen pixels, so pixels stay even squares, as in the browser game.
 
 const ZOOM_MIN := 0.3
 const ZOOM_MAX := 2.5
@@ -15,6 +16,11 @@ var edge_scroll := true
 var bindings := KeyBindings.new()
 var keyboard_enabled := true
 var _drag_from: Variant = null
+## Settle zoom on PIXEL_STEPS (pixel art).
+var pixel_steps := true
+const PIXEL_STEPS: Array[float] = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5]
+## The unsnapped zoom the wheel and pinches move; the target is its nearest step.
+var _free_zoom := 1.0
 
 
 func _ready() -> void:
@@ -50,14 +56,31 @@ func _process(delta: float) -> void:
 	var k := 1.0 - exp(-delta * 14.0)
 	position = position.lerp(target_pos, k)
 	zoom = zoom.lerp(Vector2(target_zoom, target_zoom), k)
+	if absf(zoom.x - target_zoom) < 0.002:
+		zoom = Vector2(target_zoom, target_zoom)
 
 
 ## Zooms by `factor`, keeping the world point under `screen_point` fixed.
 func zoom_at(factor: float, screen_point: Vector2) -> void:
 	var before := screen_to_world(screen_point, target_zoom, target_pos)
-	target_zoom = clampf(target_zoom * factor, ZOOM_MIN, ZOOM_MAX)
+	if pixel_steps:
+		if not PIXEL_STEPS.has(target_zoom) or absf(_free_zoom - target_zoom) > target_zoom * 0.25:
+			_free_zoom = target_zoom
+		_free_zoom = clampf(_free_zoom * factor, PIXEL_STEPS[0], PIXEL_STEPS[-1])
+		target_zoom = nearest_step(_free_zoom)
+	else:
+		target_zoom = clampf(target_zoom * factor, ZOOM_MIN, ZOOM_MAX)
 	var after := screen_to_world(screen_point, target_zoom, target_pos)
 	target_pos += before - after
+
+
+## The pixel zoom step nearest `z` (compared in log space, so steps feel even).
+static func nearest_step(z: float) -> float:
+	var best := PIXEL_STEPS[0]
+	for st in PIXEL_STEPS:
+		if absf(log(st) - log(z)) < absf(log(best) - log(z)):
+			best = st
+	return best
 
 
 func screen_to_world(p: Vector2, z: float = zoom.x, at: Vector2 = position) -> Vector2:

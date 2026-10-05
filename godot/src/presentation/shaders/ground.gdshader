@@ -1,8 +1,10 @@
-// Ground for one 32×32-tile chunk, painted like a storybook backdrop: sunlit and shaded grass
-// patches laid in visible brush strokes, lit grass clumps, flowers, dappled forest floor, worn
-// dirt roads, layered rock, water that deepens from turquoise shallows to blue, a bank shadow,
-// shore foam, drifting cloud shadows and a soft fog of war. One quad per chunk; see ChunkGround.
-// Everything is in world coordinates, so neighbouring chunks meet without seams.
+// Ground for one 32×32-tile chunk in the browser game's pixel style: a port of
+// src/render/terrainPainter.ts (computePixels) to the GPU. Every world pixel (16 per tile) is
+// resolved exactly as the browser does, with the same 32-bit hashes, so borders creep and
+// dither identically: pass 1 picks each pixel's terrain (higher priority terrain creeps into
+// lower by noise), pass 2 colours it (patches, speckles, water foam and bank shadow, cliff rims
+// and strata, road edges, bridges), pass 3 adds per-tile details (tufts, flowers, pebbles,
+// forest berries, shells). One quad per chunk; see WorldView. Fog of war is laid over the top.
 // Terrain ids (src/world/tiles.gd): 0 deep water, 1 water, 2 sand, 3 grass, 4 meadow, 5 forest,
 // 6 rocky, 7 road, 8 bridge, 9 stone bridge, 10 hill, 11 mountain.
 shader_type canvas_item;
@@ -11,346 +13,256 @@ shader_type canvas_item;
 uniform sampler2D ids : filter_nearest;
 // 38×38 exploration (R = 1 explored), sampled smoothly for a soft fog edge.
 uniform sampler2D fog : filter_linear;
-// 3 tones (dark, mid, light) × 12 terrains.
+// The season's palette, one pixel per slot (PixelGround.SLOTS).
 uniform sampler2D pal : filter_nearest;
 uniform vec2 origin;
-uniform vec4 fog_color : source_color = vec4(0.09, 0.15, 0.11, 1.0);
-uniform vec4 foam_color : source_color = vec4(0.93, 0.97, 0.94, 1.0);
-uniform vec4 snow_color : source_color = vec4(0.95, 0.97, 0.98, 1.0);
-// 0 in spring/summer, up to 1 in autumn (warmer, drier grass).
-uniform float autumn = 0.0;
-// 0..1: how much snow lies on open ground.
-uniform float snow = 0.0;
-// 1 = animated water and clouds; 0 with reduced motion.
-uniform float motion = 1.0;
+uniform int world_seed = 0;
+uniform vec4 fog_color : source_color = vec4(0.08, 0.06, 0.11, 1.0);
+uniform bool winter = false;
+uniform bool autumn = false;
 
 const float BORDER = 3.0;
 const float SIDE = 38.0;
-// Sunlight and its complementary shade: warm yellow light, cool blue-green shadow.
-const vec3 SUN = vec3(1.07, 1.05, 0.86);
-const vec3 SHADE = vec3(0.80, 0.90, 0.93);
 
-float hash(vec2 p) {
-	p = fract(p * vec2(123.34, 456.21));
-	p += dot(p, p + 45.32);
-	return fract(p.x * p.y);
+// Palette slots (PixelGround.SLOTS order).
+const int GRASS0 = 0; const int GRASS1 = 1; const int GRASS2 = 2; const int GRASS3 = 3;
+const int MEADOW0 = 4; const int MEADOW1 = 5; const int MEADOW2 = 6; const int MEADOW3 = 7;
+const int FOREST0 = 8; const int FOREST1 = 9; const int FOREST2 = 10; const int FOREST_LEAF = 11;
+const int SAND0 = 12; const int SAND1 = 13; const int SAND2 = 14; const int SAND3 = 15;
+const int HILL0 = 16; const int HILL1 = 17; const int HILL2 = 18; const int HILL3 = 19;
+const int CLIFF0 = 20; const int CLIFF1 = 21; const int CLIFF2 = 22; const int CLIFF3 = 23; const int SNOWCAP = 24;
+const int ROCK1 = 25; const int ROCK2 = 26; const int ROCK3 = 27;
+const int DIRT0 = 28; const int DIRT1 = 29; const int DIRT2 = 30; const int DIRT3 = 31;
+const int WATER0 = 32; const int WATER1 = 33; const int WATER2 = 34; const int WATER3 = 35; const int FOAM = 36;
+const int DEEP0 = 37; const int DEEP1 = 38;
+const int STONE0 = 39; const int STONE1 = 40; const int STONE2 = 41; const int STONE3 = 42;
+const int WOOD0 = 43; const int WOOD1 = 44; const int WOOD2 = 45; const int WOOD3 = 46;
+const int FLOWER_Y = 47; const int FLOWER_W = 48; const int FLOWER_P = 49; const int FLOWER_V = 50; const int FLOWER_R = 51;
+const int FIRE1 = 52; const int LEAF1 = 53; const int BERRY = 54;
+
+const int T_DEEP = 0; const int T_WATER = 1; const int T_SAND = 2; const int T_GRASS = 3; const int T_MEADOW = 4;
+const int T_FOREST = 5; const int T_ROCKY = 6; const int T_ROAD = 7; const int T_BRIDGE = 8; const int T_STONE_BRIDGE = 9;
+const int T_HILL = 10; const int T_MOUNTAIN = 11;
+
+// Border priority and how far (px) each terrain may creep, as TERRAIN and REACH in the browser.
+const int PRIORITY[12] = int[12](0, 1, 2, 4, 5, 6, 3, 8, 9, 10, 7, 11);
+const float REACH[12] = float[12](0.0, 0.9, 1.0, 1.0, 0.85, 1.0, 0.9, 0.45, 0.0, 0.0, 0.9, 0.35);
+
+vec3 col(int slot) {
+	return texelFetch(pal, ivec2(slot, 0), 0).rgb;
 }
 
-float vnoise(vec2 p) {
-	vec2 i = floor(p);
-	vec2 f = fract(p);
-	vec2 u = f * f * (3.0 - 2.0 * f);
-	return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+// hash2 from src/game/core/rng.ts (32-bit integer arithmetic, identical results).
+uint hash2(int x, int y, int seed) {
+	uint h = uint(seed) + uint(x) * 374761393u + uint(y) * 668265263u;
+	h = (h ^ (h >> 13u)) * 1274126177u;
+	h = (h ^ (h >> 16u)) * 0x85ebca6bu;
+	h ^= h >> 13u;
+	return h;
 }
 
-float fbm(vec2 p) {
-	float s = 0.0;
-	float a = 0.5;
-	for (int i = 0; i < 4; i++) {
-		s += a * vnoise(p);
-		p *= 2.03;
-		a *= 0.5;
+float hash01(int x, int y, int seed) {
+	return float(hash2(x, y, seed)) / 4294967296.0;
+}
+
+float value_noise(float x, float y, int seed) {
+	float x0 = floor(x);
+	float y0 = floor(y);
+	float fx = x - x0;
+	float fy = y - y0;
+	fx = fx * fx * (3.0 - 2.0 * fx);
+	fy = fy * fy * (3.0 - 2.0 * fy);
+	int ix = int(x0);
+	int iy = int(y0);
+	float a = hash01(ix, iy, seed);
+	float b = hash01(ix + 1, iy, seed);
+	float c = hash01(ix, iy + 1, seed);
+	float d = hash01(ix + 1, iy + 1, seed);
+	float top = a + (b - a) * fx;
+	float bottom = c + (d - c) * fx;
+	return top + (bottom - top) * fy;
+}
+
+// JavaScript's % (the sign follows the dividend); GLSL's % is undefined for negatives.
+int js_mod(int a, int b) {
+	return a - b * int(trunc(float(a) / float(b)));
+}
+
+int terr(int tx, int ty) {
+	ivec2 local = clamp(ivec2(tx, ty) - ivec2(origin) + ivec2(int(BORDER)), ivec2(0), ivec2(int(SIDE) - 1));
+	return int(texelFetch(ids, local, 0).r * 255.0 + 0.5);
+}
+
+bool is_water(int t) {
+	return t == T_WATER || t == T_DEEP;
+}
+
+// Pass 1: which terrain a world pixel shows.
+int cls(ivec2 p) {
+	int tx = p.x >> 4;
+	int ty = p.y >> 4;
+	int lx = p.x & 15;
+	int ly = p.y & 15;
+	int t = terr(tx, ty);
+	if (t == T_BRIDGE || t == T_STONE_BRIDGE) return t;
+	int ex = lx < 8 ? -1 : 1;
+	int dx = lx < 8 ? lx : 15 - lx;
+	int ey = ly < 8 ? -1 : 1;
+	int dy = ly < 8 ? ly : 15 - ly;
+	float n = hash01(p.x >> 1, p.y >> 1, world_seed ^ 0x1234) * 0.6 + hash01(p.x >> 3, p.y >> 3, world_seed ^ 0x77) * 0.4;
+	float spread = 1.2 + n * 4.2;
+	int best = t;
+	int best_p = PRIORITY[t];
+	int nt = terr(tx + ex, ty);
+	if (PRIORITY[nt] > best_p && nt != T_BRIDGE && float(dx) < spread * REACH[nt]) { best = nt; best_p = PRIORITY[nt]; }
+	nt = terr(tx, ty + ey);
+	if (PRIORITY[nt] > best_p && nt != T_BRIDGE && float(dy) < spread * REACH[nt]) { best = nt; best_p = PRIORITY[nt]; }
+	nt = terr(tx + ex, ty + ey);
+	if (PRIORITY[nt] > best_p && nt != T_BRIDGE && length(vec2(float(dx) + 0.5, float(dy) + 0.5)) * 1.1 < spread * REACH[nt]) best = nt;
+	return best;
+}
+
+// Pass 2: the colour of a pixel of class c.
+vec3 colour(ivec2 p, int c) {
+	int wx = p.x;
+	int wy = p.y;
+	float h = hash01(wx, wy, world_seed ^ 0x99);
+	float patch = value_noise(float((wx >> 2) * 4) / 28.0, float((wy >> 2) * 4) / 28.0, world_seed ^ 0x55);
+	int slot = GRASS1;
+	if (c == T_WATER || c == T_DEEP) {
+		bool deep = c == T_DEEP;
+		int shore = 9;
+		for (int r = 1; r <= 3 && shore == 9; r++) {
+			if (!is_water(cls(p + ivec2(-r, 0))) || !is_water(cls(p + ivec2(r, 0))) || !is_water(cls(p + ivec2(0, -r))) || !is_water(cls(p + ivec2(0, r)))) shore = r;
+		}
+		bool shadow = !is_water(cls(p + ivec2(0, -1))) || (!is_water(cls(p + ivec2(0, -2))) && (wx & 1) == 0);
+		if (shadow) slot = deep ? DEEP0 : WATER0;
+		else if (shore == 1) slot = FOAM;
+		else if (shore == 2) slot = js_mod(wx + wy, 2) == 0 ? WATER3 : WATER2;
+		else if (shore == 3) slot = WATER2;
+		else if (deep) slot = patch > 0.6 ? DEEP1 : DEEP0;
+		else slot = patch > 0.62 ? WATER2 : (patch < 0.3 ? WATER0 : WATER1);
+	} else if (c == T_SAND) {
+		slot = h < 0.05 ? SAND2 : (h > 0.95 ? SAND0 : (patch > 0.6 ? SAND2 : SAND1));
+	} else if (c == T_GRASS) {
+		slot = h < 0.035 ? GRASS3 : (h > 0.975 ? GRASS0 : (patch > 0.56 ? GRASS2 : GRASS1));
+	} else if (c == T_MEADOW) {
+		slot = h < 0.05 ? MEADOW3 : (h > 0.975 ? MEADOW0 : (patch > 0.5 ? MEADOW2 : MEADOW1));
+	} else if (c == T_FOREST) {
+		slot = h < 0.015 ? FOREST_LEAF : (h < 0.06 ? FOREST0 : (patch > 0.5 ? FOREST1 : FOREST2));
+	} else if (c == T_ROCKY) {
+		slot = h < 0.04 ? ROCK2 : (h > 0.95 ? ROCK3 : (patch > 0.55 ? ROCK2 : ROCK1));
+	} else if (c == T_HILL) {
+		bool contour = js_mod(wy + int(floor(patch * 12.0)), 11) == 0;
+		slot = contour ? HILL0 : (h < 0.035 ? HILL3 : (patch > 0.55 ? HILL2 : HILL1));
+	} else if (c == T_MOUNTAIN) {
+		bool top = cls(p + ivec2(0, -1)) != T_MOUNTAIN || cls(p + ivec2(0, -2)) != T_MOUNTAIN;
+		bool foot = cls(p + ivec2(0, 1)) != T_MOUNTAIN || cls(p + ivec2(0, 2)) != T_MOUNTAIN || cls(p + ivec2(0, 3)) != T_MOUNTAIN;
+		if (top) slot = CLIFF3;
+		else if (foot) slot = CLIFF0;
+		else if (js_mod((wx + wy * 2) >> 2, 7) == 0) slot = CLIFF1;
+		else slot = h < 0.06 ? CLIFF3 : (patch > 0.5 ? CLIFF2 : CLIFF1);
+		if (winter && !foot && h < 0.25) slot = SNOWCAP;
+	} else if (c == T_ROAD) {
+		bool edge = cls(p + ivec2(-1, 0)) != T_ROAD || cls(p + ivec2(1, 0)) != T_ROAD || cls(p + ivec2(0, -1)) != T_ROAD || cls(p + ivec2(0, 1)) != T_ROAD;
+		slot = edge ? DIRT0 : (h < 0.06 ? DIRT2 : (h > 0.96 ? DIRT3 : DIRT1));
+	} else if (c == T_STONE_BRIDGE) {
+		int tx = wx >> 4;
+		int ty = wy >> 4;
+		int lx = wx & 15;
+		int ly = wy & 15;
+		bool horiz = terr(tx - 1, ty) == T_STONE_BRIDGE || terr(tx + 1, ty) == T_STONE_BRIDGE || !is_water(terr(tx - 1, ty)) || !is_water(terr(tx + 1, ty));
+		int along = horiz ? wx : wy;
+		int across = horiz ? ly : lx;
+		if (across <= 1 || across >= 14) slot = (across == 0 || across == 15) ? STONE0 : (js_mod(along, 6) == 0 ? STONE0 : STONE1);
+		else if (across == 2 || across == 13) slot = STONE0;
+		else if (js_mod(along, 8) == 0 || (across == 8 && js_mod(along, 8) == 4)) slot = STONE1;
+		else slot = h < 0.06 ? STONE3 : (across < 6 ? STONE3 : STONE2);
+	} else if (c == T_BRIDGE) {
+		int tx = wx >> 4;
+		int ty = wy >> 4;
+		int lx = wx & 15;
+		int ly = wy & 15;
+		bool horiz = !is_water(terr(tx - 1, ty)) || !is_water(terr(tx + 1, ty));
+		int along = horiz ? lx : ly;
+		int across = horiz ? ly : lx;
+		if (across <= 1 || across >= 14) slot = (across == 0 || across == 15) ? WOOD0 : WOOD1;
+		else if (js_mod(along, 4) == 3) slot = WOOD1;
+		else slot = js_mod(along / 4 + (horiz ? tx : ty), 2) != 0 ? WOOD3 : WOOD2;
+		if (across == 2) slot = WOOD1;
 	}
-	return s;
+	// Land lip above water: a darker edge so banks read as raised.
+	if (!is_water(c) && c != T_BRIDGE && c != T_STONE_BRIDGE && is_water(cls(p + ivec2(0, 1)))) slot = c == T_SAND ? SAND3 : GRASS0;
+	// Cliffs cast a short shadow onto the ground below them.
+	if (c != T_MOUNTAIN && !is_water(c) && (cls(p + ivec2(0, -1)) == T_MOUNTAIN || cls(p + ivec2(0, -2)) == T_MOUNTAIN)) slot = c == T_HILL ? HILL0 : GRASS0;
+	return col(slot);
 }
 
-// Rotates world space so brush strokes lean the same way everywhere (about 25° up-right).
-vec2 stroke_space(vec2 p) {
-	return vec2(p.x * 0.906 - p.y * 0.423, p.x * 0.423 + p.y * 0.906);
+float nib(uint hv, int n) {
+	return float((hv >> uint(n * 4)) & 15u) / 16.0;
 }
 
-// Soft posterising: a value snapped into `n` bands with soft edges, like flat dabs of paint.
-float bands(float v, float n) {
-	float x = v * n;
-	float fl = floor(x);
-	return (fl + smoothstep(0.35, 0.65, fract(x))) / n;
-}
-
-int id_at(vec2 tile) {
-	vec2 local = clamp(floor(tile - origin) + BORDER, vec2(0.0), vec2(SIDE - 1.0));
-	return int(texelFetch(ids, ivec2(local), 0).r * 255.0 + 0.5);
-}
-
-vec3 tone(int id, float t) {
-	vec3 a = texelFetch(pal, ivec2(0, id), 0).rgb;
-	vec3 b = texelFetch(pal, ivec2(1, id), 0).rgb;
-	vec3 c = texelFetch(pal, ivec2(2, id), 0).rgb;
-	t = clamp(t, 0.0, 1.0);
-	return t < 0.5 ? mix(a, b, t * 2.0) : mix(b, c, (t - 0.5) * 2.0);
-}
-
-bool water(int id) {
-	return id <= 1;
-}
-
-bool green(int id) {
-	return id == 3 || id == 4 || id == 5 || id == 10;
-}
-
-// Grass clumps on a jittered grid: each a small mound lit on its upper-left and shaded on its
-// lower-right, with a few blades. Returns (light, dark) amounts.
-vec2 clumps(vec2 tile, float scale, float density) {
-	vec2 g = tile * scale;
-	vec2 cell = floor(g);
-	vec2 res = vec2(0.0);
-	for (int j = -1; j <= 0; j++) {
-		for (int i = -1; i <= 0; i++) {
-			vec2 c = cell + vec2(float(i), float(j));
-			float s = hash(c);
-			if (s > density) continue;
-			vec2 centre = c + 0.25 + vec2(hash(c + 3.1), hash(c + 7.7)) * 0.5;
-			vec2 d = (g - centre) * vec2(1.0, 1.7);
-			float r = 0.28 + hash(c + 1.3) * 0.22;
-			float body = 1.0 - smoothstep(r * 0.7, r, length(d));
-			// Blades: thin upward strokes fanning out from the clump's base.
-			float a = atan(d.x, -d.y);
-			float blade = smoothstep(0.55, 0.95, sin(a * 9.0 + s * 20.0)) * (1.0 - smoothstep(r * 0.8, r * 1.35, length(d))) * step(d.y, 0.05);
-			float lit = smoothstep(0.1, -0.25, d.x + d.y);
-			res.x += body * lit * 0.8 + blade * 0.55;
-			res.y += body * (1.0 - lit) * 0.9;
+// Pass 3: per-tile details. Returns a palette slot, or -1 when this pixel has none. Each detail
+// is drawn only over its own tile's terrain class, and later details overwrite earlier ones.
+int detail(ivec2 p, int c) {
+	int tx = p.x >> 4;
+	int ty = p.y >> 4;
+	int t = terr(tx, ty);
+	if (c != t) return -1;
+	ivec2 l = p - ivec2(tx << 4, ty << 4);
+	uint hv = hash2(tx, ty, world_seed ^ 0xdeca);
+	int slot = -1;
+	if (t == T_GRASS || t == T_MEADOW || t == T_FOREST || t == T_HILL) {
+		int tufts = nib(hv, 0) < 0.45 ? 1 : (nib(hv, 0) < 0.7 ? 2 : 0);
+		int light = t == T_FOREST ? FOREST2 : (t == T_MEADOW ? MEADOW3 : (t == T_HILL ? HILL3 : GRASS3));
+		int dark = t == T_FOREST ? FOREST0 : (t == T_MEADOW ? MEADOW0 : (t == T_HILL ? HILL0 : GRASS0));
+		for (int i = 0; i < tufts; i++) {
+			ivec2 q = ivec2(2 + int(floor(nib(hv, 1 + i * 2) * 12.0)), 2 + int(floor(nib(hv, 2 + i * 2) * 11.0)));
+			ivec2 d = l - q;
+			if (d == ivec2(0, 0) || d == ivec2(-1, 1) || d == ivec2(1, 1)) slot = light;
+			if (d == ivec2(0, 1) || d == ivec2(-1, 2) || d == ivec2(1, 2)) slot = dark;
 		}
 	}
-	return clamp(res, 0.0, 1.0);
-}
-
-// Small flowers: a bright centre ringed by petals, in sparse seeded spots.
-vec4 flowers(vec2 tile, float density) {
-	vec2 g = tile * 4.0;
-	vec2 cell = floor(g);
-	float s = hash(cell + 19.7);
-	if (s > density) return vec4(0.0);
-	vec2 centre = cell + 0.3 + vec2(hash(cell + 2.2), hash(cell + 5.9)) * 0.4;
-	float d = length((g - centre) * vec2(1.0, 1.3));
-	float petal = 1.0 - smoothstep(0.09, 0.15, d);
-	float eye = 1.0 - smoothstep(0.03, 0.06, d);
-	float pick = hash(cell + 11.0);
-	vec3 col = pick < 0.4 ? vec3(0.98, 0.96, 0.86) : (pick < 0.7 ? vec3(0.99, 0.84, 0.32) : (pick < 0.88 ? vec3(0.93, 0.62, 0.72) : vec3(0.62, 0.70, 0.95)));
-	col = mix(col, vec3(0.96, 0.74, 0.2), eye);
-	return vec4(col, petal);
-}
-
-// The colour of one terrain at this point (water handled separately).
-vec3 land_colour(int id, vec2 tile, float patch, float macro) {
-	vec2 sp = stroke_space(tile);
-	// Long, leaning brush strokes, posterised into a few tones so they read as paint dabs.
-	float stroke = vnoise(sp * vec2(0.9, 3.4)) * 0.6 + vnoise(sp * vec2(2.1, 7.5)) * 0.4;
-	float t = bands(clamp(patch * 0.95 + (stroke - 0.5) * 0.55 + 0.05, 0.0, 1.0), 5.0);
-	vec3 col = tone(id, t);
-	if (green(id)) {
-		// Big sunlit and shaded areas: warm yellow-green in light, blue-green in shade.
-		col *= mix(SHADE, SUN, smoothstep(0.32, 0.7, macro));
-		float density = id == 5 ? 0.42 : (id == 4 ? 0.5 : 0.62);
-		vec2 cl = clumps(tile, 2.6, density);
-		vec2 cl2 = clumps(tile + 13.7, 5.2, density * 0.7);
-		vec3 lightc = tone(id, 1.0) * vec3(1.12, 1.1, 0.86);
-		vec3 darkc = tone(id, 0.0) * vec3(0.82, 0.92, 0.95);
-		col = mix(col, darkc, cl.y * 0.28 + cl2.y * 0.2);
-		col = mix(col, lightc, cl.x * 0.26 + cl2.x * 0.2);
-		if (id == 5) {
-			// Dappled light falling through the canopy, and darker moss under it.
-			float dapple = smoothstep(0.62, 0.75, fbm(tile * 0.9 + 4.0));
-			col = mix(col, tone(4, 0.95) * SUN, dapple * 0.3);
-		} else {
-			vec4 fl = flowers(tile, id == 4 ? 0.16 : 0.06);
-			col = mix(col, fl.rgb, fl.a * (1.0 - autumn) * (1.0 - snow));
+	if (!winter && ((t == T_MEADOW && nib(hv, 5) < 0.55) || (t == T_GRASS && nib(hv, 5) < (autumn ? 0.02 : 0.07)))) {
+		int n = (t == T_MEADOW && nib(hv, 6) > 0.6) ? 2 : 1;
+		for (int i = 0; i < n; i++) {
+			ivec2 q = ivec2(3 + int(floor(nib(hv, 6 + i) * 10.0)), 3 + int(floor(nib(hv, 4 - i) * 9.0)));
+			int pick = int(floor(nib(hv, 7 - i) * 5.0));
+			int petal = pick == 0 ? FLOWER_Y : (pick == 1 ? FLOWER_W : (pick == 2 ? FLOWER_P : (pick == 3 ? FLOWER_V : FLOWER_R)));
+			ivec2 d = l - q;
+			if (d == ivec2(-1, 0) || d == ivec2(1, 0) || d == ivec2(0, -1)) slot = petal;
+			if (d == ivec2(0, 1)) slot = LEAF1;
+			if (d == ivec2(0, 0)) slot = petal == FLOWER_Y ? FIRE1 : FLOWER_Y;
 		}
-		col = mix(col, col * vec3(1.18, 0.96, 0.62), autumn);
-		col = mix(col, snow_color.rgb * mix(vec3(0.86, 0.9, 1.0), vec3(1.0), stroke), snow * smoothstep(0.3, 0.55, fbm(tile * 0.5)));
 	}
-	if (id == 10) {
-		// Hills: soft contour strokes catching the light.
-		float c = fract(fbm(tile * 0.25) * 6.0);
-		col = mix(col, col * SUN, smoothstep(0.82, 0.9, c) * 0.3);
-		col *= 1.0 - smoothstep(0.9, 1.0, c) * 0.14;
+	if (t == T_ROCKY && nib(hv, 3) < 0.6) {
+		ivec2 d = l - ivec2(2 + int(floor(nib(hv, 4) * 11.0)), 2 + int(floor(nib(hv, 5) * 11.0)));
+		if (d == ivec2(0, 0) || d == ivec2(1, 0)) slot = ROCK2;
+		if (d == ivec2(0, 1) || d == ivec2(1, 1)) slot = ROCK3;
 	}
-	if (id == 11) {
-		// Rock faces lit from the upper left: a smooth height field's slope, in a few facets.
-		vec2 rp = tile * 0.45;
-		float h0 = vnoise(rp) + vnoise(rp * 2.1) * 0.4;
-		float hx = vnoise(rp + vec2(0.2, 0.0)) + vnoise(rp * 2.1 + vec2(0.42, 0.0)) * 0.4;
-		float hy = vnoise(rp + vec2(0.0, 0.2)) + vnoise(rp * 2.1 + vec2(0.0, 0.42)) * 0.4;
-		float light = clamp(0.5 + ((h0 - hx) + (h0 - hy)) * 2.2, 0.0, 1.0);
-		light = bands(light, 4.0);
-		col = mix(tone(11, 0.0) * vec3(0.9, 0.9, 1.0), tone(11, 1.0) * vec3(1.05, 1.02, 0.94), light);
-		float crack = 1.0 - smoothstep(0.0, 0.035, abs(vnoise(tile * vec2(2.2, 1.1)) - 0.5));
-		col *= 1.0 - crack * 0.22;
-		// Moss and grass in the hollows.
-		col = mix(col, tone(3, 0.4), smoothstep(0.6, 0.75, fbm(tile * 1.3 + 9.0)) * 0.45 * (1.0 - snow));
-		col = mix(col, snow_color.rgb, snow * 0.6 * light);
+	if (t == T_FOREST && nib(hv, 7) < 0.05) {
+		ivec2 d = l - ivec2(4 + int(floor(nib(hv, 3) * 8.0)), 4 + int(floor(nib(hv, 1) * 8.0)));
+		if (d == ivec2(0, 0) || d == ivec2(1, 0)) slot = BERRY;
+		if (d == ivec2(0, 1)) slot = FLOWER_W;
 	}
-	if (id == 7 || id == 8 || id == 9) {
-		col *= 0.94 + vnoise(tile * 3.1) * 0.12;
+	if (t == T_SAND && nib(hv, 2) < 0.12) {
+		ivec2 d = l - ivec2(3 + int(floor(nib(hv, 3) * 10.0)), 3 + int(floor(nib(hv, 4) * 10.0)));
+		if (d == ivec2(0, 0)) slot = FLOWER_W;
+		if (d == ivec2(1, 0)) slot = SAND0;
 	}
-	if (id == 7) {
-		// Wheel ruts along the road and a grass strip in the middle.
-		float rut = vnoise(tile * vec2(5.0, 0.7));
-		col = mix(col, tone(7, 0.0), smoothstep(0.62, 0.8, rut) * 0.35);
-	}
-	if (id == 2 || id == 6 || id == 7) {
-		// Pebbles, each lit on its upper-left.
-		vec2 g = tile * 6.0;
-		vec2 cell = floor(g);
-		vec2 q = fract(g) - 0.5 - (vec2(hash(cell + 1.0), hash(cell + 2.0)) - 0.5) * 0.4;
-		float s = hash(cell);
-		float pebble = (1.0 - smoothstep(0.08, 0.16, length(q * vec2(1.0, 1.5)))) * step(id == 6 ? 0.6 : 0.82, s);
-		float lit = smoothstep(0.05, -0.08, q.x + q.y);
-		vec3 pc = mix(tone(6, 0.1), tone(6, 1.0) * 1.08, lit);
-		col = mix(col, pc, pebble * 0.8);
-		// A small cast shadow below and right of each pebble.
-		float sh = (1.0 - smoothstep(0.08, 0.17, length((q - vec2(0.05, 0.07)) * vec2(1.0, 1.6)))) * step(id == 6 ? 0.6 : 0.82, s) * (1.0 - pebble);
-		col *= 1.0 - sh * 0.25;
-	}
-	if (id == 2) {
-		// Ripple marks in the sand.
-		col *= 0.96 + 0.06 * sin(sp.y * 9.0 + vnoise(tile * 1.5) * 5.0);
-	}
-	return col;
-}
-
-// 1 on land and 0 on water, bilinearly blended between tile centres (smooth, no tile steps).
-float landf(vec2 tile) {
-	vec2 p = tile - 0.5;
-	vec2 b = floor(p);
-	vec2 f = smoothstep(0.0, 1.0, fract(p));
-	float a = water(id_at(b + vec2(0.5, 0.5))) ? 0.0 : 1.0;
-	float c = water(id_at(b + vec2(1.5, 0.5))) ? 0.0 : 1.0;
-	float d = water(id_at(b + vec2(0.5, 1.5))) ? 0.0 : 1.0;
-	float e = water(id_at(b + vec2(1.5, 1.5))) ? 0.0 : 1.0;
-	return mix(mix(a, c, f.x), mix(d, e, f.x), f.y);
-}
-
-// How much land lies around a water point: 0 deep in a lake, 1 right at the bank.
-float landness(vec2 tile) {
-	float n = 0.0;
-	for (int i = 0; i < 8; i++) {
-		float a = float(i) * 0.785398 + 0.39;
-		n += landf(tile + vec2(cos(a), sin(a)) * 1.7);
-	}
-	return clamp(n / 8.0 * 1.6, 0.0, 1.0);
-}
-
-vec3 water_colour(int id, vec2 tile, float shore) {
-	float t = TIME * motion;
-	float near = max(landness(tile), shore);
-	// Deep blue in the channel, turquoise and sandy over the shallows.
-	float depth = clamp((id == 0 ? 0.1 : 0.75) - (1.0 - near) * 0.5, 0.0, 1.0);
-	vec3 deep = tone(0, 0.3);
-	vec3 mid = tone(1, 0.35);
-	vec3 shallow = mix(tone(1, 0.85), tone(2, 0.7), 0.15);
-	vec3 col = mix(deep, mid, smoothstep(0.0, 0.8, depth));
-	col = mix(col, shallow, smoothstep(0.45, 1.0, near));
-	// Painterly wave strokes: short horizontal dashes drifting slowly.
-	vec2 w = tile * vec2(1.6, 6.0) + vec2(t * 0.18, sin(tile.x * 0.7 + t * 0.6) * 0.4);
-	float wave = smoothstep(0.66, 0.82, vnoise(w)) * (1.0 - smoothstep(0.82, 0.95, vnoise(w)));
-	col = mix(col, tone(1, 1.0) * 1.08, wave * 0.45);
-	float trough = smoothstep(0.7, 0.85, vnoise(w + vec2(3.3, 0.5)));
-	col = mix(col, deep * 0.85, trough * 0.25 * (1.0 - near));
-	// Sky reflections: broad lighter bands, and sparkles that twinkle.
-	col = mix(col, vec3(0.82, 0.93, 0.98), smoothstep(0.6, 0.9, fbm(tile * vec2(0.15, 0.4) + vec2(t * 0.02, 0.0))) * 0.18);
-	vec2 sg = tile * 3.0;
-	float sparkle = (1.0 - smoothstep(0.02, 0.09, length(fract(sg) - 0.5))) * step(0.93, hash(floor(sg))) * (0.5 + 0.5 * sin(t * 3.0 + hash(floor(sg) + 4.0) * 30.0));
-	col = mix(col, vec3(1.0), sparkle * 0.85 * motion + sparkle * 0.25 * (1.0 - motion));
-	return col;
+	return slot;
 }
 
 void fragment() {
-	vec2 tile = origin + UV * 32.0;
-	// Smooth contours: weigh the four nearest tile centres (bilinear, nudged by noise) and let
-	// the terrain with the most weight win, blending softly where two are nearly equal. This
-	// gives curved shorelines and soft meadow edges instead of tile steps.
-	vec2 warp = vec2(fbm(tile * 0.55), fbm(tile * 0.55 + 17.3)) - 0.5;
-	vec2 p = tile + warp * 0.55 - 0.5;
-	vec2 b = floor(p);
-	vec2 f = smoothstep(0.0, 1.0, fract(p));
-	int ids4[4] = int[4](id_at(b + vec2(0.5, 0.5)), id_at(b + vec2(1.5, 0.5)), id_at(b + vec2(0.5, 1.5)), id_at(b + vec2(1.5, 1.5)));
-	float w4[4] = float[4]((1.0 - f.x) * (1.0 - f.y), f.x * (1.0 - f.y), (1.0 - f.x) * f.y, f.x * f.y);
-	// Water against land decides the shoreline first.
-	float wet = 0.0;
-	for (int i = 0; i < 4; i++) wet += water(ids4[i]) ? w4[i] : 0.0;
-	// Strongest and second-strongest terrain among the corners.
-	int a_id = ids4[0];
-	float a_w = -1.0;
-	int b_id = ids4[0];
-	float b_w = -1.0;
-	for (int i = 0; i < 4; i++) {
-		float sum = 0.0;
-		for (int j = 0; j < 4; j++) sum += ids4[j] == ids4[i] ? w4[j] : 0.0;
-		if (sum > a_w + 0.0001 && ids4[i] != a_id) {
-			if (a_w >= 0.0) { b_id = a_id; b_w = a_w; }
-			a_id = ids4[i];
-			a_w = sum;
-		} else if (ids4[i] != a_id && sum > b_w) {
-			b_id = ids4[i];
-			b_w = sum;
-		} else if (ids4[i] == a_id) {
-			a_w = max(a_w, sum);
-		}
-	}
-	float patch = fbm(tile * 0.18);
-	float macro = fbm(tile * 0.045 + 3.0);
-	vec3 col;
-	if (wet > 0.5) {
-		int wid = water(a_id) ? a_id : (water(b_id) ? b_id : 1);
-		float shore = 1.0 - smoothstep(0.5, 0.95, wet);
-		col = water_colour(wid, tile, shore);
-		// The bank's face casts a shadow on the water just below it (the view is tilted).
-		vec2 q = tile + warp * 0.55;
-		float above = water(id_at(q - vec2(0.0, 0.45))) ? 0.0 : 1.0;
-		float above2 = water(id_at(q - vec2(0.0, 0.9))) ? 0.0 : 0.5;
-		col = mix(col, tone(0, 0.0) * 0.8, max(above, above2) * 0.38);
-		// Foam: a lacy band hugging the shore, breathing slowly.
-		float lace = vnoise(tile * 7.0 + vec2(TIME * motion * 0.2, 0.0));
-		float band = 1.0 - smoothstep(0.5, 0.6 + 0.06 * sin(TIME * motion * 1.2 + tile.x), wet);
-		float ring = (1.0 - smoothstep(0.6, 0.7, wet)) * smoothstep(0.62, 0.66, wet) * smoothstep(0.4, 0.6, lace);
-		col = mix(col, foam_color.rgb, clamp(band * (0.55 + lace * 0.45) + ring * 0.6, 0.0, 1.0) * 0.85);
-	} else {
-		int land_a = water(a_id) ? b_id : a_id;
-		int land_b = water(b_id) || b_w < 0.0 ? land_a : b_id;
-		vec3 ca = land_colour(land_a, tile, patch, macro);
-		vec3 cb = land_colour(land_b, tile, patch, macro);
-		// Grass into grass blends broadly (meadow, forest floor and hill fade into each other);
-		// other borders stay crisp, with a ragged grass lip.
-		float soft = green(land_a) && green(land_b) ? 0.45 : 0.06;
-		float edge = smoothstep(-soft, soft, (water(a_id) ? b_w : a_w) - (water(b_id) ? 0.0 : b_w) + (fbm(tile * 1.7) - 0.5) * soft * 0.8);
-		col = mix(cb, ca, 0.5 + 0.5 * edge);
-		// Where grass meets sand, road or rock, a ragged lip of grass hangs over the edge.
-		if (green(land_a) != green(land_b)) {
-			float lip = 1.0 - abs(edge);
-			float tuft = smoothstep(0.45, 0.7, vnoise(tile * vec2(9.0, 4.0)));
-			vec3 g = green(land_a) ? land_colour(land_a, tile, patch, macro) : land_colour(land_b, tile, patch, macro);
-			col = mix(col, g * 0.82, lip * tuft * 0.6);
-		}
-		// Damp, darker sand right at the waterline.
-		col = mix(col, col * vec3(0.78, 0.8, 0.86), smoothstep(0.3, 0.5, wet));
-		if (land_a == 2) {
-			// Reeds on the inland bank toward shallow water.
-			float grassy = 0.0;
-			for (int i = 0; i < 4; i++) grassy += green(ids4[i]) ? w4[i] : 0.0;
-			vec2 bank_cell = floor(tile * 2.5);
-			vec2 reed = fract(tile * 2.5) - vec2(0.5, 0.7);
-			float reed_seed = hash(bank_cell);
-			float strokes = 1.0 - smoothstep(0.015, 0.047, abs(abs(reed.x) + reed.y * 0.23 - 0.05));
-			strokes *= smoothstep(-0.55, -0.35, reed.y) * (1.0 - smoothstep(0.08, 0.14, reed.y));
-			float bank = smoothstep(0.05, 0.22, max(grassy, wet)) * step(reed_seed, 0.55) * (1.0 - snow);
-			col = mix(col, tone(3, 0.25 + reed_seed * 0.6), strokes * bank * 0.9);
-		}
-		// Mountains: a sunlit rim where open ground lies above, a shadowed cliff foot below.
-		// Sampled on the same warped grid as the contours, so the rim follows the curved edge.
-		if (land_a == 11) {
-			vec2 q = tile + warp * 0.55;
-			if (id_at(q - vec2(0.0, 0.55)) != 11) col = mix(col, vec3(0.98, 0.94, 0.78), 0.32);
-			if (id_at(q + vec2(0.0, 0.55)) != 11) col *= vec3(0.62, 0.6, 0.72);
-		} else if (id_at(tile + warp * 0.55 - vec2(0.0, 0.7)) == 11) {
-			// Ground just below a cliff lies in its shadow.
-			col *= vec3(0.74, 0.8, 0.86);
-		}
-	}
-	// Cloud shadows drifting slowly over land and water.
-	float cloud = smoothstep(0.52, 0.7, fbm(tile * 0.03 + vec2(TIME * motion * 0.012, TIME * motion * 0.005)));
-	col *= mix(vec3(1.0), vec3(0.8, 0.86, 0.94), cloud * 0.55);
-	// Fog of war, soft-edged and slightly mottled.
+	vec2 world_px = origin * 16.0 + UV * 512.0;
+	ivec2 p = ivec2(floor(world_px));
+	int c = cls(p);
+	vec3 rgb = colour(p, c);
+	int d = detail(p, c);
+	if (d >= 0) rgb = col(d);
+	// Fog of war, soft-edged as in the browser (its 4x smoothed edge), on whole pixels.
+	vec2 tile = (vec2(p) + 0.5) / 16.0;
 	float e = texture(fog, (tile - origin + BORDER) / SIDE).r;
-	e = smoothstep(0.2, 0.8, e + (fbm(tile * 0.6) - 0.5) * 0.35);
-	col = mix(fog_color.rgb * (0.85 + 0.3 * fbm(tile * 0.3)), col, e);
-	COLOR = vec4(col, 1.0);
+	e = smoothstep(0.25, 0.75, e);
+	COLOR = vec4(mix(fog_color.rgb, rgb, e), 1.0);
 }

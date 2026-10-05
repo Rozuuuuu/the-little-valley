@@ -277,7 +277,7 @@ func _capture(opts: Dictionary) -> void:
 	sim.drain_events()
 	if not sim.settlers.is_empty():
 		selected = [sim.settlers[0].id]
-	camera.target_zoom = float(opts.get("zoom", "0.6"))
+	camera.target_zoom = float(opts.get("zoom", "0.75"))
 	view.sway_enabled = opts.get("sway", "1") != "0"
 	view.ground_visible = opts.get("ground", "1") != "0"
 	camera.zoom = Vector2.ONE * camera.target_zoom
@@ -426,8 +426,8 @@ func _show_backdrop() -> void:
 	var focus := Vector2(camp.center_x() - 7, camp.y + camp.h) if camp != null else Vector2.ZERO
 	camera.position = focus * WorldView.TILE_PX
 	camera.target_pos = camera.position
-	camera.target_zoom = 0.8
-	camera.zoom = Vector2.ONE * 0.8
+	camera.target_zoom = 0.75
+	camera.zoom = Vector2.ONE * 0.75
 
 
 ## Places a finished building at the first valid spot near the hall of `s`.
@@ -631,8 +631,8 @@ func _start(s: Simulation) -> void:
 	var focus := Vector2(camp.center_x(), camp.y + camp.h + 1) if camp != null else Vector2.ZERO
 	camera.position = focus * WorldView.TILE_PX
 	camera.target_pos = camera.position
-	camera.target_zoom = 0.6
-	camera.zoom = Vector2.ONE * 0.6
+	camera.target_zoom = 0.75
+	camera.zoom = Vector2.ONE * 0.75
 	_autosave_at = Time.get_ticks_msec() / 1000.0 + settings.autosave_minutes * 60.0
 	paused = false
 	_today_at = -1
