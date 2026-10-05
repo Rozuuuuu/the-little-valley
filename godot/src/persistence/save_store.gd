@@ -84,10 +84,13 @@ func import_text(text: String, id: String, label: String) -> String:
 	return "" if bool(saved["ok"]) else str(saved["error"])
 
 
-## Every world on this device: [{id, name, points: [...]}], most recently saved first.
+## Every world on this device: [{id, name, points: [...]}], most recently saved first. The
+## review captures' scratch world ("capture") is not a player's valley and is left out.
 func worlds() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for id in DirAccess.get_directories_at(root):
+		if id == "capture":
+			continue
 		var index := _read_index(root.path_join(id))
 		if not (index.get("points", []) as Array).is_empty():
 			out.append({"id": id, "name": index.get("name", id), "points": index["points"]})
@@ -128,6 +131,16 @@ func load_point(world_id: String, point: String = "") -> Dictionary:
 		if point != "":
 			break
 	return {"data": null, "error": first_error + ". Nothing was changed or deleted."}
+
+
+## Deletes a whole world: every save point and its index (the player confirmed it).
+func delete_world(world_id: String) -> void:
+	var dir := root.path_join(world_id)
+	if world_id == "" or world_id.contains("/") or world_id.contains("..") or not DirAccess.dir_exists_absolute(dir):
+		return
+	for f in DirAccess.get_files_at(dir):
+		DirAccess.remove_absolute(dir.path_join(f))
+	DirAccess.remove_absolute(dir)
 
 
 func delete_point(world_id: String, point: String) -> void:

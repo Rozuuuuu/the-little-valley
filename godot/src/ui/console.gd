@@ -10,13 +10,13 @@ extends PanelContainer
 
 const GRID_KEYS: Array[Key] = [KEY_Q, KEY_W, KEY_E, KEY_R, KEY_A, KEY_S, KEY_D, KEY_F, KEY_Z, KEY_X, KEY_C, KEY_V]
 const BACK_SLOT := 11
-const HEIGHT := 176
+const HEIGHT := 204
 
 var hud: Hud
 var game: Game
 ## "" (commands), "build", "train" or a building category.
 var menu := ""
-var details := true
+var details := false
 
 var minimap := MinimapView.new()
 var _info := HBoxContainer.new()
@@ -42,15 +42,17 @@ func setup(h: Hud) -> void:
 	custom_minimum_size = Vector2(0, HEIGHT)
 	add_theme_stylebox_override("panel", _verge())
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", 6)
 	add_child(row)
-	# The minimap and its chips.
+	# The minimap and its chips (236 px wide, as the browser's console grid).
 	var map_box := PanelContainer.new()
+	map_box.custom_minimum_size = Vector2(236, 0)
 	var mv := VBoxContainer.new()
 	mv.add_theme_constant_override("separation", 4)
 	map_box.add_child(mv)
 	var frame := PanelContainer.new()
-	frame.add_theme_stylebox_override("panel", hud._box(Color("#141c18"), Color("#1c3416"), 0, 0))
+	frame.add_theme_stylebox_override("panel", hud._box(Color("#141c18"), Color("#2f6a27"), 0, 0))
+	frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	frame.add_child(minimap)
 	mv.add_child(frame)
 	var chips := HBoxContainer.new()
@@ -112,6 +114,7 @@ func setup(h: Hud) -> void:
 	# The command card.
 	var card := PanelContainer.new()
 	card.size_flags_horizontal = Control.SIZE_SHRINK_END
+	card.custom_minimum_size = Vector2(272, 0)
 	var cv := VBoxContainer.new()
 	cv.add_theme_constant_override("separation", 2)
 	card.add_child(cv)
@@ -139,15 +142,32 @@ func tip_layer() -> Control:
 	return _tip
 
 
-## The grass verge behind the console (src/ui/pixel.css .console): dark grass with a bright edge.
-func _verge() -> StyleBoxFlat:
-	var b := StyleBoxFlat.new()
-	b.bg_color = Color("#25561f")
-	b.border_color = Color("#7cc050")
-	b.border_width_top = 3
-	b.set_content_margin_all(8)
-	b.content_margin_top = 10
+## The grass verge behind the console (src/ui/pixel.css .console): dark grass dotted with lighter
+## grass every 5 px, a lighter band along the top, and a row of blades above it (drawn in _draw).
+func _verge() -> StyleBoxTexture:
+	var im := Image.create(5, 5, false, Image.FORMAT_RGBA8)
+	im.fill(Color("#25561f"))
+	im.set_pixel(2, 2, Color("#387a2b"))
+	im.resize(10, 10, Image.INTERPOLATE_NEAREST)
+	var b := StyleBoxTexture.new()
+	b.texture = ImageTexture.create_from_image(im)
+	b.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_TILE
+	b.axis_stretch_vertical = StyleBoxTexture.AXIS_STRETCH_MODE_TILE
+	b.content_margin_left = 8
+	b.content_margin_right = 8
+	b.content_margin_top = 8
+	b.content_margin_bottom = 6
 	return b
+
+
+var _edge: ImageTexture = null
+
+
+func _draw() -> void:
+	if _edge == null:
+		_edge = HudTextures.texture(HudTextures.grass_edge(), 2)
+	draw_rect(Rect2(0, 0, size.x, 4), Color("#2f6a27"))
+	draw_texture_rect(_edge, Rect2(0, -16, size.x, 16), true)
 
 
 func _chip(text: String, tip: String) -> Button:
@@ -210,10 +230,10 @@ func _refresh_info() -> void:
 
 func _portrait(tex: Texture2D, big_px: float = 4.0) -> PanelContainer:
 	var p := PanelContainer.new()
-	var sb: StyleBoxFlat = hud._box(Color("#3a2414"), hud._c("line"), 0, 4)
-	sb.bg_color = Color("#5a3c22")
+	var sb: StyleBoxFlat = hud._box(Color("#6b4a2e"), Color("#2f6a27"), 0, 4)
+	sb.set_border_width_all(3)
 	p.add_theme_stylebox_override("panel", sb)
-	p.custom_minimum_size = Vector2(104, 104)
+	p.custom_minimum_size = Vector2(112, 112)
 	p.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	var r := TextureRect.new()
 	r.texture = tex
@@ -773,11 +793,15 @@ func _refresh_card() -> void:
 
 func _slot_button(c: Variant, i: int) -> Control:
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(58, 44)
+	b.custom_minimum_size = Vector2(60, 50)
 	b.focus_mode = Control.FOCUS_NONE
 	b.clip_text = true
 	var empty := c == null
-	var sb: StyleBoxFlat = hud._box(Color(0.16, 0.09, 0.05, 0.35) if empty else Color("#5e4028"), Color(0.49, 0.75, 0.31, 0.35) if empty else (hud._c("accent") if not empty and bool(c["on"]) else hud._c("line")), 0, 2)
+	# The browser's .card-btn: wood with a turf edge and a dark-grass drop; empty slots are faint.
+	var sb: StyleBoxFlat = hud._box(Color(0.157, 0.094, 0.047, 0.35) if empty else (Color("#7a5e1a") if bool(c["on"]) else Color("#61432a")), Color(0.49, 0.75, 0.31, 0.3) if empty else (hud._c("accent") if bool(c["on"]) else Color("#2f6a27")), 0, 2)
+	if not empty:
+		sb.shadow_color = Color("#1d4a1b")
+		sb.shadow_offset = Vector2(0, 2)
 	for st: String in ["normal", "hover", "pressed", "disabled"]:
 		var s2 := sb.duplicate() as StyleBoxFlat
 		if st == "hover" and not empty:

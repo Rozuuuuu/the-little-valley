@@ -46,21 +46,21 @@ func _run() -> void:
 	event.physical_keycode = KEY_Z
 	game._key(event)
 	check(game.paused, "remapped key pauses the actual game")
-	game.hud.toggle_menu()
+	game.hud.show_settings()
 	await process_frame
 	game.settings.ui_scale = 1.5
 	game.hud._apply_scale()
 	for _frame: int in 3:
 		await process_frame
-	check(game.hud._menu.size.y * 1.5 <= root.get_visible_rect().size.y,
-		"larger interface settings keep the menu within the viewport (menu %.1f, viewport %.1f)" % [game.hud._menu.size.y * 1.5, root.get_visible_rect().size.y])
+	check(game.hud._modal_box.size.y * 1.5 <= root.get_visible_rect().size.y,
+		"larger interface settings keep the settings within the viewport (settings %.1f, viewport %.1f)" % [game.hud._modal_box.size.y * 1.5, root.get_visible_rect().size.y])
 	game.settings.ui_scale = 1.0
 	game.hud._apply_scale()
 	game._key(event)
 	check(game.paused, "menu blocks game commands")
 	var edit := LineEdit.new()
 	game.hud._root.add_child(edit)
-	game.hud._menu.hide()
+	game.hud.close_modal()
 	edit.grab_focus()
 	game._key(event)
 	check(game.paused, "typing blocks game commands")
@@ -81,10 +81,10 @@ func _run() -> void:
 	DirAccess.remove_absolute("user://test-controls.cfg")
 	if not OS.get_cmdline_user_args().is_empty():
 		panel.hide()
-		game.hud._menu.show()
+		game.hud.show_settings()
 		for _frame: int in 10:
 			await process_frame
-		var scroll := game.hud._menu.get_child(0) as ScrollContainer
+		var scroll := game.hud._modal_box.get_child(0) as ScrollContainer
 		scroll.scroll_vertical = 10000
 		for _frame: int in 10:
 			await process_frame

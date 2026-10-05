@@ -2,7 +2,7 @@
 # Exports the Godot version. Usage, from the repository root:
 #   GODOT=/path/to/Godot_v4.7.2-stable_win64_console.exe \
 #   GODOT_TEMPLATES=/path/to/templates \
-#   scripts/godot-export.sh web|windows [release|debug]
+#   scripts/godot-export.sh web|windows|studio [release|debug]
 #
 # GODOT_TEMPLATES is the folder holding web_nothreads_release.zip, windows_release_x86_64.exe,
 # etc. (extracted from the official Godot_v4.7.2-stable_export_templates.tpz). The committed
@@ -26,7 +26,8 @@ sed -i "s#__TEMPLATES__#${templates}#g" "$presets"
 case "$target" in
   web) preset="Web"; out="$root/dist-godot/web/index.html" ;;
   windows) preset="Windows"; out="$root/dist-godot/windows/LittleValley.exe" ;;
-  *) echo "unknown target $target (web or windows)"; exit 2 ;;
+  studio) preset="Asset Studio"; out="$root/dist-godot/windows/LittleValleyAssetStudio.exe" ;;
+  *) echo "unknown target $target (web, windows or studio)"; exit 2 ;;
 esac
 mkdir -p "$(dirname "$out")"
 "$GODOT" --headless --path "$root/godot" --import >/dev/null 2>&1 || true

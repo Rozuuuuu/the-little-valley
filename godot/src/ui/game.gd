@@ -17,6 +17,9 @@ const LONG_PRESS := 0.4
 
 var sim: Simulation
 var art := Art.new()
+## Saves live in the game's own folder (%APPDATA%\Little Valley on Windows); bring over any from
+## the earlier location before settings and saves are read (members initialise in order).
+var _user_dir_ready := UserDir.migrate_old()
 var settings := Settings.load_saved()
 var store := SaveStore.new()
 var view := WorldView.new()
@@ -90,9 +93,31 @@ func _ready() -> void:
 	add_child(hud)
 	pwa.update_ready.connect(_on_update_ready)
 	add_child(pwa)
-	if not _capture_requested():
+	if is_studio_app():
+		# The Asset Studio is its own program (LittleValleyAssetStudio.exe, or `-- --studio-app`):
+		# it opens straight into the studio over a living valley and shares the game's art folder.
+		get_window().title = "Little Valley Asset Studio"
+		_show_backdrop()
+		hud._studio.app_mode = true
+		hud.open_studio()
+		for a in OS.get_cmdline_user_args():
+			if a.begins_with("--shot="):
+				_studio_shot.call_deferred(a.substr(7))
+	elif not _capture_requested():
 		_show_backdrop()
 		hud.show_title()
+
+
+func _studio_shot(path: String) -> void:
+	for i in 60:
+		await get_tree().process_frame
+	get_viewport().get_texture().get_image().save_png(path)
+	print("captured studio app %s" % path)
+	get_tree().quit()
+
+
+static func is_studio_app() -> bool:
+	return OS.has_feature("studio") or OS.get_cmdline_user_args().has("--studio-app")
 
 
 # ---- capture mode (screenshots for review and benchmarks) ------------------------------------
@@ -133,6 +158,9 @@ func _title_capture(opts: Dictionary) -> void:
 	hud.show_title()
 	if opts.get("newworld", "0") == "1":
 		hud.show_new_world()
+	match str(opts.get("modal", "")):
+		"load": hud.show_load()
+		"settings": hud.show_settings()
 	for i in 90:
 		await get_tree().process_frame
 	if str(opts["shot"]) != "":
@@ -1082,7 +1110,7 @@ func _key(k: InputEventKey) -> void:
 	if focus is LineEdit or focus is TextEdit:
 		return
 	var action := settings.bindings.action_for(k)
-	if hud.blocking() and action != "cancel":
+	if hud._studio.app_mode or (hud.blocking() and action != "cancel"):
 		return
 	# The command card answers to its own keys first (as the browser's console does).
 	if hud.console.handle_key(k):

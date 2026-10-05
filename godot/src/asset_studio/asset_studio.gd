@@ -30,6 +30,8 @@ var _recolour := HSlider.new()
 var _name := LineEdit.new()
 var _controls := VBoxContainer.new()
 var _quiet := false
+## The separate Asset Studio app (export preset "Asset Studio"): closing it quits the program.
+var app_mode := false
 
 
 ## A sprite drawn on a checkerboard with its anchor marked.
@@ -91,7 +93,7 @@ func setup(h: Hud) -> void:
 	note.add_theme_color_override("font_color", hud._c("textDim"))
 	note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(note)
-	head.add_child(hud._button("Close", func() -> void: visible = false))
+	head.add_child(hud._button("Close", _close))
 	root.add_child(head)
 	var body := HBoxContainer.new()
 	body.add_theme_constant_override("separation", 12)
@@ -236,7 +238,11 @@ func choose(n: String) -> void:
 	var e: Dictionary = entries.get(n, {})
 	_title.text = "%s  (%d × %d)" % [n.replace("_", " "), int(e.get("w", 0)), int(e.get("h", 0))]
 	var gen := Image.new()
-	gen.load_svg_from_string(str(e.get("svg", "")), 1.0)
+	# The game's own drawing (pixel art is a PNG, older entries an SVG), never the player's.
+	if e.has("png"):
+		gen.load_png_from_buffer(Marshalls.base64_to_raw(str(e["png"])))
+	elif e.has("svg"):
+		gen.load_svg_from_string(str(e["svg"]), 1.0)
 	_game_preview.texture = ImageTexture.create_from_image(gen) if not gen.is_empty() else null
 	_game_preview.anchor = Vector2(float(e.get("ax", 0)), float(e.get("ay", 0)))
 	_game_preview.caption = "The game's art"
@@ -336,3 +342,10 @@ func import_pack() -> void:
 	_name.text = pack.name
 	choose(sprite)
 	hud.toast("Imported %d sprite%s from %s" % [int(r["count"]), "" if int(r["count"]) == 1 else "s", picked["name"]], "good")
+
+
+func _close() -> void:
+	if app_mode:
+		get_tree().quit()
+	else:
+		visible = false

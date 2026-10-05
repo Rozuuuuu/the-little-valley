@@ -43,8 +43,7 @@ var _help: PanelContainer = null
 var _help_body: VBoxContainer
 var _help_scroll: ScrollContainer
 var _toasts := VBoxContainer.new()
-var _title := PanelContainer.new()
-var _menu := PanelContainer.new()
+var _title := Control.new()
 var _busy := PanelContainer.new()
 var _today := PanelContainer.new()
 var _studio := AssetStudio.new()
@@ -108,7 +107,7 @@ func _ready() -> void:
 	_root.add_child(_towns)
 	_realm.setup(self)
 	_root.add_child(_realm)
-	for p: Control in [_title, _menu, _busy, _today]:
+	for p: Control in [_title, _busy, _today]:
 		p.set_anchors_preset(Control.PRESET_CENTER)
 		p.visible = false
 		_root.add_child(p)
@@ -132,12 +131,6 @@ func _apply_scale() -> void:
 	var size := get_viewport().get_visible_rect().size / s
 	if _root.size != size:
 		_root.size = size
-		for child: Node in _menu.get_children():
-			if child is ScrollContainer:
-				(child as ScrollContainer).custom_minimum_size.y = maxf(160.0, minf(680.0, size.y - 32.0))
-		if _menu.visible:
-			_menu.reset_size()
-			_center(_menu)
 
 
 # ---- theme -----------------------------------------------------------------------------------
@@ -157,86 +150,125 @@ func _box(bg: Color, border: Color, radius: int = 0, pad: int = 8) -> StyleBoxFl
 
 
 ## A pixel button as the browser's (src/ui/pixel.css): soil with a turf edge and a dark drop.
-func _soil_button(bg: Color, edge: Color) -> StyleBoxFlat:
-	var b := _box(bg, edge, 0, 4)
-	b.shadow_color = _c("lineDark")
+## A pixel button as the browser's (src/ui/pixel.css .panel .btn): soil with a 2 px turf edge and
+## a 2 px dark-grass drop below.
+func _soil_button(bg: Color, edge: Color, border: int = 2) -> StyleBoxFlat:
+	var b := StyleBoxFlat.new()
+	b.bg_color = bg
+	b.border_color = edge
+	b.set_border_width_all(border)
+	b.shadow_color = Color("#1d4a1b")
 	b.shadow_size = 0
 	b.shadow_offset = Vector2(0, 2)
-	b.expand_margin_bottom = 0
-	b.content_margin_left = 8
-	b.content_margin_right = 8
+	b.content_margin_left = 12
+	b.content_margin_right = 12
+	b.content_margin_top = 5
+	b.content_margin_bottom = 5
 	return b
 
 
-## The browser's 12×12 grass frame (src/ui/pixel.css): blades along the top, a dark rim and a
-## dirt-edge line inside. a/b blade greens, c rim, d grass, e dirt edge; "." is the dirt inside.
-const GRASS_FRAME := [
-	".a..a..a..a.",
-	".abbabbabba.",
-	"cdddddbdddbc",
-	"cbdeeeeeebdc",
-	"cdbe....eddc",
-	"cdde....eddc",
-	"cdde....edbc",
-	"cbde....eddc",
-	"cddeeeeeebdc",
-	"cdbddddbdddc",
-	"cdbdddbdddbc",
-	".cccccccccc.",
-]
-const FRAME_COLOURS := {"a": "#a8e070", "b": "#7cc050", "c": "#1c3416", "d": "#4f8a3c", "e": "#3a2414"}
-const FRAME_SCALE := 2
-
-
-## A dirt panel in the grass frame, as a nine-patch: the blades repeat along the top edge.
+## Every box: the browser's grass frame round tiled dirt, at 2× (1× in the top bar).
 func _grass_panel() -> StyleBoxTexture:
-	var im := Image.create(12, 12, false, Image.FORMAT_RGBA8)
-	for y in 12:
-		var row: String = GRASS_FRAME[y]
-		for x in 12:
-			var ch := row[x]
-			if FRAME_COLOURS.has(ch):
-				im.set_pixel(x, y, Color(str(FRAME_COLOURS[ch])))
-			elif (y >= 4 and y <= 7 and x >= 4 and x <= 7):
-				im.set_pixel(x, y, Color(_c("panel"), 0.97))
-	im.resize(12 * FRAME_SCALE, 12 * FRAME_SCALE, Image.INTERPOLATE_NEAREST)
-	var s := StyleBoxTexture.new()
-	s.texture = ImageTexture.create_from_image(im)
-	for side: Side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
-		s.set_texture_margin(side, 4 * FRAME_SCALE)
-		s.set_content_margin(side, 4 * FRAME_SCALE + 6)
-	s.set_content_margin(SIDE_TOP, 4 * FRAME_SCALE + 8)
-	s.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_TILE_FIT
-	s.axis_stretch_vertical = StyleBoxTexture.AXIS_STRETCH_MODE_STRETCH
-	return s
+	return HudTextures.panel_style(2)
 
 
 func _make_theme() -> Theme:
 	var t := Theme.new()
 	t.default_font = _font
-	t.default_font_size = 17
+	t.default_font_size = 15
 	t.set_stylebox("panel", "PanelContainer", _grass_panel())
-	var soil := _c("panelHi")
-	t.set_stylebox("normal", "Button", _soil_button(soil, _c("line")))
-	t.set_stylebox("hover", "Button", _soil_button(Color("#8a5c36"), _c("lineHi")))
-	t.set_stylebox("pressed", "Button", _soil_button(Color(_c("on")), _c("accent")))
-	t.set_stylebox("focus", "Button", _box(Color(0, 0, 0, 0), _c("accent"), 0, 6))
-	t.set_stylebox("disabled", "Button", _soil_button(Color(soil, 0.55), Color(_c("line"), 0.5)))
+	var soil := Color("#634024")
+	var grass := Color("#2f6a27")
+	t.set_stylebox("normal", "Button", _soil_button(soil, grass))
+	t.set_stylebox("hover", "Button", _soil_button(Color("#8a5c36"), Color("#4f9636")))
+	var down := _soil_button(Color("#8a6a1c"), _c("accent"))
+	down.shadow_offset = Vector2.ZERO
+	t.set_stylebox("pressed", "Button", down)
+	t.set_stylebox("focus", "Button", StyleBoxEmpty.new())
+	var off := _soil_button(Color(soil, 0.5), Color(grass, 0.5))
+	t.set_stylebox("disabled", "Button", off)
 	t.set_color("font_color", "Button", _c("text"))
-	t.set_color("font_hover_color", "Button", _c("accent"))
+	t.set_color("font_hover_color", "Button", _c("text"))
 	t.set_color("font_pressed_color", "Button", Color("#fffbe8"))
-	t.set_color("font_disabled_color", "Button", Color(_c("textDim"), 0.6))
+	t.set_color("font_disabled_color", "Button", Color(_c("text"), 0.45))
+	# The browser's text shadow on dirt: 1 px down, dark brown, so text stays crisp over clods.
+	for type: String in ["Label", "Button", "CheckButton", "CheckBox"]:
+		t.set_color("font_shadow_color", type, Color(0.094, 0.047, 0.016, 0.75))
+		t.set_constant("shadow_offset_x", type, 0)
+		t.set_constant("shadow_offset_y", type, 1)
+	t.set_color("font_shadow_color", "RichTextLabel", Color(0.094, 0.047, 0.016, 0.75))
+	t.set_constant("shadow_offset_y", "RichTextLabel", 1)
 	# The green primary button (Continue, Start), as the browser's .btn.primary.
 	t.set_type_variation("PrimaryButton", "Button")
-	t.set_stylebox("normal", "PrimaryButton", _soil_button(Color(_c("primary")), Color(_c("primaryEdge"))))
-	t.set_stylebox("hover", "PrimaryButton", _soil_button(Color("#5e9a45"), Color(_c("primaryEdge"))))
+	t.set_stylebox("normal", "PrimaryButton", _soil_button(Color("#4f8a3c"), Color("#a8e070")))
+	t.set_stylebox("hover", "PrimaryButton", _soil_button(Color("#5e9a45"), Color("#a8e070")))
 	t.set_color("font_color", "PrimaryButton", Color("#fffbe8"))
+	t.set_color("font_hover_color", "PrimaryButton", Color("#fffbe8"))
+	# A danger button (Delete, Return to title).
+	t.set_type_variation("DangerButton", "Button")
+	t.set_stylebox("normal", "DangerButton", _soil_button(soil, Color("#d86048")))
+	t.set_stylebox("hover", "DangerButton", _soil_button(Color("#4a2a26"), Color("#d86048")))
+	t.set_color("font_color", "DangerButton", Color("#ffc0b0"))
+	# A window tab in the top bar (src/ui/pixel.css .win-btn): soil with a dirt edge; on: grass.
+	t.set_type_variation("TabButton", "Button")
+	var tab := _soil_button(soil, Color("#4c311b"))
+	tab.content_margin_left = 7
+	tab.content_margin_right = 7
+	tab.content_margin_top = 3
+	tab.content_margin_bottom = 3
+	tab.shadow_offset = Vector2.ZERO
+	t.set_stylebox("normal", "TabButton", tab)
+	var tab_hover := tab.duplicate() as StyleBoxFlat
+	tab_hover.border_color = Color("#4f9636")
+	t.set_stylebox("hover", "TabButton", tab_hover)
+	t.set_font_size("font_size", "TabButton", 13)
+	t.set_type_variation("TabOn", "Button")
+	var on := tab.duplicate() as StyleBoxFlat
+	on.bg_color = Color("#1d4a1b")
+	on.border_color = Color("#4f9636")
+	t.set_stylebox("normal", "TabOn", on)
+	t.set_stylebox("hover", "TabOn", on)
+	t.set_color("font_color", "TabOn", Color("#fffbe8"))
+	t.set_font_size("font_size", "TabOn", 13)
+	# The chosen speed, a pressed toggle (src/ui/pixel.css .btn.on): gold on dark gold.
+	t.set_type_variation("GoldOn", "Button")
+	var gold := tab.duplicate() as StyleBoxFlat
+	gold.bg_color = Color("#8a6a1c")
+	gold.border_color = _c("accent")
+	t.set_stylebox("normal", "GoldOn", gold)
+	t.set_stylebox("hover", "GoldOn", gold)
+	t.set_color("font_color", "GoldOn", Color("#fffbe8"))
+	t.set_font_size("font_size", "GoldOn", 13)
 	t.set_color("font_color", "Label", _c("text"))
 	t.set_color("default_color", "RichTextLabel", _c("text"))
-	t.set_stylebox("normal", "LineEdit", _box(_c("panelHi"), _c("panelEdge"), 0, 6))
+	var field := _soil_button(soil, Color("#4c311b"))
+	field.shadow_offset = Vector2.ZERO
+	field.content_margin_left = 8
+	field.content_margin_top = 4
+	field.content_margin_bottom = 4
+	t.set_stylebox("normal", "LineEdit", field)
+	var field_focus := field.duplicate() as StyleBoxFlat
+	field_focus.border_color = _c("accent")
+	t.set_stylebox("focus", "LineEdit", field_focus)
 	t.set_color("font_color", "LineEdit", _c("text"))
-	t.set_stylebox("normal", "OptionButton", _soil_button(soil, _c("line")))
-	t.set_stylebox("hover", "OptionButton", _soil_button(Color("#8a5c36"), _c("lineHi")))
+	t.set_color("font_placeholder_color", "LineEdit", Color(_c("text"), 0.45))
+	t.set_stylebox("normal", "OptionButton", _soil_button(soil, grass))
+	t.set_stylebox("hover", "OptionButton", _soil_button(Color("#8a5c36"), Color("#4f9636")))
+	t.set_stylebox("panel", "PopupMenu", _soil_button(Color("#4c311b"), grass))
+	t.set_color("font_color", "PopupMenu", _c("text"))
+	t.set_color("font_hover_color", "PopupMenu", _c("accent"))
+	t.set_stylebox("panel", "TooltipPanel", HudTextures.panel_style(1))
+	t.set_color("font_color", "TooltipLabel", _c("text"))
+	t.set_font_size("font_size", "TooltipLabel", 13)
+	var track := StyleBoxFlat.new()
+	track.bg_color = Color("#4c311b")
+	track.content_margin_top = 3
+	track.content_margin_bottom = 3
+	t.set_stylebox("slider", "HSlider", track)
+	var grab := StyleBoxFlat.new()
+	grab.bg_color = Color("#4f9636")
+	t.set_stylebox("grabber_area", "HSlider", grab)
+	t.set_stylebox("grabber_area_highlight", "HSlider", grab)
 	t.set_font("bold_font", "RichTextLabel", _bold)
 	return t
 
@@ -326,36 +358,36 @@ func _build_top() -> void:
 				game.paused = false
 				game.speed = v
 			refresh_now(), "Pause" if v == 0 else "Speed %d×" % v, "pause" if v == 0 else {1: "speed1", 2: "speed2", 4: "speed3"}[v])
-		sb.add_theme_font_size_override("font_size", 12)
-		sb.custom_minimum_size = Vector2(26, 0)
+		sb.theme_type_variation = &"TabButton"
+		sb.custom_minimum_size = Vector2(28, 0)
 		_speed_buttons[v] = sb
 		rr.add_child(sb)
 	var today := _button("Today", func() -> void: game.open_today(), "Valley today: what needs attention and what to do next", "today")
-	today.add_theme_font_size_override("font_size", 12)
+	today.theme_type_variation = &"TabButton"
 	rr.add_child(today)
 	var menu := _button("Menu", toggle_menu, "Menu: save, settings and leaving (Esc)")
-	menu.add_theme_font_size_override("font_size", 12)
+	menu.theme_type_variation = &"TabButton"
 	rr.add_child(menu)
 	_top.add_child(right)
 	_top.visible = false
 	_root.add_child(_top)
 
 
-## The top bar's boxes: the grass-framed dirt panel with tighter margins.
+## The top bar's boxes: the browser draws them with the frame at 1× (src/ui/pixel.css .hud-top).
 func _bar_panel() -> StyleBoxTexture:
-	var s := _grass_panel()
-	s.set_content_margin(SIDE_LEFT, 10)
-	s.set_content_margin(SIDE_RIGHT, 10)
-	s.set_content_margin(SIDE_TOP, 10)
-	s.set_content_margin(SIDE_BOTTOM, 6)
-	return s
+	var sb := HudTextures.panel_style(1)
+	sb.content_margin_top = 13
+	sb.content_margin_bottom = 4
+	sb.content_margin_left = 9
+	sb.content_margin_right = 9
+	return sb
 
 
 ## A window tab with its function key shown small above the name, and an optional alert badge.
 func _tab_button(text: String, action: String, tip: String, on_press: Callable) -> Button:
 	var b := _button(text, on_press, tip, action)
 	b.toggle_mode = false
-	b.add_theme_font_size_override("font_size", 12)
+	b.theme_type_variation = &"TabButton"
 	var k := Label.new()
 	k.text = game.settings.bindings.label(action) if game != null else ""
 	k.add_theme_font_size_override("font_size", 8)
@@ -394,7 +426,7 @@ func _refresh_top() -> void:
 			_stocks.add_child(chip)
 			_stock_labels[r] = l
 		_goods_button = _button("Goods", toggle_goods, "Every other good in store", "goods")
-		_goods_button.add_theme_font_size_override("font_size", 12)
+		_goods_button.theme_type_variation = &"TabButton"
 		_stocks.add_child(_goods_button)
 		for k: Array in [["pop", "ui_people", "People / beds and bunks"], ["store", "ui_storage", "Goods in store / storage room"]]:
 			var chip := HBoxContainer.new()
@@ -447,7 +479,7 @@ func _refresh_top() -> void:
 		_sun.texture = game.art.sprites[icon]["texture"]
 	for v: int in _speed_buttons:
 		var on := (v == 0 and game.paused) or (v != 0 and not game.paused and game.speed == v)
-		(_speed_buttons[v] as Button).theme_type_variation = &"PrimaryButton" if on else &""
+		(_speed_buttons[v] as Button).theme_type_variation = &"GoldOn" if on else &"TabButton"
 	var idle := console.find_list("idle").size() if console.game != null else 0
 	var badge: Label = (_tabs["people"] as Button).get_node("Badge")
 	badge.visible = idle > 0
@@ -455,7 +487,7 @@ func _refresh_top() -> void:
 	badge.position = Vector2((_tabs["people"] as Button).size.x - 14, -4)
 	for k: String in _tabs:
 		var w: Control = {"people": _list, "areas": _areas, "towns": _towns, "families": _people, "realm": _realm, "goals": _goals}[k]
-		(_tabs[k] as Button).theme_type_variation = &"PrimaryButton" if w.visible else &""
+		(_tabs[k] as Button).theme_type_variation = &"TabOn" if w.visible else &"TabButton"
 
 
 # ---- simple windows: People list, Goals, Goods -------------------------------------------------
@@ -1161,113 +1193,460 @@ func _area_row(a: WorkArea, crops: Array[String]) -> Control:
 # ---- states ------------------------------------------------------------------------------------
 
 func blocking() -> bool:
-	return _title.visible or _menu.visible or _busy.visible or _today.visible or _studio.visible
+	return _title.visible or _modal.visible or _busy.visible or _today.visible or _studio.visible
 
 
 func show_busy(text: String) -> void:
 	_busy_label.text = text
 	_busy.visible = true
 	_title.visible = false
-	_menu.visible = false
+	close_modal()
 
 
 func show_play() -> void:
 	_today.visible = false
 	_busy.visible = false
 	_title.visible = false
-	_menu.visible = false
+	close_modal()
 	_top.visible = true
 	console.visible = true
 	refresh_now()
 
 
+## The title, as the browser game's (src/ui/App.tsx Title and styles.css .title-screen): no box;
+## the logo, tagline and menu stand at the left over the living valley, which a dark gradient
+## shades behind them. Continue, New valley, Load a valley, Settings; Full screen below; a tip;
+## the credit and version at the bottom right.
 func show_title(message: String = "") -> void:
 	_today.visible = false
 	_tutorial.visible = false
 	_busy.visible = false
-	_menu.visible = false
+	close_modal()
 	_top.visible = false
 	console.visible = false
 	for c in _title.get_children():
 		c.queue_free()
-	var v := VBoxContainer.new()
-	v.custom_minimum_size = Vector2(460, 0)
-	v.add_theme_constant_override("separation", 8)
-	_title.add_child(v)
-	# The logo: "Little" in cream over "Valley" in gold, as on the old game's title.
+	_title.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var shade := TextureRect.new()
+	var g := Gradient.new()
+	g.offsets = PackedFloat32Array([0.0, 0.38, 0.7, 1.0])
+	g.colors = PackedColorArray([Color(0.063, 0.086, 0.071, 0.82), Color(0.063, 0.086, 0.071, 0.55), Color(0.063, 0.086, 0.071, 0.0), Color(0.063, 0.086, 0.071, 0.0)])
+	var gt := GradientTexture2D.new()
+	gt.gradient = g
+	gt.width = 256
+	gt.height = 4
+	shade.texture = gt
+	shade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	shade.stretch_mode = TextureRect.STRETCH_SCALE
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_title.add_child(shade)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 0)
+	_title.add_child(col)
+	# The logo: "Little" in cream over "Valley" in gold, indented, with the browser's hard shadow.
+	var size := clampi(roundi(_root.size.x * 0.09), 56, 112)
 	var logo := VBoxContainer.new()
-	logo.add_theme_constant_override("separation", -30)
-	v.add_child(logo)
-	for part: Array in [["Little", _c("text")], ["Valley", _c("accent")]]:
+	logo.add_theme_constant_override("separation", -roundi(size * 0.32))
+	col.add_child(logo)
+	for part: Array in [["Little", _c("text"), 0], ["Valley", _c("accent"), roundi(size * 0.6)]]:
+		var row := HBoxContainer.new()
+		var pad := Control.new()
+		pad.custom_minimum_size = Vector2(int(part[2]), 0)
+		row.add_child(pad)
 		var h := Label.new()
 		h.text = part[0]
 		h.add_theme_font_override("font", _bold)
-		h.add_theme_font_size_override("font_size", 64)
+		h.add_theme_font_size_override("font_size", size)
 		h.add_theme_color_override("font_color", part[1])
-		h.add_theme_color_override("font_outline_color", Color(0.16, 0.09, 0.04))
-		h.add_theme_constant_override("outline_size", 10)
-		h.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.35))
-		h.add_theme_constant_override("shadow_offset_y", 4)
-		logo.add_child(h)
+		h.add_theme_color_override("font_shadow_color", Color("#2b2033"))
+		h.add_theme_constant_override("shadow_offset_x", 5)
+		h.add_theme_constant_override("shadow_offset_y", 5)
+		h.add_theme_constant_override("line_spacing", -int(size * 0.25))
+		row.add_child(h)
+		logo.add_child(row)
 	var tag := Label.new()
 	tag.text = "Clear a meadow, plant the first rows, and grow a Town Hall into a kingdom one season at a time."
 	tag.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	tag.add_theme_color_override("font_color", _c("textDim"))
-	v.add_child(tag)
+	tag.custom_minimum_size = Vector2(380, 0)
+	tag.add_theme_font_size_override("font_size", 18)
+	tag.add_theme_constant_override("shadow_offset_y", 2)
+	col.add_child(_spacer(22))
+	col.add_child(tag)
+	col.add_child(_spacer(26))
 	if message != "":
-		var m := Label.new()
-		m.text = message
-		m.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		m.add_theme_color_override("font_color", _c("problem"))
-		v.add_child(m)
-	for w: Dictionary in game.store.worlds().slice(0, 4):
-		var p: Dictionary = (w["points"] as Array)[0]
-		var id: String = w["id"]
-		var cont := _button("Continue %s — day %d, %d people" % [w["name"], int(p.get("day", 0)), int(p.get("population", 0))], func() -> void: game.load_world(id))
-		cont.theme_type_variation = &"PrimaryButton"
-		v.add_child(cont)
-	v.add_child(_button("Load a valley", func() -> void: game.load_from_file(), "A save downloaded from this game or the old browser game"))
-	v.add_child(_button("Asset Studio", open_studio, "Your own art for anything in the valley, kept on this device"))
+		var m := _row_label(message, _c("problem"), 14)
+		col.add_child(m)
+		col.add_child(_spacer(8))
+	var menu := VBoxContainer.new()
+	menu.custom_minimum_size = Vector2(260, 0)
+	menu.add_theme_constant_override("separation", 8)
+	menu.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	col.add_child(menu)
+	var worlds := game.store.worlds()
+	if not worlds.is_empty():
+		var latest: Dictionary = worlds[0]
+		var id: String = latest["id"]
+		menu.add_child(_title_button("Continue", func() -> void: game.load_world(id), "%s — day %d, %d people" % [latest["name"], int((latest["points"] as Array)[0].get("day", 0)), int((latest["points"] as Array)[0].get("population", 0))], true))
+	menu.add_child(_title_button("New valley", show_new_world, "Name yourself and your valley, and choose your land", worlds.is_empty()))
+	menu.add_child(_title_button("Load a valley", show_load, "Every valley saved on this computer"))
+	menu.add_child(_title_button("Settings", show_settings, "Sound, play and keys"))
 	if Files.is_web():
 		if game.pwa.update_waiting:
-			v.add_child(_button("Update now", func() -> void: game.pwa.apply_update(), "Save and close other Little Valley tabs first; updating reloads them too."))
-		_offer_old_game(v)
-		if not Pwa.runs_as_app():
-			_offer_install(v)
-	var new_valley := _button("New valley", show_new_world, "Name your ruler and your valley, and choose your land")
-	if game.store.worlds().is_empty():
-		new_valley.theme_type_variation = &"PrimaryButton"
-	v.add_child(new_valley)
-	var note := Label.new()
-	note.text = "Godot preview: farming, crafts, animals, mining, work areas, roles and growing families. Time stands still while the game is closed."
-	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	note.add_theme_color_override("font_color", _c("textDim"))
-	note.add_theme_font_size_override("font_size", 14)
-	v.add_child(note)
+			menu.add_child(_title_button("Update now", func() -> void: game.pwa.apply_update(), "Save and close other Little Valley tabs first; updating reloads them too."))
+		_offer_old_game(menu)
+	# The shell buttons (src/ui/ShellButtons.tsx) and the tip under them.
+	var shell := HBoxContainer.new()
+	shell.add_theme_constant_override("separation", 6)
+	col.add_child(_spacer(12))
+	col.add_child(shell)
+	var fs := _button("Full screen", _toggle_fullscreen, "Play full screen (F)")
+	fs.theme_type_variation = &"TabButton"
+	shell.add_child(fs)
+	if Files.is_web() and not Pwa.runs_as_app():
+		_offer_install(shell)
+	var tip := _row_label("Tip: play full screen so the mouse can't slip off the screen edge while scrolling.", _c("textDim"), 12)
+	tip.custom_minimum_size = Vector2(330, 0)
+	col.add_child(_spacer(6))
+	col.add_child(tip)
+	var credit := Label.new()
+	credit.text = "All art and sound are generated in code. %s" % ("Saved in this browser." if Files.is_web() else "Saved in %s." % UserDir.path().trim_suffix("/"))
+	credit.add_theme_font_size_override("font_size", 12)
+	credit.add_theme_color_override("font_color", _c("textDim"))
+	credit.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	credit.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	credit.offset_right = -14
+	credit.offset_top = -30
+	credit.offset_bottom = -10
+	_title.add_child(credit)
 	_title.visible = true
-	if game.sim == null:
-		_place_title()
-	else:
-		_center(_title)
+	_place_title(col)
 
 
-## On the opening title the menu stands at the left, leaving the valley in view on the right.
-## "A new world", as the browser's dialog: your name (you walk the map as the ruler), the
-## valley's name, the land as cards with what each is like, a seed with Reroll, and whether to
-## show the introduction. Back returns to the title.
-func show_new_world() -> void:
-	for c in _title.get_children():
+func _spacer(h: float) -> Control:
+	var c := Control.new()
+	c.custom_minimum_size = Vector2(0, h)
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return c
+
+
+## A title menu button (src/ui/pixel.css .title-screen .menu .btn): 20 px, left-aligned, a 3 px
+## turf edge and a 3 px drop; the primary one green.
+func _title_button(text: String, on_press: Callable, tip: String = "", primary: bool = false) -> Button:
+	var b := _button(text, on_press, tip)
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	b.add_theme_font_size_override("font_size", 20)
+	var looks := {"normal": [Color("#4f8a3c") if primary else Color("#634024"), Color("#a8e070") if primary else Color("#2f6a27")],
+		"hover": [Color("#5e9a45") if primary else Color("#8a5c36"), Color("#a8e070") if primary else Color("#4f9636")],
+		"pressed": [Color("#8a6a1c"), _c("accent")]}
+	for st: String in looks:
+		var sb := _soil_button(looks[st][0], looks[st][1], 3)
+		sb.shadow_offset = Vector2(0, 3) if st != "pressed" else Vector2.ZERO
+		sb.content_margin_left = 14
+		sb.content_margin_top = 9
+		sb.content_margin_bottom = 9
+		b.add_theme_stylebox_override(st, sb)
+	if primary:
+		b.add_theme_color_override("font_color", Color("#fffbe8"))
+		b.add_theme_color_override("font_hover_color", Color("#fffbe8"))
+	return b
+
+
+func _toggle_fullscreen() -> void:
+	var full := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if full else DisplayServer.WINDOW_MODE_FULLSCREEN)
+
+
+func _version() -> String:
+	return FileAccess.get_file_as_string("res://VERSION").strip_edges() if FileAccess.file_exists("res://VERSION") else "dev"
+
+
+## The menu stands at 8% of the width from the left, centred vertically (as .title-screen).
+func _place_title(col: Control) -> void:
+	await get_tree().process_frame
+	col.reset_size()
+	col.position = Vector2(_root.size.x * 0.08, maxf(16.0, (_root.size.y - col.size.y) / 2.0))
+
+
+# ---- modals: a dimmed scrim with a framed box in the middle (src/ui/Modals.tsx) ----------------
+
+var _modal := Control.new()
+var _modal_box := PanelContainer.new()
+
+
+## Opens a modal titled `title` and returns the box's column to fill. Esc or a click on the dim
+## outside closes it.
+func open_modal(title: String, width: float = 520.0) -> VBoxContainer:
+	if _modal.get_parent() == null:
+		_modal.set_anchors_preset(Control.PRESET_FULL_RECT)
+		var scrim := ColorRect.new()
+		scrim.color = Color(0.047, 0.039, 0.071, 0.55)
+		scrim.set_anchors_preset(Control.PRESET_FULL_RECT)
+		scrim.gui_input.connect(func(e: InputEvent) -> void:
+			if e is InputEventMouseButton and (e as InputEventMouseButton).pressed:
+				close_modal())
+		_modal.add_child(scrim)
+		_modal.add_child(_modal_box)
+		_root.add_child(_modal)
+	for c in _modal_box.get_children():
 		c.queue_free()
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	var v := VBoxContainer.new()
-	v.custom_minimum_size = Vector2(700, 0)
-	v.add_theme_constant_override("separation", 6)
-	_title.add_child(v)
+	v.custom_minimum_size = Vector2(width, 0)
+	v.add_theme_constant_override("separation", 8)
+	scroll.add_child(v)
+	_modal_box.add_child(scroll)
 	var h := Label.new()
-	h.text = "A new world"
+	h.text = title
 	h.add_theme_font_override("font", _bold)
 	h.add_theme_font_size_override("font_size", 20)
 	h.add_theme_color_override("font_color", _c("accent"))
 	v.add_child(h)
+	_modal.visible = true
+	_modal.move_to_front()
+	_fit_modal.call_deferred(scroll, v)
+	return v
+
+
+func _fit_modal(scroll: ScrollContainer, v: Control) -> void:
+	await get_tree().process_frame
+	scroll.custom_minimum_size = Vector2(v.size.x, minf(v.get_combined_minimum_size().y, _root.size.y * 0.9 - 40))
+	_modal_box.reset_size()
+	_modal_box.position = (_root.size - _modal_box.size) / 2.0
+
+
+func close_modal() -> void:
+	if _modal.visible:
+		_modal.visible = false
+		for c in _modal_box.get_children():
+			c.queue_free()
+
+
+func modal_open() -> bool:
+	return _modal.visible
+
+
+func _h3(t: String) -> Label:
+	var l := _row_label(t, _c("accent"), 16)
+	l.add_theme_font_override("font", _bold)
+	return l
+
+
+func _buttons_row(items: Array) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_END
+	row.add_theme_constant_override("separation", 8)
+	for b: Control in items:
+		row.add_child(b)
+	return row
+
+
+## The pause menu (Esc while playing), as the browser's PauseMenu.
+func toggle_menu() -> void:
+	if modal_open():
+		close_modal()
+		_window_sound(false)
+		return
+	_window_sound(true)
+	var v := open_modal(game.world_name if game.world_name != "" else "Menu", 360)
+	var resume := _button("Resume", close_modal)
+	resume.theme_type_variation = &"PrimaryButton"
+	v.add_child(resume)
+	v.add_child(_button("Save now", func() -> void:
+		game.save_now()
+		close_modal()))
+	v.add_child(_button("Settings", show_settings))
+	v.add_child(_button("Controls", func() -> void:
+		close_modal()
+		toggle_help()))
+	v.add_child(_button("Save points", show_points, "Every save of this valley; open an earlier one or name the current one"))
+	v.add_child(_button("Replay introduction" if game.tutorial["done"] else "Skip the introduction", func() -> void:
+		if game.tutorial["done"]:
+			game.restart_tutorial()
+		else:
+			game.skip_tutorial()
+		close_modal()))
+	if game.pwa.update_waiting:
+		v.add_child(_button("Update now", func() -> void: game.update_now(), "This valley is saved first."))
+	if game.sim != null and game.sim.ruler() == null:
+		var throne := LineEdit.new()
+		throne.placeholder_text = "Your ruler's name"
+		throne.max_length = 24
+		v.add_child(throne)
+		v.add_child(_button("Take the throne", func() -> void:
+			if bool(game.command({"type": "takeThrone", "name": throne.text})["ok"]):
+				close_modal(), "Walk the map as your valley's ruler"))
+	var quit := _button("Save and return to title", func() -> void:
+		game.save_now()
+		game.sim = null
+		show_title())
+	quit.theme_type_variation = &"DangerButton"
+	v.add_child(quit)
+	v.add_child(_row_label("The valley saves itself every %d minutes. Saves are kept in %s." % [game.settings.autosave_minutes, "this browser" if Files.is_web() else UserDir.path().trim_suffix("/")], _c("textDim"), 12))
+
+
+## This valley's save points, newest first: open an earlier one, or keep the current one by name.
+func show_points() -> void:
+	var v := open_modal("Save points", 520)
+	var row := HBoxContainer.new()
+	var name_edit := LineEdit.new()
+	name_edit.placeholder_text = "Name a save to keep it for good"
+	name_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(name_edit)
+	row.add_child(_button("Save", func() -> void:
+		game.save_now(name_edit.text.strip_edges())
+		show_points()))
+	v.add_child(row)
+	for p: Dictionary in game.store.points(game.world_id):
+		var point: String = p["id"]
+		var when := Time.get_datetime_string_from_unix_time(int(float(p.get("savedAt", 0)) / 1000.0), true)
+		var lbl := str(p.get("label", ""))
+		var line := HBoxContainer.new()
+		var t := _row_label("%s · day %d%s" % [when, int(p.get("day", 0)), "  “%s”" % lbl if lbl != "" else ""], _c("text"), 13)
+		t.custom_minimum_size = Vector2(0, 0)
+		t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		line.add_child(t)
+		line.add_child(_small("Open", func() -> void:
+			close_modal()
+			game.load_world(game.world_id, point)))
+		v.add_child(line)
+	v.add_child(_buttons_row([_button("Download a copy", func() -> void: game.download_save(), "This valley as a file, to keep or move to another computer"), _button("Back", toggle_menu)]))
+
+
+## "Your valleys" (as the browser's LoadModal): every valley saved on this computer, with Play and
+## Delete. Nothing to upload: saves are kept in the game's folder.
+func show_load() -> void:
+	var v := open_modal("Your valleys", 560)
+	var worlds := game.store.worlds()
+	if worlds.is_empty():
+		v.add_child(_row_label("No saved valleys yet. Start a new one from the title.", _c("textDim"), 14))
+	var ms: Dictionary = Content.get_value("progression", "MILESTONES")
+	for w: Dictionary in worlds:
+		var id: String = w["id"]
+		var p: Dictionary = (w["points"] as Array)[0]
+		var slot := PanelContainer.new()
+		slot.add_theme_stylebox_override("panel", _soil_button(Color("#8a5c36"), Color("#4c311b")))
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override("separation", 8)
+		var info := VBoxContainer.new()
+		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		info.add_theme_constant_override("separation", 0)
+		var nm := _row_label(str(w["name"]), _c("text"), 17)
+		nm.custom_minimum_size = Vector2(0, 0)
+		info.add_child(nm)
+		var when := Time.get_datetime_string_from_unix_time(int(float(p.get("savedAt", 0)) / 1000.0), true)
+		var level := str((ms.get(str(p.get("milestone", "")), {}) as Dictionary).get("name", ""))
+		var meta := _row_label("%sday %d, %d settlers. Saved %s" % [level + ", " if level != "" else "", int(p.get("day", 0)), int(p.get("population", 0)), when], _c("textDim"), 12)
+		meta.custom_minimum_size = Vector2(0, 0)
+		info.add_child(meta)
+		h.add_child(info)
+		var acts := HBoxContainer.new()
+		acts.add_theme_constant_override("separation", 6)
+		var play := _small("Play", func() -> void:
+			close_modal()
+			game.load_world(id))
+		play.theme_type_variation = &"PrimaryButton"
+		acts.add_child(play)
+		var del := _small("Delete", func() -> void: pass)
+		del.pressed.connect(func() -> void:
+			for c in acts.get_children():
+				c.queue_free()
+			var sure := _small("Delete for good", func() -> void:
+				game.store.delete_world(id)
+				show_load())
+			sure.theme_type_variation = &"DangerButton"
+			acts.add_child(sure)
+			acts.add_child(_small("Keep", show_load)))
+		acts.add_child(del)
+		h.add_child(acts)
+		slot.add_child(h)
+		v.add_child(slot)
+	var folder := "your browser" if Files.is_web() else UserDir.path().trim_suffix("/")
+	v.add_child(_row_label("Valleys are saved on this computer, in %s." % folder, _c("textDim"), 12))
+	var buttons: Array = []
+	if not Files.is_web():
+		buttons.append(_button("Open the save folder", func() -> void: OS.shell_open(ProjectSettings.globalize_path("user://saves"))))
+	buttons.append(_button("Bring in a save file", func() -> void:
+		close_modal()
+		game.load_from_file(), "A save from another computer, or from the old browser game"))
+	buttons.append(_button("Back", func() -> void:
+		close_modal()
+		if game.sim == null:
+			show_title()))
+	v.add_child(_buttons_row(buttons))
+
+
+## Settings (as the browser's SettingsModal): Sound, Play, Keys, and where things are kept.
+func show_settings() -> void:
+	var v := open_modal("Settings", 560)
+	var s := game.settings
+	v.add_child(_h3("Sound"))
+	for row: Array in [["Master", "master_volume"], ["Music", "music_volume"], ["Effects", "sfx_volume"]]:
+		v.add_child(_volume_row(row[0], row[1]))
+	v.add_child(_setting_row("Mute everything", _check("", s.muted, func(on: bool) -> void:
+		s.muted = on
+		s.apply_audio(game.audio))))
+	v.add_child(_h3("Play"))
+	v.add_child(_setting_row("Scroll when the mouse touches the screen edge", _check("", s.edge_scroll, func(on: bool) -> void:
+		s.edge_scroll = on
+		game.camera.edge_scroll = on)))
+	v.add_child(_setting_row("Health bars", _choice(["Over everyone", "Only when hurt"], 0 if s.health_bars == "always" else 1, func(i: int) -> void: s.health_bars = "always" if i == 0 else "hurt")))
+	var autos := [1, 2, 3, 5, 10]
+	v.add_child(_setting_row("Autosave every", _choice(autos.map(func(m: int) -> String: return "%d min" % m), maxi(0, autos.find(s.autosave_minutes)), func(i: int) -> void: s.autosave_minutes = autos[i])))
+	var sizes := [0.85, 1.0, 1.25, 1.5]
+	v.add_child(_setting_row("Interface size", _choice(sizes.map(func(z: float) -> String: return "%d%%" % roundi(z * 100)), maxi(0, sizes.find(s.ui_scale)), func(i: int) -> void:
+		s.ui_scale = sizes[i]
+		_apply_scale())))
+	v.add_child(_setting_row("Reduced motion (no sway, still water)", _check("", s.reduced_motion, func(on: bool) -> void: s.reduced_motion = on)))
+	v.add_child(_setting_row("Fewer effects (for slower computers)", _check("", s.effects == "low", func(on: bool) -> void: s.effects = "low" if on else "high")))
+	v.add_child(_setting_row("Full screen", _check("", DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN, func(_on: bool) -> void: _toggle_fullscreen())))
+	v.add_child(_h3("Keys"))
+	v.add_child(_row_label("Click a key, then press the new one. Esc cancels.", _c("textDim"), 12))
+	var bindings_panel := KeyBindingsPanel.new()
+	bindings_panel.setup(s)
+	v.add_child(bindings_panel)
+	v.add_child(_h3("Version"))
+	v.add_child(_row_label("Made with Godot %s. Saves and settings are kept in %s." % [_version(), "this browser" if Files.is_web() else UserDir.path().trim_suffix("/")], _c("textDim"), 12))
+	var done := _button("Done", func() -> void:
+		s.save()
+		if game.sim != null:
+			toggle_menu()
+			toggle_menu()
+		else:
+			close_modal())
+	done.theme_type_variation = &"PrimaryButton"
+	v.add_child(_buttons_row([done]))
+
+
+func _setting_row(text: String, control: Control) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	var l := _row_label(text, _c("text"), 14)
+	l.custom_minimum_size = Vector2(0, 0)
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(l)
+	row.add_child(control)
+	return row
+
+
+func _choice(items: Array, selected: int, on_pick: Callable) -> OptionButton:
+	var o := OptionButton.new()
+	for it: String in items:
+		o.add_item(it)
+	o.selected = selected
+	o.focus_mode = Control.FOCUS_NONE
+	o.item_selected.connect(func(i: int) -> void:
+		on_pick.call(i)
+		game.settings.save())
+	return o
+
+
+## "A new world", as the browser's NewWorldModal: your name (you walk the map as the ruler), the
+## valley's name, the land as cards with what each is like, a seed with Reroll, and whether to
+## show the introduction.
+func show_new_world() -> void:
+	var v := open_modal("A new world", 720)
 	v.add_child(_row_label("Your name - you will walk the map as its ruler", _c("text"), 13))
 	var ruler_edit := LineEdit.new()
 	ruler_edit.placeholder_text = "Type your name"
@@ -1288,30 +1667,26 @@ func show_new_world() -> void:
 	var cards := {}
 	var paint := func() -> void:
 		for k: String in cards:
-			(cards[k] as Button).theme_type_variation = &"PrimaryButton" if k == chosen[0] else &""
+			var on: bool = k == chosen[0]
+			(cards[k] as PanelContainer).add_theme_stylebox_override("panel", _soil_button(Color("#1d4a1b") if on else Color("#634024"), Color("#4f9636") if on else Color("#4c311b")))
 	for k: String in habitats:
-		var card := Button.new()
-		card.focus_mode = Control.FOCUS_NONE
-		card.custom_minimum_size = Vector2(228, 104)
+		var card := PanelContainer.new()
+		card.custom_minimum_size = Vector2(232, 0)
+		card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		var cv := VBoxContainer.new()
-		cv.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		cv.set_anchors_preset(Control.PRESET_FULL_RECT)
-		cv.offset_left = 8
-		cv.offset_top = 6
-		cv.offset_right = -6
-		var n := _row_label(str(habitats[k]["name"]), _c("accent"), 14)
+		cv.add_theme_constant_override("separation", 2)
+		var n := _row_label(str(habitats[k]["name"]), _c("accent"), 15)
 		n.custom_minimum_size = Vector2(0, 0)
-		n.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		cv.add_child(n)
-		var d := _row_label(str(habitats[k]["description"]), _c("text"), 11)
-		d.custom_minimum_size = Vector2(212, 0)
-		d.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var d := _row_label(str(habitats[k]["description"]), _c("textDim"), 12)
+		d.custom_minimum_size = Vector2(204, 0)
 		cv.add_child(d)
 		card.add_child(cv)
 		var id := k
-		card.pressed.connect(func() -> void:
-			chosen[0] = id
-			paint.call())
+		card.gui_input.connect(func(e: InputEvent) -> void:
+			if e is InputEventMouseButton and (e as InputEventMouseButton).pressed:
+				chosen[0] = id
+				paint.call())
 		cards[k] = card
 		grid.add_child(card)
 	paint.call()
@@ -1323,15 +1698,8 @@ func show_new_world() -> void:
 	seed_row.add_child(seed_edit)
 	seed_row.add_child(_button("Reroll", func() -> void: seed_edit.text = str(randi() % 1000000000)))
 	v.add_child(seed_row)
-	var intro := CheckButton.new()
-	intro.text = "Show the introduction"
-	intro.button_pressed = true
-	intro.focus_mode = Control.FOCUS_NONE
-	v.add_child(intro)
-	var foot := HBoxContainer.new()
-	foot.alignment = BoxContainer.ALIGNMENT_END
-	foot.add_theme_constant_override("separation", 8)
-	foot.add_child(_button("Back", func() -> void: show_title()))
+	var intro := _check("", true, func(_on: bool) -> void: pass)
+	v.add_child(_setting_row("Show the introduction", intro))
 	var found := _button("Found the realm", func() -> void:
 		var ruler := ruler_edit.text.strip_edges()
 		if ruler == "":
@@ -1341,23 +1709,16 @@ func show_new_world() -> void:
 		var seed_text := seed_edit.text.strip_edges()
 		var seed_value := int(seed_text) if seed_text.is_valid_int() else (seed_text.hash() if seed_text != "" else randi() % 2147483647)
 		var valley := name_edit.text.strip_edges()
+		close_modal()
 		game.new_world(seed_value, chosen[0], valley if valley != "" else "Little Valley", ruler, intro.button_pressed))
 	found.theme_type_variation = &"PrimaryButton"
-	foot.add_child(found)
-	v.add_child(foot)
-	_title.visible = true
-	_center(_title)
-	ruler_edit.grab_focus()
-
-
-func _place_title() -> void:
-	await get_tree().process_frame
-	_title.position = Vector2(maxf(16.0, _root.size.x * 0.06), maxf(16.0, (_root.size.y - _title.size.y) / 2.0))
+	v.add_child(_buttons_row([_button("Back", close_modal), found]))
+	ruler_edit.grab_focus.call_deferred()
 
 
 ## Adds "Bring in valleys from the old game" to the title when the old browser game has valleys
 ## on this address that are not here yet. Their originals stay where they are.
-func _offer_old_game(v: VBoxContainer) -> void:
+func _offer_old_game(v: BoxContainer) -> void:
 	var pending := await game.old_game_pending()
 	if pending.is_empty() or not is_instance_valid(v):
 		return
@@ -1418,69 +1779,99 @@ func _refresh_tutorial() -> void:
 
 ## Valley today (src/ui/Village.tsx): last session's recap, what needs attention, ideas for
 ## today and the next milestone. Every line jumps to what it talks about.
+## "Valley today", as the browser's (src/ui/Village.tsx): a column at the left under the top bar,
+## above the console. A recap of the last session, what needs attention (!) and ideas for today
+## (→) as cards that jump to what they name, the next milestone's checklist, and Start playing.
 func show_today(o: Dictionary) -> void:
 	for c in _today.get_children():
 		c.queue_free()
+	_tutorial.visible = false
+	_today.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(560, mini(640, int(_root.size.y) - 80))
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_today.add_child(scroll)
-	var pad := MarginContainer.new()
-	pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for side: String in ["left", "right", "top", "bottom"]:
-		pad.add_theme_constant_override("margin_" + side, 14)
-	scroll.add_child(pad)
 	var v := VBoxContainer.new()
-	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	v.custom_minimum_size = Vector2(372, 0)
 	v.add_theme_constant_override("separation", 6)
-	pad.add_child(v)
+	scroll.add_child(v)
 	var head := HBoxContainer.new()
-	var h := Label.new()
-	h.text = "%s today" % (game.world_name if game.world_name != "" else "Your valley")
+	var h := _row_label("%s today" % (game.world_name if game.world_name != "" else "Your valley"), _c("accent"), 20)
 	h.add_theme_font_override("font", _bold)
-	h.add_theme_font_size_override("font_size", 24)
-	h.add_theme_color_override("font_color", _c("accent"))
+	h.custom_minimum_size = Vector2(0, 0)
 	h.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(h)
-	head.add_child(_button("Close", _close_today))
+	head.add_child(_small("Close", _close_today))
 	v.add_child(head)
-	v.add_child(_wrapped(str(o["sinceNote"]), _c("textDim")))
+	v.add_child(_today_text(str(o["sinceNote"]), _c("textDim")))
 	if o["since"] is Array:
 		for line: String in o["since"]:
-			v.add_child(_wrapped("•  " + line, _c("text")))
-	for section: Array in [["Needs attention", o["issues"], "!"], ["Ideas for today", o["goals"], "›"]]:
+			v.add_child(_today_text("•  " + line, _c("text")))
+	for section: Array in [["Needs attention", o["issues"], "!", Color("#c8841c")], ["Ideas for today", o["goals"], ">", Color("#4f8a3c")]]:
 		var items: Array = section[1]
 		if items.is_empty():
 			continue
-		v.add_child(_wrapped(section[0], _c("textDim")))
+		v.add_child(_h3(section[0]))
 		for item: Dictionary in items:
-			var detail := str(item.get("detail", ""))
-			var b := _button("%s  %s" % [section[2], item["text"]], _go_today.bind(item), detail)
-			b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-			b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			v.add_child(b)
-			if detail != "":
-				var indent := MarginContainer.new()
-				indent.add_theme_constant_override("margin_left", 28)
-				var dl := _wrapped(detail, _c("textDim"))
-				dl.custom_minimum_size = Vector2(440, 0)
-				indent.add_child(dl)
-				v.add_child(indent)
+			v.add_child(_today_card(item, section[2], section[3]))
 	var ms: Dictionary = o["milestone"]
 	if ms["next"] != null:
-		v.add_child(_wrapped("%s › %s" % [ms["current"], ms["next"]], _c("textDim")))
+		v.add_child(_h3("%s, next: %s" % [ms["current"], ms["next"]]))
 		for r: Dictionary in ms["reqs"]:
 			var done: bool = r["done"]
-			v.add_child(_wrapped("%s %s%s" % ["•" if done else "·", r["label"], "" if done else "  (%d/%d)" % [int(r["current"]), int(r["target"])]],
-				_c("good") if done else _c("text")))
-	v.add_child(_button("Start playing", _close_today))
+			v.add_child(_today_text("%s  %s%s" % ["[x]" if done else "[ ]", r["label"], "" if done else " (%d/%d)" % [int(r["current"]), int(r["target"])]], _c("good") if done else _c("text")))
+	var start := _button("Start playing", _close_today)
+	start.theme_type_variation = &"PrimaryButton"
+	v.add_child(start)
 	_root.move_child(_today, -1)
 	_today.visible = true
-	# As tall as its content, up to the screen.
 	await get_tree().process_frame
-	scroll.custom_minimum_size.y = minf(pad.get_combined_minimum_size().y, _root.size.y - 80)
+	scroll.custom_minimum_size = Vector2(372, minf(v.get_combined_minimum_size().y, _root.size.y - 62 - GameConsole.HEIGHT - 22))
 	_today.reset_size()
-	_center(_today)
+	_today.position = Vector2(6, 62)
+
+
+func _today_text(t: String, col: Color) -> Label:
+	var l := _row_label(t, col, 13)
+	l.custom_minimum_size = Vector2(360, 0)
+	return l
+
+
+## An idea or a problem as a card: a coloured mark, the title in bold and the detail after it.
+func _today_card(item: Dictionary, mark: String, mark_col: Color) -> PanelContainer:
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", _soil_button(Color("#634024"), Color("#4c311b")))
+	card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	var m := Label.new()
+	m.text = mark
+	m.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	m.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	m.custom_minimum_size = Vector2(22, 22)
+	m.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	var ms := StyleBoxFlat.new()
+	ms.bg_color = mark_col
+	ms.border_color = Color("#1c3416")
+	ms.set_border_width_all(2)
+	m.add_theme_stylebox_override("normal", ms)
+	m.add_theme_color_override("font_color", Color("#fffbe8"))
+	row.add_child(m)
+	var t := RichTextLabel.new()
+	t.bbcode_enabled = true
+	t.fit_content = true
+	t.scroll_active = false
+	t.custom_minimum_size = Vector2(300, 0)
+	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	t.add_theme_font_size_override("normal_font_size", 13)
+	t.add_theme_font_size_override("bold_font_size", 13)
+	var detail := str(item.get("detail", ""))
+	t.text = "[b]%s[/b]%s" % [item["text"], (" [color=#ecdab4]- %s[/color]" % detail) if detail != "" else ""]
+	row.add_child(t)
+	card.add_child(row)
+	card.gui_input.connect(func(e: InputEvent) -> void:
+		if e is InputEventMouseButton and (e as InputEventMouseButton).pressed and (e as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+			_go_today(item))
+	return card
 
 
 func open_studio() -> void:
@@ -1508,7 +1899,7 @@ func _wrapped(text: String, color: Color) -> Label:
 
 
 ## In a browser tab: Little Valley is meant to be installed (full screen, offline, its own icon).
-func _offer_install(v: VBoxContainer) -> void:
+func _offer_install(v: BoxContainer) -> void:
 	var box := VBoxContainer.new()
 	var head := Label.new()
 	head.text = "Install Little Valley: it runs full screen, works offline and keeps your valleys on this device."
@@ -1527,96 +1918,6 @@ func _offer_install(v: VBoxContainer) -> void:
 			l.add_theme_color_override("font_color", _c("textDim"))
 			box.add_child(l)
 	v.add_child(box)
-
-
-func toggle_menu() -> void:
-	_window_sound(not _menu.visible)
-	if _menu.visible:
-		_menu.visible = false
-		return
-	for c in _menu.get_children():
-		c.queue_free()
-	var v := VBoxContainer.new()
-	v.custom_minimum_size = Vector2(420, 0)
-	v.add_theme_constant_override("separation", 8)
-	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(460, maxf(160.0, minf(680.0, _root.size.y - 32.0)))
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.add_child(v)
-	_menu.add_child(scroll)
-	v.add_child(_button("Resume", func() -> void: _menu.visible = false))
-	var label_edit := LineEdit.new()
-	label_edit.placeholder_text = "Name this save point (kept for good)"
-	v.add_child(label_edit)
-	v.add_child(_button("Save", func() -> void:
-		game.save_now(label_edit.text.strip_edges())
-		toggle_menu()
-		toggle_menu()))
-	v.add_child(_button("Restart the introduction" if game.tutorial["done"] else "Skip the introduction", func() -> void:
-		if game.tutorial["done"]:
-			game.restart_tutorial()
-		else:
-			game.skip_tutorial()
-		_menu.visible = false))
-	if game.pwa.update_waiting:
-		v.add_child(_button("Update now", func() -> void: game.update_now(), "This valley is saved first. Save and close other Little Valley tabs; updating reloads them too."))
-	v.add_child(_button("Asset Studio", func() -> void:
-		_menu.visible = false
-		open_studio(), "Your own art for anything in the valley, kept on this device"))
-	v.add_child(_button("Download save file", func() -> void: game.download_save(), "A copy of this valley as a file, to keep or move to another device"))
-	if game.sim != null and game.sim.ruler() == null:
-		# Valleys from before the ruler walked the map.
-		var throne_edit := LineEdit.new()
-		throne_edit.placeholder_text = "Your ruler's name"
-		throne_edit.max_length = 24
-		v.add_child(throne_edit)
-		v.add_child(_button("Take the throne", func() -> void:
-			if bool(game.command({"type": "takeThrone", "name": throne_edit.text})["ok"]):
-				_menu.visible = false, "Walk the map as your valley's ruler: people near you work faster, and Rally inspires them"))
-	var head := Label.new()
-	head.text = "Save points"
-	head.add_theme_color_override("font_color", _c("textDim"))
-	v.add_child(head)
-	for p: Dictionary in game.store.points(game.world_id):
-		var point: String = p["id"]
-		var when := Time.get_datetime_string_from_unix_time(int(float(p.get("savedAt", 0)) / 1000.0), true)
-		var lbl := str(p.get("label", ""))
-		v.add_child(_button("%s  day %d%s" % [when, int(p.get("day", 0)), "  “%s”" % lbl if lbl != "" else ""], func() -> void:
-			_menu.visible = false
-			game.load_world(game.world_id, point)))
-	var set_head := Label.new()
-	set_head.text = "Settings"
-	set_head.add_theme_color_override("font_color", _c("textDim"))
-	v.add_child(set_head)
-	for row: Array in [["Volume", "master_volume"], ["Music", "music_volume"], ["Effects", "sfx_volume"]]:
-		v.add_child(_volume_row(row[0], row[1]))
-	v.add_child(_check("Sound off", game.settings.muted, func(on: bool) -> void:
-		game.settings.muted = on
-		game.settings.apply_audio(game.audio)))
-	v.add_child(_check("Reduced motion", game.settings.reduced_motion, func(on: bool) -> void: game.settings.reduced_motion = on))
-	v.add_child(_check("Scroll at the screen edge", game.settings.edge_scroll, func(on: bool) -> void:
-		game.settings.edge_scroll = on
-		game.camera.edge_scroll = on))
-	v.add_child(_check("Fewer effects", game.settings.effects == "low", func(on: bool) -> void: game.settings.effects = "low" if on else "high"))
-	var scale_row := HBoxContainer.new()
-	var scale_label := Label.new()
-	scale_label.text = "Interface size"
-	scale_row.add_child(scale_label)
-	for sz: float in [0.85, 1.0, 1.25, 1.5]:
-		scale_row.add_child(_button("%d%%" % roundi(sz * 100), func() -> void:
-			game.settings.ui_scale = sz
-			game.settings.save()
-			_apply_scale()))
-	v.add_child(scale_row)
-	var bindings_panel := KeyBindingsPanel.new()
-	bindings_panel.setup(game.settings)
-	v.add_child(bindings_panel)
-	v.add_child(_button("Back to the title", func() -> void:
-		game.save_now()
-		game.sim = null
-		show_title()))
-	_menu.visible = true
-	_center(_menu)
 
 
 func _volume_row(text: String, key: String) -> HBoxContainer:

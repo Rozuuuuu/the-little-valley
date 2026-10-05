@@ -254,7 +254,9 @@ func _season_palette(season: String) -> ImageTexture:
 
 func _sync_objects(k: int, c: Chunk) -> void:
 	var d: Dictionary = _objects.get(k, {})
-	if not d.is_empty() and int(d["version"]) == c.version:
+	# Objects show only on explored land (as the browser), so they follow the fog as it lifts.
+	var version := c.version * 100003 + c.fog_version
+	if not d.is_empty() and int(d["version"]) == version:
 		return
 	if not _ground.has(k) or _builds_left <= 0:
 		return
@@ -274,6 +276,8 @@ func _sync_objects(k: int, c: Chunk) -> void:
 			continue
 		var tx := ox + (i & Chunk.MASK)
 		var ty := oy + (i >> Chunk.SHIFT)
+		if not sim.world.explored(tx, ty):
+			continue
 		var sprite_name := _object_sprite(o, tx, ty)
 		if sprite_name == "":
 			continue
@@ -284,7 +288,7 @@ func _sync_objects(k: int, c: Chunk) -> void:
 		if sway_enabled and (o == Tiles.O_OAK or o == Tiles.O_PINE or o == Tiles.O_BERRY or o == Tiles.O_BERRY_EMPTY or o == Tiles.O_SAPLING):
 			sp.material = _sway
 		node.add_child(sp)
-	_objects[k] = {"node": node, "version": c.version}
+	_objects[k] = {"node": node, "version": version}
 
 
 func _object_sprite(o: int, tx: int, ty: int) -> String:
@@ -569,7 +573,7 @@ func _sync_animals(alpha: float, area: Rect2) -> void:
 			animal_views[a.id] = sp
 		var pos := Vector2(lerpf(a.rpx, a.rx, alpha), lerpf(a.rpy, a.ry, alpha)) * TILE_PX
 		sp.position = pos
-		if not area.has_point(pos):
+		if not area.has_point(pos) or not sim.world.explored(floori(a.x), floori(a.y)):
 			sp.visible = false
 			continue
 		sp.visible = true

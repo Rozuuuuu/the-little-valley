@@ -15,6 +15,8 @@ config/description="A cosy top-down farming and settlement game."
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
+config/use_custom_user_dir=true
+config/custom_user_dir_name="Little Valley"
 
 [debug]
 
@@ -38,7 +40,7 @@ project/assembly_name="Little Valley"
 
 [rendering]
 
+textures/canvas_textures/default_texture_filter=0
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
-textures/canvas_textures/default_texture_filter=0
 2d/snap/snap_2d_transforms_to_pixel=true

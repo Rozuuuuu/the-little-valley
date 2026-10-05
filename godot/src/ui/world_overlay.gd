@@ -55,7 +55,7 @@ func _draw() -> void:
 	# Health bars over animals, as the browser (over everyone, or only the hurt).
 	for a in sim.animals:
 		var ap := Vector2(a.x, a.y) * T
-		if not view.has_point(ap):
+		if not view.has_point(ap) or not sim.world.explored(floori(a.x), floori(a.y)):
 			continue
 		var d := a.def()
 		var hp_max := float(d.get("hp", 1))
