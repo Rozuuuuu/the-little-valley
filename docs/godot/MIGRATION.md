@@ -17,7 +17,7 @@ Measurements are in [BASELINE.md](BASELINE.md).
 | Saves | On the device; **a rolling history of save points per world** (last 10 kept automatically, any can be named and kept), plus **Download save file / Load from file** | Owner's choice. `user://` on the web is IndexedDB. |
 | Old saves | Read the old game's IndexedDB on the same address and convert (v15 JSON). Save files from the old game load too | Terrain generation is bit-for-bit identical (see below), so old worlds need no stored terrain. |
 | Population | **No design cap.** The 300 cap is removed once benchmarks show what each platform sustains. The supported scale is published per platform from measurements | Owner wants a long, big, scalable game. |
-| Art | Provisional illustrated art authored as SVG, replaced over time. Shipped art must have a clear licence (CC0 or CC-BY with credit, listed in the game's credits) | Internet art needs licence tracking. Mixed sources need a palette pass to look like one game. |
+| Art | The browser game's own pixel art, exported from its generators (decision 2026-10-05). Shipped art must have a clear licence (CC0 or CC-BY with credit, listed in the game's credits) | Internet art needs licence tracking. Mixed sources need a palette pass to look like one game. |
 | Asset Studio | **An in-game editor for players**: upload images, assign them to game items, set anchor and frames, preview, recolour to the palette, export and import packs. Stored **on that device only** | Owner's choice. Comes after the playable slice, when the asset spec is fixed. |
 | Paid AI | None in gameplay | Settler AI stays deterministic rules. |
 
@@ -139,7 +139,7 @@ Status: **Done** (ported and tested against the browser game), **Started**, **Pl
 | Content tables | `game/data/*` | `content/*.json` via `scripts/export-content.ts` | Export `--check`; float bits | **Done** |
 | Terrain/object ids | `world/tiles.ts` | `src/world/tiles.gd` | Compared with content | **Done** |
 | Worldgen gens 1–4, habitats | `world/worldgen.ts` | `src/world/world_gen.gd` | 189 fingerprints, 18 dumps, bit-exact | **Done** |
-| World, chunks, streaming | `world/World.ts`, `Chunk.ts` | `src/world/world.gd`, `chunk.gd`: queries never generate, threaded generation, eviction keeps exploration | 7 streaming tests; soak with the simulation (Phase 2) | **Done** (soak pending) |
+| World, chunks, streaming | `world/World.ts`, `Chunk.ts` | `src/world/world.gd`, `chunk.gd`: queries never generate, threaded generation, eviction keeps exploration | 7 streaming tests; `tools/soak.gd` (120 days with production, realm and merchants) | **Done** |
 | Geology, regions | `world/geology.ts`, `regions.ts` | `src/world/geology.gd`: deposits per 16×16 cell read straight from the generator, starter copper and iron | Geology golden: every cell in a window for generators 1–4 and all habitats, bit-identical | **Done** for geology (regions come with settlements; a cell scan is slow, about 0.1 s, but runs only on survey) |
 | Pathfinding (local) | `sim/pathfinding.ts` | `src/sim/path/nav_window.gd` (AStarGrid2D); `grid_astar.gd`, `dense_astar.gd` as exact references | 80-search golden corpus, validity and optimality, replanning; benchmark | **Done** |
 | Pathfinding (long routes) | same A* | Coarse chunk graph over NavWindows | Benchmark long routes | Planned |
@@ -166,8 +166,8 @@ Status: **Done** (ported and tested against the browser game), **Started**, **Pl
 | Military, war | `military.ts`, `combat.ts` | `src/sim/realm/military.gd`, `combat.gd`: enlisting with real gear, drilling, horses, supplied companies, travellers' camps, allied contingents, combat with range and line of sight, occupation, sieges, plunder, declaring war, peace and its transfers, captives | 22 tests from military.test.ts and combat.test.ts | **Done** (Realm window F6; companies drawn as marching soldier figures under their banner) |
 | Saves: format, migrations, history, files | `save/*` | `src/persistence/save_codec.gd`, `save_store.gd`, `migrations.gd` (v1→v15, step for step), `save_validation.gd` (the browser's validateSave): v15 layout, 10 automatic plus named points, safe writes | Round trip, damaged saves, store history and fallback; every browser fixture (v1 synthetic, v2, v3, v4, v11, v12) converts to exactly the browser's JSON, loads, plays a day and saves again | **Done**: Download save file / Load a save file on web and desktop (`src/platform/files.gd`); the browser download and file picker themselves are checked by hand only |
 | Old-save import | n/a | `SaveCodec.decode` with an unsupported-data report. Kingdoms, diplomacy, war, merchants, claims and soldiers are simulated and no longer reported; `UNSIMULATED_BUILDINGS` lists building types whose behaviour is not ported (none today). Data the codec does not own is still kept verbatim and written back unchanged; Godot saves carry the browser's full layout and load in the browser game (`tools/write_sample_save.gd` + `scripts/check-godot-save.ts`) | Genuine v15 browser fixture; pass-through and layout tests; a crowned realm at war with merchants, claims and soldiers round-trips with an empty report; `scripts/godot-web-oldsaves.ts` seeds the old game's IndexedDB in Chrome (v4, v11 with a damaged current copy, v12 with a newer emergency copy) and checks the web build brings all three over and leaves the old database untouched | **Done**: the title offers "Bring in valleys from the old game" |
-| Rendering | `render/*` | `src/presentation/`: ground shader, WorldView, SettlerView, overlay | Capture screenshots, frame benchmarks (BASELINE) | **Done for the slice** |
-| Art | code-drawn pixel sprites | `scripts/art/*` → 232 provisional SVG sprites (animals, pens, mines, quarries and the realm's buildings included); `docs/godot/ART_STYLE.md` | Contact sheets (`tools/art_sheet.gd`), screenshots | **Started** (provisional; soldiers wear a kettle helm, hood or plumed helm with sword or bow, and companies in the field march as their soldiers (`company_view.gd`), knights on horseback; per-level looks still to draw) |
+| Rendering | `render/*` | `src/presentation/`: pixel ground shader (port of `terrainPainter.ts`), WorldView, SettlerView with `PixelPeople`, overlay | Capture screenshots (`--title=1` included), frame benchmarks (BASELINE) | **Done** (the browser's pixel look; rising construction ghosts, joined fences and walls, hall/mine levels, turning sails) |
+| Art | code-drawn pixel sprites | The same sprites, exported from the browser's generators by `scripts/pixel-art/export.ts` (267 sprites, palette and chimney points); `docs/godot/ART_STYLE.md` | Contact sheets (`tools/art_sheet.gd`), screenshots, `test_particles` chimney points | **Done** (soldiers' weapons are drawn; a dedicated sword sprite and per-unit headgear are not in the browser art either) |
 | Animation, effects | `particles.ts`, renderer | `src/presentation/particles.gd`: every burst kind, damage numbers, arrows, campfire sparks, and building life (chimney smoke from the art's own chimney points, forge sparks, work dust, butterflies, birds, glints); off with Fewer effects | `test_particles`, frame benchmark at 100 settlers | **Done** (flag ripples and animal falls still to do) |
 | Input and bindings, touch | `input/*` | `src/ui/game.gd`, `camera_rig.gd`, `key_bindings.gd`, `key_bindings_panel.gd`: device-local physical-key remapping, conflict checks, clear/reset, text-field protection; mouse/touch unchanged | `test_bindings`, `tools/check_controls.gd`, rendered menu capture | **Started**: current Godot shortcuts are remappable; browser-only shortcut actions/default-layout parity and real-device touch review remain |
 | HUD, windows, tutorial, Valley today | React `ui/*`, `engine/*` | `src/ui/hud.gd`: title, top bar, selection, command card, toasts, menu with save points and settings | Screenshots | **Started** (People, Areas, Towns and Realm windows, barter, enlisting, the introduction (`tutorial.gd`, saved in the file's `tutorial`) and Valley today (`valley_today.gd`, on resume, F9 or Today; the session mark now restarts on load) done; key remapping to do) |
@@ -182,7 +182,7 @@ Status: **Done** (ported and tested against the browser game), **Started**, **Pl
 | --- | --- | --- | --- |
 | 0. Baseline | Tests, profiles, soak, gen-4 fingerprint, golden data, content export | Baseline report; browser tests green | **Done** |
 | 1. Godot core | Numeric ports, worldgen, streaming world, pathfinding | Bit-exact goldens; streaming tests; pathfinding benchmarked and chosen | **Done** (the settler-loop cost moves to Phase 2, where it is measured on the real ported loop rather than a synthetic one) |
-| 2. Slice simulation | Settlers (needs, gather, deliver, haul, build, farm), Town Hall, storehouse, house, field, commands, saves | Ported conservation, reservation, farming and construction tests pass headless; 20-day soak bounded | **Done** except the 20-day Godot soak (with the Phase 4 benchmarks) |
+| 2. Slice simulation | Settlers (needs, gather, deliver, haul, build, farm), Town Hall, storehouse, house, field, commands, saves | Ported conservation, reservation, farming and construction tests pass headless; 20-day soak bounded | **Done**: `tools/soak.gd` ran 120 days with exact reloads (see BASELINE) |
 | 3. Slice presentation | Illustrated ground, objects, settlers with walk, idle, carry and work animation, camera, selection, minimal HUD, reduced motion | 60 FPS at 100 settlers on the reference machine; your review of crowded scenes | **Done** (117 FPS average at 100; awaiting your review) |
 | 4. Slice evaluation | Benchmarks at 25/100/300/1,000, soak, a web build on a phone | Report and your sign-off | Planned |
 | 5+. Systems | Production → people → seasons and areas → animals → mining → settlements and trade → realm → military → full UI → audio → old-save import → Asset Studio → install and update | Each with ported tests and a matrix update | Planned |
@@ -190,30 +190,17 @@ Status: **Done** (ported and tested against the browser game), **Started**, **Pl
 
 ## Art direction (summary)
 
-The target look is painted, limited-palette 2D in the same top-down ¾ view. Shapes are flat
-with a soft shadow band, light comes from the upper left with a mint rim light, and shadows
-are deep teal instead of black.
+**Changed 2026-10-05:** the Godot version uses the browser game's own 2D pixel art. The owner
+judged both the smooth "illustrated" target and the later storybook pass a downgrade from the
+pixel original. Details: `docs/godot/ART_STYLE.md`.
 
-- **Core palette:**
-
-  | Role | Hex |
-  | --- | --- |
-  | Deep teal | `#173b3d` |
-  | Forest | `#2f6a4f` |
-  | Sage | `#8aab7a` |
-  | Mint | `#cdeedb` |
-  | Gold (accents only) | `#e6b65a` |
-
-- **Supporting hues:** water, soil, stone, wood, terracotta and slate roofs, and crops.
-- **Outlines:** coloured, about 2 px at the default zoom, never black. Crops and ground
-  decals are not outlined.
-- **Scale:** logical tiles stay 1 unit. Art is authored at 96 px per tile and shown at about
-  48–64 px with mipmaps and linear filtering. Art resolution is a presentation setting only.
-- **Selection and placement:**
-  - Selection is a gold ring.
-  - Hover is a mint ring.
-  - Placement ghosts are mint, or red with hatching when blocked, so colour is never the only cue.
-- **Pipeline:**
-  - Sources are SVG files in `godot/art_src`, rasterised by Godot's importer.
-  - Characters are SVG part sets baked into frames: walk, idle, carry and work, three directions.
-  - Every first-pass asset is marked provisional in the asset manifest, with its licence and source.
+- **Source:** the browser's sprite generators (`src/render/sprites`), exported by
+  `scripts/pixel-art/export.ts` as 6× nearest-neighbour PNGs with converted anchors.
+- **Ground:** a GPU port of `terrainPainter.ts` with the same hashes and seasonal palettes.
+- **People:** `PixelPeople` ports `characters.ts` and paints one sheet per look at runtime.
+- **Scale:** 16 art px per tile, one art pixel = 4 world px; zoom settles on 0.25 steps;
+  nearest filtering, no mipmaps.
+- **Interface:** the browser's pixel HUD skin (grass-framed dirt panels, soil buttons) and
+  Pixelify Sans (OFL) with a bundled fallback.
+- **Selection and placement:** a gold ring for selection, mint for hover; placement ghosts are
+  mint, or red with hatching when blocked, so colour is never the only cue.

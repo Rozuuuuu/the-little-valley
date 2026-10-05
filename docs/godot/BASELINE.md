@@ -349,3 +349,35 @@ compares UI size with the logical viewport, matching HUD sizing; comparing with 
 size incorrectly failed in headless mode. The full gameplay suite was not repeated for these
 test-only changes; its previous 232-test result remains historical. This fix establishes
 clean diagnostic shutdown, not long-play memory behavior.
+
+## Long-play soak and pixel art (2026-10-05)
+
+`godot --headless --path godot -s res://tools/soak.gd -- 120 10 4242 <out.json>` plays one valley
+for 120 in-game days: storehouses, homes, workshop, granary, mill, bakery, well, coop, sheep pen,
+hunter's lodge, inn (merchants) and a charcoal kiln, wheat and turnip fields, a crowned realm with
+three known kingdoms, and 9 settlers. Once a day a small autopilot plays like a careful player:
+more storage at 80% full, a house when every home bed is taken, visitors welcomed when food
+allows, always leaving a walkable margin. Every 10 days the valley is saved to JSON text and
+reloaded, and play continues on the reloaded copy.
+
+| Measure | Day 10 | Day 120 |
+| --- | --- | --- |
+| Settlers / buildings | 9 / 32 | 16 / 45 |
+| Wheat harvested (total) | 484 | 3,572 |
+| Engine objects | 1,663 | 1,685 (flat after day 40) |
+| Static memory | 35.5 MB | 36.0 MB |
+| Save size | 43 KB | 55 KB |
+| Simulation per game day (headless) | 3.8–5.2 s | 4.6 s |
+
+- **0 failures:** all 12 reloads equal the state before them exactly; no reservation or
+  promised-goods problems; wood conserved to the unit in every stretch without trade or
+  upgrades (drift 0, 8 stretches); no collection grows at every checkpoint.
+- **Findings during setup (not game bugs, but worth knowing):** a tight ring of finished
+  buildings walls settlers in ("Can't reach…") and they starve; stores filled to capacity stop all
+  harvesting ("Storage is full"). The browser game behaves the same; the soak avoids both.
+- **Open observations:** the bakery stopped after day 50 (food then declined from 2,028 to 868);
+  no births, because households must be started by the player. Look into the bakery stall.
+
+Pixel art on the web (100 settlers, measured while the soak ran on the same CPU, so slightly
+pessimistic): desktop avg 24.2 ms, p50 19.3, p95 47.0, art loading 0.40 s (was 0.97 s for SVG);
+phone emulation avg 100 ms, p50 78, sim 49 ms per frame, art loading 2.95 s (was 6.3 s).
