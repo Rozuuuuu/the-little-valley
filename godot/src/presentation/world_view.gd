@@ -51,6 +51,12 @@ var _night := ColorRect.new()
 var _lights := Node2D.new()
 
 
+func _init() -> void:
+	# The title may close before setup() is called. Own these nodes from construction.
+	for layer: Node in [_ground_layer, _field_layer, entities, _night, _lights]:
+		add_child(layer)
+
+
 func setup(simulation: Simulation, sprites: Art) -> void:
 	sim = simulation
 	art = sprites
@@ -65,17 +71,12 @@ func setup(simulation: Simulation, sprites: Art) -> void:
 	_ground_layer.z_index = -10
 	_field_layer.z_index = -5
 	entities.y_sort_enabled = true
-	add_child(_ground_layer)
-	add_child(_field_layer)
-	add_child(entities)
 	var mul := CanvasItemMaterial.new()
 	mul.blend_mode = CanvasItemMaterial.BLEND_MODE_MUL
 	_night.material = mul
 	_night.z_index = 5
 	_night.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_night)
 	_lights.z_index = 6
-	add_child(_lights)
 
 
 ## Replaces the simulation (after loading), clearing everything drawn.

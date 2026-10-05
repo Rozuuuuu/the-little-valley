@@ -288,7 +288,7 @@ godot --headless --path . -s res://tools/bench_gen.gd -- 12
 godot --headless --path . -s res://tools/bench_path.gd
 godot --headless --path . -s res://tools/bench_sim.gd -- 100 2880        # PROF=1 for sections
 ```
-# Web installation checkpoint (2026-10-05)
+## Web installation checkpoint (2026-10-05)
 
 Godot 4.7.2 standard Windows release export: local Chrome starts the engine online, loads
 the cached installed entry offline, and captures/clears a synthetic install event.
@@ -305,3 +305,22 @@ against both bundled fonts. The script-load check reports zero failed scripts, b
 reports ObjectDB/resources retained at checker exit; it is not a gameplay leak measurement.
 The browser TypeScript check passed. Web update durability and multi-tab update coordination
 remain unverified: players are instructed to save/close other tabs before an update.
+
+## Controls and engine recheck (2026-10-05)
+
+The full headless suite passed **232 tests, zero failures in 478.3 seconds**; an additional
+drawing-layer lifecycle regression passed separately (10 checks). The browser suite passed
+**337 tests** and its TypeScript check passed. `tools/check_controls.gd` exercised actual
+scene routing, focus protection, capture/conflicts, device persistence and a 150% interface
+size with zero failures; the rendered run logged no errors or warnings.
+
+Three issues were reproduced and corrected: conflicting HUD root anchors/manual sizing,
+attempting to parse a nonexistent save index in an unfinished/capture folder, and five
+unowned drawing-layer nodes leaked when exiting before starting a valley. Normal startup
+and shutdown (`--headless --quit-after 60`) now log only the engine banner.
+
+The batch script checker reports **zero failed scripts**, but still logs **138 ObjectDB
+instances / 79 resources retained at checker exit**. Deferring shutdown did not change
+that result and was reverted. This diagnostic remains unresolved; the clean normal-game
+exit does not establish that long-play memory behavior is clean. No new long-play soak or
+supported-population result was produced in this checkpoint.

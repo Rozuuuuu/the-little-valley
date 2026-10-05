@@ -1,4 +1,13 @@
 extends TestCase
+
+func test_unfinished_save_folders_do_not_raise_parse_errors() -> void:
+	var dir := "user://test_unfinished_save_%d" % Time.get_ticks_usec()
+	var store := SaveStore.new(dir)
+	DirAccess.make_dir_recursive_absolute(dir.path_join("unfinished"))
+	check(store.worlds().is_empty(), "an unfinished folder is not a saved valley")
+	check(store.points("missing").is_empty(), "an unsaved valley has no save points")
+	DirAccess.remove_absolute(dir.path_join("unfinished"))
+	DirAccess.remove_absolute(dir)
 ## Saves: exact round trips, conservation after loading, safe storage with history, refusal of
 ## damaged and unsupported files, and importing a genuine save written by the browser game.
 

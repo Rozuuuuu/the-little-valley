@@ -83,6 +83,7 @@ func _ready() -> void:
 	settings.apply_audio(audio)
 	camera.make_current()
 	camera.edge_scroll = settings.edge_scroll
+	camera.bindings = settings.bindings
 	overlay.game = self
 	hud = Hud.new()
 	hud.game = self
@@ -579,6 +580,8 @@ func save_now(label: String = "") -> bool:
 # ---- the loop ---------------------------------------------------------------------------------
 
 func _process(delta: float) -> void:
+	var focus := get_viewport().gui_get_focus_owner()
+	camera.keyboard_enabled = sim != null and not hud.blocking() and not (focus is LineEdit or focus is TextEdit)
 	if sim == null:
 		audio.busy = false
 		return
@@ -944,8 +947,14 @@ func order_at(tile: Vector2i, world: Vector2 = Vector2(INF, INF)) -> void:
 
 
 func _key(k: InputEventKey) -> void:
-	match k.keycode:
-		KEY_ESCAPE:
+	var focus := get_viewport().gui_get_focus_owner()
+	if focus is LineEdit or focus is TextEdit:
+		return
+	var action := settings.bindings.action_for(k)
+	if hud.blocking() and action != "cancel":
+		return
+	match action:
+		"cancel":
 			if placing != "":
 				cancel_placing()
 			elif not selected.is_empty() or selected_building != -1:
@@ -953,47 +962,47 @@ func _key(k: InputEventKey) -> void:
 				selected_building = -1
 			else:
 				hud.toggle_menu()
-		KEY_SPACE:
+		"pause":
 			paused = not paused
-		KEY_1:
+		"speed1":
 			speed = 1
-		KEY_2:
+		"speed2":
 			speed = 2
-		KEY_3:
+		"speed3":
 			speed = 4
-		KEY_S:
+		"stop":
 			if not selected.is_empty():
 				command({"type": "stop", "ids": selected.duplicate()})
-		KEY_H:
+		"hold":
 			if not selected.is_empty():
 				command({"type": "hold", "ids": selected.duplicate()})
-		KEY_C:
+		"returnGoods":
 			if not selected.is_empty():
 				command({"type": "returnGoods", "ids": selected.duplicate()})
-		KEY_G:
+		"harvest":
 			start_placing("mark")
-		KEY_U:
+		"unmark":
 			start_placing("unmark")
-		KEY_DELETE, KEY_X:
+		"demolish":
 			if selected_building != -1:
 				command({"type": "remove", "buildingId": selected_building})
 				selected_building = -1
-		KEY_F5:
+		"save":
 			save_now()
-		KEY_F2:
+		"people":
 			hud.toggle_people()
-		KEY_F3:
+		"areas":
 			hud.toggle_areas()
-		KEY_F4:
+		"towns":
 			hud.toggle_towns()
-		KEY_F9:
+		"today":
 			open_today()
-		KEY_F6:
+		"realm":
 			hud.toggle_realm()
-		KEY_R:
+		"rally":
 			if sim.ruler() != null and selected.has(sim.ruler().id):
 				command({"type": "rally"})
-		KEY_E:
+		"selectAll":
 			selected.clear()
 			for s in sim.settlers:
 				selected.append(s.id)

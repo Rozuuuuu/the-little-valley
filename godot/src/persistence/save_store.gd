@@ -140,7 +140,11 @@ func delete_point(world_id: String, point: String) -> void:
 
 
 func _read_index(dir: String) -> Dictionary:
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(dir.path_join("index.json")))
+	var path := dir.path_join("index.json")
+	# A cancelled first save or screenshot capture can leave a directory without an index.
+	if not FileAccess.file_exists(path):
+		return {}
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
 	return parsed if parsed is Dictionary else {}
 
 

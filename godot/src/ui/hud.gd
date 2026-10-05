@@ -67,7 +67,8 @@ func _ready() -> void:
 	_bold = load("res://fonts/AtkinsonHyperlegible-Bold.woff2")
 	_theme = _make_theme()
 	_root.theme = _theme
-	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	# _apply_scale owns the root size; stretched anchors would override that size and warn.
+	_root.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_root)
 	_apply_scale()
@@ -110,7 +111,15 @@ func _ready() -> void:
 func _apply_scale() -> void:
 	var s := game.settings.ui_scale if game != null else 1.0
 	_root.scale = Vector2(s, s)
-	_root.size = get_viewport().get_visible_rect().size / s
+	var size := get_viewport().get_visible_rect().size / s
+	if _root.size != size:
+		_root.size = size
+		for child: Node in _menu.get_children():
+			if child is ScrollContainer:
+				(child as ScrollContainer).custom_minimum_size.y = maxf(160.0, minf(680.0, size.y - 32.0))
+		if _menu.visible:
+			_menu.reset_size()
+			_center(_menu)
 
 
 # ---- theme -----------------------------------------------------------------------------------
@@ -155,12 +164,15 @@ func _make_theme() -> Theme:
 	return t
 
 
-func _button(text: String, on_press: Callable, tip: String = "") -> Button:
+func _button(text: String, on_press: Callable, tip: String = "", shortcut: String = "") -> Button:
 	var b := Button.new()
 	b.text = text
 	b.tooltip_text = tip
 	b.pressed.connect(on_press)
 	b.focus_mode = Control.FOCUS_NONE
+	if shortcut != "":
+		b.mouse_entered.connect(func() -> void:
+			b.tooltip_text = "%s (%s)" % [tip, game.settings.bindings.label(shortcut)])
 	return b
 
 
@@ -201,12 +213,12 @@ func _build_top() -> void:
 				game.speed = v
 			refresh_now(), "Pause (Space)" if v == 0 else "Speed %d× (%s)" % [v, {1: "1", 2: "2", 4: "3"}[v]]))
 	row.add_child(_speed_box)
-	row.add_child(_button("People", toggle_people, "Visitors, travellers, households and children (F2)"))
-	row.add_child(_button("Areas", toggle_areas, "Work areas: farms, woodlots, quarries, building areas (F3)"))
-	row.add_child(_button("Towns", toggle_towns, "Settlements, supply routes and caravans (F4)"))
-	row.add_child(_button("Realm", toggle_realm, "Crown, land, kingdoms, news, army and war (F6)"))
-	row.add_child(_button("Today", func() -> void: game.open_today(), "Valley today: what needs attention and what to do next (F9)"))
-	row.add_child(_button("Save", func() -> void: game.save_now(), "Save now (F5)"))
+	row.add_child(_button("People", toggle_people, "Visitors, travellers, households and children", "people"))
+	row.add_child(_button("Areas", toggle_areas, "Work areas: farms, woodlots, quarries, building areas", "areas"))
+	row.add_child(_button("Towns", toggle_towns, "Settlements, supply routes and caravans", "towns"))
+	row.add_child(_button("Realm", toggle_realm, "Crown, land, kingdoms, news, army and war", "realm"))
+	row.add_child(_button("Today", func() -> void: game.open_today(), "Valley today: what needs attention and what to do next", "today"))
+	row.add_child(_button("Save", func() -> void: game.save_now(), "Save now", "save"))
 	row.add_child(_button("Menu", toggle_menu, "Menu (Esc)"))
 	_top.visible = false
 	_root.add_child(_top)
@@ -941,7 +953,11 @@ func toggle_menu() -> void:
 	var v := VBoxContainer.new()
 	v.custom_minimum_size = Vector2(420, 0)
 	v.add_theme_constant_override("separation", 8)
-	_menu.add_child(v)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(460, maxf(160.0, minf(680.0, _root.size.y - 32.0)))
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.add_child(v)
+	_menu.add_child(scroll)
 	v.add_child(_button("Resume", func() -> void: _menu.visible = false))
 	var label_edit := LineEdit.new()
 	label_edit.placeholder_text = "Name this save point (kept for good)"
@@ -1006,6 +1022,9 @@ func toggle_menu() -> void:
 			game.settings.save()
 			_apply_scale()))
 	v.add_child(scale_row)
+	var bindings_panel := KeyBindingsPanel.new()
+	bindings_panel.setup(game.settings)
+	v.add_child(bindings_panel)
 	v.add_child(_button("Back to the title", func() -> void:
 		game.save_now()
 		game.sim = null

@@ -16,12 +16,16 @@ var master_volume := 0.8
 var music_volume := 0.5
 var sfx_volume := 0.7
 var muted := false
+var bindings := KeyBindings.new()
 
 
-static func load_saved() -> Settings:
+static func load_saved(path: String = PATH) -> Settings:
 	var s := Settings.new()
 	var cfg := ConfigFile.new()
-	if cfg.load(PATH) == OK:
+	if cfg.load(path) == OK:
+		var saved: Variant = cfg.get_value("controls", "bindings", {})
+		if saved is Dictionary:
+			s.bindings.restore(saved)
 		s.reduced_motion = bool(cfg.get_value("display", "reduced_motion", s.reduced_motion))
 		s.effects = str(cfg.get_value("display", "effects", s.effects))
 		s.ui_scale = clampf(float(cfg.get_value("display", "ui_scale", s.ui_scale)), 0.75, 2.0)
@@ -34,18 +38,19 @@ static func load_saved() -> Settings:
 	return s
 
 
-func save() -> void:
+func save(path: String = PATH) -> Error:
 	var cfg := ConfigFile.new()
 	cfg.set_value("display", "reduced_motion", reduced_motion)
 	cfg.set_value("display", "effects", effects)
 	cfg.set_value("display", "ui_scale", ui_scale)
 	cfg.set_value("controls", "edge_scroll", edge_scroll)
+	cfg.set_value("controls", "bindings", bindings.keys)
 	cfg.set_value("game", "autosave_minutes", autosave_minutes)
 	cfg.set_value("audio", "master", master_volume)
 	cfg.set_value("audio", "music", music_volume)
 	cfg.set_value("audio", "sfx", sfx_volume)
 	cfg.set_value("audio", "muted", muted)
-	cfg.save(PATH)
+	return cfg.save(path)
 
 
 ## Sends the volumes to the audio engine.

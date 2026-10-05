@@ -12,6 +12,8 @@ const EDGE := 6.0
 var target_zoom := 1.0
 var target_pos := Vector2.ZERO
 var edge_scroll := true
+var bindings := KeyBindings.new()
+var keyboard_enabled := true
 var _drag_from: Variant = null
 
 
@@ -22,13 +24,13 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	var dir := Vector2.ZERO
-	if Input.is_action_pressed("ui_left") or Input.is_key_pressed(KEY_A):
+	if keyboard_enabled and bindings.pressed("panLeft"):
 		dir.x -= 1
-	if Input.is_action_pressed("ui_right") or Input.is_key_pressed(KEY_D):
+	if keyboard_enabled and bindings.pressed("panRight"):
 		dir.x += 1
-	if Input.is_action_pressed("ui_up") or Input.is_key_pressed(KEY_W):
+	if keyboard_enabled and bindings.pressed("panUp"):
 		dir.y -= 1
-	if Input.is_action_pressed("ui_down"):
+	if keyboard_enabled and bindings.pressed("panDown"):
 		dir.y += 1
 	if edge_scroll and DisplayServer.window_is_focused() and not OS.has_feature("mobile"):
 		var m := get_viewport().get_mouse_position()

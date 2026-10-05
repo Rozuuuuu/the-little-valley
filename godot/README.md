@@ -20,10 +20,18 @@ cd godot
 godot --headless --path . --import                      # first time, or after adding scripts
 godot --headless --path . -s res://tools/run_tests.gd    # every test
 godot --headless --path . -s res://tools/run_tests.gd -- test_core   # only matching files or methods
+godot --headless --path . -s res://tools/check_controls.gd          # real scene: remapping, focus, capture
 ```
 
 The runner exits with code 1 if anything fails. The world tests take about 20 seconds,
 because they generate every fingerprinted chunk.
+
+Keyboard shortcuts can be changed in Menu → Settings → Keyboard shortcuts. Choose an action,
+press an unmodified key, or clear/reset its binding. Conflicts are refused; Escape stays reserved
+for cancelling. Settings are kept on this device. Existing Godot defaults are retained; this does
+not yet implement every shortcut action in the browser game. The menu scrolls on small screens.
+To capture this menu while running its scene check, supply a PNG path after `--` to
+`tools/check_controls.gd` (run with rendering enabled).
 
 ## Benchmarks
 
