@@ -259,6 +259,9 @@ static func request_child(sim: Simulation, household_id: Variant) -> Dictionary:
 		return _err("Both parents need to be in the valley")
 	if a.settlement_id != b.settlement_id:
 		return _err("The parents live in different settlements")
+	for p: Settler in [a, b]:
+		if (not p.military.is_empty() and p.military["state"] == "deployed") or p.away_on != -1:
+			return _err("%s is away with the army or a caravan — wait until they are home" % p.name)
 	var min_food := _k("GROWTH_MIN_FOOD")
 	var food := local_available(sim, a.settlement_id, "food")
 	if food < min_food:
@@ -331,6 +334,8 @@ static func _update_pending(sim: Simulation, h: Dictionary) -> void:
 		blocked = "Both parents need to be in the valley"
 	elif a.settlement_id != b.settlement_id:
 		blocked = "The parents live in different settlements — move them back together"
+	elif (not a.military.is_empty() and a.military["state"] == "deployed") or (not b.military.is_empty() and b.military["state"] == "deployed"):
+		blocked = "A parent is away with the army"
 	else:
 		if int(p["claimId"]) == -1:
 			var c := claim_bed(sim, "birth", int(h["id"]), a.home_id)

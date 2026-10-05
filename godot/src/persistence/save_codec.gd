@@ -493,7 +493,8 @@ static func decode(save: Variant) -> Dictionary:
 	for s in sim.settlers:
 		if s.away_on != -1 and not manifest_ids.has(s.away_on):
 			s.away_on = -1
-		s.hidden = s.away_on != -1
+		# Away with a caravan, held captive or marching with a company: not on the map.
+		s.hidden = s.away_on != -1 or not s.captive.is_empty() or (not s.military.is_empty() and s.military["state"] == "deployed")
 	sim.rally_ready_at = int(sd.get("rallyReadyAt", 0))
 	if sd.get("chief") is Dictionary:
 		var ch: Dictionary = sd["chief"]

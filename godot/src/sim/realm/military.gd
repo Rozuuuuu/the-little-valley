@@ -252,7 +252,20 @@ static func demobilize(sim: Simulation, company_id: Variant) -> Dictionary:
 	return {"ok": true, "message": "The company stood down. Everyone returns to their old work and their gear goes back to store."}
 
 
+## Loads the explored chunks between two points (and a chunk around), so a march can be planned
+## over known land without generating anything unexplored.
+static func _load_known(sim: Simulation, from: Vector2i, to: Vector2i) -> void:
+	var c0 := Vector2i(mini(from.x, to.x) >> Chunk.SHIFT, mini(from.y, to.y) >> Chunk.SHIFT) - Vector2i.ONE
+	var c1 := Vector2i(maxi(from.x, to.x) >> Chunk.SHIFT, maxi(from.y, to.y) >> Chunk.SHIFT) + Vector2i.ONE
+	for k in sim.world.explored_chunk_keys():
+		var cx := World.key_cx(k)
+		var cy := World.key_cy(k)
+		if cx >= c0.x and cx <= c1.x and cy >= c0.y and cy <= c1.y:
+			sim.world.ensure(cx, cy)
+
+
 static func _path_to(sim: Simulation, from: Vector2i, to: Vector2i, adjacent: bool) -> Variant:
+	_load_known(sim, from, to)
 	var r := GridAStar.find_path(sim, from.x, from.y, GridAStar.Goal.new(to.x, to.y, 1, 1, adjacent), 60000)
 	if r == null or not r.found:
 		return null
@@ -337,7 +350,7 @@ static func _march(sim: Simulation, c: Dictionary) -> void:
 		return
 	var next: Dictionary = path[0]
 	# Checked at every step: soldiers never walk into land they may not enter.
-	if c["state"] == "deployed" and not Territory.can_enter(sim, Kingdoms.PLAYER, Vector2i(int(next["x"]), int(next["y"])), true)["allowed"]:
+	if c["state"] == "deployed" and not Territory.can_enter(sim, Kingdoms.PLAYER, Territory.sector_of(int(next["x"]), int(next["y"])), true)["allowed"]:
 		c["target"] = null
 		c["path"] = null
 		return
