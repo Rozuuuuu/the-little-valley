@@ -24,7 +24,19 @@ assistant conversations are separate. Keep only one assistant editing at a time.
 
 ## Latest completed work
 
-**Code checkpoint: `a37f6fe` — keyboard remapping and startup lifecycle fixes.**
+**Latest code checkpoint: `b09a070` — script-checker shutdown diagnostic resolved.**
+
+- Isolated the retained graph to source-first loading followed by the particles/path tests.
+  Separate script groups and reversed loading order exited cleanly; explicit script retention
+  and deferred shutdown did not help.
+- Changed the path tests' grid/data fixtures from static variables to test-instance ownership.
+  The unchanged checker now compiles every script and exits with **no warnings or errors**.
+- Corrected `check_controls.gd` to compare menu size against the logical viewport used by the
+  HUD, rather than the OS window size, which differs in headless mode.
+- Six matching path tests passed, including all 80 golden searches. Direct script compilation,
+  the final batch checker, normal startup/shutdown and scene controls all exit cleanly.
+
+**Previous code checkpoint: `a37f6fe` — keyboard remapping and startup lifecycle fixes.**
 
 - `src/ui/key_bindings.gd`: centralized physical-key controls, conflict checks, clear/reset,
   validation of saved layouts and preservation of valid swapped bindings.
@@ -71,13 +83,18 @@ implemented simulation systems do not mean the entire migration or presentation 
 | Normal game startup/shutdown, `build/codex-engine-clean.log` | Engine banner only; exit 0 |
 | Browser tests, `build/codex-browser-tests.log` | **337 passed** |
 | Browser type check, `build/codex-typecheck-controls.log` | Passed |
-| Batch script loader, `build/codex-scripts-controls.log` | **0 scripts failed**, but retained-resource diagnostics at exit remain |
+| Latest path checks, `build/path-instance-fixture.log` | **6 passed, 0 failed, 43.7 s**; no golden changes |
+| Latest headless controls, `build/checker-fix-controls2.log` | **0 failures**, clean shutdown |
+| Latest normal startup, `build/checker-fix-startup.log` | Engine banner only, clean shutdown |
+| Latest batch script loader, `build/checker-final.log` | **0 scripts failed**, no warnings/errors, exit 0 |
+| Direct `--check-only`, `build/checker-fix-path-compile.log` | Clean compilation and exit |
 
-The layout warning, missing-index parse error and title-screen orphan-node leak were reproduced
-before their fixes. The remaining diagnostic is specifically from `tools/check_scripts.gd`:
-**138 ObjectDB instances and 79 resources still in use at checker exit**. Deferring quit did
-not resolve it; that experiment was reverted. Do not report all engine diagnostics as solved
-or treat a clean startup as a long-play leak test.
+The layout warning, missing-index parse error, title-screen orphan-node leak and batch checker's
+**138-instance / 79-resource** shutdown diagnostic were reproduced before their fixes. The
+checker diagnostic is now resolved by test-local fixture ownership, without filtering stderr
+or changing load order. Full Godot/browser suite results above are from the previous checkpoint;
+this test-only checkpoint reran the affected path checks and engine/scene checks. A clean
+startup/shutdown is not a long-play leak test.
 
 The last checked web export is the installation checkpoint, **before these controls changes**.
 `scripts/godot-web-pwa.ts` verified nine cached files and offline title startup at the normal
@@ -87,7 +104,7 @@ across an immediate web update still need testing. Rebuild the web export before
 
 ## Unfinished work and risks
 
-- Investigate the script-checker shutdown diagnostic below.
+- Script-checker shutdown diagnostic: resolved in `b09a070`; keep the clean checker as a gate.
 - Audit `SaveCodec.unsupported()`: it still reports kingdoms, soldiers, merchants and some
   building types as unsupported despite later ports. Inspect actual decode/update ownership,
   then remove only false reports; preserve reporting and data for genuinely unsupported state.
@@ -106,18 +123,19 @@ across an immediate web update still need testing. Rebuild the web export before
 
 ## Exact next task
 
-**Investigate `godot/tools/check_scripts.gd` shutdown retained-resource diagnostics.**
+**Audit and correct the stale unsupported-save report in `godot/src/persistence/save_codec.gd`.**
 
-1. Reproduce its 0-script-failures / retained-resource output and compare a normal game exit.
-2. Make an isolated loader probe that loads smaller script groups to identify the first retained
-   graph; compare against Godot's `--check-only -s` on individual scripts. No installs needed.
-3. Determine whether references are owned by this checker/repository or an engine/compiler
-   behavior. Fix owned references with a regression; otherwise keep a minimal reproduction and
-   document the engine limitation without masking stderr or misreporting a clean check.
-4. Re-run normal startup/shutdown, scene controls, relevant tests and script checks. Update this
-   file and commit; **do not push**.
-5. Then audit the stale unsupported-save report, rebuild/test the web controls, and create the
-   representative long-play soak before making further scalability promises.
+1. Inspect `unsupported()` around line 634, decode/encode ownership and the running realm,
+   merchant and military modules. It still flags known kingdoms, crowned kingdoms, diplomatic
+   records, soldiers and some implemented buildings as unsupported.
+2. Inspect `tests/test_saves.gd`, the real browser v15 fixture and realm/save round-trip tests.
+   Add regressions distinguishing implemented state from genuinely unsupported content.
+3. Remove only demonstrably false reports. Preserve unknown authoritative data and useful
+   compatibility messages; do not replace the report with an unconditional empty result.
+4. Run affected save/realm tests and the batch script checker. Update this file and the
+   migration matrix, then commit; **do not push**.
+5. Rebuild and verify web controls next, then create the representative long-play soak before
+   making further scalability promises.
 
 ## Commands and local state
 
