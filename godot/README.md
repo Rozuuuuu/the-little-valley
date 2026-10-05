@@ -26,7 +26,17 @@ godot --headless --path . -s res://tools/check_controls.gd          # real scene
 The runner exits with code 1 if anything fails. The world tests take about 20 seconds,
 because they generate every fingerprinted chunk.
 
-Keyboard shortcuts can be changed in Menu → Settings → Keyboard shortcuts. Choose an action,
+Saves, settings and the player's art live in the game's own folder: `%APPDATA%\Little Valley`
+on Windows (`application/config/custom_user_dir_name`; Godot creates it). The first start copies
+anything from the older `%APPDATA%\Godotpp_userdata\Little Valley` that is not there yet and
+leaves the old copies alone (`src/persistence/user_dir.gd`). Load a valley lists the saves in that
+folder (Play, Delete, Open the save folder); "Bring in a save file" is only for a downloaded copy.
+
+The game draws 1:1, like the browser: no window stretch. The interface follows the display's
+scaling (Windows display scale, the browser's device pixel ratio) times Settings → Interface size,
+and the starting zoom is the browser's 3 screen pixels per art pixel.
+
+Keyboard shortcuts can be changed in Menu → Settings → Keys. Choose an action,
 press an unmodified key, or clear/reset its binding. Conflicts are refused; Escape stays reserved
 for cancelling. Settings are kept on this device. Existing Godot defaults are retained; this does
 not yet implement every shortcut action in the browser game. The menu scrolls on small screens.
@@ -49,7 +59,13 @@ GODOT=/path/to/Godot_v4.7.2-stable_win64_console.exe \
 GODOT_TEMPLATES=/path/to/templates \
 scripts/godot-export.sh web        # → dist-godot/web/ (an installable PWA)
 scripts/godot-export.sh windows    # → dist-godot/windows/LittleValley.exe
+scripts/godot-export.sh studio     # → dist-godot/windows/LittleValleyAssetStudio.exe
 ```
+
+The **Asset Studio** is a separate program, not part of the game: the "Asset Studio" preset
+(feature tag `studio`) builds the same project so it opens straight into the studio over a living
+valley, and Close quits it. Run it from the editor build with `godot --path . -- --studio-app`.
+It writes the player's art to the same `art_overrides` folder the game reads.
 
 Check the web build in Chrome: `npx tsx scripts/godot-web-bench.ts 100 600 desktop`, or with
 phone emulation (`phone`). To try it on a real phone on your Wi-Fi: `npx tsx scripts/serve-godot-web.ts`.
@@ -88,7 +104,9 @@ address:
 | `--title=1` | The opening title over its living backdrop valley (no valley is started) |
 | `--newworld=1` | With `--title=1`: the "A new world" dialog |
 | `--window=Name` | Open a window: people, families, goals, goods, areas, towns, realm, help |
-| `--select=What` | Select the first settler (`settler`), the hall (`hall`) or an animal (`animal`) |
+| `--select=What` | Select the first settler (`settler`), the hall (`hall`), an animal (`animal`) or nothing (`none`) |
+| `--modal=Name` | With `--title=1`: the Load (`load`) or Settings (`settings`) window |
+| `--studio-app --shot=out.png` | The separate Asset Studio program, captured |
 | `--build=1` or `--build=category` | Open the build menu, or one category of it |
 
 On the web, use `?bench=N&settlers=M` instead.

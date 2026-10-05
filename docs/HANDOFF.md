@@ -27,7 +27,19 @@ assistant conversations are separate. Keep only one assistant editing at a time.
 
 ## Latest completed work
 
-**Latest checkpoints (2026-10-06): the 401 fix and interface parity with the browser game.**
+**Latest checkpoints (2026-10-06, after the owner rated the result 4/10, "not like my web game"):
+menu/HUD from `docs/reference` screenshots, save folder, fog, animation, 1:1 drawing.**
+
+| Commit | Work |
+| --- | --- |
+| `091b43d` | Saves in `%APPDATA%\Little Valley` (`user_dir.gd`, copies from Godot's old folder once, never deletes). Title, pause menu, Your valleys (Play/Delete/Open the save folder; uploading is only for a downloaded copy), Settings and New valley as grass-and-dirt modals painted with the browser's `hudTextures.ts` (`hud_textures.gd`, hash verified identical). Trees, rocks and animals hidden on unexplored land. Asset Studio becomes its own program (preset "Asset Studio", `godot-export.sh studio`, `-- --studio-app`) |
+| `3b48c4d`, `b3d91d9` | Pixel animation as the browser: trees lean one whole pixel (exported wind frames `_lean_l/_r`, kind `sway`, hidden from the studio), animals use all six frames (walk ×4, stand, graze), campfire flicker, fountain spray, rippling flags (`building_life.gd`). The smooth sway shader is gone |
+| `1cfeb1a` | **No window stretch.** The game was laid out for 1280×720 and scaled ×1.37 at 1920×987: oversized HUD and fractional art pixels. Now 1:1 like the browser; the interface follows the display scale (`CameraRig.screen_scale()`); default zoom 0.75 = 3 px per art px. Title backdrop framed as the reference at any width. Edge scroll only while playing and after the mouse moved (on the web the unseen mouse at 0,0 panned the title off the map — that was why the web title showed no valley). "Install app" shell button. Harvest marks are the browser's axe/pick/basket icons |
+| `0769fda`, `9972888` | Checklist boxes (`.req` rows, two columns in the console), short key hints ("." not "Period"), Settings keys inline (one scroll) |
+
+Side-by-side captures used for this: `build/cmp*.png` (local) against `docs/reference/Screenshot*.png`.
+
+**Previous checkpoints (2026-10-06): the 401 fix and interface parity with the browser game.**
 
 | Commit | Work |
 | --- | --- |
@@ -85,6 +97,9 @@ implemented simulation systems do not mean the entire migration or presentation 
 
 | Check | Result |
 | --- | --- |
+| Full Godot suite after the 1:1 change and checklists (2026-10-06) | **235 passed, 0 failed** (an earlier run had test_audio's noise band fail once under load; it passes alone and in later full runs) |
+| Controls / checker | 0 failures; 0 scripts failed |
+| Web export + `check-web-errors.ts` | No problems; the title shows its valley (it did not before: edge scroll) |
 | Full Godot suite after the parity work, `build/parity-tests.log` | **235 passed, 0 failed**; then test_bindings, test_glyphs, test_view_lifecycle rerun after the last edits: passed |
 | Controls, checker, startup after the parity work | 0 failures; 0 scripts failed; clean startup |
 | Browser tests / type check | **337 passed**; clean |
@@ -130,9 +145,10 @@ across an immediate web update still need testing. Rebuild the web export before
 
 - Script-checker shutdown diagnostic: resolved in `b09a070`; keep the clean checker as a gate.
 - Save audit: done in `d1c4748` (wells were the one genuine gap, now ported).
-- Pixel parity still to port from `src/render/Renderer.ts`: campfire and fountain animation,
-  the browser's sway (whole-pixel), placement ghost tinting, idle/advice marks, the bottom
-  console layout and minimap styling, and per-unit soldier headgear (none in the browser art).
+- Pixel parity still to port from `src/render/Renderer.ts`: placement ghost tinting, grain
+  crop sway (crops are now still), deposit marks from surveying, corpses toppling, and per-unit
+  soldier headgear (none in the browser art).
+- Both of the owner's saves are named "Home"; the list tells them apart only by date.
 - Soak observations: the bakery stopped after day 50 and food then declined; no births (the
   player must start households). Investigate the bakery stall first.
 - Browser-only shortcut actions/default-layout parity, real-device touch and phone measurements.
@@ -147,7 +163,8 @@ across an immediate web update still need testing. Rebuild the web export before
 
 ## Exact next task
 
-**Finish the remaining browser parity, then the bakery stall.**
+**Show the owner the new look and collect feedback; then finish the remaining browser parity
+and the bakery stall.**
 
 1. Still missing from the browser UI (compare with `npx tsx scripts/tour-react.ts` screenshots):
    the phone "turn your device sideways" notice (`RotateNotice.tsx`), the in-game update banner
