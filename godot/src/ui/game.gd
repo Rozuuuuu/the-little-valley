@@ -25,6 +25,7 @@ var overlay := WorldOverlay.new()
 var hud: Hud
 var audio := AudioEngine.new()
 var particles := Particles.new()
+var pwa := Pwa.new()
 
 var world_id := ""
 var world_name := ""
@@ -86,6 +87,8 @@ func _ready() -> void:
 	hud = Hud.new()
 	hud.game = self
 	add_child(hud)
+	pwa.update_ready.connect(_on_update_ready)
+	add_child(pwa)
 	if not _capture_requested():
 		hud.show_title()
 
@@ -492,6 +495,20 @@ func download_save() -> void:
 		hud.toast("Saved a copy to %s" % r["path"], "good")
 
 
+## Updates reload every browser tab: offer an explicit choice even on the title.
+func _on_update_ready() -> void:
+	if sim == null:
+		hud.show_title("A new version is ready. Save and close any other Little Valley tabs before updating.")
+	else:
+		hud.toast("A new version of Little Valley is ready: Menu › Update now (your valley is saved first).", "info")
+
+
+## Saves, then switches to the new version.
+func update_now() -> void:
+	if save_now("Before updating"):
+		pwa.apply_update()
+
+
 ## Valley today on request: how things stand now (no session recap).
 func open_today() -> void:
 	if sim != null:
@@ -543,9 +560,9 @@ func _start(s: Simulation) -> void:
 	hud.show_play()
 
 
-func save_now(label: String = "") -> void:
+func save_now(label: String = "") -> bool:
 	if sim == null:
-		return
+		return false
 	var data := SaveCodec.encode(sim, world_name, created_at, {"camX": camera.position.x, "camY": camera.position.y, "zoom": camera.zoom.x})
 	data["tutorial"] = tutorial.duplicate()
 	var r := store.save(world_id, world_name, data, label)
@@ -556,6 +573,7 @@ func save_now(label: String = "") -> void:
 	else:
 		hud.toast(r["error"], "warn")
 	_autosave_at = Time.get_ticks_msec() / 1000.0 + settings.autosave_minutes * 60.0
+	return bool(r["ok"])
 
 
 # ---- the loop ---------------------------------------------------------------------------------

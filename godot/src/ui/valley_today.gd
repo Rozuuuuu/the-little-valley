@@ -273,7 +273,7 @@ static func goals(sim: Simulation) -> Array[Dictionary]:
 				x1 = maxi(x1, f.x)
 				y1 = maxi(y1, f.y)
 			t = {"x": x0, "y": y0, "w": x1 - x0 + 1, "h": y1 - y0 + 1}
-		out.append(_item("Assign farmers to a farm area", "Areas tab → Farm, then drag over your fields.", t))
+		out.append(_item("Assign farmers to a farm area", "Areas tab › Farm, then drag over your fields.", t))
 	if bridge == null and sim.world.gen >= 2:
 		var c: Variant = suggest_crossing(sim)
 		if c != null:

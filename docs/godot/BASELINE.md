@@ -288,3 +288,20 @@ godot --headless --path . -s res://tools/bench_gen.gd -- 12
 godot --headless --path . -s res://tools/bench_path.gd
 godot --headless --path . -s res://tools/bench_sim.gd -- 100 2880        # PROF=1 for sections
 ```
+# Web installation checkpoint (2026-10-05)
+
+Godot 4.7.2 standard Windows release export: local Chrome starts the engine online, loads
+the cached installed entry offline, and captures/clears a synthetic install event.
+`npx tsx scripts/godot-web-pwa.ts` reports nine cached files. Two online launches are needed
+in this check: the initial website visit registers the worker and the next launch caches
+the large engine/game files. Offline benchmark query URLs fail; the installed `index.html`
+entry works. This is an offline title-screen startup check, not a real device installation
+or a service-worker version replacement test.
+
+The full headless suite passed **228 tests, zero failures in 477.1 seconds**. A regression
+test first reproduced updates proceeding after a failed save; it now checks refusal on
+failure and permission on success. Font coverage scans the source/content string literals
+against both bundled fonts. The script-load check reports zero failed scripts, but also
+reports ObjectDB/resources retained at checker exit; it is not a gameplay leak measurement.
+The browser TypeScript check passed. Web update durability and multi-tab update coordination
+remain unverified: players are instructed to save/close other tabs before an update.

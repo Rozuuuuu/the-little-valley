@@ -580,7 +580,7 @@ static func declare_preview(sim: Simulation, target: int) -> Dictionary:
 	if not sim.reached.has("civilization"):
 		blockers.append("War needs the Civilization milestone")
 	if not me["frontierActive"]:
-		blockers.append("Open the frontier to conflict first (Realm → Land)")
+		blockers.append("Open the frontier to conflict first (Realm › Land)")
 	if not Diplomacy.active_treaty(sim, 0, target, "defensiveAlliance").is_empty():
 		blockers.append("%s is your ally" % tname)
 	var promised := 0

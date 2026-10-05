@@ -213,7 +213,7 @@ func _fill_list() -> void:
 		if q != "" and not n.to_lower().contains(q):
 			continue
 		var mine := _owner_of(n) != ""
-		var i := _list.add_item(("★ " if mine else "") + n.replace("_", " "))
+		var i := _list.add_item(("» " if mine else "") + n.replace("_", " "))
 		_list.set_item_metadata(i, n)
 		if n == sprite:
 			_list.select(i)

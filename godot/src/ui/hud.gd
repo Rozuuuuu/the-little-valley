@@ -191,7 +191,7 @@ func _build_top() -> void:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(spacer)
 	row.add_child(_clock)
-	for sp: Array in [["⏸", 0], ["1×", 1], ["2×", 2], ["4×", 4]]:
+	for sp: Array in [["II", 0], ["1×", 1], ["2×", 2], ["4×", 4]]:
 		var v: int = sp[1]
 		_speed_box.add_child(_button(sp[0], func() -> void:
 			if v == 0:
@@ -474,7 +474,7 @@ func _refresh_towns() -> void:
 		var rl := Label.new()
 		rl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		rl.custom_minimum_size = Vector2(460, 0)
-		rl.text = "%s → %s: keep %d %s · %s" % [Settlements.name_of(sim, Settlements.id_of_building(sim, src)) if src != null else "?", Settlements.name_of(sim, Settlements.id_of_building(sim, dst)) if dst != null else "?",
+		rl.text = "%s › %s: keep %d %s · %s" % [Settlements.name_of(sim, Settlements.id_of_building(sim, src)) if src != null else "?", Settlements.name_of(sim, Settlements.id_of_building(sim, dst)) if dst != null else "?",
 			int(r["target"]), str(Defs.resource(str(r["res"]))["name"]).to_lower(), Logistics.route_info(sim, rid)["status"]]
 		_towns_list.add_child(rl)
 		var rr := HFlowContainer.new()
@@ -715,7 +715,11 @@ func show_title(message: String = "") -> void:
 	v.add_child(_button("Load a save file", func() -> void: game.load_from_file(), "A save downloaded from this game or the old browser game"))
 	v.add_child(_button("Asset Studio", open_studio, "Your own art for anything in the valley, kept on this device"))
 	if Files.is_web():
+		if game.pwa.update_waiting:
+			v.add_child(_button("Update now", func() -> void: game.pwa.apply_update(), "Save and close other Little Valley tabs first; updating reloads them too."))
 		_offer_old_game(v)
+		if not Pwa.runs_as_app():
+			_offer_install(v)
 	var name_edit := LineEdit.new()
 	name_edit.placeholder_text = "Name your valley"
 	name_edit.text = "Home"
@@ -801,7 +805,7 @@ func _refresh_tutorial() -> void:
 	var pips := Label.new()
 	var marks := ""
 	for n in Tutorial.STEPS.size():
-		marks += "●" if n <= i else "○"
+		marks += "•" if n <= i else "·"
 	pips.text = marks
 	pips.tooltip_text = "Step %d of %d" % [i + 1, Tutorial.STEPS.size()]
 	pips.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -846,7 +850,7 @@ func show_today(o: Dictionary) -> void:
 	if o["since"] is Array:
 		for line: String in o["since"]:
 			v.add_child(_wrapped("•  " + line, _c("text")))
-	for section: Array in [["Needs attention", o["issues"], "!"], ["Ideas for today", o["goals"], "→"]]:
+	for section: Array in [["Needs attention", o["issues"], "!"], ["Ideas for today", o["goals"], "›"]]:
 		var items: Array = section[1]
 		if items.is_empty():
 			continue
@@ -866,10 +870,10 @@ func show_today(o: Dictionary) -> void:
 				v.add_child(indent)
 	var ms: Dictionary = o["milestone"]
 	if ms["next"] != null:
-		v.add_child(_wrapped("%s → %s" % [ms["current"], ms["next"]], _c("textDim")))
+		v.add_child(_wrapped("%s › %s" % [ms["current"], ms["next"]], _c("textDim")))
 		for r: Dictionary in ms["reqs"]:
 			var done: bool = r["done"]
-			v.add_child(_wrapped("%s %s%s" % ["☑" if done else "☐", r["label"], "" if done else "  (%d/%d)" % [int(r["current"]), int(r["target"])]],
+			v.add_child(_wrapped("%s %s%s" % ["•" if done else "·", r["label"], "" if done else "  (%d/%d)" % [int(r["current"]), int(r["target"])]],
 				_c("good") if done else _c("text")))
 	v.add_child(_button("Start playing", _close_today))
 	_root.move_child(_today, -1)
@@ -905,6 +909,28 @@ func _wrapped(text: String, color: Color) -> Label:
 	return l
 
 
+## In a browser tab: Little Valley is meant to be installed (full screen, offline, its own icon).
+func _offer_install(v: VBoxContainer) -> void:
+	var box := VBoxContainer.new()
+	var head := Label.new()
+	head.text = "Install Little Valley: it runs full screen, works offline and keeps your valleys on this device."
+	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	head.custom_minimum_size = Vector2(440, 0)
+	head.add_theme_color_override("font_color", _c("accent"))
+	box.add_child(head)
+	if Pwa.can_prompt():
+		box.add_child(_button("Install Little Valley", func() -> void: Pwa.prompt_install()))
+	else:
+		for step: String in Pwa.install_steps(Pwa.this_device()):
+			var l := Label.new()
+			l.text = "•  " + step
+			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			l.custom_minimum_size = Vector2(440, 0)
+			l.add_theme_color_override("font_color", _c("textDim"))
+			box.add_child(l)
+	v.add_child(box)
+
+
 func toggle_menu() -> void:
 	_window_sound(not _menu.visible)
 	if _menu.visible:
@@ -930,6 +956,8 @@ func toggle_menu() -> void:
 		else:
 			game.skip_tutorial()
 		_menu.visible = false))
+	if game.pwa.update_waiting:
+		v.add_child(_button("Update now", func() -> void: game.update_now(), "This valley is saved first. Save and close other Little Valley tabs; updating reloads them too."))
 	v.add_child(_button("Asset Studio", func() -> void:
 		_menu.visible = false
 		open_studio(), "Your own art for anything in the valley, kept on this device"))
@@ -1089,7 +1117,7 @@ func refresh_now() -> void:
 	_storage_label.add_theme_color_override("font_color", _c("problem") if cap.x >= cap.y else _c("textDim"))
 	var season: Dictionary = sim.season()
 	var t := sim.time_of_day() * 24.0
-	_clock.text = "%s · Day %d of %s · %02d:%02d%s" % [season["def"]["name"], int(season["day"]), str(season["def"]["name"]).to_lower(), int(t), int(fmod(t, 1.0) * 60.0), "  ⏸" if game.paused else ("  %d×" % game.speed if game.speed > 1 else "")]
+	_clock.text = "%s · Day %d of %s · %02d:%02d%s" % [season["def"]["name"], int(season["day"]), str(season["def"]["name"]).to_lower(), int(t), int(fmod(t, 1.0) * 60.0), "  paused" if game.paused else ("  %d×" % game.speed if game.speed > 1 else "")]
 	if game.falling_behind and not game.paused:
 		_clock.text += "  (slowed: this device can't keep up at this speed)"
 	_refresh_selection()
@@ -1468,7 +1496,7 @@ func _refresh_card() -> void:
 					var rb := _button(str(rd["name"]), func() -> void:
 						game.command({"type": "setRecipe", "buildingId": b.id, "recipe": r})
 						_last_card_key = ""
-						refresh_now(), "%s → %s (%d work)" % [Inv.format(Inv.from_json(rd["inputs"])), Inv.format(Inv.from_json(rd["outputs"])), int(rd["work"])])
+						refresh_now(), "%s › %s (%d work)" % [Inv.format(Inv.from_json(rd["inputs"])), Inv.format(Inv.from_json(rd["outputs"])), int(rd["work"])])
 					rb.disabled = not unlocked or str(b.workshop.get("recipe", "")) == r
 					_card_grid.add_child(rb)
 				_card_grid.add_child(_button("Resume" if bool(b.workshop["paused"]) else "Pause", func() -> void:
@@ -1493,7 +1521,7 @@ func _refresh_card() -> void:
 						var problem := Levels.upgrade_problem(sim, b)
 						var tip := "%s\nCost: %s · %d s at normal speed%s" % [", ".join(PackedStringArray(next.get("perks", []) as Array)),
 							Inv.format(Inv.from_json(next.get("cost", {}))), roundi(float(next["time"]) / 10.0), "\n" + problem if problem != "" else ""]
-						var ub := _button("Upgrade → %s" % next["name"], func() -> void:
+						var ub := _button("Upgrade › %s" % next["name"], func() -> void:
 							game.command({"type": "upgradeBuilding", "buildingId": b.id})
 							_last_card_key = ""
 							refresh_now(), tip)

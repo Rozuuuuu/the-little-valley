@@ -46,6 +46,14 @@ scripts/godot-export.sh windows    # → dist-godot/windows/LittleValley.exe
 Check the web build in Chrome: `npx tsx scripts/godot-web-bench.ts 100 600 desktop`, or with
 phone emulation (`phone`). To try it on a real phone on your Wi-Fi: `npx tsx scripts/serve-godot-web.ts`.
 To check that the web build brings saves over from the old browser game: `npx tsx scripts/godot-web-oldsaves.ts`.
+To check the install-event bridge, cached files and offline startup in Chrome:
+`npx tsx scripts/godot-web-pwa.ts`. This checks the local release without installing an app.
+Launch the installed game online once before relying on offline play: the first website visit
+registers the service worker, and the next online launch caches the engine and game files.
+Use the normal installed entry address offline; benchmark query addresses are not cached.
+Updates are offered explicitly. During play, a failed save prevents the update. Save and close
+other game tabs first: Godot updates reload every tab. Real install prompts, update replacement,
+and save durability across an immediate web update still require browser/device verification.
 To listen to every synthesised sound: `godot --headless --path . -s res://tools/render_sounds.gd -- <folder>` writes them as WAV files.
 
 The game also takes capture options, as command-line arguments or, on the web, in the page
