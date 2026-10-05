@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="312" height="244" viewBox="0 0 312 244">
+<ellipse cx="166" cy="230" rx="154" ry="16" fill="#173b3d" opacity="0.28"/><g>
+<clipPath id="c109"><path d="M24,115H288Q294,115 294,121V224Q294,230 288,230H24Q18,230 18,224V121Q18,115 24,115Z"/></clipPath>
+<clipPath id="c109r"><path d="M24,115H288Q294,115 294,121V224Q294,230 288,230H24Q18,230 18,224V121Q18,115 24,115Z" transform="translate(-5,-5)"/></clipPath>
+<path d="M24,115H288Q294,115 294,121V224Q294,230 288,230H24Q18,230 18,224V121Q18,115 24,115Z" fill="#7d6a4c"/>
+<g clip-path="url(#c109)">
+<path d="M24,115H288Q294,115 294,121V224Q294,230 288,230H24Q18,230 18,224V121Q18,115 24,115Z" fill="#a8916a" transform="translate(-10,-10)"/>
+<path d="M24,115H288Q294,115 294,121V224Q294,230 288,230H24Q18,230 18,224V121Q18,115 24,115Z" fill="#cdb88e" opacity="0.9" transform="translate(140,140) scale(0.72) translate(-156,-156)"/>
+
+</g>
+<path d="M24,115H288Q294,115 294,121V224Q294,230 288,230H24Q18,230 18,224V121Q18,115 24,115Z" fill="none" stroke="#484d3f" stroke-width="3" stroke-linejoin="round"/>
+</g><g>
+<clipPath id="c110"><path d="M32,230L62,182L92,230Z"/></clipPath>
+<clipPath id="c110r"><path d="M32,230L62,182L92,230Z" transform="translate(-5,-5)"/></clipPath>
+<path d="M32,230L62,182L92,230Z" fill="#7d6a4c"/>
+<g clip-path="url(#c110)">
+<path d="M32,230L62,182L92,230Z" fill="#a8916a" transform="translate(-4,-4)"/>
+<path d="M32,230L62,182L92,230Z" fill="#cdb88e" opacity="0.9" transform="translate(55,199) scale(0.72) translate(-62,-206)"/>
+
+</g>
+<path d="M32,230L62,182L92,230Z" fill="none" stroke="#5a4a32" stroke-width="3" stroke-linejoin="round"/>
+</g><g>
+<clipPath id="c111"><path d="M132,230L162,182L192,230Z"/></clipPath>
+<clipPath id="c111r"><path d="M132,230L162,182L192,230Z" transform="translate(-5,-5)"/></clipPath>
+<path d="M132,230L162,182L192,230Z" fill="#7d6a4c"/>
+<g clip-path="url(#c111)">
+<path d="M132,230L162,182L192,230Z" fill="#a8916a" transform="translate(-4,-4)"/>
+<path d="M132,230L162,182L192,230Z" fill="#cdb88e" opacity="0.9" transform="translate(155,199) scale(0.72) translate(-162,-206)"/>
+
+</g>
+<path d="M132,230L162,182L192,230Z" fill="none" stroke="#5a4a32" stroke-width="3" stroke-linejoin="round"/>
+</g><circle cx="112" cy="224" r="9" fill="#5a4030"/><path d="M106,222 q6,-20 12,0Z" fill="#e6b65a"/>
+</svg>

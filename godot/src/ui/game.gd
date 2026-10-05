@@ -32,6 +32,8 @@ var paused := false
 var selected: Array[int] = []
 var selected_building := -1
 var selected_animal := -1
+## The people selected just before a building was clicked (the enlist button uses them).
+var selected_before_building: Array[int] = []
 var hover_tile := Vector2i(-99999, 0)
 ## Building type being placed, "mark"/"unmark" for harvest marks, "area:<kind>" for a new work
 ## area, or "".
@@ -116,6 +118,20 @@ func _capture(opts: Dictionary) -> void:
 	Commands.apply(sim, {"type": "placeArea", "building": "field", "x0": 4, "y0": 4, "x1": 6, "y1": 6, "crop": "wheat"})
 	_place_near_hall(["house", "storehouse"])
 	Commands.apply(sim, {"type": "designate", "x0": -16, "y0": -16, "x1": 16, "y1": 16, "on": true})
+	if opts.has("realm"):
+		# A crowned kingdom that knows its neighbours, with an offer and some news waiting.
+		for m: String in ["hamlet", "village", "town", "region"]:
+			sim.reached.append(m)
+		Commands.apply(sim, {"type": "coronate", "rulerName": "Lloyd", "kingdomName": "Valleyhold", "banner": {"color": "#3a6ea5", "emblem": "oak"}})
+		Kingdoms.player(sim)["treasury"] = 300
+		Commands.apply(sim, {"type": "appointCouncil", "post": "envoy", "settlerId": sim.settlers[0].id})
+		var towns := Regions.nearby_towns(sim.seed_value)
+		for i in mini(3, towns.size()):
+			Kingdoms.know_of(sim, int(towns[i]["id"]))
+		var rival := sim.kingdoms[1] as Dictionary
+		Diplomacy.make_offer(sim, int(rival["id"]), 0, "trade", {"durationDays": 8, "payment": 0}, Defs.DAY_TICKS * 2)
+		var ev := News.record_event(sim, "military-buildup", int(rival["id"]), 4, null)
+		News.record_observation(sim, 0, int(rival["id"]), "military-buildup", null, {"eventId": ev["id"], "certainty": "rumor", "source": "merchant", "delay": 0})
 	if opts.get("towns", "0") == "1":
 		# A waystation to the west with a depot at home and a wood route: carts on the road.
 		sim.reached.append("hamlet")
@@ -189,6 +205,11 @@ func _capture(opts: Dictionary) -> void:
 		hud.toggle_areas()
 	if opts.get("towns", "0") == "1":
 		hud.toggle_towns()
+	if opts.has("realm"):
+		hud.toggle_realm()
+		hud._realm.tab = str(opts["realm"]) if str(opts["realm"]) in RealmWindow.TABS else "Kingdoms"
+		hud._realm._key = ""
+		hud.refresh_now()
 	if opts.get("upgrade", "0") == "1":
 		# Starts upgrading the storehouse and selects it, to review the level UI.
 		BuildingOps.camp_of(sim).inventory = {"food": 120, "wood": 300, "stone": 200, "planks": 80, "tools": 20}
@@ -494,7 +515,7 @@ func _pointer_moved(p: Vector2) -> void:
 
 func _update_ghost() -> void:
 	ghost_tiles = []
-	if placing == "" or hover_tile.x == -99999 or placing.begins_with("area:") or placing == "survey":
+	if placing == "" or hover_tile.x == -99999 or placing.begins_with("area:") or placing == "survey" or placing == "claim" or placing.begins_with("company:"):
 		return
 	if placing != "mark" and placing != "unmark" and Defs.building(placing).has("span"):
 		if drag_box.has_area():
@@ -551,6 +572,16 @@ func _primary_release(screen: Vector2, additive: bool) -> void:
 
 
 func _place(screen: Vector2, box: Rect2) -> void:
+	if placing == "claim":
+		var sec := Territory.sector_of(_tile_at(screen).x, _tile_at(screen).y)
+		if bool(command({"type": "claimFrontier", "sector": {"x": sec.x, "y": sec.y}})["ok"]):
+			cancel_placing()
+		return
+	if placing.begins_with("company:"):
+		var t := _tile_at(screen)
+		if bool(command({"type": "orderCompany", "companyId": int(placing.substr(8)), "order": "move", "x": t.x, "y": t.y, "supplyDays": 2})["ok"]):
+			cancel_placing()
+		return
 	if placing == "survey":
 		if not selected.is_empty():
 			var t := _tile_at(screen)
@@ -605,6 +636,8 @@ func click_select(screen: Vector2, additive: bool) -> void:
 	if adviser != null and Vector2(adviser.x, adviser.y - 1.6).distance_to(w) < 0.6:
 		command({"type": "hearAdvice"})
 		return
+	if not selected.is_empty():
+		selected_before_building = selected.duplicate()
 	if not additive:
 		selected.clear()
 	selected_building = -1
@@ -706,6 +739,8 @@ func _key(k: InputEventKey) -> void:
 			hud.toggle_areas()
 		KEY_F4:
 			hud.toggle_towns()
+		KEY_F6:
+			hud.toggle_realm()
 		KEY_R:
 			if sim.ruler() != null and selected.has(sim.ruler().id):
 				command({"type": "rally"})

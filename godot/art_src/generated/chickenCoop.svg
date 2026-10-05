@@ -1,19 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="208" height="252" viewBox="0 0 208 252">
 <path d="M32,64H176Q194,64 194,82V224Q194,242 176,242H32Q14,242 14,224V82Q14,64 32,64Z" fill="#7a573c" opacity="0.4"/><g>
-<clipPath id="c265"><path d="M22,86H100.4Q104.4,86 104.4,90V128Q104.4,132 100.4,132H22Q18,132 18,128V90Q18,86 22,86Z"/></clipPath>
-<clipPath id="c265r"><path d="M22,86H100.4Q104.4,86 104.4,90V128Q104.4,132 100.4,132H22Q18,132 18,128V90Q18,86 22,86Z" transform="translate(-5,-5)"/></clipPath>
+<clipPath id="c279"><path d="M22,86H100.4Q104.4,86 104.4,90V128Q104.4,132 100.4,132H22Q18,132 18,128V90Q18,86 22,86Z"/></clipPath>
+<clipPath id="c279r"><path d="M22,86H100.4Q104.4,86 104.4,90V128Q104.4,132 100.4,132H22Q18,132 18,128V90Q18,86 22,86Z" transform="translate(-5,-5)"/></clipPath>
 <path d="M22,86H100.4Q104.4,86 104.4,90V128Q104.4,132 100.4,132H22Q18,132 18,128V90Q18,86 22,86Z" fill="#5c3d28"/>
-<g clip-path="url(#c265)">
+<g clip-path="url(#c279)">
 <path d="M22,86H100.4Q104.4,86 104.4,90V128Q104.4,132 100.4,132H22Q18,132 18,128V90Q18,86 22,86Z" fill="#7d5636" transform="translate(-4,-4)"/>
 <path d="M22,86H100.4Q104.4,86 104.4,90V128Q104.4,132 100.4,132H22Q18,132 18,128V90Q18,86 22,86Z" fill="#a77446" opacity="0.9" transform="translate(68,68) scale(0.72) translate(-75,-75)"/>
 
 </g>
 <path d="M22,86H100.4Q104.4,86 104.4,90V128Q104.4,132 100.4,132H22Q18,132 18,128V90Q18,86 22,86Z" fill="none" stroke="#39392f" stroke-width="3" stroke-linejoin="round"/>
 </g><g>
-<clipPath id="c266"><path d="M10,90 L61.2,54 L112.4,90Z"/></clipPath>
-<clipPath id="c266r"><path d="M10,90 L61.2,54 L112.4,90Z" transform="translate(-5,-5)"/></clipPath>
+<clipPath id="c280"><path d="M10,90 L61.2,54 L112.4,90Z"/></clipPath>
+<clipPath id="c280r"><path d="M10,90 L61.2,54 L112.4,90Z" transform="translate(-5,-5)"/></clipPath>
 <path d="M10,90 L61.2,54 L112.4,90Z" fill="#2b4048"/>
-<g clip-path="url(#c266)">
+<g clip-path="url(#c280)">
 <path d="M10,90 L61.2,54 L112.4,90Z" fill="#3b5662" transform="translate(-4,-4)"/>
 <path d="M10,90 L61.2,54 L112.4,90Z" fill="#4f6f7c" opacity="0.9" transform="translate(54.2,65) scale(0.72) translate(-61.2,-72)"/>
 

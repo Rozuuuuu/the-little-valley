@@ -8,7 +8,7 @@ extends CanvasLayer
 const BUILD_LIST: Array[String] = ["house", "familyHome", "storehouse", "field", "orchard", "path", "bridge",
 	"workshop", "mill", "bakery", "granary", "charcoalKiln", "cottage", "hunterLodge", "chickenCoop", "pigsty",
 	"sheepPen", "goatPen", "cattlePasture", "horsePaddock", "tannery", "weaver", "quarry", "mine", "fisherHut",
-	"smelter", "forge", "waystation", "depot", "stoneBridge"]
+	"smelter", "forge", "waystation", "depot", "stoneBridge", "inn", "barracks", "archeryRange", "stable", "travelCamp", "watchtower", "well"]
 const JOBS: Array[String] = ["laborer", "farmer", "gatherer", "builder", "hauler", "hunter", "herder"]
 const STOCKS: Array[String] = ["food", "wood", "stone", "planks", "wheat"]
 
@@ -36,6 +36,7 @@ var _people := PanelContainer.new()
 var _people_text := RichTextLabel.new()
 var _people_buttons := VBoxContainer.new()
 var _people_key := ""
+var _realm := RealmWindow.new()
 var _towns := PanelContainer.new()
 var _towns_list := VBoxContainer.new()
 var _towns_key := ""
@@ -83,6 +84,8 @@ func _ready() -> void:
 	_towns.add_child(_towns_list)
 	_towns.visible = false
 	_root.add_child(_towns)
+	_realm.setup(self)
+	_root.add_child(_realm)
 	for p: Control in [_title, _menu, _busy]:
 		p.set_anchors_preset(Control.PRESET_CENTER)
 		p.visible = false
@@ -187,6 +190,7 @@ func _build_top() -> void:
 	row.add_child(_button("People", toggle_people, "Visitors, travellers, households and children (F2)"))
 	row.add_child(_button("Areas", toggle_areas, "Work areas: farms, woodlots, quarries, building areas (F3)"))
 	row.add_child(_button("Towns", toggle_towns, "Settlements, supply routes and caravans (F4)"))
+	row.add_child(_button("Realm", toggle_realm, "Crown, land, kingdoms, news, army and war (F6)"))
 	row.add_child(_button("Save", func() -> void: game.save_now(), "Save now (F5)"))
 	row.add_child(_button("Menu", toggle_menu, "Menu (Esc)"))
 	_top.visible = false
@@ -248,8 +252,7 @@ func _build_people() -> void:
 func toggle_people() -> void:
 	_people.visible = not _people.visible
 	if _people.visible:
-		_areas.visible = false
-		_towns.visible = false
+		_close_windows(_people)
 	_people_key = ""
 	refresh_now()
 
@@ -356,11 +359,37 @@ func _refresh_people() -> void:
 
 # ---- towns window --------------------------------------------------------------------------------
 
+func _close_windows(keep: Control) -> void:
+	for w: Control in [_people, _areas, _towns, _realm]:
+		if w != keep:
+			w.visible = false
+
+
+func toggle_realm() -> void:
+	_realm.visible = not _realm.visible
+	if _realm.visible:
+		_close_windows(_realm)
+	_realm._key = ""
+	refresh_now()
+
+
+## Whether the Realm window is open (the map then shows borders).
+func realm_open() -> bool:
+	return _realm.visible
+
+
+func _text_label(t: String, tip: String = "") -> Label:
+	var l := Label.new()
+	l.text = t
+	l.tooltip_text = tip
+	l.mouse_filter = Control.MOUSE_FILTER_PASS
+	return l
+
+
 func toggle_towns() -> void:
 	_towns.visible = not _towns.visible
 	if _towns.visible:
-		_people.visible = false
-		_areas.visible = false
+		_close_windows(_towns)
 	_towns_key = ""
 	refresh_now()
 
@@ -493,8 +522,7 @@ func _build_areas() -> void:
 func toggle_areas() -> void:
 	_areas.visible = not _areas.visible
 	if _areas.visible:
-		_people.visible = false
-		_towns.visible = false
+		_close_windows(_areas)
 	_areas_key = ""
 	refresh_now()
 
@@ -842,6 +870,7 @@ func refresh_now() -> void:
 	_refresh_people()
 	_refresh_areas()
 	_refresh_towns()
+	_realm.refresh()
 
 
 func _refresh_selection() -> void:
@@ -1081,6 +1110,10 @@ func _building_text(b: Building) -> String:
 func _placing_text() -> String:
 	if game.placing == "mark":
 		return "[b]Mark for harvest[/b]\nDrag over trees, rocks and bushes. Right-click or Esc to stop."
+	if game.placing == "claim":
+		return "[b]Claim a sector[/b]\nClick a 16×16 sector next to your land. Its cost and any problem are shown first.\nRight-click or Esc to stop."
+	if game.placing.begins_with("company:"):
+		return "[b]March[/b]\nClick where the company should go. They carry two days of food from the stores.\nRight-click or Esc to stop."
 	if game.placing == "survey":
 		return "[b]Survey for ore[/b]\nClick rocky ground, a rock or a hill below a mountain face. The whole 16×16 patch is surveyed.\nRight-click or Esc to stop."
 	if game.placing.begins_with("area:"):
@@ -1238,6 +1271,36 @@ func _refresh_card() -> void:
 							refresh_now(), tip)
 						ub.disabled = problem != ""
 						_card_grid.add_child(ub)
+			if b.built and b.def().has("training"):
+				for u: String in b.def()["training"]["units"]:
+					var ud := Military.unit(u)
+					var eb := _button("Enlist selected: %s" % ud["name"], func() -> void:
+						game.command({"type": "enlist", "ids": game.selected_before_building.duplicate(), "unit": u, "buildingId": b.id})
+						_last_card_key = ""
+						refresh_now(), "Select adults first, then this building. Gear: %s" % Inv.format(Inv.from_json(ud["gear"])))
+					eb.disabled = game.selected_before_building.is_empty()
+					_card_grid.add_child(eb)
+			if b.built and b.def().has("lodging"):
+				for p: Dictionary in sim.parties:
+					if p["state"] != "lodging" or int(p["innId"]) != b.id:
+						continue
+					var pid := int(p["id"])
+					for r: String in p["stock"]:
+						if int(p["stock"][r]) <= 0:
+							continue
+						var price := Merchants.sell_price(r)
+						_card_grid.add_child(_button("Buy 1 %s (%d coins)" % [str(Defs.resource(r)["name"]).to_lower(), price], func() -> void:
+							game.command({"type": "barter", "partyId": pid, "give": {}, "take": {r: 1}, "coins": price})
+							_last_card_key = ""
+							refresh_now(), "%s has %d" % [p["name"], int(p["stock"][r])]))
+					for r: String in ["tools", "planks", "wool", "hides", "leather", "cloth", "silverOre", "goldOre", "diamonds"]:
+						if sim.stored_total(r) <= 0:
+							continue
+						var pay := Merchants.buy_price(r)
+						_card_grid.add_child(_button("Sell 1 %s (%d coins)" % [str(Defs.resource(r)["name"]).to_lower(), pay], func() -> void:
+							game.command({"type": "barter", "partyId": pid, "give": {r: 1}, "take": {}, "coins": -pay})
+							_last_card_key = ""
+							refresh_now()))
 			if b.built and b.is_storage() and b.type != "crate":
 				_card_grid.add_child(_button("Stock targets…", func() -> void:
 					_card_mode = "wants"

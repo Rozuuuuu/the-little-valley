@@ -192,6 +192,53 @@ export const SPECS: Record<string, BuildingSpec> = {
         + `<circle cx="${x + 12}" cy="${f.yBase - 6}" r="8" fill="${M.wood[0]}"/><circle cx="${x + 44}" cy="${f.yBase - 6}" r="8" fill="${M.wood[0]}"/>`;
     },
   },
+  inn: {
+    size: [3, 2], rise: 110, wall: M.wall, roof: M.roofRed, shape: 'gable', chimney: true, windows: 3,
+    extra: (f) => {
+      // A hanging sign with a tankard.
+      const x = f.x0 + f.fw - 6;
+      return `<path d="M${x},${f.wallTop + 6} h22 M${x + 18},${f.wallTop + 6} v8" stroke="${M.wood[0]}" stroke-width="3"/>`
+        + shaded(rrect(x + 6, f.wallTop + 14, 26, 20, 4), { tones: M.wood, outline: outlineOf(M.wood), shadow: 2, light: 2 })
+        + `<path d="${rrect(x + 13, f.wallTop + 18, 10, 12, 2)}" fill="${P.core.gold}"/>`;
+    },
+    glow: (f) => `<rect x="${f.x0 + 10}" y="${f.wallTop + 24}" width="${f.fw - 20}" height="22" rx="8" fill="${P.core.gold}" opacity="0.3"/>`,
+  },
+  barracks: {
+    size: [3, 2], rise: 80, wall: M.stone.slice(1), roof: M.roofSlate, shape: 'gable', door: 'arch', windows: 2,
+    extra: (f) => {
+      // A weapon rack and a red pennant.
+      const x = f.x0 + f.fw;
+      return `<path d="M${x - 60},${f.yBase} V${f.yBase - 40} M${x - 20},${f.yBase} V${f.yBase - 40} M${x - 64},${f.yBase - 36} H${x - 16}" stroke="${M.wood[0]}" stroke-width="4"/>`
+        + [0, 1, 2].map((i) => `<path d="M${x - 52 + i * 14},${f.yBase - 6} V${f.yBase - 48}" stroke="#b9c6c4" stroke-width="3"/>`).join('')
+        + `<path d="M${f.x0 + 10},${f.ridge + 20} V${f.ridge - 26}" stroke="${M.wood[0]}" stroke-width="3"/><path d="M${f.x0 + 10},${f.ridge - 26} l26,8 l-26,8Z" fill="#a53a3a"/>`;
+    },
+  },
+  archeryRange: {
+    size: [3, 2], rise: 60, wall: M.wood.slice(1), roof: M.roofSlate, shape: 'gable', windows: 0,
+    extra: (f) => {
+      // Two straw targets.
+      const x = f.x0 + f.fw;
+      return [0, 1].map((i) => `<circle cx="${x - 60 + i * 34}" cy="${f.yBase - 26}" r="14" fill="${M.wheat[2]}" stroke="${M.wheat[0]}" stroke-width="2"/><circle cx="${x - 60 + i * 34}" cy="${f.yBase - 26}" r="8" fill="#c8483e"/><circle cx="${x - 60 + i * 34}" cy="${f.yBase - 26}" r="3" fill="${M.wheat[2]}"/>`).join('');
+    },
+  },
+  travelCamp: {
+    size: [3, 2], rise: 40, wall: ['#7d6a4c', '#a8916a', '#cdb88e'], roof: ['#7d6a4c', '#a8916a', '#cdb88e'], shape: 'none', door: 'none', windows: 0,
+    extra: (f) => {
+      // Two tents and a campfire.
+      const t = (cx: number) => shaded(poly([[cx - 30, f.yBase - 4], [cx, f.yBase - 52], [cx + 30, f.yBase - 4]]), { tones: ['#7d6a4c', '#a8916a', '#cdb88e'], outline: '#5a4a32', shadow: 4, light: 3 });
+      return t(f.x0 + 50) + t(f.x0 + 150) + `<circle cx="${f.x0 + 100}" cy="${f.yBase - 10}" r="9" fill="#5a4030"/><path d="M${f.x0 + 94},${f.yBase - 12} q6,-20 12,0Z" fill="${P.core.gold}"/>`;
+    },
+    glow: (f) => `<circle cx="${f.x0 + 100}" cy="${f.yBase - 16}" r="16" fill="${P.core.gold}" opacity="0.6"/>`,
+  },
+  watchtower: {
+    size: [1, 1], rise: 150, wall: M.wood.slice(1), roof: M.roofRed, shape: 'none', door: 'none', windows: 0,
+    extra: (f) => {
+      const cx = f.x0 + f.fw / 2;
+      return `<path d="M${f.x0 + 12},${f.yBase} L${cx - 10},${f.ridge + 30} M${f.x0 + f.fw - 12},${f.yBase} L${cx + 10},${f.ridge + 30} M${f.x0 + 18},${f.yBase - 30} L${f.x0 + f.fw - 18},${f.yBase - 60} M${f.x0 + f.fw - 18},${f.yBase - 30} L${f.x0 + 18},${f.yBase - 60}" stroke="${M.wood[0]}" stroke-width="5"/>`
+        + shaded(rrect(cx - 26, f.ridge + 10, 52, 24, 4), { tones: M.wood, outline: outlineOf(M.wood), shadow: 3, light: 2 })
+        + shaded(poly([[cx - 32, f.ridge + 12], [cx, f.ridge - 20], [cx + 32, f.ridge + 12]]), { tones: M.roofRed, outline: outlineOf(M.roofRed), shadow: 4, light: 3 });
+    },
+  },
   stable: {
     size: [3, 2], rise: 92, wall: ['#7a3f30', '#9c5240', '#bd6d56'], roof: M.roofSlate, shape: 'barn', door: 'barn', windows: 2,
     extra: (f) => {

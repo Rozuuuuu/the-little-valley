@@ -133,6 +133,36 @@ func _draw() -> void:
 		else:
 			draw_rect(game.drag_box, Color(WorldView.MINT, 0.12))
 			draw_rect(game.drag_box, Color(WorldView.MINT, 0.9), false, 2.0)
+	# Borders while the Realm window is open (or a sector is being claimed): homeland, frontier
+	# claims, held land and other kingdoms' land, each sector outlined in its colour.
+	if (game.hud != null and game.hud.realm_open()) or game.placing == "claim":
+		_draw_borders(sim, view, T, px)
+	# Companies in the field (ours and others'), drawn as banners with their strength.
+	for k: Dictionary in sim.kingdoms:
+		var kc := Color(str(k["banner"]["color"]))
+		for c: Dictionary in k["companies"]:
+			if c.get("state") != "deployed" and c.get("state") != "returning":
+				continue
+			var cp := Vector2(float(c.get("x", 0)), float(c.get("y", 0))) * T
+			if not view.has_point(cp):
+				continue
+			draw_set_transform(cp, 0.0, Vector2.ONE * px)
+			draw_line(Vector2(0, 0), Vector2(0, -34), Color("#3a2a1f"), 3.0)
+			draw_colored_polygon(PackedVector2Array([Vector2(0, -34), Vector2(20, -28), Vector2(0, -22)]), kc)
+			draw_circle(Vector2(0, 0), 7, Color(0.05, 0.16, 0.17, 0.85))
+			draw_circle(Vector2(0, 0), 5, kc)
+			draw_set_transform(Vector2.ZERO)
+			_label(cp + Vector2(10, -4) * px, "%s %d" % [str(Military.unit(c["kind"])["name"]), int(c.get("health", 100))], kc.lightened(0.2), px)
+	# Merchants walking to and from the inn.
+	for p: Dictionary in sim.parties:
+		if p["state"] != "arriving" and p["state"] != "leaving":
+			continue
+		var mp := Vector2(float(p["x"]), float(p["y"])) * T
+		if not view.has_point(mp):
+			continue
+		draw_circle(mp + Vector2(0, -18), 9, Color("#7a5a3a"))
+		draw_circle(mp + Vector2(0, -32), 6, Color("#e8c9a0"))
+		draw_rect(Rect2(mp + Vector2(4, -26), Vector2(12, 12)), WorldView.GOLD)
 	# Caravan carts on the road between settlements.
 	for m: Dictionary in sim.manifests:
 		var cp2 := Logistics.cart_position(sim, m) * T
@@ -182,3 +212,40 @@ func _label(at: Vector2, text: String, col: Color, px: float) -> void:
 	draw_string_outline(font, Vector2.ZERO, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, 5, Color(0.05, 0.16, 0.17, 0.92))
 	draw_string(font, Vector2.ZERO, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, col.lightened(0.35))
 	draw_set_transform(Vector2.ZERO)
+
+
+func _draw_borders(sim: Simulation, view: Rect2, T: float, px: float) -> void:
+	var size := Territory.sector_size() * T
+	var s0 := Territory.sector_of(view.position.x / T, view.position.y / T)
+	var s1 := Territory.sector_of(view.end.x / T, view.end.y / T)
+	for sy in range(s0.y, s1.y + 1):
+		for sx in range(s0.x, s1.x + 1):
+			var o := Territory.owner_of(sim, Vector2i(sx, sy))
+			if o.is_empty():
+				continue
+			var owner := Kingdoms.by_id(sim, int(o["legalOwner"]))
+			var col := Color(str(owner["banner"]["color"])) if not owner.is_empty() else Color.GRAY
+			var r := Rect2(Vector2(sx, sy) * size, Vector2(size, size))
+			draw_rect(r, Color(col, 0.10 if o["protectedHomeland"] else 0.05))
+			# Outline only where the neighbouring sector has another owner.
+			var me_key := "%s|%s" % [o["legalOwner"], o["protectedHomeland"]]
+			for d: Vector2i in [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]:
+				var n := Territory.owner_of(sim, Vector2i(sx, sy) + d)
+				if not n.is_empty() and "%s|%s" % [n["legalOwner"], n["protectedHomeland"]] == me_key:
+					continue
+				var a0 := r.position + Vector2(maxi(d.x, 0), maxi(d.y, 0)) * size
+				var a1 := a0 + (Vector2(0, size) if d.x != 0 else Vector2(size, 0))
+				draw_line(a0, a1, Color(col, 0.85), 3.0 * px)
+			if o["occupyingKingdom"] != null:
+				var occ := Kingdoms.by_id(sim, int(o["occupyingKingdom"]))
+				var oc := Color(str(occ["banner"]["color"])) if not occ.is_empty() else Color.RED
+				for i in 4:
+					var off := i * size / 4.0
+					draw_line(r.position + Vector2(off, 0), r.position + Vector2(0, off), Color(oc, 0.6), 2.0 * px)
+	if game.placing == "claim" and game.hover_tile.x != -99999:
+		var hs := Territory.sector_of(game.hover_tile.x, game.hover_tile.y)
+		var pv := Territory.claim_preview(sim, hs)
+		var hr := Rect2(Vector2(hs) * size, Vector2(size, size))
+		var ok: bool = pv["problem"] == ""
+		draw_rect(hr, Color(WorldView.MINT if ok else Color("#d9584f"), 0.2))
+		_label(hr.position + Vector2(6, 20) * px, "%d coins" % int(pv["cost"]) if ok else str(pv["problem"]), WorldView.MINT if ok else Color("#f08a80"), px)

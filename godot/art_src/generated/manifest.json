@@ -474,6 +474,86 @@
    "kind": "night",
    "provisional": true
   },
+  "inn": {
+   "w": 312,
+   "h": 314,
+   "ax": 12,
+   "ay": 304,
+   "kind": "building",
+   "provisional": true
+  },
+  "inn_lit": {
+   "w": 312,
+   "h": 314,
+   "ax": 12,
+   "ay": 304,
+   "kind": "night",
+   "provisional": true
+  },
+  "barracks": {
+   "w": 312,
+   "h": 284,
+   "ax": 12,
+   "ay": 274,
+   "kind": "building",
+   "provisional": true
+  },
+  "barracks_lit": {
+   "w": 312,
+   "h": 284,
+   "ax": 12,
+   "ay": 274,
+   "kind": "night",
+   "provisional": true
+  },
+  "archeryRange": {
+   "w": 312,
+   "h": 264,
+   "ax": 12,
+   "ay": 254,
+   "kind": "building",
+   "provisional": true
+  },
+  "archeryRange_lit": {
+   "w": 312,
+   "h": 264,
+   "ax": 12,
+   "ay": 254,
+   "kind": "night",
+   "provisional": true
+  },
+  "travelCamp": {
+   "w": 312,
+   "h": 244,
+   "ax": 12,
+   "ay": 234,
+   "kind": "building",
+   "provisional": true
+  },
+  "travelCamp_lit": {
+   "w": 312,
+   "h": 244,
+   "ax": 12,
+   "ay": 234,
+   "kind": "night",
+   "provisional": true
+  },
+  "watchtower": {
+   "w": 120,
+   "h": 258,
+   "ax": 12,
+   "ay": 248,
+   "kind": "building",
+   "provisional": true
+  },
+  "watchtower_lit": {
+   "w": 120,
+   "h": 258,
+   "ax": 12,
+   "ay": 248,
+   "kind": "night",
+   "provisional": true
+  },
   "stable": {
    "w": 312,
    "h": 296,
