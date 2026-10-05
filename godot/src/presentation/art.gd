@@ -72,7 +72,7 @@ func _finish_atlas(atlas: Image, placed: Array[Array]) -> void:
 		# No filter_clip: the atlas pads every sprite, and clipping per sprite stops batching.
 		at.filter_clip = false
 		var e: Dictionary = p[2]
-		sprites[p[0]] = {"texture": at, "ax": float(e["ax"]), "ay": float(e["ay"]), "w": float(e["w"]), "h": float(e["h"])}
+		sprites[p[0]] = {"texture": at, "ax": float(e["ax"]), "ay": float(e["ay"]), "w": float(e["w"]), "h": float(e["h"]), "points": e.get("points", {})}
 
 
 func _load_image(sprite_name: String, entry: Dictionary) -> Image:
@@ -110,3 +110,12 @@ func apply(sprite: Sprite2D, sprite_name: String) -> void:
 	sprite.scale = Vector2(k, k) / raster_scale
 	sprite.offset = Vector2(-float(s["ax"]), -float(s["ay"])) * raster_scale
 
+
+## A named point of a sprite (buildings: "chimney", "top") in world pixels from its anchor, or
+## null when the sprite has no such point.
+func point(sprite_name: String, key: String) -> Variant:
+	var pts: Dictionary = sprites.get(sprite_name, {}).get("points", {})
+	if not pts.has(key):
+		return null
+	var k := WorldView.TILE_PX / SOURCE_PX_PER_TILE
+	return Vector2(float(pts[key][0]), float(pts[key][1])) * k

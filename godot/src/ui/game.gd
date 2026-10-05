@@ -24,6 +24,7 @@ var camera := CameraRig.new()
 var overlay := WorldOverlay.new()
 var hud: Hud
 var audio := AudioEngine.new()
+var particles := Particles.new()
 
 var world_id := ""
 var world_name := ""
@@ -74,6 +75,7 @@ func _ready() -> void:
 	art.load_all(1.0)
 	startup["art"] = Time.get_ticks_msec() - t0
 	add_child(view)
+	add_child(particles)
 	add_child(overlay)
 	add_child(camera)
 	add_child(audio)
@@ -536,6 +538,7 @@ func _process(delta: float) -> void:
 	var alpha := clampf(_acc / TICK_MS, 0.0, 1.0) if sim.slice_next == -1 else 1.0
 	view.motion = settings.motion()
 	view.refresh(alpha, camera.view_rect(), delta)
+	particles.step(delta, sim, camera.view_rect(), art, settings.effects == "low", sim.is_night())
 	last_view_ms = (Time.get_ticks_usec() - t_view) / 1000.0
 	for id: int in view.settler_views:
 		var v: SettlerView = view.settler_views[id]
@@ -589,6 +592,13 @@ func _on_event(e: Dictionary) -> void:
 			hud.toast(str(e["text"]), str(e.get("level", "info")))
 		"sfx":
 			sfx_at(str(e["name"]), e.get("x"), e.get("y"))
+		"fx", "hit":
+			particles.on_event(e)
+		"milestone":
+			var camp := BuildingOps.camp_of(sim)
+			if camp != null:
+				for i in 6:
+					particles.fx("sparkle", camp.x + randf() * 3.0, camp.y + randf() * 2.0)
 
 
 ## Plays a sound from a place in the world: quieter with distance from the middle of the view,

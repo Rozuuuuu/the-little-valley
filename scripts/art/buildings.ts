@@ -261,7 +261,7 @@ export const SPECS: Record<string, BuildingSpec> = {
 };
 
 /** A building in footprint coordinates: walls in front, roof rising `rise` px above. */
-export function building(kind: string, lit: boolean): { w: number; h: number; body: string; ax: number; ay: number } {
+export function building(kind: string, lit: boolean): { w: number; h: number; body: string; ax: number; ay: number; points: Record<string, [number, number]> } {
   const sp = SPECS[kind];
   const fw = sp.size[0] * TILE;
   const fh = sp.size[1] * TILE;
@@ -273,6 +273,9 @@ export function building(kind: string, lit: boolean): { w: number; h: number; bo
   const eave = wallTop + 8;
   const ridge = eave - sp.rise;
   const fr: Frame = { x0, fw, yBase, wallTop, eave, ridge };
+  // Where smoke rises, relative to the anchor: the chimney top, else the middle of the roof ridge.
+  const points: Record<string, [number, number]> = { top: [fw / 2, ridge + 6 - yBase] };
+  if (sp.chimney) points.chimney = [fw * 0.72 + 10, ridge + (sp.shape === 'gable' ? 26 : 30) - yBase];
   const wall = sp.wall;
   let body = lit ? '' : groundShadow(x0 + fw / 2 + 10, yBase - 4, fw / 2 + 10, 16, SHADOW, 0.28);
   if (!lit) {
@@ -300,7 +303,7 @@ export function building(kind: string, lit: boolean): { w: number; h: number; bo
   }
   if (lit) {
     if (sp.glow) body += sp.glow(fr);
-    return { w: W, h: H, body, ax: x0, ay: yBase };
+    return { w: W, h: H, body, ax: x0, ay: yBase, points };
   }
   if (doorStyle !== 'none') {
     const top = yBase - 4 - doorH;
@@ -323,5 +326,5 @@ export function building(kind: string, lit: boolean): { w: number; h: number; bo
   }
   if (sp.chimney) body += shaded(rrect(x0 + fw * 0.72, ridge + (sp.shape === 'gable' ? 26 : 30), 20, 42, 3), { tones: M.stone, outline: outlineOf(M.stone), shadow: 4, light: 2 });
   if (sp.extra) body += sp.extra(fr);
-  return { w: W, h: H, body, ax: x0, ay: yBase };
+  return { w: W, h: H, body, ax: x0, ay: yBase, points };
 }

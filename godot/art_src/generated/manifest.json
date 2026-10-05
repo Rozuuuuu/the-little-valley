@@ -192,7 +192,13 @@
    "ax": 12,
    "ay": 440,
    "kind": "building",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     192,
+     -314.56
+    ]
+   }
   },
   "townHall_lit": {
    "w": 408,
@@ -200,7 +206,13 @@
    "ax": 12,
    "ay": 440,
    "kind": "night",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     192,
+     -314.56
+    ]
+   }
   },
   "house": {
    "w": 216,
@@ -208,7 +220,17 @@
    "ax": 12,
    "ay": 290,
    "kind": "building",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     96,
+     -201.04
+    ],
+    "chimney": [
+     148.24,
+     -181.04
+    ]
+   }
   },
   "house_lit": {
    "w": 216,
@@ -216,7 +238,17 @@
    "ax": 12,
    "ay": 290,
    "kind": "night",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     96,
+     -201.04
+    ],
+    "chimney": [
+     148.24,
+     -181.04
+    ]
+   }
   },
   "familyHome": {
    "w": 312,
@@ -224,7 +256,17 @@
    "ax": 12,
    "ay": 294,
    "kind": "building",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -205.04
+    ],
+    "chimney": [
+     217.35999999999999,
+     -185.04
+    ]
+   }
   },
   "familyHome_lit": {
    "w": 312,
@@ -232,7 +274,17 @@
    "ax": 12,
    "ay": 294,
    "kind": "night",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -205.04
+    ],
+    "chimney": [
+     217.35999999999999,
+     -185.04
+    ]
+   }
   },
   "cottage": {
    "w": 312,
@@ -240,7 +292,17 @@
    "ax": 12,
    "ay": 290,
    "kind": "building",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -201.04
+    ],
+    "chimney": [
+     217.35999999999999,
+     -181.04
+    ]
+   }
   },
   "cottage_lit": {
    "w": 312,
@@ -248,7 +310,17 @@
    "ax": 12,
    "ay": 290,
    "kind": "night",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -201.04
+    ],
+    "chimney": [
+     217.35999999999999,
+     -181.04
+    ]
+   }
   },
   "storehouse": {
    "w": 312,
@@ -256,7 +328,13 @@
    "ax": 12,
    "ay": 274,
    "kind": "building",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -185.04
+    ]
+   }
   },
   "storehouse_lit": {
    "w": 312,
@@ -264,7 +342,13 @@
    "ax": 12,
    "ay": 274,
    "kind": "night",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -185.04
+    ]
+   }
   },
   "granary": {
    "w": 312,
@@ -272,7 +356,13 @@
    "ax": 12,
    "ay": 284,
    "kind": "building",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -195.04
+    ]
+   }
   },
   "granary_lit": {
    "w": 312,
@@ -280,7 +370,13 @@
    "ax": 12,
    "ay": 284,
    "kind": "night",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -195.04
+    ]
+   }
   },
   "workshop": {
    "w": 312,
@@ -288,7 +384,17 @@
    "ax": 12,
    "ay": 278,
    "kind": "building",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -189.04
+    ],
+    "chimney": [
+     217.35999999999999,
+     -169.04
+    ]
+   }
   },
   "workshop_lit": {
    "w": 312,
@@ -296,7 +402,17 @@
    "ax": 12,
    "ay": 278,
    "kind": "night",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -189.04
+    ],
+    "chimney": [
+     217.35999999999999,
+     -169.04
+    ]
+   }
   },
   "mill": {
    "w": 216,
@@ -304,7 +420,13 @@
    "ax": 12,
    "ay": 344,
    "kind": "building",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     96,
+     -255.04
+    ]
+   }
   },
   "mill_lit": {
    "w": 216,
@@ -312,7 +434,13 @@
    "ax": 12,
    "ay": 344,
    "kind": "night",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     96,
+     -255.04
+    ]
+   }
   },
   "bakery": {
    "w": 312,
@@ -320,7 +448,17 @@
    "ax": 12,
    "ay": 284,
    "kind": "building",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -195.04
+    ],
+    "chimney": [
+     217.35999999999999,
+     -175.04
+    ]
+   }
   },
   "bakery_lit": {
    "w": 312,
@@ -328,7 +466,17 @@
    "ax": 12,
    "ay": 284,
    "kind": "night",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -195.04
+    ],
+    "chimney": [
+     217.35999999999999,
+     -175.04
+    ]
+   }
   },
   "charcoalKiln": {
    "w": 216,
@@ -336,7 +484,13 @@
    "ax": 12,
    "ay": 254,
    "kind": "building",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     96,
+     -165.04
+    ]
+   }
   },
   "charcoalKiln_lit": {
    "w": 216,
@@ -344,7 +498,13 @@
    "ax": 12,
    "ay": 254,
    "kind": "night",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     96,
+     -165.04
+    ]
+   }
   },
   "smelter": {
    "w": 216,
@@ -352,7 +512,13 @@
    "ax": 12,
    "ay": 304,
    "kind": "building",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     96,
+     -215.04
+    ]
+   }
   },
   "smelter_lit": {
    "w": 216,
@@ -360,7 +526,13 @@
    "ax": 12,
    "ay": 304,
    "kind": "night",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     96,
+     -215.04
+    ]
+   }
   },
   "forge": {
    "w": 312,
@@ -368,7 +540,17 @@
    "ax": 12,
    "ay": 278,
    "kind": "building",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -189.04
+    ],
+    "chimney": [
+     217.35999999999999,
+     -169.04
+    ]
+   }
   },
   "forge_lit": {
    "w": 312,
@@ -376,7 +558,17 @@
    "ax": 12,
    "ay": 278,
    "kind": "night",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -189.04
+    ],
+    "chimney": [
+     217.35999999999999,
+     -169.04
+    ]
+   }
   },
   "tannery": {
    "w": 312,
@@ -384,7 +576,13 @@
    "ax": 12,
    "ay": 270,
    "kind": "building",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -181.04
+    ]
+   }
   },
   "tannery_lit": {
    "w": 312,
@@ -392,7 +590,13 @@
    "ax": 12,
    "ay": 270,
    "kind": "night",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -181.04
+    ]
+   }
   },
   "weaver": {
    "w": 216,
@@ -400,7 +604,13 @@
    "ax": 12,
    "ay": 284,
    "kind": "building",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     96,
+     -195.04
+    ]
+   }
   },
   "weaver_lit": {
    "w": 216,
@@ -408,7 +618,13 @@
    "ax": 12,
    "ay": 284,
    "kind": "night",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     96,
+     -195.04
+    ]
+   }
   },
   "hunterLodge": {
    "w": 216,
@@ -416,7 +632,13 @@
    "ax": 12,
    "ay": 290,
    "kind": "building",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     96,
+     -201.04
+    ]
+   }
   },
   "hunterLodge_lit": {
    "w": 216,
@@ -424,7 +646,13 @@
    "ax": 12,
    "ay": 290,
    "kind": "night",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     96,
+     -201.04
+    ]
+   }
   },
   "fisherHut": {
    "w": 216,
@@ -432,7 +660,13 @@
    "ax": 12,
    "ay": 278,
    "kind": "building",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     96,
+     -189.04
+    ]
+   }
   },
   "fisherHut_lit": {
    "w": 216,
@@ -440,7 +674,13 @@
    "ax": 12,
    "ay": 278,
    "kind": "night",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     96,
+     -189.04
+    ]
+   }
   },
   "waystation": {
    "w": 312,
@@ -448,7 +688,17 @@
    "ax": 12,
    "ay": 304,
    "kind": "building",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -215.04
+    ],
+    "chimney": [
+     217.35999999999999,
+     -191.04
+    ]
+   }
   },
   "waystation_lit": {
    "w": 312,
@@ -456,7 +706,17 @@
    "ax": 12,
    "ay": 304,
    "kind": "night",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -215.04
+    ],
+    "chimney": [
+     217.35999999999999,
+     -191.04
+    ]
+   }
   },
   "depot": {
    "w": 312,
@@ -464,7 +724,13 @@
    "ax": 12,
    "ay": 278,
    "kind": "building",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -189.04
+    ]
+   }
   },
   "depot_lit": {
    "w": 312,
@@ -472,7 +738,13 @@
    "ax": 12,
    "ay": 278,
    "kind": "night",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -189.04
+    ]
+   }
   },
   "inn": {
    "w": 312,
@@ -480,7 +752,17 @@
    "ax": 12,
    "ay": 304,
    "kind": "building",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -215.04
+    ],
+    "chimney": [
+     217.35999999999999,
+     -195.04
+    ]
+   }
   },
   "inn_lit": {
    "w": 312,
@@ -488,7 +770,17 @@
    "ax": 12,
    "ay": 304,
    "kind": "night",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -215.04
+    ],
+    "chimney": [
+     217.35999999999999,
+     -195.04
+    ]
+   }
   },
   "barracks": {
    "w": 312,
@@ -496,7 +788,13 @@
    "ax": 12,
    "ay": 274,
    "kind": "building",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -185.04
+    ]
+   }
   },
   "barracks_lit": {
    "w": 312,
@@ -504,7 +802,13 @@
    "ax": 12,
    "ay": 274,
    "kind": "night",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -185.04
+    ]
+   }
   },
   "archeryRange": {
    "w": 312,
@@ -512,7 +816,13 @@
    "ax": 12,
    "ay": 254,
    "kind": "building",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -165.04
+    ]
+   }
   },
   "archeryRange_lit": {
    "w": 312,
@@ -520,7 +830,13 @@
    "ax": 12,
    "ay": 254,
    "kind": "night",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -165.04
+    ]
+   }
   },
   "travelCamp": {
    "w": 312,
@@ -528,7 +844,13 @@
    "ax": 12,
    "ay": 234,
    "kind": "building",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -145.04
+    ]
+   }
   },
   "travelCamp_lit": {
    "w": 312,
@@ -536,7 +858,13 @@
    "ax": 12,
    "ay": 234,
    "kind": "night",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -145.04
+    ]
+   }
   },
   "watchtower": {
    "w": 120,
@@ -544,7 +872,13 @@
    "ax": 12,
    "ay": 248,
    "kind": "building",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     48,
+     -195.51999999999998
+    ]
+   }
   },
   "watchtower_lit": {
    "w": 120,
@@ -552,7 +886,13 @@
    "ax": 12,
    "ay": 248,
    "kind": "night",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     48,
+     -195.51999999999998
+    ]
+   }
   },
   "stable": {
    "w": 312,
@@ -560,7 +900,13 @@
    "ax": 12,
    "ay": 286,
    "kind": "building",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -197.04
+    ]
+   }
   },
   "stable_lit": {
    "w": 312,
@@ -568,7 +914,13 @@
    "ax": 12,
    "ay": 286,
    "kind": "night",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -197.04
+    ]
+   }
   },
   "well": {
    "w": 120,
@@ -576,7 +928,13 @@
    "ax": 12,
    "ay": 168,
    "kind": "building",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     48,
+     -100
+    ]
+   }
   },
   "well_lit": {
    "w": 120,
@@ -584,7 +942,13 @@
    "ax": 12,
    "ay": 168,
    "kind": "night",
-   "provisional": true
+   "provisional": true,
+   "points": {
+    "top": [
+     48,
+     -100
+    ]
+   }
   },
   "orchard_saplings": {
    "w": 216,

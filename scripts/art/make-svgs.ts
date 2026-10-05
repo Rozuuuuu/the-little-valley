@@ -29,15 +29,17 @@ interface Entry {
   ay: number;
   kind: string;
   provisional: true;
+  /** Named points in art pixels from the anchor (buildings: where smoke rises). */
+  points?: Record<string, [number, number]>;
 }
 const manifest: Record<string, Entry> = {};
 
 const sources: Record<string, string> = {};
-function emit(name: string, w: number, h: number, ax: number, ay: number, kind: string, body: string): void {
+function emit(name: string, w: number, h: number, ax: number, ay: number, kind: string, body: string, points?: Record<string, [number, number]>): void {
   const text = svg(w, h, body);
   writeFileSync(`${OUT}/${name}.svg`, text);
   sources[name] = text;
-  manifest[name] = { w, h, ax, ay, kind, provisional: true };
+  manifest[name] = { w, h, ax, ay, kind, provisional: true, ...(points ? { points } : {}) };
 }
 
 
@@ -386,7 +388,7 @@ emit('crate', TILE, TILE, 0, TILE, 'building', crate());
 for (const k of Object.keys(SPECS)) {
   for (const lit of [false, true]) {
     const b = building(k, lit);
-    emit(`${k}${lit ? '_lit' : ''}`, b.w, b.h, b.ax, b.ay, lit ? 'night' : 'building', b.body);
+    emit(`${k}${lit ? '_lit' : ''}`, b.w, b.h, b.ax, b.ay, lit ? 'night' : 'building', b.body, b.points);
   }
 }
 for (const look of ORCHARD_LOOKS) {
