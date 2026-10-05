@@ -31,4 +31,10 @@ esac
 mkdir -p "$(dirname "$out")"
 "$GODOT" --headless --path "$root/godot" --import >/dev/null 2>&1 || true
 "$GODOT" --headless --path "$root/godot" "--export-$mode" "$preset" "$out"
+if [ "$target" = web ]; then
+  # Send the login cookie with the manifest request: on Vercel deployments behind login, the
+  # browser fetches the manifest without credentials by default and gets a 401.
+  sed -i 's#<link rel="manifest" href="index.manifest.json">#<link rel="manifest" href="index.manifest.json" crossorigin="use-credentials">#' "$out"
+  grep -q 'crossorigin="use-credentials"' "$out" || { echo "manifest credentials patch did not apply"; exit 1; }
+fi
 echo "exported $preset ($mode) to $out"

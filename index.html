@@ -9,7 +9,9 @@
     <meta name="theme-color" content="#1e2b22" />
     <title>Little Valley</title>
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="manifest" href="./manifest.webmanifest" />
+    <!-- use-credentials: on Vercel deployments behind login, a manifest fetched without the
+         login cookie gets a 401. -->
+    <link rel="manifest" href="./manifest.webmanifest" crossorigin="use-credentials" />
   </head>
   <body>
     <div id="root"></div>
