@@ -135,9 +135,23 @@ func _box(bg: Color, border: Color, radius: int = 8, pad: int = 8) -> StyleBoxFl
 	b.set_border_width_all(1)
 	b.set_corner_radius_all(radius)
 	b.set_content_margin_all(pad)
-	b.shadow_color = Color(0, 0, 0, 0.25)
-	b.shadow_size = 4
+	b.shadow_color = Color(0.08, 0.05, 0.02, 0.35)
+	b.shadow_size = 5
+	b.shadow_offset = Vector2(0, 2)
 	b.anti_aliasing = true
+	return b
+
+
+## A wooden button: a lit top edge and a thick dark lip below, so it reads as a raised plank.
+func _plank(bg: Color, rim: Color, lip: int = 3) -> StyleBoxFlat:
+	var b := _box(bg, rim, 6, 7)
+	b.border_width_top = 1
+	b.border_width_left = 1
+	b.border_width_right = 1
+	b.border_width_bottom = lip
+	b.border_color = rim
+	b.shadow_size = 2
+	b.content_margin_bottom = 7 + lip - 1
 	return b
 
 
@@ -146,19 +160,29 @@ func _make_theme() -> Theme:
 	t.default_font = _font
 	t.default_font_size = 17
 	var panel := _c("panel")
-	panel.a = 0.93
-	t.set_stylebox("panel", "PanelContainer", _box(panel, Color(_c("line"), 0.35), 10, 10))
-	t.set_stylebox("normal", "Button", _box(_c("panelHi"), Color(_c("line"), 0.3), 7, 7))
-	t.set_stylebox("hover", "Button", _box(_c("panelHi").lightened(0.12), Color(_c("line"), 0.7), 7, 7))
-	t.set_stylebox("pressed", "Button", _box(_c("panelHi").darkened(0.2), _c("accent"), 7, 7))
-	t.set_stylebox("focus", "Button", _box(Color(0, 0, 0, 0), _c("accent"), 7, 7))
-	t.set_stylebox("disabled", "Button", _box(Color(_c("panelHi"), 0.5), Color(_c("line"), 0.15), 7, 7))
+	panel.a = 0.95
+	# Panels: dark walnut with a gold trim, like a carved signboard.
+	var pbox := _box(panel, Color(_c("line"), 0.75), 10, 12)
+	pbox.set_border_width_all(2)
+	t.set_stylebox("panel", "PanelContainer", pbox)
+	var hi := _c("panelHi")
+	var lip := hi.darkened(0.45)
+	t.set_stylebox("normal", "Button", _plank(hi, lip))
+	t.set_stylebox("hover", "Button", _plank(hi.lightened(0.12), Color(_c("line"), 0.9)))
+	var pressed := _plank(hi.darkened(0.15), lip, 1)
+	pressed.content_margin_top = 9
+	t.set_stylebox("pressed", "Button", pressed)
+	t.set_stylebox("focus", "Button", _box(Color(0, 0, 0, 0), _c("accent"), 6, 7))
+	t.set_stylebox("disabled", "Button", _plank(Color(hi, 0.5), Color(lip, 0.5)))
 	t.set_color("font_color", "Button", _c("text"))
 	t.set_color("font_hover_color", "Button", _c("accent"))
+	t.set_color("font_pressed_color", "Button", _c("accent"))
 	t.set_color("font_disabled_color", "Button", Color(_c("textDim"), 0.6))
+	t.set_color("font_outline_color", "Button", Color(0.12, 0.07, 0.03, 0.6))
+	t.set_constant("outline_size", "Button", 2)
 	t.set_color("font_color", "Label", _c("text"))
 	t.set_color("default_color", "RichTextLabel", _c("text"))
-	t.set_stylebox("normal", "LineEdit", _box(_c("panelHi").darkened(0.25), Color(_c("line"), 0.4), 6, 6))
+	t.set_stylebox("normal", "LineEdit", _box(_c("panelHi").darkened(0.35), Color(_c("line"), 0.5), 6, 6))
 	t.set_color("font_color", "LineEdit", _c("text"))
 	t.set_font("bold_font", "RichTextLabel", _bold)
 	return t

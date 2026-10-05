@@ -207,14 +207,19 @@ func _neighbour_signature(c: Chunk) -> int:
 	return sum
 
 
-## A 34×34 R8 texture of terrain ids (or exploration) for a chunk plus a one-tile border.
+## A 38×38 R8 texture of terrain ids (or exploration) for a chunk plus a three-tile border, so
+## the shader can measure water depth and bank shadows across chunk edges without seams.
+const BORDER := 3
+const BORDERED := Chunk.SIZE + BORDER * 2
+
+
 func _bordered_texture(c: Chunk, fog: bool) -> ImageTexture:
 	var data := PackedByteArray()
-	data.resize(34 * 34)
-	var ox := c.cx * Chunk.SIZE - 1
-	var oy := c.cy * Chunk.SIZE - 1
-	for y in 34:
-		for x in 34:
+	data.resize(BORDERED * BORDERED)
+	var ox := c.cx * Chunk.SIZE - BORDER
+	var oy := c.cy * Chunk.SIZE - BORDER
+	for y in BORDERED:
+		for x in BORDERED:
 			var tx := ox + x
 			var ty := oy + y
 			var v := 0
@@ -226,8 +231,8 @@ func _bordered_texture(c: Chunk, fog: bool) -> ImageTexture:
 					# Unloaded neighbour: repeat our own edge.
 					t = c.terrain[clampi(ty - c.cy * Chunk.SIZE, 0, 31) * Chunk.SIZE + clampi(tx - c.cx * Chunk.SIZE, 0, 31)]
 				v = t
-			data[y * 34 + x] = v
-	return ImageTexture.create_from_image(Image.create_from_data(34, 34, false, Image.FORMAT_R8, data))
+			data[y * BORDERED + x] = v
+	return ImageTexture.create_from_image(Image.create_from_data(BORDERED, BORDERED, false, Image.FORMAT_R8, data))
 
 
 func _set_season_look(season: String) -> void:
@@ -499,12 +504,12 @@ func _sync_animals(alpha: float, area: Rect2) -> void:
 
 # ---- light ---------------------------------------------------------------------------------------
 
-## The whole scene's colour by time of day: warm noon, golden dusk, deep teal night.
+## The whole scene's colour by time of day: warm noon, golden dusk, moonlit blue night.
 func _night_tint() -> Color:
 	var t := sim.time_of_day()
 	var day := Color(1, 1, 1)
-	var dusk := Color(1.0, 0.86, 0.72)
-	var night := Color(0.42, 0.55, 0.62)
+	var dusk := Color(1.0, 0.82, 0.66)
+	var night := Color(0.38, 0.46, 0.68)
 	if t >= Defs.MORNING + 0.06 and t < Defs.DUSK:
 		return day
 	if t >= Defs.DUSK and t < Defs.NIGHT_START:

@@ -4,7 +4,7 @@
  * drawn twice: by day, and the night overlay (lit windows, furnace glow) added above the night tint.
  */
 import { M, OUTLINE, outlineOf, P, RIM, SHADOW } from './palette';
-import { blob, groundShadow, poly, rrect, shaded, smoothPath, TILE } from './svg-kit';
+import { blob, groundShadow, poly, rng, rrect, shaded, smoothPath, TILE } from './svg-kit';
 
 type Roof = 'gable' | 'hip' | 'barn' | 'dome' | 'none';
 
@@ -48,9 +48,9 @@ export const SPECS: Record<string, BuildingSpec> = {
         + `<path d="M${cx},${f.ridge - 72} L${cx + 34},${f.ridge - 62} L${cx},${f.ridge - 52}Z" fill="${P.core.gold}" stroke="${P.core.goldDeep}" stroke-width="2"/>`;
     },
   },
-  house: { size: [2, 2], rise: 96, wall: M.wall, roof: M.roofRed, shape: 'gable', chimney: true, windows: 1 },
+  house: { size: [2, 2], rise: 96, wall: M.wall, roof: M.roofThatch, shape: 'gable', chimney: true, windows: 1 },
   familyHome: {
-    size: [3, 2], rise: 100, wall: M.wall, roof: M.roofRed, shape: 'gable', chimney: true, windows: 2,
+    size: [3, 2], rise: 100, wall: M.wall, roof: M.roofThatch, shape: 'gable', chimney: true, windows: 2,
     extra: (f) => {
       // A porch roof over the door and a washing line.
       const cx = f.x0 + f.fw / 2;
@@ -146,7 +146,7 @@ export const SPECS: Record<string, BuildingSpec> = {
     },
   },
   weaver: {
-    size: [2, 2], rise: 90, wall: M.wall, roof: M.roofRed, shape: 'gable', windows: 1,
+    size: [2, 2], rise: 90, wall: M.wall, roof: M.roofThatch, shape: 'gable', windows: 1,
     // Bolts of cloth by the door.
     extra: (f) => [0, 1].map((i) => shaded(rrect(f.x0 + 8 + i * 22, f.yBase - 30, 18, 26, 6), { tones: CLOTH, outline: OUTLINE, shadow: 3, light: 2 })).join(''),
   },
@@ -260,71 +260,274 @@ export const SPECS: Record<string, BuildingSpec> = {
   },
 };
 
+/** Unique gradient and clip ids within one sprite; `.last` is the most recent. */
+function gradIds(): ((p: string) => string) & { last: string } {
+  let n = 0;
+  const f = ((p: string) => (f.last = `${p}${n++}`)) as ((p: string) => string) & { last: string };
+  f.last = '';
+  return f;
+}
+
+/** Rounded fieldstones in a band, each lit on its upper left. */
+export function stones(x: number, y: number, w: number, h: number, tones: string[], seed: number): string {
+  const r = rng(seed);
+  let s = '';
+  let cx = x;
+  while (cx < x + w - 4) {
+    const sw = Math.min(14 + r() * 14, x + w - cx);
+    const sy = y + r() * 3;
+    s += `<path d="${rrect(cx, sy, sw - 2, h - 2, 5)}" fill="${tones[1 + Math.floor(r() * 2)]}" stroke="${outlineOf(tones)}" stroke-width="1.5"/>`;
+    s += `<path d="M${cx + 3},${sy + 3} h${Math.max(2, sw - 10)}" stroke="${tones[tones.length - 1]}" stroke-width="2" stroke-linecap="round" opacity="0.8"/>`;
+    cx += sw;
+  }
+  return s;
+}
+
+const FRAMED = ['townHall', 'house', 'familyHome', 'cottage', 'inn', 'weaver', 'waystation'];
+
+/** The wall's material: timber-framed plaster, planks, logs, stone or brick. */
+function wallTexture(kind: string, wall: string[], x: number, y: number, w: number, h: number): string {
+  const r = rng(kind.length * 31 + w);
+  let s = '';
+  const isStone = wall[0] === M.stone[0] || wall[0] === M.stone[1];
+  const isPlank = wall[0] === M.wood[1] || wall[0] === M.wood[0];
+  if (wall === M.wall) {
+    // Plaster: soft mottling, then the timber frame with diagonal braces.
+    for (let i = 0; i < 10; i++) s += `<path d="${blob(x + r() * w, y + r() * h, 10 + r() * 16, 6 + r() * 8, 50 + i, 0.3, 7)}" fill="${r() < 0.5 ? wall[2] : wall[0]}" opacity="0.35"/>`;
+    if (FRAMED.includes(kind)) {
+      const beam = M.wood[1];
+      const posts = [x + 4, x + w * 0.33, x + w * 0.67 - 8, x + w - 12];
+      for (const px of posts) s += `<rect x="${px}" y="${y}" width="8" height="${h}" fill="${beam}"/><rect x="${px}" y="${y}" width="2.5" height="${h}" fill="${M.wood[2]}" opacity="0.8"/>`;
+      const mid = y + h * 0.5;
+      s += `<rect x="${x}" y="${mid - 4}" width="${w}" height="8" fill="${beam}"/><rect x="${x}" y="${mid - 4}" width="${w}" height="2.5" fill="${M.wood[2]}" opacity="0.8"/>`;
+      s += `<path d="M${posts[0] + 8},${mid + 4} L${posts[1]},${y + h} M${posts[3]},${mid + 4} L${posts[2] + 8},${y + h} M${posts[0] + 8},${mid - 4} L${posts[1]},${y + 6} M${posts[3]},${mid - 4} L${posts[2] + 8},${y + 6}" stroke="${beam}" stroke-width="6"/>`;
+    }
+  } else if (isStone) {
+    // Coursed masonry: staggered blocks.
+    let row = 0;
+    for (let yy = y + 2; yy < y + h; yy += 16) {
+      for (let xx = x - (row % 2) * 14; xx < x + w; xx += 28) {
+        const c = wall[Math.min(wall.length - 1, 1 + Math.floor(r() * 2))];
+        s += `<path d="${rrect(xx + 1, yy + 1, 26, 14, 4)}" fill="${c}" stroke="${outlineOf(M.stone)}" stroke-width="1.2" stroke-opacity="0.7"/><path d="M${xx + 4},${yy + 4} h18" stroke="${M.stone[3]}" stroke-width="1.6" opacity="0.6" stroke-linecap="round"/>`;
+      }
+      row++;
+    }
+  } else if (kind === 'hunterLodge') {
+    // Logs: horizontal rounded timbers.
+    let i = 0;
+    for (let yy = y + 4; yy < y + h; yy += 14) {
+      s += `<path d="${rrect(x - 4, yy, w + 8, 12, 6)}" fill="${wall[1 + (i++ % 2)]}" stroke="${outlineOf(wall)}" stroke-width="1.5"/><path d="M${x},${yy + 3} H${x + w}" stroke="${wall[2]}" stroke-width="2" opacity="0.7"/>`;
+    }
+  } else if (isPlank) {
+    // Vertical boards with uneven tone and nail heads.
+    for (let xx = x; xx < x + w; xx += 14) {
+      s += `<rect x="${xx}" y="${y}" width="13" height="${h}" fill="${wall[Math.floor(r() * 3)]}" opacity="0.55"/>`;
+      s += `<path d="M${xx + 13.5},${y} V${y + h}" stroke="${outlineOf(wall)}" stroke-width="1.6" opacity="0.6"/>`;
+      s += `<circle cx="${xx + 6}" cy="${y + 14}" r="1.4" fill="${M.wood[0]}"/><circle cx="${xx + 6}" cy="${y + h - 22}" r="1.4" fill="${M.wood[0]}"/>`;
+    }
+  } else {
+    // Brick: small staggered courses.
+    let row = 0;
+    for (let yy = y; yy < y + h; yy += 9) {
+      for (let xx = x - (row % 2) * 9; xx < x + w; xx += 18) s += `<rect x="${xx + 0.8}" y="${yy + 0.8}" width="16.4" height="7.4" rx="1.5" fill="${wall[Math.floor(r() * 3)]}" opacity="0.7"/>`;
+      row++;
+    }
+  }
+  return s;
+}
+
+/** A framed window with sill and shutters by day; glowing warm glass at night. */
+function windowArt(x: number, y: number, w: number, h: number, wall: string[], lit: boolean): string {
+  if (lit) return `<rect x="${x - 10}" y="${y - 10}" width="${w + 20}" height="${h + 20}" rx="16" fill="${M.glassLit[0]}" opacity="0.32"/><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="${M.glassLit[1]}"/><path d="M${x + w / 2},${y} V${y + h} M${x},${y + h / 2} H${x + w}" stroke="${M.wood[1]}" stroke-width="2.5"/>`;
+  const frame = M.wood[1];
+  const id = `gl${Math.round(x)}_${Math.round(y)}`;
+  let s = '';
+  // Shutters, painted green-blue.
+  s += `<rect x="${x - 11}" y="${y - 1}" width="10" height="${h + 2}" rx="2" fill="#4c7a6a" stroke="${outlineOf(wall)}" stroke-width="1.5"/><rect x="${x + w + 1}" y="${y - 1}" width="10" height="${h + 2}" rx="2" fill="#3f6a5c" stroke="${outlineOf(wall)}" stroke-width="1.5"/>`;
+  s += `<path d="M${x - 9},${y + h / 2} h6 M${x + w + 3},${y + h / 2} h6" stroke="#2c4c42" stroke-width="1.5"/>`;
+  s += `<rect x="${x - 2}" y="${y - 2}" width="${w + 4}" height="${h + 4}" rx="3" fill="${frame}"/>`;
+  s += `<defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9fd0d8"/><stop offset="0.5" stop-color="#3d6a78"/><stop offset="1" stop-color="#22404a"/></linearGradient></defs>`;
+  s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2" fill="url(#${id})"/>`;
+  s += `<path d="M${x + 3},${y + h * 0.55} L${x + w * 0.5},${y + 3}" stroke="#e6f6f4" stroke-width="2.5" opacity="0.55" stroke-linecap="round"/>`;
+  s += `<path d="M${x + w / 2},${y} V${y + h} M${x},${y + h / 2} H${x + w}" stroke="${frame}" stroke-width="2.5"/>`;
+  s += `<rect x="${x - 5}" y="${y + h + 1}" width="${w + 10}" height="5" rx="2" fill="${M.wood[2]}" stroke="${outlineOf(M.wood)}" stroke-width="1.2"/>`;
+  return s;
+}
+
+/** A plank door (or barn doors, or an arch) with a stone step. */
+function doorArt(x: number, base: number, w: number, h: number, style: string): string {
+  const top = base - h;
+  const id = `dc${Math.round(x)}`;
+  const d = style === 'arch' ? `M${x},${base} V${top + w / 2} A${w / 2},${w / 2} 0 0 1 ${x + w},${top + w / 2} V${base}Z` : rrect(x, top, w, h, style === 'barn' ? 4 : 13);
+  let s = `<rect x="${x - 6}" y="${top - 5}" width="${w + 12}" height="${h + 5}" rx="${style === 'barn' ? 4 : 15}" fill="${M.wood[0]}" opacity="0.85"/>`;
+  s += `<path d="${d}" fill="${M.wood[2]}"/>`;
+  s += `<defs><clipPath id="${id}"><path d="${d}"/></clipPath></defs><g clip-path="url(#${id})">`;
+  for (let xx = x + 8; xx < x + w; xx += 8) s += `<path d="M${xx},${top} V${base}" stroke="${M.wood[1]}" stroke-width="1.6"/>`;
+  s += `<rect x="${x}" y="${top}" width="${w * 0.35}" height="${h}" fill="${M.wood[3]}" opacity="0.3"/>`;
+  if (style === 'barn') s += `<path d="M${x},${top} L${x + w},${base} M${x + w},${top} L${x},${base}" stroke="${M.wood[0]}" stroke-width="4"/><path d="M${x + w / 2},${top} V${base}" stroke="${M.wood[0]}" stroke-width="2.5"/>`;
+  else s += `<path d="M${x},${top + h * 0.3} h${w} M${x},${top + h * 0.75} h${w}" stroke="${M.wood[0]}" stroke-width="3"/><circle cx="${x + w - 7}" cy="${top + h * 0.55}" r="2.4" fill="${P.core.goldDeep}"/>`;
+  s += '</g>';
+  s += `<path d="${d}" fill="none" stroke="${outlineOf(M.wood)}" stroke-width="2.5"/>`;
+  s += `<path d="${rrect(x - 8, base - 3, w + 16, 8, 3)}" fill="${M.stone[2]}" stroke="${outlineOf(M.stone)}" stroke-width="1.5"/>`;
+  return s;
+}
+
+/** A stone chimney with a cap. */
+function chimneyArt(x: number, y: number): string {
+  let s = shaded(rrect(x, y, 22, 44, 3), { tones: M.stone, outline: outlineOf(M.stone), shadow: 5, light: 2 });
+  for (let yy = y + 8; yy < y + 40; yy += 9) s += `<path d="M${x + 2},${yy} h18" stroke="${M.stone[0]}" stroke-width="1.2" opacity="0.6"/>`;
+  s += `<rect x="${x - 3}" y="${y - 3}" width="28" height="8" rx="2" fill="${M.stone[1]}" stroke="${outlineOf(M.stone)}" stroke-width="2"/>`;
+  return s;
+}
+
+type RoofStyle = 'tile' | 'slate' | 'thatch' | 'shingle' | 'stone';
+
+function roofStyle(rt: string[]): RoofStyle {
+  if (rt === M.roofRed) return 'tile';
+  if (rt === M.roofSlate) return 'slate';
+  if (rt === M.roofThatch) return 'thatch';
+  if (rt === M.stone) return 'stone';
+  return 'shingle';
+}
+
+/** A textured roof plane: base, material courses, ridge cap, sunlight from the left, outline. */
+function roofArt(roof: string, rt: string[], x0: number, fw: number, eave: number, ridge: number, shape: string, g: ReturnType<typeof gradIds>): string {
+  const style = roofStyle(rt);
+  const r = rng(fw + eave);
+  const top = shape === 'gable' ? ridge + 18 : shape === 'hip' ? ridge + 10 : ridge + 6;
+  let s = `<path d="${roof}" fill="${rt[1]}"/>`;
+  s += `<defs><clipPath id="${g('rc')}"><path d="${roof}"/></clipPath></defs><g clip-path="url(#${g.last})">`;
+  const L = x0 - 14, R = x0 + fw + 14;
+  if (style === 'thatch') {
+    // Straw: dense short strokes in layered courses, darker under each course's edge.
+    for (let y = eave; y > top - 10; y -= 14) {
+      s += `<path d="M${L},${y} H${R}" stroke="${rt[0]}" stroke-width="5" opacity="0.45"/>`;
+      for (let x = L; x < R; x += 3.2) {
+        const len = 10 + r() * 8;
+        const c = rt[1 + Math.floor(r() * 3)];
+        s += `<path d="M${x.toFixed(1)},${(y - 2).toFixed(1)} l${(r() * 2 - 1).toFixed(1)},${(-len).toFixed(1)}" stroke="${c}" stroke-width="2" stroke-linecap="round"/>`;
+      }
+    }
+  } else if (style === 'tile') {
+    // Clay pantiles: scalloped courses, each lit on top and shadowed beneath.
+    let row = 0;
+    for (let y = eave + 4; y > top - 14; y -= 15) {
+      const off = (row % 2) * 9;
+      let d = `M${L - off},${y}`;
+      for (let x = L - off; x < R; x += 18) d += ' q9,9 18,0';
+      s += `<path d="${d} V${y - 15} H${L - off}Z" fill="${row % 3 === 1 ? rt[2] : rt[1]}"/>`;
+      s += `<path d="${d}" stroke="${rt[0]}" stroke-width="2.4" fill="none"/>`;
+      for (let x = L - off; x < R; x += 18) s += `<path d="M${x + 4},${y - 8} q5,4 10,0" stroke="${rt[3]}" stroke-width="2" fill="none" opacity="0.65" stroke-linecap="round"/>`;
+      row++;
+    }
+  } else {
+    // Slate, shingles or stone slabs: offset rectangular courses with uneven lengths.
+    let row = 0;
+    const ch = style === 'stone' ? 18 : 13;
+    for (let y = eave; y > top - ch; y -= ch) {
+      s += `<path d="M${L},${y} H${R}" stroke="${rt[0]}" stroke-width="2.2"/>`;
+      let x = L - (row % 2) * 10;
+      while (x < R) {
+        const w = (style === 'shingle' ? 12 : 18) + r() * 10;
+        s += `<rect x="${(x + 1).toFixed(1)}" y="${y - ch + 1}" width="${(w - 2).toFixed(1)}" height="${ch - 2}" rx="1.5" fill="${rt[1 + Math.floor(r() * 2)]}" opacity="0.8"/>`;
+        s += `<path d="M${x.toFixed(1)},${y} V${y - ch + 2}" stroke="${rt[0]}" stroke-width="1.4" opacity="0.8"/>`;
+        s += `<path d="M${(x + 3).toFixed(1)},${y - ch + 3} h${(w - 8).toFixed(1)}" stroke="${rt[rt.length - 1]}" stroke-width="1.6" opacity="0.5"/>`;
+        x += w;
+      }
+      row++;
+    }
+  }
+  // Sunlight from the upper left, falling off to the right.
+  s += `<defs><linearGradient id="${g('rl')}" x1="0" y1="0" x2="1" y2="0.6"><stop offset="0" stop-color="#fff2c0" stop-opacity="0.3"/><stop offset="0.5" stop-color="#fff2c0" stop-opacity="0"/><stop offset="1" stop-color="#1a1c2a" stop-opacity="0.3"/></linearGradient></defs>`;
+  s += `<rect x="${L}" y="${ridge - 10}" width="${R - L}" height="${eave - ridge + 20}" fill="url(#${g.last})"/>`;
+  s += '</g>';
+  // Hip lines and the ridge cap.
+  if (shape === 'hip') s += `<path d="M${x0 - 10},${eave} L${x0 + fw * 0.2},${top} M${x0 + fw + 10},${eave} L${x0 + fw * 0.8},${top}" stroke="${rt[0]}" stroke-width="4" opacity="0.7"/>`;
+  const cl = shape === 'hip' ? x0 + fw * 0.2 : shape === 'gable' ? x0 + 2 : x0 + 26;
+  const cr = shape === 'hip' ? x0 + fw * 0.8 : shape === 'gable' ? x0 + fw - 2 : x0 + fw - 26;
+  s += `<path d="${rrect(cl - 4, top - 6, cr - cl + 8, 12, 5)}" fill="${style === 'thatch' ? rt[1] : rt[2]}" stroke="${outlineOf(rt)}" stroke-width="2"/>`;
+  s += `<path d="M${cl},${top - 2} H${cr}" stroke="${rt[3] ?? rt[2]}" stroke-width="2" opacity="0.8"/>`;
+  if (style === 'thatch') for (let x = cl + 8; x < cr - 4; x += 16) s += `<path d="M${x - 5},${top - 6} l10,12 M${x + 5},${top - 6} l-10,12" stroke="${rt[0]}" stroke-width="2"/>`;
+  // A rolled, overhanging eave edge.
+  s += `<path d="M${x0 - 10},${eave} H${x0 + fw + 10}" stroke="${style === 'thatch' ? rt[2] : rt[0]}" stroke-width="${style === 'thatch' ? 7 : 4}" stroke-linecap="round"/>`;
+  s += `<path d="${roof}" fill="none" stroke="${outlineOf(rt)}" stroke-width="3" stroke-linejoin="round"/>`;
+  return s;
+}
+
 /** A building in footprint coordinates: walls in front, roof rising `rise` px above. */
 export function building(kind: string, lit: boolean): { w: number; h: number; body: string; ax: number; ay: number; points: Record<string, [number, number]> } {
   const sp = SPECS[kind];
   const fw = sp.size[0] * TILE;
   const fh = sp.size[1] * TILE;
   const W = fw + 24;
-  const H = fh + sp.rise + 12;
+  // Pitched roofs stand about as tall as the walls, as in the pixel original.
+  const rise = sp.shape === 'gable' || sp.shape === 'barn' ? Math.round(sp.rise * 1.3) : sp.rise;
+  const H = fh + rise + 12;
   const x0 = 12;
   const yBase = H - 10;
   const wallTop = kind === 'well' ? yBase - 44 : yBase - fh * 0.62;
   const eave = wallTop + 8;
-  const ridge = eave - sp.rise;
+  const ridge = eave - rise;
   const fr: Frame = { x0, fw, yBase, wallTop, eave, ridge };
   // Where smoke rises, relative to the anchor: the chimney top, else the middle of the roof ridge.
   const points: Record<string, [number, number]> = { top: [fw / 2, ridge + 6 - yBase] };
   if (sp.chimney) points.chimney = [fw * 0.72 + 10, ridge + (sp.shape === 'gable' ? 26 : 30) - yBase];
   const wall = sp.wall;
-  let body = lit ? '' : groundShadow(x0 + fw / 2 + 10, yBase - 4, fw / 2 + 10, 16, SHADOW, 0.28);
+  const g = gradIds();
+  let body = lit ? '' : groundShadow(x0 + fw / 2 + 10, yBase - 4, fw / 2 + 14, 18, SHADOW, 0.32);
   if (!lit) {
     if (kind === 'well') {
       body += shaded(blob(x0 + fw / 2, yBase - 22, fw / 2 - 6, 22, 7, 0.05, 12), { tones: wall, outline: outlineOf(wall), shadow: 6, light: 4 });
+      body += stones(x0 + 10, yBase - 40, fw - 20, 34, wall, 3);
       body += `<ellipse cx="${x0 + fw / 2}" cy="${yBase - 34}" rx="${fw / 2 - 16}" ry="9" fill="${(P.ground.deep as string[])[1]}"/>`;
     } else {
-      body += shaded(rrect(x0 + 6, wallTop, fw - 12, yBase - wallTop - 4, 6), { tones: wall, outline: outlineOf(wall), shadow: 10, light: 6 });
+      const wx = x0 + 6, ww = fw - 12, wh = yBase - wallTop - 4;
+      body += `<path d="${rrect(wx, wallTop, ww, wh, 4)}" fill="${wall[1]}"/>`;
+      body += `<defs><clipPath id="${g('wc')}"><path d="${rrect(wx, wallTop, ww, wh, 4)}"/></clipPath></defs><g clip-path="url(#${g.last})">`;
+      body += wallTexture(kind, wall, wx, wallTop, ww, wh);
+      // Light from the upper left across the wall, and the deep shadow under the eaves.
+      body += `<defs><linearGradient id="${g('wl')}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff4d0" stop-opacity="0.22"/><stop offset="0.6" stop-color="#fff4d0" stop-opacity="0"/><stop offset="1" stop-color="#1c2a30" stop-opacity="0.22"/></linearGradient></defs>`;
+      body += `<rect x="${wx}" y="${wallTop}" width="${ww}" height="${wh}" fill="url(#${g.last})"/>`;
+      body += `<defs><linearGradient id="${g('ws')}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1c2420" stop-opacity="0.55"/><stop offset="1" stop-color="#1c2420" stop-opacity="0"/></linearGradient></defs>`;
+      body += `<rect x="${wx}" y="${wallTop}" width="${ww}" height="30" fill="url(#${g.last})"/>`;
+      body += '</g>';
+      // A fieldstone plinth along the foot of the wall.
+      body += stones(wx - 2, yBase - 18, ww + 4, 15, M.stone, 11);
+      body += `<path d="${rrect(wx, wallTop, ww, wh, 4)}" fill="none" stroke="${outlineOf(wall)}" stroke-width="3"/>`;
     }
   }
-  // Windows: dark teal glass by day, warm light at night.
-  const winY = wallTop + 26;
-  const glass = lit ? M.glassLit[1] : P.core.tealMid;
+  // Windows: framed, with sills and shutters by day; warm light at night.
+  const winY = wallTop + 30;
   const nWin = sp.windows ?? 1;
   const doorStyle = sp.door ?? 'plain';
-  const doorW = doorStyle === 'barn' ? 56 : 30;
+  const doorW = doorStyle === 'barn' ? 56 : 32;
   const doorX = x0 + fw / 2 - doorW / 2;
-  const doorH = doorStyle === 'barn' ? 62 : 46;
+  const doorH = doorStyle === 'barn' ? 62 : 50;
+  const winXs: number[] = [];
   for (let i = 0; i < nWin; i++) {
-    const wx = nWin === 1 ? x0 + 22 : x0 + 20 + i * ((fw - 64) / Math.max(1, nWin - 1));
+    const wx = nWin === 1 ? x0 + 26 : x0 + 24 + i * ((fw - 72) / Math.max(1, nWin - 1));
     if (Math.abs(wx + 12 - (doorX + doorW / 2)) < doorW) continue;
-    body += `<rect x="${wx}" y="${winY}" width="24" height="22" rx="4" fill="${glass}" stroke="${outlineOf(wall)}" stroke-width="3"/>`;
-    if (lit) body += `<rect x="${wx - 8}" y="${winY - 8}" width="40" height="38" rx="14" fill="${M.glassLit[0]}" opacity="0.35"/>`;
-    else body += `<path d="M${wx + 12},${winY} V${winY + 22} M${wx},${winY + 11} H${wx + 24}" stroke="${outlineOf(wall)}" stroke-width="2"/>`;
+    winXs.push(wx);
   }
+  for (const wx of winXs) body += windowArt(wx, winY, 24, 24, wall, lit);
+  if (kind === 'townHall') for (const wx of [x0 + 36, x0 + fw - 72]) body += windowArt(wx, wallTop + 96, 36, 40, wall, lit);
   if (lit) {
     if (sp.glow) body += sp.glow(fr);
     return { w: W, h: H, body, ax: x0, ay: yBase, points };
   }
-  if (doorStyle !== 'none') {
-    const top = yBase - 4 - doorH;
-    const doorD = doorStyle === 'arch'
-      ? `M${doorX},${yBase - 4} V${top + 15} A15,15 0 0 1 ${doorX + doorW},${top + 15} V${yBase - 4}Z`
-      : rrect(doorX, top, doorW, doorH, 12);
-    body += `<path d="${doorD}" fill="${doorStyle === 'barn' ? M.wood[1] : M.wood[2]}" stroke="${outlineOf(M.wood)}" stroke-width="3"/>`;
-    if (doorStyle === 'barn') body += `<path d="M${doorX},${top} L${doorX + doorW},${yBase - 4} M${doorX + doorW},${top} L${doorX},${yBase - 4}" stroke="${M.wood[0]}" stroke-width="3"/>`;
-  }
-  // Roof: each shape has its own silhouette.
+  if (doorStyle !== 'none') body += doorArt(doorX, yBase - 4, doorW, doorH, doorStyle);
+  // Roof: each shape has its own silhouette, textured by its material.
   const rt = sp.roof;
   let roof = '';
-  if (sp.shape === 'barn') roof = poly([[x0 - 4, eave], [x0 + 18, ridge + 18], [x0 + fw - 18, ridge + 18], [x0 + fw + 4, eave]]);
-  else if (sp.shape === 'hip') roof = poly([[x0 - 6, eave], [x0 + 40, ridge + 40], [x0 + fw - 40, ridge + 40], [x0 + fw + 6, eave]]);
-  else if (sp.shape === 'gable') roof = poly([[x0 - 6, eave], [x0 + fw / 2, ridge], [x0 + fw + 6, eave]]);
-  else if (sp.shape === 'dome') roof = smoothPath([[x0 + 4, eave], [x0 + 10, ridge + sp.rise * 0.45], [x0 + fw / 2, ridge + sp.rise * 0.25], [x0 + fw - 10, ridge + sp.rise * 0.45], [x0 + fw - 4, eave], [x0 + fw / 2, eave + 6]]);
+  if (sp.shape === 'barn') roof = poly([[x0 - 8, eave], [x0 + 6, ridge + rise * 0.45], [x0 + 26, ridge + 6], [x0 + fw - 26, ridge + 6], [x0 + fw - 6, ridge + rise * 0.45], [x0 + fw + 8, eave]]);
+  else if (sp.shape === 'hip') roof = poly([[x0 - 10, eave], [x0 + fw * 0.2, ridge + 10], [x0 + fw * 0.8, ridge + 10], [x0 + fw + 10, eave]]);
+  else if (sp.shape === 'gable') roof = poly([[x0 - 10, eave], [x0 + 2, ridge + 18], [x0 + fw - 2, ridge + 18], [x0 + fw + 10, eave]]);
+  else if (sp.shape === 'dome') roof = smoothPath([[x0 + 4, eave], [x0 + 10, ridge + rise * 0.45], [x0 + fw / 2, ridge + rise * 0.25], [x0 + fw - 10, ridge + rise * 0.45], [x0 + fw - 4, eave], [x0 + fw / 2, eave + 6]]);
   if (roof) {
-    body += shaded(roof, { tones: rt, outline: outlineOf(rt), shadow: 14, light: 10, rim: RIM });
-    if (sp.shape !== 'dome') for (let y = eave - 22; y > ridge + 30; y -= 22) body += `<path d="M${x0 + 14},${y} H${x0 + fw - 14}" stroke="${rt[0]}" stroke-width="2" opacity="0.35"/>`;
+    if (sp.shape === 'dome') body += shaded(roof, { tones: rt, outline: outlineOf(rt), shadow: 14, light: 10 });
+    else body += roofArt(roof, rt, x0, fw, eave, ridge, sp.shape, g);
   }
-  if (sp.chimney) body += shaded(rrect(x0 + fw * 0.72, ridge + (sp.shape === 'gable' ? 26 : 30), 20, 42, 3), { tones: M.stone, outline: outlineOf(M.stone), shadow: 4, light: 2 });
+  if (sp.chimney) body += chimneyArt(x0 + fw * 0.72, ridge + (sp.shape === 'gable' ? 26 : 30));
   if (sp.extra) body += sp.extra(fr);
   return { w: W, h: H, body, ax: x0, ay: yBase, points };
 }

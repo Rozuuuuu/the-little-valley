@@ -135,6 +135,9 @@ export function groundShadow(cx: number, cy: number, rx: number, ry: number, col
 }
 
 export function svg(w: number, h: number, body: string): string {
+  // Each document is rasterised separately. Local IDs prevent an earlier sprite's changes
+  // from renumbering clip paths in every subsequent asset in the bundle.
+  clipCounter = 0;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">\n${body}\n</svg>\n`;
 }
 

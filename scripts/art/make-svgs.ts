@@ -11,7 +11,8 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { blob, groundShadow, mix, poly, rng, rrect, shaded, smoothPath, svg, TILE } from './svg-kit';
 import { M, OUTLINE, outlineOf, P, RIM, SHADOW } from './palette';
-import { building, SPECS } from './buildings';
+import { building, SPECS, stones } from './buildings';
+import { oak, pine, berryBush, rock } from './environment';
 import { orchard, ORCHARD_LOOKS } from './orchard';
 import { animal, mineEntrance, penYard, quarryPit, SPECIES_ART } from './animals';
 
@@ -44,108 +45,6 @@ function emit(name: string, w: number, h: number, ax: number, ay: number, kind: 
 
 
 // ---- trees, bushes, rocks --------------------------------------------------------------------
-
-function oak(variant: number, season: 'summer' | 'autumn' | 'winter'): string {
-  const r = rng(100 + variant * 17);
-  const W = 2 * TILE;
-  const H = 3 * TILE;
-  const cx = W / 2;
-  const ground = H - 18;
-  let body = groundShadow(cx + 6, ground, 62, 18, SHADOW);
-  const bark = M.bark;
-  const trunkW = 26 + variant * 3;
-  const trunk = poly([
-    [cx - trunkW / 2 - 6, ground], [cx - trunkW / 2, ground - 70], [cx - trunkW / 2 + 4, ground - 120],
-    [cx + trunkW / 2 - 4, ground - 120], [cx + trunkW / 2, ground - 70], [cx + trunkW / 2 + 6, ground],
-  ]);
-  body += shaded(trunk, { tones: bark, outline: outlineOf(bark), shadow: 7, light: 3 });
-  if (season === 'winter') {
-    // Bare branches with a little snow.
-    const branches: string[] = [];
-    for (let i = 0; i < 6; i++) {
-      const a = -Math.PI / 2 + (i - 2.5) * 0.42 + (r() - 0.5) * 0.2;
-      const len = 60 + r() * 40;
-      const x0 = cx + (r() - 0.5) * 10;
-      const y0 = ground - 105 - r() * 20;
-      const x1 = x0 + Math.cos(a) * len;
-      const y1 = y0 + Math.sin(a) * len;
-      branches.push(`<path d="M${x0},${y0} Q${(x0 + x1) / 2 + (r() - 0.5) * 20},${(y0 + y1) / 2} ${x1},${y1}" stroke="${bark[1]}" stroke-width="${7 - i * 0.6}" stroke-linecap="round" fill="none"/>`);
-      branches.push(`<ellipse cx="${x1}" cy="${y1 - 2}" rx="8" ry="4" fill="${M.snow[2]}" opacity="0.9"/>`);
-    }
-    return body + `<g stroke-linejoin="round">${branches.join('')}</g>`;
-  }
-  const leaf = season === 'autumn' ? M.leafAutumn : M.leaf;
-  // Canopy: overlapping lobes shaded as one form (one dark base, lobes in base and light tones).
-  const lobes: string[] = [];
-  const n = 5 + variant;
-  for (let i = 0; i < n; i++) {
-    const a = (i / n) * Math.PI * 2 + r() * 0.5;
-    const rr = 34 + r() * 10;
-    lobes.push(blob(cx + Math.cos(a) * 40, ground - 175 + Math.sin(a) * 34, rr, rr * 0.9, 300 + variant * 31 + i, 0.12));
-  }
-  const crown = blob(cx, ground - 175, 82, 70, 200 + variant, 0.1, 11);
-  body += shaded(crown, { tones: [leaf[0], leaf[1], leaf[2]], outline: outlineOf(leaf), shadow: 16, light: 12, rim: RIM });
-  for (const [i, d] of lobes.entries()) {
-    if (i % 2 === 0) body += `<path d="${d}" fill="${leaf[2]}" opacity="0.55" transform="translate(-6,-8)"/>`;
-  }
-  body += `<path d="${blob(cx - 22, ground - 205, 26, 18, 50 + variant)}" fill="${leaf[4]}" opacity="0.5"/>`;
-  return body;
-}
-
-function pine(variant: number, season: 'summer' | 'winter'): string {
-  const W = 2 * TILE;
-  const H = 3 * TILE;
-  const cx = W / 2;
-  const ground = H - 18;
-  let body = groundShadow(cx + 5, ground, 46, 15, SHADOW);
-  body += shaded(rrect(cx - 10, ground - 50, 20, 52, 6), { tones: M.bark, outline: outlineOf(M.bark), shadow: 5, light: 2 });
-  const tiers = 4;
-  for (let i = 0; i < tiers; i++) {
-    const w = 78 - i * 15 + variant * 4;
-    const y = ground - 40 - i * 44;
-    const tier = smoothPath([[cx - w, y], [cx - w * 0.5, y - 18], [cx - 6, y - 70], [cx + 6, y - 70], [cx + w * 0.5, y - 18], [cx + w, y], [cx, y + 10]]);
-    body += shaded(tier, { tones: M.pine, outline: outlineOf(M.pine), shadow: 12, light: 8, rim: RIM });
-    if (season === 'winter') body += `<path d="${smoothPath([[cx - w * 0.6, y - 14], [cx - 6, y - 64], [cx + 6, y - 64], [cx + w * 0.3, y - 26], [cx, y - 20]])}" fill="${M.snow[2]}" opacity="0.92"/>`;
-  }
-  return body;
-}
-
-function berryBush(full: boolean, season: 'summer' | 'winter'): string {
-  const W = TILE;
-  const H = TILE + 24;
-  const cx = W / 2;
-  const ground = H - 14;
-  let body = groundShadow(cx + 4, ground, 36, 11, SHADOW);
-  const leaf = season === 'winter' ? [mix(M.leaf[0], '#6b5a4a', 0.6), mix(M.leaf[1], '#7d6a56', 0.6), mix(M.leaf[2], '#9c8a74', 0.6)] : M.leaf.slice(1);
-  body += shaded(blob(cx, ground - 30, 38, 30, 77, 0.14), { tones: leaf, outline: outlineOf(leaf), shadow: 9, light: 7, rim: RIM });
-  if (season === 'winter') body += `<path d="${blob(cx - 4, ground - 52, 26, 9, 12)}" fill="${M.snow[2]}" opacity="0.9"/>`;
-  if (full && season !== 'winter') {
-    const r = rng(9);
-    for (let i = 0; i < 7; i++) {
-      const x = cx - 24 + r() * 48;
-      const y = ground - 50 + r() * 34;
-      body += `<circle cx="${x}" cy="${y}" r="6" fill="${M.berry[1]}" stroke="${M.berry[0]}" stroke-width="2"/><circle cx="${x - 2}" cy="${y - 2}" r="2" fill="${P.core.mint}" opacity="0.8"/>`;
-    }
-  }
-  return body;
-}
-
-function rock(variant: number, big: boolean): string {
-  const W = big ? TILE * 1.5 : TILE;
-  const H = big ? TILE * 1.3 : TILE;
-  const cx = W / 2;
-  const ground = H - 12;
-  const rx = big ? 58 : 34;
-  const ry = big ? 46 : 26;
-  let body = groundShadow(cx + 5, ground, rx + 4, 10, SHADOW);
-  body += shaded(blob(cx, ground - ry + 4, rx, ry, 500 + variant * 13 + (big ? 7 : 0), 0.16, 7), {
-    tones: M.stone, outline: outlineOf(M.stone), shadow: big ? 14 : 9, light: big ? 10 : 6, rim: RIM,
-  });
-  // A facet line or two.
-  body += `<path d="M${cx - rx * 0.4},${ground - ry * 1.2} q${rx * 0.3},${ry * 0.4} ${rx * 0.2},${ry * 0.9}" stroke="${M.stone[0]}" stroke-width="3" fill="none" opacity="0.5"/>`;
-  if (big) body += `<path d="${blob(cx - 14, ground - ry * 1.6, 26, 10, 3)}" fill="${M.leaf[2]}" opacity="0.85"/>`;
-  return body;
-}
 
 function stump(): string {
   const W = TILE;
@@ -185,7 +84,8 @@ function crate(): string {
 
 // ---- buildings -----------------------------------------------------------------------------
 
-/** A construction site: a staked foundation and scaffold poles, for any footprint. */
+/** A construction site: a cleared dirt plot, a fieldstone foundation, a timber frame going up
+ * and a stack of planks, for any footprint. */
 function site(tw: number, th: number): { w: number; h: number; body: string; ax: number; ay: number } {
   const fw = tw * TILE;
   const fh = th * TILE;
@@ -193,52 +93,134 @@ function site(tw: number, th: number): { w: number; h: number; body: string; ax:
   const H = fh + 60;
   const x0 = 12;
   const yBase = H - 10;
-  let body = `<path d="${rrect(x0 + 4, yBase - fh + 8, fw - 8, fh - 12, 10)}" fill="${M.soil[3]}" opacity="0.9" stroke="${M.soil[1]}" stroke-width="3"/>`;
-  body += `<path d="${rrect(x0 + 10, yBase - fh * 0.45, fw - 20, fh * 0.45 - 8, 6)}" fill="${M.stone[2]}" stroke="${outlineOf(M.stone)}" stroke-width="3"/>`;
-  for (const px of [x0 + 12, x0 + fw - 16]) body += `<rect x="${px}" y="${yBase - fh - 36}" width="7" height="${fh + 28}" rx="2" fill="${M.wood[2]}" stroke="${outlineOf(M.wood)}" stroke-width="2"/>`;
-  body += `<rect x="${x0 + 10}" y="${yBase - fh - 30}" width="${fw - 20}" height="7" rx="2" fill="${M.wood[3]}" stroke="${outlineOf(M.wood)}" stroke-width="2"/>`;
+  const top = yBase - fh + 10;
+  const r = rng(tw * 7 + th);
+  const so = M.soil;
+  // Cleared, trodden earth with a ragged edge.
+  let body = `<path d="${blob(x0 + fw / 2, (top + yBase) / 2, fw / 2 + 2, (yBase - top) / 2 + 2, tw * 13 + th, 0.06, 14)}" fill="${so[2]}"/>`;
+  for (let i = 0; i < tw * th * 5; i++) body += `<path d="${blob(x0 + 10 + r() * (fw - 20), top + 8 + r() * (yBase - top - 16), 6 + r() * 10, 3 + r() * 4, 200 + i, 0.3, 7)}" fill="${r() < 0.5 ? so[3] : so[1]}" opacity="0.55"/>`;
+  // Foundation: stones along the back and front edges, posts at the corners with beams.
+  body += stones(x0 + 8, top + 2, fw - 16, 13, M.stone, 5 + tw);
+  const postH = Math.min(70, 40 + fh * 0.2);
+  for (const px of [x0 + 10, x0 + fw - 20]) {
+    body += `<rect x="${px}" y="${top - postH + 10}" width="9" height="${postH}" rx="2" fill="${M.wood[2]}" stroke="${outlineOf(M.wood)}" stroke-width="2"/><rect x="${px}" y="${top - postH + 10}" width="3" height="${postH}" fill="${M.wood[3]}" opacity="0.7"/>`;
+    body += `<rect x="${px}" y="${yBase - postH - 4}" width="9" height="${postH}" rx="2" fill="${M.wood[2]}" stroke="${outlineOf(M.wood)}" stroke-width="2"/><rect x="${px}" y="${yBase - postH - 4}" width="3" height="${postH}" fill="${M.wood[3]}" opacity="0.7"/>`;
+  }
+  body += `<rect x="${x0 + 6}" y="${top - postH + 8}" width="${fw - 12}" height="8" rx="2" fill="${M.wood[2]}" stroke="${outlineOf(M.wood)}" stroke-width="2"/>`;
+  body += `<path d="M${x0 + 18},${top - postH + 16} L${x0 + fw * 0.4},${top + 6}" stroke="${M.wood[1]}" stroke-width="5" stroke-linecap="round"/>`;
+  body += stones(x0 + 8, yBase - 16, fw - 16, 13, M.stone, 9 + tw);
+  // A stack of planks and a ladder leaning on the frame.
+  const sx = x0 + fw * 0.55;
+  for (let i = 0; i < 3; i++) body += shaded(rrect(sx - i * 2, yBase - 34 - i * 7, Math.min(70, fw * 0.35), 8, 2), { tones: M.wood, outline: outlineOf(M.wood), shadow: 2, light: 1 });
+  body += `<path d="M${x0 + fw - 30},${yBase - 6} L${x0 + fw - 48},${top - 30} M${x0 + fw - 18},${yBase - 6} L${x0 + fw - 36},${top - 30}" stroke="${M.wood[1]}" stroke-width="4" stroke-linecap="round"/>`;
+  for (let k = 1; k < 6; k++) {
+    const t = k / 6;
+    const ly = yBase - 6 - t * (yBase - top + 24);
+    const lx = x0 + fw - 30 - t * 18;
+    body += `<path d="M${lx},${ly} h12" stroke="${M.wood[2]}" stroke-width="3"/>`;
+  }
   return { w: W, h: H, body, ax: x0, ay: yBase };
 }
 
 // ---- fields and crops -------------------------------------------------------------------------
 
+/** A field tile: wild (staked-out meadow), tilled (furrowed earth) or wet (dark, glistening). */
 function soil(state: 'wild' | 'tilled' | 'wet'): string {
   const s = M.soil;
-  const base = state === 'wet' ? s[1] : state === 'tilled' ? s[2] : mix(s[3], P.ground.meadow[1] as string, 0.45);
-  let body = `<path d="${rrect(4, 4, TILE - 8, TILE - 8, 14)}" fill="${base}" stroke="${s[0]}" stroke-width="3" opacity="0.95"/>`;
-  if (state !== 'wild') for (let y = 20; y < TILE - 10; y += 16) body += `<path d="M14,${y} Q${TILE / 2},${y + 4} ${TILE - 14},${y}" stroke="${s[0]}" stroke-width="4" fill="none" opacity="0.55" stroke-linecap="round"/>`;
-  else for (let i = 0; i < 6; i++) body += `<path d="M${18 + i * 12},${TILE - 18} l3,-12" stroke="${P.ground.meadow[2]}" stroke-width="3" stroke-linecap="round"/>`;
+  const r = rng(state.length * 17);
+  if (state === 'wild') {
+    // Marked ground: rough grass with a few bare patches and corner stakes.
+    let body = `<path d="${rrect(6, 6, TILE - 12, TILE - 12, 16)}" fill="${mix(s[3], P.ground.meadow[1] as string, 0.55)}" opacity="0.85"/>`;
+    for (let i = 0; i < 18; i++) {
+      const x = 12 + r() * (TILE - 24), y = 16 + r() * (TILE - 26);
+      body += `<path d="M${x},${y} q-2,-7 -5,-9 M${x},${y} q1,-8 2,-11 M${x},${y} q3,-6 6,-8" stroke="${r() < 0.5 ? M.leaf[3] : M.leaf[2]}" stroke-width="2" stroke-linecap="round" fill="none"/>`;
+    }
+    for (const [x, y] of [[10, 12], [TILE - 14, 12], [10, TILE - 14], [TILE - 14, TILE - 14]]) body += `<path d="M${x},${y + 6} v-12" stroke="${M.wood[2]}" stroke-width="3.5" stroke-linecap="round"/><circle cx="${x}" cy="${y - 6}" r="2.5" fill="${P.core.gold}"/>`;
+    return body;
+  }
+  const base = state === 'wet' ? s[1] : s[2];
+  const ridgeC = state === 'wet' ? s[2] : s[3];
+  const furrowC = state === 'wet' ? s[0] : s[1];
+  let body = `<path d="${rrect(3, 3, TILE - 6, TILE - 6, 10)}" fill="${base}" stroke="${s[0]}" stroke-width="2.5"/>`;
+  // Furrows: dark troughs with lit ridges, lumpy clods along them.
+  for (let y = 15; y < TILE - 8; y += 14) {
+    body += `<path d="M10,${y + 4} Q${TILE / 2},${y + 7} ${TILE - 10},${y + 4}" stroke="${furrowC}" stroke-width="6" fill="none" stroke-linecap="round"/>`;
+    body += `<path d="M10,${y - 2} Q${TILE / 2},${y + 1} ${TILE - 10},${y - 2}" stroke="${ridgeC}" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.9"/>`;
+    for (let i = 0; i < 4; i++) body += `<circle cx="${12 + r() * (TILE - 24)}" cy="${y - 1 + r() * 3}" r="${1.5 + r() * 1.5}" fill="${ridgeC}"/>`;
+  }
+  if (state === 'wet') for (let i = 0; i < 6; i++) body += `<ellipse cx="${14 + r() * (TILE - 28)}" cy="${14 + r() * (TILE - 28)}" rx="4" ry="1.6" fill="#bfe2ea" opacity="0.55"/>`;
   return body;
+}
+
+/** A leaf blade from (x, y) toward angle `a` (radians), lit along its upper edge. */
+function cropLeaf(x: number, y: number, len: number, wid: number, a: number, c: string, dark: string): string {
+  const ex = x + Math.cos(a) * len, ey = y + Math.sin(a) * len;
+  const nx = -Math.sin(a) * wid, ny = Math.cos(a) * wid;
+  const mx = (x + ex) / 2, my = (y + ey) / 2;
+  return `<path d="M${x.toFixed(1)},${y.toFixed(1)} Q${(mx + nx).toFixed(1)},${(my + ny).toFixed(1)} ${ex.toFixed(1)},${ey.toFixed(1)} Q${(mx - nx).toFixed(1)},${(my - ny).toFixed(1)} ${x.toFixed(1)},${y.toFixed(1)}Z" fill="${c}" stroke="${dark}" stroke-width="1.4"/>`
+    + `<path d="M${x.toFixed(1)},${y.toFixed(1)} Q${mx.toFixed(1)},${my.toFixed(1)} ${ex.toFixed(1)},${ey.toFixed(1)}" stroke="${dark}" stroke-width="1" opacity="0.6" fill="none"/>`;
 }
 
 function crop(id: string, art: { leaf: string; leafDark: string; fruit: string; fruitDark: string; style: string }, stage: number): string {
   const W = TILE;
   const H = TILE + 30;
   const ground = H - 18;
+  const r = rng(id.length * 101 + stage);
+  const lightLeaf = mix(art.leaf, '#f4f0a0', 0.3);
   let body = '';
-  const plants = [[24, 0], [48, 6], [72, 0], [36, -18], [60, -18]];
-  for (const [i, [px, dy]] of plants.entries()) {
+  const plants = [[22, -2], [50, 4], [76, -2], [36, -22], [64, -22]];
+  // Back row first so the front row overlaps it.
+  const order = [3, 4, 0, 1, 2];
+  for (const i of order) {
+    const [px, dy] = plants[i];
     const y = ground + dy;
+    body += `<ellipse cx="${px + 2}" cy="${y + 1}" rx="${6 + stage * 3}" ry="${2 + stage}" fill="${M.soil[0]}" opacity="0.35"/>`;
     if (stage === 0) {
-      body += `<path d="M${px},${y} q-4,-10 -9,-12 M${px},${y} q4,-10 9,-12" stroke="${art.leaf}" stroke-width="4" stroke-linecap="round" fill="none"/>`;
+      body += cropLeaf(px, y, 9, 3.5, -2.3, art.leaf, art.leafDark) + cropLeaf(px, y, 9, 3.5, -0.85, lightLeaf, art.leafDark);
       continue;
     }
     if (art.style === 'grain') {
-      const h = [0, 30, 46, 54][stage];
-      body += `<path d="M${px},${y} Q${px - 3},${y - h / 2} ${px - 2},${y - h}" stroke="${stage === 3 ? art.fruitDark : art.leafDark}" stroke-width="4" fill="none"/>`;
-      if (stage >= 2) body += `<ellipse cx="${px - 2}" cy="${y - h}" rx="6" ry="13" fill="${stage === 3 ? art.fruit : art.leaf}" stroke="${stage === 3 ? art.fruitDark : art.leafDark}" stroke-width="2.5"/>`;
+      // A clump of stalks, green then gold, with plump drooping heads.
+      const h = [0, 26, 44, 54][stage];
+      const stalk = stage === 3 ? art.fruitDark : art.leafDark;
+      for (let k = 0; k < 5; k++) {
+        const lean = (k - 2) * 3.5 + (r() - 0.5) * 3;
+        const hh = h * (0.85 + r() * 0.2);
+        body += `<path d="M${px + (k - 2) * 2},${y} Q${px + lean * 0.4},${y - hh * 0.5} ${px + lean},${y - hh}" stroke="${stalk}" stroke-width="2.4" fill="none" stroke-linecap="round"/>`;
+        if (stage === 1) body += cropLeaf(px + (k - 2) * 2, y - 4, 14, 2.5, -1.57 + (k - 2) * 0.35, art.leaf, art.leafDark);
+        if (stage >= 2) {
+          const hc = stage === 3 ? art.fruit : lightLeaf;
+          const hd = stage === 3 ? art.fruitDark : art.leafDark;
+          body += `<ellipse cx="${px + lean}" cy="${y - hh - 5}" rx="3.6" ry="8" fill="${hc}" stroke="${hd}" stroke-width="1.4" transform="rotate(${lean * 2} ${px + lean} ${y - hh - 5})"/>`;
+          body += `<path d="M${px + lean - 1.5},${y - hh - 10} v8" stroke="${stage === 3 ? '#fff2b8' : '#e8f6c0'}" stroke-width="1.2" opacity="0.8"/>`;
+        }
+      }
       continue;
     }
-    const lr = [0, 10, 14, 16][stage];
-    body += `<path d="${blob(px - lr * 0.6, y - lr, lr, lr * 0.6, i * 7 + stage)}" fill="${art.leaf}" stroke="${art.leafDark}" stroke-width="2.5"/>`;
-    body += `<path d="${blob(px + lr * 0.6, y - lr * 1.1, lr, lr * 0.6, i * 11 + stage)}" fill="${art.leaf}" stroke="${art.leafDark}" stroke-width="2.5"/>`;
+    // Leafy crops: a rosette of broad leaves, lit from the upper left.
+    const len = [0, 13, 19, 22][stage];
+    const n = art.style === 'vine' ? 5 : 6;
+    for (let k = 0; k < n; k++) {
+      const a = -Math.PI + (k / (n - 1)) * Math.PI + (r() - 0.5) * 0.3;
+      const c = a < -1.6 ? lightLeaf : art.leaf;
+      body += cropLeaf(px, y - 3, len * (0.8 + r() * 0.3), len * (art.style === 'vine' ? 0.5 : 0.32), a, c, art.leafDark);
+    }
     if (stage === 3) {
-      const fr = art.style === 'vine' ? 15 : 9;
-      body += `<path d="${blob(px, y - 4, fr, fr * 0.8, i + 40, 0.08)}" fill="${art.fruit}" stroke="${art.fruitDark}" stroke-width="3"/>`;
-      body += `<circle cx="${px - fr * 0.35}" cy="${y - 4 - fr * 0.35}" r="${fr * 0.25}" fill="#ffffff" opacity="0.5"/>`;
+      if (art.style === 'vine') {
+        // A ribbed pumpkin with a stalk and a highlight.
+        const fr = 13;
+        body += `<path d="${blob(px, y - 2, fr * 1.15, fr * 0.85, i + 40, 0.05)}" fill="${art.fruit}" stroke="${art.fruitDark}" stroke-width="2.4"/>`;
+        body += `<path d="M${px - 6},${y - 12} Q${px - 9},${y - 2} ${px - 6},${y + 8} M${px + 6},${y - 12} Q${px + 9},${y - 2} ${px + 6},${y + 8}" stroke="${art.fruitDark}" stroke-width="1.6" fill="none" opacity="0.8"/>`;
+        body += `<path d="M${px},${y - 12} q1,-5 5,-7" stroke="${M.wood[1]}" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+        body += `<ellipse cx="${px - 7}" cy="${y - 7}" rx="3.5" ry="2" fill="#fff4d8" opacity="0.6"/>`;
+      } else {
+        // A root's shoulder showing above the soil: white below, purple at the crown.
+        body += `<path d="${blob(px, y - 2, 9, 7, i + 40, 0.05)}" fill="${art.fruit}" stroke="${art.fruitDark}" stroke-width="2"/>`;
+        body += `<path d="M${px - 8},${y - 4} Q${px},${y - 13} ${px + 8},${y - 4} Q${px},${y - 7} ${px - 8},${y - 4}Z" fill="${art.fruitDark}" opacity="0.85"/>`;
+        body += `<ellipse cx="${px - 3}" cy="${y - 1}" rx="2.5" ry="1.5" fill="#ffffff" opacity="0.7"/>`;
+      }
     }
   }
-  void id;
   return body;
 }
 
