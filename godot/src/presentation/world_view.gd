@@ -50,11 +50,14 @@ var _night := ColorRect.new()
 var _lights := Node2D.new()
 ## The fog of war over everything (see FogView).
 var fog := FogView.new()
+## Lights, weather, the ruler's aura, corpses, merchants and carts (see WorldLife).
+var life := WorldLife.new()
+var _ground_motion := 1.0
 
 
 func _init() -> void:
 	# The title may close before setup() is called. Own these nodes from construction.
-	for layer: Node in [_ground_layer, _field_layer, entities, _night, _lights, fog]:
+	for layer: Node in [_ground_layer, _field_layer, entities, _night, _lights, fog, life]:
 		add_child(layer)
 
 
@@ -70,9 +73,9 @@ func setup(simulation: Simulation, sprites: Art) -> void:
 	_ground_layer.z_index = -10
 	_field_layer.z_index = -5
 	entities.y_sort_enabled = true
-	var mul := CanvasItemMaterial.new()
-	mul.blend_mode = CanvasItemMaterial.BLEND_MODE_MUL
-	_night.material = mul
+	life.view = self
+	# Night is multiplied in, lifted round lights (see WorldLife and night.gdshader).
+	_night.material = life.night_material()
 	_night.z_index = 5
 	_night.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_lights.z_index = 6
@@ -83,6 +86,7 @@ func set_simulation(simulation: Simulation) -> void:
 	sim = simulation
 	fog.sim = simulation
 	fog.reset()
+	life.clear()
 	for d: Dictionary in _ground.values():
 		(d["node"] as Node).queue_free()
 	for d: Dictionary in _objects.values():
@@ -138,12 +142,17 @@ func refresh(alpha: float, view: Rect2, delta: float) -> void:
 	_sync_settlers(alpha, delta, view.grow(TILE_PX * 3))
 	_sync_animals(alpha, view.grow(TILE_PX * 3))
 	_sync_companies(delta, view.grow(TILE_PX * 4))
+	if motion != _ground_motion:
+		_ground_motion = motion
+		for g: Dictionary in _ground.values():
+			((g["node"] as Sprite2D).material as ShaderMaterial).set_shader_parameter("motion", motion)
 	fog.refresh(view, delta)
 	_ground_layer.visible = ground_visible
-	_night.color = _night_tint()
-	_night.visible = _night.color != Color.WHITE
+	var tint := _night_tint()
+	_night.visible = tint != Color.WHITE
 	_night.position = view.position - Vector2(64, 64)
 	_night.size = view.size + Vector2(128, 128)
+	life.refresh(sim, view, delta, tint, Rect2(_night.position, _night.size))
 
 
 func _free_far(store: Dictionary, c0: Vector2i, c1: Vector2i) -> void:
@@ -175,6 +184,7 @@ func _sync_ground(k: int, c: Chunk) -> void:
 		mat.set_shader_parameter("origin", Vector2(c.cx, c.cy) * Chunk.SIZE)
 		# The fog is FogView's layer over everything, not painted into the ground.
 		mat.set_shader_parameter("fog_on", false)
+		mat.set_shader_parameter("motion", motion)
 		node.material = mat
 		_ground_layer.add_child(node)
 		g = {"node": node, "terrain_version": -1, "fog_version": -1, "neighbours": -1}
@@ -387,7 +397,7 @@ func _building_sprite(b: Building) -> String:
 	if b.type == "mine":
 		var level := int(b.mine.get("level", 1))
 		return "mine_%d" % level if level > 1 and art.has("mine_%d" % level) else "mine"
-	if b.type == "camp" and sim.reached.has("village") and art.has("villageHall"):
+	if b.type == "camp" and not b.extra.get("foundingCamp", false) and sim.reached.has("village") and art.has("villageHall"):
 		return "villageHall"
 	return b.type
 

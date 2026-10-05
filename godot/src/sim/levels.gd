@@ -114,6 +114,23 @@ static func upgrade_problem(sim: Simulation, b: Building) -> String:
 	var next := next_level(b)
 	if next.is_empty():
 		return "The %s is already at its highest level" % level_name(b)
+	if b.type == "camp" and b.extra.get("foundingCamp", false):
+		var missing: PackedStringArray = []
+		for types: Array in [["house", "familyHome", "cottage"], ["storehouse"], ["workshop"]]:
+			var found := false
+			for other: Building in sim.buildings.values():
+				if other.built and types.has(other.type):
+					found = true
+			if not found:
+				missing.append("a home" if types.size() > 1 else "a %s" % types[0])
+		var fields := 0
+		for field: Building in sim.fields():
+			if field.built:
+				fields += 1
+		if fields < 3:
+			missing.append("3 fields (%d/3)" % fields)
+		if not missing.is_empty():
+			return "Before raising the Town Hall, finish %s" % ", ".join(missing)
 	if next.get("requires") != null and not sim.reached.has(str(next["requires"])):
 		var ms: Dictionary = (Content.get_value("progression", "MILESTONES") as Dictionary)[str(next["requires"])]
 		return "%s needs %s" % [next["name"], ms["name"]]

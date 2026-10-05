@@ -356,6 +356,8 @@ func _settler_info(s: Settler) -> void:
 		var job := "Child" if s.life_stage == "child" else Roles.job_name(s.job)
 		var area := sim.area(s.area_id)
 		v.add_child(_title_row(s.name, "", job + (" · %s" % area.name if area != null else "") + (" · holding" if s.hold else "")))
+		if s.life_stage != "child":
+			v.add_child(_line("Main job: %s   |   Side job: %s" % [job, Roles.job_name(s.side_job) if s.side_job != "" else "None"], hud._c("text"), 14))
 		if not s.training.is_empty():
 			v.add_child(_line("Training as %s — %d%%" % [Roles.job_name(str(s.training["role"])), floori(float(s.training["progress"]) / float(Content.get_value("jobs", "ROLE_TRAIN_TICKS")) * 100)], hud._c("text")))
 		var idle := s.task == null and s.idle_reason != ""
@@ -829,13 +831,16 @@ func _slot_button(c: Variant, i: int) -> Control:
 	icon.custom_minimum_size = Vector2(0, 24)
 	icon.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var icon_name := str(c["icon"])
-	if icon_name != "" and game.art.has(icon_name):
+	var symbol: Texture2D = preload("res://src/ui/command_symbols.gd").texture(str(c["action"]), str(c["label"]))
+	if symbol != null:
+		icon.texture = symbol
+	elif icon_name != "" and game.art.has(icon_name):
 		icon.texture = game.art.sprites[icon_name]["texture"]
 	v.add_child(icon)
 	var l := Label.new()
 	l.text = str(c["label"])
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	l.add_theme_font_size_override("font_size", 10)
+	l.add_theme_font_size_override("font_size", 12)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	l.clip_text = true
 	v.add_child(l)

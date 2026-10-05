@@ -85,6 +85,7 @@ func _ready() -> void:
 	startup["art"] = Time.get_ticks_msec() - t0
 	add_child(view)
 	add_child(particles)
+	view.life.particles = particles
 	add_child(overlay)
 	add_child(camera)
 	add_child(audio)
@@ -197,7 +198,9 @@ func _capture(opts: Dictionary) -> void:
 	world_name = "Capture"
 	world_id = "capture"
 	var t0 := Time.get_ticks_msec()
-	_start(NewGame.create(int(opts.get("seed", "4242")), WorldGen.CURRENT_GEN, str(opts.get("habitat", "valley")), str(opts.get("ruler", ""))))
+	# --camp=1: a new player's valley, starting from the founding camp (NewGame.create_camp).
+	var make := NewGame.create_camp if opts.get("camp", "0") == "1" else NewGame.create
+	_start(make.call(int(opts.get("seed", "4242")), WorldGen.CURRENT_GEN, str(opts.get("habitat", "valley")), str(opts.get("ruler", ""))))
 	startup["newValley"] = Time.get_ticks_msec() - t0
 	print("STARTUP %s" % JSON.stringify(startup))
 	var extra := int(opts.get("settlers", "0"))
@@ -394,6 +397,18 @@ func _capture(opts: Dictionary) -> void:
 		print("captured %s after returning to the title" % opts["shot"])
 		get_tree().quit()
 		return
+	if opts.get("story", "0") == "1":
+		hud.show_origin_story()
+	if opts.has("celebrate"):
+		hud.show_celebration(str(opts["celebrate"]))
+	if opts.get("advice", "0") == "1":
+		hud.show_advice(sim.settlers[0], "We have more mouths than beds. Two more houses near the fields would settle everyone.")
+	if opts.has("card"):
+		# See more open on the selection, in one of its action modes (side, order, crop, job).
+		hud.console.details = true
+		hud._card_mode = str(opts["card"])
+	if opts.get("grid", "0") == "1":
+		settings.show_grid = true
 	if opts.has("place"):
 		# Placing a building beside the hall, its see-through preview under the cursor.
 		var camp := BuildingOps.camp_of(sim)
@@ -562,6 +577,15 @@ func _step_backdrop(delta: float) -> void:
 
 # ---- worlds -----------------------------------------------------------------------------------
 
+## The Assistant Chief's advice, read in a window (the game waits while it is open).
+func hear_advice() -> void:
+	var chief := Roles.chief_of(sim)
+	var text := str(sim.chief["advice"])
+	if chief == null or not bool(command({"type": "hearAdvice"})["ok"]):
+		return
+	hud.show_advice(chief, text)
+
+
 ## Leaves the valley for the title: saves it, then shows a fresh random world behind the menu
 ## (never the village just left).
 func return_to_title(message: String = "") -> void:
@@ -580,14 +604,15 @@ func return_to_title(message: String = "") -> void:
 func new_world(seed_value: int, habitat: String, valley_name: String, ruler_name: String = "", introduction: bool = true) -> void:
 	hud.show_busy("Shaping the valley…")
 	await get_tree().process_frame
-	var s := NewGame.create(seed_value, WorldGen.CURRENT_GEN, habitat, ruler_name)
+	var s := NewGame.create_camp(seed_value, WorldGen.CURRENT_GEN, habitat, ruler_name)
 	world_id = "valley-%d-%d" % [seed_value, Time.get_ticks_msec()]
 	world_name = valley_name
 	created_at = int(Time.get_unix_time_from_system() * 1000)
 	_start(s)
-	tutorial = {"step": 0, "done": not introduction}
+	tutorial = {"step": 0, "done": not introduction, "guided": true, "awaiting": introduction}
 	save_now("New valley")
 	_tutorial_saved = false
+	hud.show_origin_story()
 
 
 func load_world(id: String, point: String = "") -> void:
@@ -613,7 +638,7 @@ func load_world(id: String, point: String = "") -> void:
 	created_at = int(meta.get("createdAt", 0))
 	_start(s)
 	_today_at = s.tick + 12
-	tutorial = {"step": int(tut.get("step", 0)), "done": tut.get("done", true) == true} if tut is Dictionary else {"step": 0, "done": true}
+	tutorial = {"step": int(tut.get("step", 0)), "done": tut.get("done", true) == true, "guided": bool(tut.get("guided", false)), "awaiting": bool(tut.get("awaiting", false))} if tut is Dictionary else {"step": 0, "done": true}
 	if str(got["error"]) != "":
 		hud.toast(got["error"], "warn")
 	var report: PackedStringArray = r["report"]
@@ -716,7 +741,7 @@ func skip_tutorial() -> void:
 
 
 func restart_tutorial() -> void:
-	tutorial = {"step": 0, "done": false}
+	tutorial = {"step": 0, "done": false, "guided": true, "awaiting": true}
 	_tutorial_saved = false
 
 
@@ -787,7 +812,7 @@ func _process(delta: float) -> void:
 			_step_backdrop(delta)
 		return
 	var t_sim := Time.get_ticks_usec()
-	if not paused and not hud.blocking():
+	if not paused and not hud.blocking() and not Tutorial.waiting(tutorial):
 		_acc += delta * 1000.0 * speed
 		_run_ticks(t_sim)
 		for e in sim.drain_events():
@@ -878,11 +903,22 @@ func _on_event(e: Dictionary) -> void:
 				particles.float_text(float(e["x"]), float(e["y"]), "+%d %s" % [int(e["n"]), res_name], Color("#ffe08a"))
 		"fx", "hit":
 			particles.on_event(e)
+		"death":
+			view.life.add_corpse(e)
 		"milestone":
-			var camp := BuildingOps.camp_of(sim)
-			if camp != null:
-				for i in 6:
-					particles.fx("sparkle", camp.x + randf() * 3.0, camp.y + randf() * 2.0)
+			var ms: Dictionary = Content.get_value("progression", "MILESTONES")
+			if int((ms.get(str(e["id"]), {}) as Dictionary).get("tier", 0)) >= 2:
+				# A short, quiet celebration: sparkles around the camp and a card with what's next.
+				var camp := BuildingOps.camp_of(sim)
+				if camp != null:
+					for i in 6:
+						particles.fx("sparkle", camp.x + randf() * 3.0, camp.y + randf() * 2.0)
+				hud.show_celebration(str(e["id"]))
+		"advice":
+			var c := sim.settler(int(e["settlerId"]))
+			if c != null:
+				hud.toast("%s, your Assistant Chief, has advice — click the “?” over them (or press %s)." % [c.name, settings.bindings.label("advice")])
+				audio.play("uiOpen")
 
 
 ## Plays a sound from a place in the world: quieter with distance from the middle of the view,
@@ -1131,7 +1167,7 @@ func click_select(screen: Vector2, additive: bool) -> void:
 			best = s.id
 	var adviser := Roles.advice_showing(sim)
 	if adviser != null and Vector2(adviser.x, adviser.y - 1.6).distance_to(w) < 0.6:
-		command({"type": "hearAdvice"})
+		hear_advice()
 		return
 	if not selected.is_empty():
 		selected_before_building = selected.duplicate()
@@ -1197,6 +1233,9 @@ func _key(k: InputEventKey) -> void:
 	var focus := get_viewport().gui_get_focus_owner()
 	if focus is LineEdit or focus is TextEdit:
 		return
+	if k.ctrl_pressed and KeyBindings.code(k) == KEY_S and sim != null and not hud.title_or_window_open():
+		hud.toast("Saved." if save_now() else "Could not save.")
+		return
 	var action := settings.bindings.action_for(k)
 	if hud._studio.app_mode or (hud.blocking() and action != "cancel"):
 		return
@@ -1204,6 +1243,21 @@ func _key(k: InputEventKey) -> void:
 	if hud.console.handle_key(k):
 		return
 	match action:
+		"advice":
+			if Roles.advice_showing(sim) != null:
+				hear_advice()
+			else:
+				var c := Roles.chief_of(sim)
+				if c != null:
+					selected = [c.id]
+					camera.jump_to(Vector2(c.x, c.y) * WorldView.TILE_PX)
+					hud.toast("%s is on the way to you with advice." % c.name if bool(sim.chief["adviceReady"]) else "%s has no advice just now — they will come to you when they do." % c.name)
+				else:
+					hud.toast("You have no Assistant Chief yet — upgrade the Town Hall to a Castle and train one there.")
+		"toggleGrid":
+			settings.show_grid = not settings.show_grid
+			settings.save()
+			hud.toast("Tile grid on (%s to hide)." % settings.bindings.label("toggleGrid") if settings.show_grid else "Tile grid off.")
 		"cancel":
 			if placing != "":
 				cancel_placing()

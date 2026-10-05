@@ -24,6 +24,8 @@ const DEFINITIONS := {
 	"families": ["Families window", [KEY_F6]], "realm": ["Realm window", [KEY_F7]],
 	"goals": ["Goals window", [KEY_F8]], "help": ["Controls help", [KEY_F1]],
 	"fullscreen": ["Full screen on / off", [KEY_F]],
+	"toggleGrid": ["Show or hide the tile grid", [KEY_QUOTELEFT]],
+	"advice": ["Assistant Chief advice", [KEY_O]],
 }
 var keys: Dictionary = {}
 
@@ -56,7 +58,7 @@ func pressed(action: String) -> bool:
 
 func label(action: String) -> String:
 	var names := PackedStringArray()
-	for key: int in keys[action]:
+	for key: int in keys.get(action, []):
 		names.append(OS.get_keycode_string(key))
 	return " / ".join(names) if not names.is_empty() else "Unassigned"
 

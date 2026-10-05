@@ -22,6 +22,8 @@ uniform int world_seed = 0;
 uniform vec4 fog_color : source_color = vec4(0.08, 0.06, 0.11, 1.0);
 uniform bool winter = false;
 uniform bool autumn = false;
+// 0 with reduced motion: water stands still.
+uniform float motion = 1.0;
 
 const float BORDER = 3.0;
 const float SIDE = 38.0;
@@ -162,9 +164,18 @@ vec3 colour(ivec2 p, int c) {
 		bool foot = cls(p + ivec2(0, 1)) != T_MOUNTAIN || cls(p + ivec2(0, 2)) != T_MOUNTAIN || cls(p + ivec2(0, 3)) != T_MOUNTAIN;
 		if (top) slot = CLIFF3;
 		else if (foot) slot = CLIFF0;
-		else if (js_mod((wx + wy * 2) >> 2, 7) == 0) slot = CLIFF1;
-		else slot = h < 0.06 ? CLIFF3 : (patch > 0.5 ? CLIFF2 : CLIFF1);
-		if (winter && !foot && h < 0.25) slot = SNOWCAP;
+		else {
+			// Broad broken ridges, with a sunlit face and shaded scree face. World coordinates
+			// keep the ridge continuous across streamed chunk boundaries. Collision is unchanged.
+			float bend = value_noise(float(wx) * 0.013, float(wy) * 0.013, world_seed ^ 0x531) * 28.0;
+			float ridge = fract((float(wx) + float(wy) * 0.38 + bend) / 58.0);
+			float fractures = value_noise(float(wx) * 0.14, float(wy) * 0.07, world_seed ^ 0x143);
+			if (ridge < 0.06) slot = CLIFF3;
+			else if (ridge < 0.40) slot = fractures > 0.45 ? CLIFF2 : CLIFF3;
+			else slot = fractures > 0.56 ? CLIFF1 : CLIFF0;
+			if (fractures > 0.67 && ridge < 0.22) slot = SNOWCAP;
+			if (winter && ridge < 0.42 && fractures > 0.30) slot = SNOWCAP;
+		}
 	} else if (c == T_ROAD) {
 		bool edge = cls(p + ivec2(-1, 0)) != T_ROAD || cls(p + ivec2(1, 0)) != T_ROAD || cls(p + ivec2(0, -1)) != T_ROAD || cls(p + ivec2(0, 1)) != T_ROAD;
 		slot = edge ? DIRT0 : (h < 0.06 ? DIRT2 : (h > 0.96 ? DIRT3 : DIRT1));
@@ -262,6 +273,23 @@ void fragment() {
 	vec3 rgb = colour(p, c);
 	int d = detail(p, c);
 	if (d >= 0) rgb = col(d);
+	// Water ripples (Renderer.drawWater): two drifting highlights per tile of open water, a few
+	// pixels long, brightening and fading as they cross.
+	if (is_water(c) && motion > 0.0) {
+		ivec2 tp = ivec2(floor(vec2(p) / 16.0));
+		ivec2 lp = p - tp * 16;
+		float h = hash01(tp.x, tp.y, 404);
+		for (int k = 0; k < 2; k++) {
+			float phase = fract(TIME * (0.35 + h * 0.2) + h * 7.0 + float(k) * 0.5);
+			int lx = int(floor(mod(h * 13.0 + float(k) * 7.0, 12.0) + phase * 3.0));
+			int ly = 3 + int(floor(mod(h * 29.0 + float(k) * 6.0, 10.0)));
+			float a = sin(phase * PI);
+			int len = a > 0.8 ? 3 : 2;
+			if (a >= 0.35 && lp.y == ly && lp.x >= lx && lp.x < lx + len) {
+				rgb = mix(rgb, vec3(214.0, 240.0, 246.0) / 255.0, a * 0.8 * 0.55);
+			}
+		}
+	}
 	// Fog of war, soft-edged as in the browser (its 4x smoothed edge), on whole pixels.
 	vec2 tile = (vec2(p) + 0.5) / 16.0;
 	float e = 1.0;

@@ -1423,6 +1423,101 @@ func close_modal() -> void:
 			c.queue_free()
 
 
+func _exit_tree() -> void:
+	# The title can close before any modal was opened and parented.
+	if _modal_box.get_parent() == null:
+		_modal_box.free()
+	if _modal.get_parent() == null:
+		_modal.free()
+
+
+## The Assistant Chief's advice (Village.tsx ChiefAdvice): portrait, name, the advice, "Thank you".
+func show_advice(chief: Settler, text: String) -> void:
+	var v := open_modal("Advice", 460)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 12)
+	head.add_child(console._portrait(console._settler_portrait(chief), 4.0))
+	var who := VBoxContainer.new()
+	var name := Label.new()
+	name.text = chief.name
+	name.add_theme_font_override("font", _bold)
+	name.add_theme_font_size_override("font_size", 20)
+	name.add_theme_color_override("font_color", _c("accent"))
+	who.add_child(name)
+	who.add_child(_row_label("Your Assistant Chief", _c("textDim"), 13))
+	head.add_child(who)
+	v.add_child(head)
+	var said := _row_label("“%s”" % text, _c("text"), 16)
+	said.custom_minimum_size = Vector2(400, 0)
+	v.add_child(said)
+	var ok := _button("Thank you", func() -> void:
+		close_modal()
+		game.audio.play("uiClose"))
+	ok.theme_type_variation = &"PrimaryButton"
+	v.add_child(_buttons_row([ok]))
+	_window_sound(true)
+
+
+## The card when the settlement reaches a new tier (Village.tsx Celebration): bunting, what opened
+## up, and the next two milestones.
+func show_celebration(id: String) -> void:
+	var ms: Dictionary = Content.get_value("progression", "MILESTONES")
+	var def: Dictionary = ms.get(id, {})
+	if def.is_empty():
+		return
+	var v := open_modal("", 500)
+	v.add_child(_bunting())
+	var title := Label.new()
+	title.text = "Your settlement is now a %s" % def["name"]
+	title.add_theme_font_override("font", _bold)
+	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_color_override("font_color", _c("accent"))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(title)
+	v.add_child(_row_label("New building options and upgrades are open:", _c("text"), 14))
+	for u: String in def.get("unlocks", []):
+		v.add_child(_row_label("•  " + u, _c("good"), 14))
+	var later: Array = []
+	for k: String in ms:
+		if int(ms[k]["tier"]) > int(def["tier"]):
+			later.append(ms[k])
+	later.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a["tier"]) < int(b["tier"]))
+	if not later.is_empty():
+		v.add_child(_h3("Where to next"))
+		for m: Dictionary in later.slice(0, 2):
+			var l := _row_label("%s: %s%s" % [m["name"], m.get("description", ""), " (arrives in a future update)" if bool(m.get("future", false)) else ""], _c("text"), 13)
+			l.custom_minimum_size = Vector2(440, 0)
+			v.add_child(l)
+	var back := _button("Back to the valley", close_modal)
+	back.theme_type_variation = &"PrimaryButton"
+	v.add_child(_buttons_row([back]))
+
+
+## A string of little pennants, gently swaying (the browser's .bunting).
+func _bunting() -> Control:
+	var c := _Bunting.new()
+	c.custom_minimum_size = Vector2(0, 26)
+	return c
+
+
+class _Bunting extends Control:
+	const COLORS: Array[Color] = [Color("#e0584a"), Color("#f4cf5a"), Color("#6fb5e0"), Color("#8ee07a"), Color("#e89ad0")]
+
+	func _process(_d: float) -> void:
+		queue_redraw()
+
+	func _draw() -> void:
+		var n := 14
+		var w := size.x
+		var t := Time.get_ticks_msec() / 1000.0
+		draw_line(Vector2(0, 4), Vector2(w, 4), Color("#3a2a1f"), 2.0)
+		for i in n:
+			var x := (i + 0.5) * w / n
+			var sway := sin(t * 2.0 + i * 0.7) * 2.0
+			draw_colored_polygon(PackedVector2Array([Vector2(x - 8, 4), Vector2(x + 8, 4), Vector2(x + sway, 22)]), COLORS[i % COLORS.size()])
+
+
 ## Something over the whole valley (the title, a window, the busy note, the studio): the camera
 ## should not scroll under it.
 func title_or_window_open() -> bool:
@@ -1609,6 +1704,7 @@ func show_settings() -> void:
 		game.camera.scroll_speed = x)
 	speed.drag_ended.connect(func(_changed: bool) -> void: s.save())
 	v.add_child(_setting_row("Scroll speed (keys and screen edge)", speed))
+	v.add_child(_setting_row("Show the tile grid (%s)" % game.settings.bindings.label("toggleGrid"), _check("", s.show_grid, func(on: bool) -> void: s.show_grid = on)))
 	v.add_child(_setting_row("Health bars", _choice(["Over everyone", "Only when hurt"], 0 if s.health_bars == "always" else 1, func(i: int) -> void: s.health_bars = "always" if i == 0 else "hurt")))
 	var autos := [1, 2, 3, 5, 10]
 	v.add_child(_setting_row("Autosave every", _choice(autos.map(func(m: int) -> String: return "%d min" % m), maxi(0, autos.find(s.autosave_minutes)), func(i: int) -> void: s.autosave_minutes = autos[i])))
@@ -1753,7 +1849,7 @@ func _offer_old_game(v: BoxContainer) -> void:
 func _refresh_tutorial() -> void:
 	var t: Dictionary = game.tutorial
 	var outro: bool = t["done"] and Time.get_ticks_msec() < game.tutorial_outro_until
-	var key := "%s|%s|%s" % [t["step"], t["done"], outro]
+	var key := "%s|%s|%s|%s" % [t["step"], t["done"], outro, Tutorial.waiting(t)]
 	_tutorial.visible = outro or not t["done"]
 	if key == _tutorial_key:
 		return
@@ -1787,7 +1883,12 @@ func _refresh_tutorial() -> void:
 	pips.add_theme_color_override("font_color", _c("accent"))
 	pips.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	foot.add_child(pips)
-	foot.add_child(_button("Skip introduction", func() -> void:
+	if Tutorial.waiting(t):
+		_tutorial_box.add_child(_row_label("Paused while you read. Complete this step to unlock the next.", _c("textDim"), 14))
+		foot.add_child(_button("Begin step", func() -> void:
+			t["awaiting"] = false
+			refresh_now()))
+	foot.add_child(_button("Skip tutorial", func() -> void:
 		game.skip_tutorial()
 		refresh_now()))
 	_tutorial_box.add_child(foot)
@@ -1798,6 +1899,20 @@ func _refresh_tutorial() -> void:
 ## "Valley today", as the browser's (src/ui/Village.tsx): a column at the left under the top bar,
 ## above the console. A recap of the last session, what needs attention (!) and ideas for today
 ## (→) as cards that jump to what they name, the next milestone's checklist, and Start playing.
+func show_origin_story() -> void:
+	var page := open_modal("A place to call home", 560)
+	page.add_child(_row_label("After weeks on the road, your small company follows a river into a sheltered valley. The mountains break the wind. There is timber for shelter, stone for foundations, and meadow enough to grow your first harvest.", _c("text"), 18))
+	page.add_child(_row_label("Tonight, there are only tents and a campfire. Tomorrow, the first fields and homes. What this place becomes is up to you.", _c("text"), 18))
+	page.add_child(_h3("Camp > Town Hall > Keep > Castle"))
+	page.add_child(_row_label("To raise a Town Hall, finish a home, a storehouse, a workshop and three fields, then gather its upgrade materials. Later milestones unlock the Keep and Castle. Select your camp and choose Upgrade to see what remains.", _c("textDim"), 16))
+	page.add_child(_button("Learn to build our village", func() -> void:
+		game.restart_tutorial()
+		close_modal()))
+	page.add_child(_button("Skip tutorial and start playing", func() -> void:
+		game.skip_tutorial()
+		close_modal()))
+
+
 func show_today(o: Dictionary) -> void:
 	for c in _today.get_children():
 		c.queue_free()
@@ -1844,7 +1959,7 @@ func show_today(o: Dictionary) -> void:
 	await get_tree().process_frame
 	scroll.custom_minimum_size = Vector2(372, minf(v.get_combined_minimum_size().y, _root.size.y - 62 - GameConsole.HEIGHT - 22))
 	_today.reset_size()
-	_today.position = Vector2(6, 62)
+	_today.position = Vector2(maxf(6, (_root.size.x - _today.size.x) * 0.5), maxf(62, (62 + _root.size.y - GameConsole.HEIGHT - _today.size.y) * 0.5))
 
 
 ## A milestone requirement as the browser's .req row: a square box (filled green when done), the
@@ -2087,6 +2202,8 @@ func _set_text(l: Label, t: String) -> void:
 func _settler_text(s: Settler) -> String:
 	var job := "Ruler" if s.ruler else str(Defs.job(s.job)["name"])
 	var lines := ["[b]%s[/b] — %s" % [s.name, job]]
+	lines.append("[b]Main job:[/b] %s" % ("Child — no work duties" if s.life_stage == "child" else job))
+	lines.append("[b]Side job:[/b] %s" % ("Not applicable" if s.ruler or s.life_stage == "child" else (Roles.job_name(s.side_job) if s.side_job != "" else "None assigned")))
 	if s.ruler:
 		var wait := game.sim.rally_ready_at - game.sim.tick
 		lines.append("People nearby work faster. %s" % ("Rally (R) is ready." if wait <= 0 else "Rally again in %d min." % ceili(wait / 600.0)))
@@ -2290,9 +2407,13 @@ func _placing_text() -> String:
 func detail_actions(box: GridContainer) -> void:
 	var sim := game.sim
 	var key := "%s|%s|%d|%s" % [_card_mode, game.selected, game.selected_building, sim.reached]
+	for id: int in game.selected.slice(0, 1):
+		var st := sim.settler(id)
+		if st != null:
+			key += "|%s|%s|%s" % [st.side_job, st.priorities, st.has_priorities]
 	var sel: Building = sim.buildings.get(game.selected_building)
 	if sel != null:
-		key += "|%s|%d|%s|%s|%s" % [sel.mine.get("level", 0), sel.level, sel.workshop.get("recipe", ""), sel.workshop.get("paused", false), sel.wants]
+		key += "|%s|%d|%s|%s|%s|%s|%s" % [sel.mine.get("level", 0), sel.level, sel.workshop.get("recipe", ""), sel.workshop.get("paused", false), sel.wants, sel.workers, sel.field.get("crop", "")]
 		for p: Dictionary in sim.parties:
 			key += "|%s%s" % [p["state"], p.get("stock", {})]
 	if key == _last_card_key and box.get_child_count() > 0:
@@ -2324,17 +2445,103 @@ func detail_actions(box: GridContainer) -> void:
 				refresh_now()))
 		box.add_child(_small("Back", back))
 		return
+	var go := func(mode: String) -> void:
+		_card_mode = mode
+		_last_card_key = ""
+		refresh_now()
+	if _card_mode == "side" and not game.selected.is_empty():
+		# Side job: done whenever the main job has nothing to do (Hud.tsx JobPickers).
+		box.add_child(_small("None", func() -> void:
+			game.command({"type": "setSideJob", "ids": game.selected.duplicate(), "job": null})
+			back.call(), "Helps wherever needed"))
+		for j: String in Commands.SIDE_JOBS:
+			var all_main := true
+			for id: int in game.selected:
+				var st := sim.settler(id)
+				all_main = all_main and st != null and st.job == j
+			var jb := _small(Roles.job_name(j), func() -> void:
+				game.command({"type": "setSideJob", "ids": game.selected.duplicate(), "job": j})
+				back.call())
+			jb.disabled = all_main
+			box.add_child(jb)
+		box.add_child(_small("Back", back))
+		return
+	if _card_mode == "order" and game.selected.size() == 1:
+		# Work order (Hud.tsx WorkOrder): the kinds of work in the order they are picked; move one
+		# earlier, later, or turn it off; turned-off kinds can be added back at the end.
+		var who := sim.settler(game.selected[0])
+		if who == null:
+			back.call()
+			return
+		var order := SettlerBrain.effective_priorities(who)
+		var put := func(next: Variant) -> void:
+			game.command({"type": "setPriorities", "ids": [who.id], "priorities": next})
+			_last_card_key = ""
+			refresh_now()
+		for i in order.size():
+			var k: String = order[i]
+			var up := _small("%d. %s: earlier" % [i + 1, k.capitalize()], func() -> void:
+				var n := order.duplicate()
+				n[i] = n[i - 1]
+				n[i - 1] = k
+				put.call(n), "Do %s earlier" % k)
+			up.disabled = i == 0
+			box.add_child(up)
+			var down := _small("Later", func() -> void:
+				var n := order.duplicate()
+				n[i] = n[i + 1]
+				n[i + 1] = k
+				put.call(n), "Do %s later" % k)
+			down.disabled = i == order.size() - 1
+			box.add_child(down)
+			box.add_child(_small("Off", func() -> void:
+				var n := order.duplicate()
+				n.erase(k)
+				put.call(n), "Never do %s" % k))
+		for k: String in SettlerBrain.WORK_KINDS:
+			if not order.has(k):
+				box.add_child(_small("+ %s" % k.capitalize(), func() -> void:
+					var n := order.duplicate()
+					n.append(k)
+					put.call(n)))
+		if who.has_priorities:
+			box.add_child(_small("Reset", func() -> void: put.call(null), "Back to the %s default" % Roles.job_name(who.job)))
+		box.add_child(_small("Back", back))
+		return
+	if _card_mode == "crop" and sel != null and sel.is_field():
+		var crops: Dictionary = Content.get_value("crops", "CROPS")
+		for c: String in crops:
+			var cb := _small(str(crops[c]["name"]), func() -> void:
+				game.command({"type": "setCrop", "buildingIds": [sel.id], "crop": c})
+				back.call())
+			cb.disabled = not BuildingOps.is_unlocked(sim, crops[c].get("unlock")) or str(sel.field.get("crop", "")) == c
+			box.add_child(cb)
+		box.add_child(_small("Leave fallow", func() -> void:
+			game.command({"type": "setCrop", "buildingIds": [sel.id], "crop": null})
+			back.call(), "Nothing is planted here until you choose a crop"))
+		box.add_child(_small("Back", back))
+		return
 	if not game.selected.is_empty():
 		var one := sim.settler(game.selected[0])
 		if one == null or not one.ruler:
-			box.add_child(_small("Change job…", func() -> void:
-				_card_mode = "job"
-				_last_card_key = ""
-				refresh_now(), "Set their main job straight away (Train teaches a new role at the Town Hall)"))
+			box.add_child(_small("Change job…", func() -> void: go.call("job"), "Set their main job straight away (Train teaches a new role at the Town Hall)"))
+			box.add_child(_small("Side job…", func() -> void: go.call("side"), "Done whenever the main job has nothing to do"))
+			if game.selected.size() == 1:
+				box.add_child(_small("Work order…", func() -> void: go.call("order"), "Which kinds of work they pick first"))
 		return
 	if sel == null:
 		return
 	var b := sel
+	if b.is_field():
+		box.add_child(_small("Change crop…", func() -> void: go.call("crop"), "What is planted here next"))
+	# The people working here: click one to send them back to other work.
+	for wid: int in b.workers:
+		var wk := sim.settler(wid)
+		if wk != null:
+			box.add_child(_small("Unassign %s" % wk.name, func() -> void:
+				game.command({"type": "unassignWorker", "buildingId": b.id, "settlerId": wid})
+				_last_card_key = ""
+				refresh_now(), "They go back to their usual work"))
 	if not b.workshop.is_empty():
 		for r: String in b.def().get("recipes", []):
 			var rd := Production.recipe(r)

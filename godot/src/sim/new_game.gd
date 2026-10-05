@@ -9,6 +9,15 @@ const STARTING_JOBS: Array[String] = ["farmer", "gatherer", "builder", "laborer"
 const SPOTS: Array[Vector2i] = [Vector2i(-1, 2), Vector2i(0, 2), Vector2i(1, 2), Vector2i(-2, 1), Vector2i(2, 1)]
 
 
+## New player campaign. create() remains the browser-parity fixture for tests/benchmarks.
+static func create_camp(seed_value: int, gen: int = WorldGen.CURRENT_GEN, habitat: String = "valley", ruler_name: String = "") -> Simulation:
+	var sim := create(seed_value, gen, habitat, ruler_name)
+	var centre := BuildingOps.camp_of(sim)
+	Levels.rebuild_as(sim, centre, "camp")
+	centre.extra["foundingCamp"] = true
+	return sim
+
+
 static func create(seed_value: int, gen: int = WorldGen.CURRENT_GEN, habitat: String = "valley", ruler_name: String = "") -> Simulation:
 	var sim := Simulation.new(seed_value, 0, gen, habitat)
 	# New valleys grow through families and welcomed travellers.

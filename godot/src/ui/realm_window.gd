@@ -296,6 +296,22 @@ func _war(sim: Simulation, me: Dictionary) -> void:
 			" · siege %d%%" % int(siege["progress"]) if not siege.is_empty() else ""]))
 		_body.add_child(_row([hud._button("Propose a truce", func() -> void: _cmd({"type": "proposeTreaty", "kind": "truce", "to": other, "terms": {"durationDays": 4}})),
 			hud._button("Propose peace", func() -> void: _cmd({"type": "proposeTreaty", "kind": "peace", "to": other, "terms": {"durationDays": 16}}), "Land your soldiers hold is not asked for here")]))
+	# Move civilians out of a threatened settlement (War.tsx): settlers who are not soldiers walk to
+	# the other settlement's hall and live there.
+	var at_war := false
+	for ws: Dictionary in sim.war_states.values():
+		at_war = at_war or int(ws["attacker"]) == 0 or int(ws["defender"]) == 0
+	if at_war and sim.settlements.size() >= 2:
+		_body.add_child(_text("[b]Move civilians out[/b]: everyone who is not a soldier walks to the other settlement and lives there.", true))
+		var moves: Array = []
+		for a: Dictionary in sim.settlements:
+			for b: Dictionary in sim.settlements:
+				if int(a["id"]) == int(b["id"]):
+					continue
+				var fa := int(a["id"])
+				var tb := int(b["id"])
+				moves.append(hud._button("%s to %s" % [Settlements.name_of(sim, fa), Settlements.name_of(sim, tb)], func() -> void: _cmd({"type": "evacuate", "from": fa, "to": tb})))
+		_body.add_child(_row(moves.slice(0, 6)))
 	for k: Dictionary in sim.kingdoms:
 		if k["player"] or Diplomacy.at_war(sim, 0, int(k["id"])):
 			continue

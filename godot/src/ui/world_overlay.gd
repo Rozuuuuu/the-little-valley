@@ -24,6 +24,13 @@ func _draw() -> void:
 	# Work areas: a faint fill, an outline and the name with the crew count, kept the same size on
 	# screen at any zoom.
 	var px := 1.0 / maxf(0.05, game.camera.zoom.x)
+	if game.settings.show_grid:
+		# The tile grid: one-pixel lines on every tile edge (Renderer.drawGrid).
+		var gc := Color(0.08, 0.06, 0.11, 0.18)
+		for gx in range(floori(view.position.x / T), ceili(view.end.x / T) + 1):
+			draw_line(Vector2(gx * T, view.position.y), Vector2(gx * T, view.end.y), gc, px)
+		for gy in range(floori(view.position.y / T), ceili(view.end.y / T) + 1):
+			draw_line(Vector2(view.position.x, gy * T), Vector2(view.end.x, gy * T), gc, px)
 	if game.placing == "survey" and game.hover_tile.x != -99999:
 		# The whole geology cell a survey would cover.
 		var gc := Geology.cell_of(game.hover_tile.x, game.hover_tile.y)
@@ -174,46 +181,15 @@ func _draw() -> void:
 			draw_circle(Vector2(0, 0), 5, kc)
 			draw_set_transform(Vector2.ZERO)
 			_label(cp + Vector2(10, -4) * px, "%s %d" % [str(Military.unit(c["kind"])["name"]), int(c.get("health", 100))], kc.lightened(0.2), px)
-	# Merchants walking to and from the inn.
-	for p: Dictionary in sim.parties:
-		if p["state"] != "arriving" and p["state"] != "leaving":
-			continue
-		var mp := Vector2(float(p["x"]), float(p["y"])) * T
-		if not view.has_point(mp):
-			continue
-		draw_circle(mp + Vector2(0, -18), 9, Color("#7a5a3a"))
-		draw_circle(mp + Vector2(0, -32), 6, Color("#e8c9a0"))
-		draw_rect(Rect2(mp + Vector2(4, -26), Vector2(12, 12)), WorldView.GOLD)
-	# Caravan carts on the road between settlements.
-	for m: Dictionary in sim.manifests:
-		var cp2 := Logistics.cart_position(sim, m) * T
-		if not view.has_point(cp2):
-			continue
-		draw_set_transform(cp2, 0.0, Vector2.ONE * px * 0.9)
-		draw_rect(Rect2(-16, -22, 32, 16), Color("#8a5a3a"))
-		draw_rect(Rect2(-16, -22, 32, 16), Color("#4a2e1c"), false, 2.0)
-		draw_rect(Rect2(-12, -30, 24, 9), WorldView.GOLD if m["state"] == "outbound" else Color("#b8a27c"))
-		for wx: int in [-10, 10]:
-			draw_circle(Vector2(wx, -4), 6.0, Color("#3a2a1f"))
-			draw_circle(Vector2(wx, -4), 2.5, Color("#b8a27c"))
-		draw_set_transform(Vector2.ZERO)
-	# A small gold crown over the ruler, so the player can always find themselves.
-	var ruler := sim.ruler()
-	if ruler != null and not ruler.hidden:
-		var v: Node2D = game.view.settler_views.get(ruler.id)
-		var cp := (v.position if v != null else Vector2(ruler.x, ruler.y) * T) + Vector2(0, -78)
-		var crown := PackedVector2Array([cp + Vector2(-9, 5), cp + Vector2(-10, -5), cp + Vector2(-4, 0), cp + Vector2(0, -8), cp + Vector2(4, 0), cp + Vector2(10, -5), cp + Vector2(9, 5)])
-		draw_colored_polygon(crown, WorldView.GOLD)
-		crown.append(crown[0])
-		draw_polyline(crown, Color("#7a5a20"), 1.5, true)
-	# The Assistant Chief's "?" while they wait beside the ruler with advice.
+	# Merchants and caravan carts are drawn by WorldLife, in pixel art.
+	# The Assistant Chief's big gold "?" (ui_advice) while they wait beside the ruler with advice:
+	# it bobs and pulses, to be clicked (the ruler's own crown is on their SettlerView).
 	var adviser := Roles.advice_showing(sim)
 	if adviser != null:
-		var qp := Vector2(lerpf(adviser.rpx, adviser.rx, 1.0), lerpf(adviser.rpy, adviser.ry, 1.0) - 1.6) * T
-		var bob := sin(Time.get_ticks_msec() / 300.0) * 3.0
-		draw_circle(qp + Vector2(0, bob), 14.0, Color(0.05, 0.16, 0.17, 0.9))
-		draw_circle(qp + Vector2(0, bob), 11.0, WorldView.GOLD)
-		draw_string(font, qp + Vector2(-5, 7 + bob), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(0.09, 0.23, 0.24))
+		var av: Node2D = game.view.settler_views.get(adviser.id)
+		var ap := av.position if av != null else Vector2(adviser.x, adviser.y) * T
+		var tq := Time.get_ticks_msec() / 1000.0
+		_draw_sprite("ui_advice", ap + Vector2(0, (-25.0 + roundf(sin(tq * 4.0) * 1.5)) * 4.0), 0.85 + 0.15 * sin(tq * 6.0))
 	# Order markers fade over 0.7 s.
 	var now := Time.get_ticks_msec() / 1000.0
 	for m: Dictionary in game.markers:

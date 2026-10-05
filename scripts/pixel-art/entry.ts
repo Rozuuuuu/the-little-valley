@@ -206,6 +206,8 @@ export function exportAll(): Out[] {
       add(`animal_${id}_${i}`, m.canvas, m.ax, m.ay, 'animal');
     });
   }
+  // The caravan cart (drawn by its wheels' contact point, as the browser blits it).
+  add('cart', bank.cart.canvas, bank.cart.ax, bank.cart.ay, 'prop');
   // Tools in hand, icons and the small overhead marks.
   for (const [k, s] of Object.entries(bank.tools)) add(`tool_${k}`, s.canvas, s.ax, s.ay, 'tool');
   const sw = sword();

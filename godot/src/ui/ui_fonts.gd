@@ -5,7 +5,7 @@ class_name UiFonts
 
 
 static func regular() -> FontFile:
-	return _with_fallback("res://fonts/PixelifySans-Regular.woff2", "res://fonts/AtkinsonHyperlegible-Regular.woff2")
+	return _with_fallback("res://fonts/AtkinsonHyperlegible-Regular.woff2", "res://fonts/PixelifySans-Regular.woff2")
 
 
 static func bold() -> FontFile:

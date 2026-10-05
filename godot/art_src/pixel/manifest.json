@@ -3315,6 +3315,15 @@
    "provisional": false,
    "pixel": true
   },
+  "cart": {
+   "w": 180,
+   "h": 132,
+   "ax": 90,
+   "ay": 114,
+   "kind": "prop",
+   "provisional": false,
+   "pixel": true
+  },
   "tool_axe": {
    "w": 72,
    "h": 72,
