@@ -6,22 +6,32 @@ var _waiting := ""
 var _buttons := {}
 var _message := Label.new()
 
-func setup(player_settings: Settings) -> void:
+## `embedded`: part of a page that scrolls (Settings): no frame, heading or scroll box of its own,
+## just the note and the rows.
+func setup(player_settings: Settings, embedded := false) -> void:
 	settings = player_settings
 	var box := VBoxContainer.new()
 	add_child(box)
-	var heading := Label.new()
-	heading.text = "Keyboard shortcuts"
-	box.add_child(heading)
-	_message.text = "Choose a shortcut, then press a key. Escape cancels."
+	if embedded:
+		add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	else:
+		var heading := Label.new()
+		heading.text = "Keyboard shortcuts"
+		box.add_child(heading)
+	_message.text = "Click a shortcut, then press the new key. Escape cancels."
 	_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	if embedded:
+		_message.add_theme_font_size_override("font_size", 12)
 	box.add_child(_message)
-	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(420, 240)
-	box.add_child(scroll)
 	var rows := VBoxContainer.new()
 	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(rows)
+	if embedded:
+		box.add_child(rows)
+	else:
+		var scroll := ScrollContainer.new()
+		scroll.custom_minimum_size = Vector2(420, 240)
+		box.add_child(scroll)
+		scroll.add_child(rows)
 	for action: String in KeyBindings.DEFINITIONS:
 		var row := HBoxContainer.new()
 		rows.add_child(row)
@@ -48,6 +58,7 @@ func setup(player_settings: Settings) -> void:
 	var reset := Button.new()
 	reset.text = "Reset keyboard shortcuts"
 	reset.focus_mode = Control.FOCUS_NONE
+	reset.size_flags_horizontal = Control.SIZE_SHRINK_END
 	reset.pressed.connect(func() -> void:
 		_waiting = ""
 		settings.bindings.reset()
