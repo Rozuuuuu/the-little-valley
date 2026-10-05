@@ -214,6 +214,98 @@
     ]
    }
   },
+  "royalHall": {
+   "w": 408,
+   "h": 470,
+   "ax": 12,
+   "ay": 460,
+   "kind": "building",
+   "provisional": true,
+   "points": {
+    "top": [
+     192,
+     -334.56
+    ],
+    "chimney": [
+     286.48,
+     -310.56
+    ]
+   }
+  },
+  "royalHall_lit": {
+   "w": 408,
+   "h": 470,
+   "ax": 12,
+   "ay": 460,
+   "kind": "night",
+   "provisional": true,
+   "points": {
+    "top": [
+     192,
+     -334.56
+    ],
+    "chimney": [
+     286.48,
+     -310.56
+    ]
+   }
+  },
+  "councilHall": {
+   "w": 312,
+   "h": 314,
+   "ax": 12,
+   "ay": 304,
+   "kind": "building",
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -215.04
+    ]
+   }
+  },
+  "councilHall_lit": {
+   "w": 312,
+   "h": 314,
+   "ax": 12,
+   "ay": 304,
+   "kind": "night",
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -215.04
+    ]
+   }
+  },
+  "armory": {
+   "w": 216,
+   "h": 313,
+   "ax": 12,
+   "ay": 303,
+   "kind": "building",
+   "provisional": true,
+   "points": {
+    "top": [
+     96,
+     -214.04
+    ]
+   }
+  },
+  "armory_lit": {
+   "w": 216,
+   "h": 313,
+   "ax": 12,
+   "ay": 303,
+   "kind": "night",
+   "provisional": true,
+   "points": {
+    "top": [
+     96,
+     -214.04
+    ]
+   }
+  },
   "house": {
    "w": 216,
    "h": 329,
@@ -949,6 +1041,142 @@
      -100
     ]
    }
+  },
+  "camp": {
+   "w": 312,
+   "h": 244,
+   "ax": 12,
+   "ay": 234,
+   "kind": "building",
+   "provisional": true,
+   "points": {
+    "top": [
+     144,
+     -60
+    ]
+   }
+  },
+  "camp_lit": {
+   "w": 312,
+   "h": 244,
+   "ax": 12,
+   "ay": 234,
+   "kind": "night",
+   "provisional": true,
+   "points": {}
+  },
+  "market": {
+   "w": 504,
+   "h": 426,
+   "ax": 12,
+   "ay": 416,
+   "kind": "building",
+   "provisional": true,
+   "points": {
+    "top": [
+     240,
+     -252
+    ]
+   }
+  },
+  "fence": {
+   "w": 120,
+   "h": 138,
+   "ax": 12,
+   "ay": 128,
+   "kind": "building",
+   "provisional": true,
+   "points": {}
+  },
+  "stoneWall": {
+   "w": 120,
+   "h": 148,
+   "ax": 12,
+   "ay": 138,
+   "kind": "building",
+   "provisional": true,
+   "points": {}
+  },
+  "flowerbed": {
+   "w": 120,
+   "h": 132,
+   "ax": 12,
+   "ay": 122,
+   "kind": "building",
+   "provisional": true,
+   "points": {}
+  },
+  "lamp": {
+   "w": 120,
+   "h": 188,
+   "ax": 12,
+   "ay": 178,
+   "kind": "building",
+   "provisional": true,
+   "points": {}
+  },
+  "lamp_lit": {
+   "w": 120,
+   "h": 188,
+   "ax": 12,
+   "ay": 178,
+   "kind": "night",
+   "provisional": true,
+   "points": {}
+  },
+  "haystack": {
+   "w": 120,
+   "h": 148,
+   "ax": 12,
+   "ay": 138,
+   "kind": "building",
+   "provisional": true,
+   "points": {}
+  },
+  "barrels": {
+   "w": 120,
+   "h": 138,
+   "ax": 12,
+   "ay": 128,
+   "kind": "building",
+   "provisional": true,
+   "points": {}
+  },
+  "signpost": {
+   "w": 120,
+   "h": 178,
+   "ax": 12,
+   "ay": 168,
+   "kind": "building",
+   "provisional": true,
+   "points": {}
+  },
+  "garden": {
+   "w": 216,
+   "h": 234,
+   "ax": 12,
+   "ay": 224,
+   "kind": "building",
+   "provisional": true,
+   "points": {}
+  },
+  "statue": {
+   "w": 216,
+   "h": 324,
+   "ax": 12,
+   "ay": 314,
+   "kind": "building",
+   "provisional": true,
+   "points": {}
+  },
+  "bench": {
+   "w": 216,
+   "h": 128,
+   "ax": 12,
+   "ay": 118,
+   "kind": "building",
+   "provisional": true,
+   "points": {}
   },
   "orchard_saplings": {
    "w": 216,

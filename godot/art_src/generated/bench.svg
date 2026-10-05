@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="216" height="128" viewBox="0 0 216 128">
+<ellipse cx="114" cy="94" rx="76" ry="8" fill="#1d3a2e" opacity="0.3"/><rect x="42" y="62" width="10" height="34" fill="#3a3a40"/><rect x="164" y="62" width="10" height="34" fill="#3a3a40"/><g>
+<clipPath id="c0"><path d="M35,26H181Q184,26 184,29V35Q184,38 181,38H35Q32,38 32,35V29Q32,26 35,26Z"/></clipPath>
+<clipPath id="c0r"><path d="M35,26H181Q184,26 184,29V35Q184,38 181,38H35Q32,38 32,35V29Q32,26 35,26Z" transform="translate(-5,-5)"/></clipPath>
+<path d="M35,26H181Q184,26 184,29V35Q184,38 181,38H35Q32,38 32,35V29Q32,26 35,26Z" fill="#5a3a20"/>
+<g clip-path="url(#c0)">
+<path d="M35,26H181Q184,26 184,29V35Q184,38 181,38H35Q32,38 32,35V29Q32,26 35,26Z" fill="#7c5230" transform="translate(-2,-2)"/>
+<path d="M35,26H181Q184,26 184,29V35Q184,38 181,38H35Q32,38 32,35V29Q32,26 35,26Z" fill="#a8723e" opacity="0.9" transform="translate(101,101) scale(0.72) translate(-105,-105)"/>
+
+</g>
+<path d="M35,26H181Q184,26 184,29V35Q184,38 181,38H35Q32,38 32,35V29Q32,26 35,26Z" fill="none" stroke="#402d1c" stroke-width="3" stroke-linejoin="round"/>
+</g><g>
+<clipPath id="c1"><path d="M35,42H181Q184,42 184,45V51Q184,54 181,54H35Q32,54 32,51V45Q32,42 35,42Z"/></clipPath>
+<clipPath id="c1r"><path d="M35,42H181Q184,42 184,45V51Q184,54 181,54H35Q32,54 32,51V45Q32,42 35,42Z" transform="translate(-5,-5)"/></clipPath>
+<path d="M35,42H181Q184,42 184,45V51Q184,54 181,54H35Q32,54 32,51V45Q32,42 35,42Z" fill="#5a3a20"/>
+<g clip-path="url(#c1)">
+<path d="M35,42H181Q184,42 184,45V51Q184,54 181,54H35Q32,54 32,51V45Q32,42 35,42Z" fill="#7c5230" transform="translate(-2,-2)"/>
+<path d="M35,42H181Q184,42 184,45V51Q184,54 181,54H35Q32,54 32,51V45Q32,42 35,42Z" fill="#a8723e" opacity="0.9" transform="translate(104,104) scale(0.72) translate(-108,-108)"/>
+
+</g>
+<path d="M35,42H181Q184,42 184,45V51Q184,54 181,54H35Q32,54 32,51V45Q32,42 35,42Z" fill="none" stroke="#402d1c" stroke-width="3" stroke-linejoin="round"/>
+</g><g>
+<clipPath id="c2"><path d="M31,60H185Q188,60 188,63V71Q188,74 185,74H31Q28,74 28,71V63Q28,60 31,60Z"/></clipPath>
+<clipPath id="c2r"><path d="M31,60H185Q188,60 188,63V71Q188,74 185,74H31Q28,74 28,71V63Q28,60 31,60Z" transform="translate(-5,-5)"/></clipPath>
+<path d="M31,60H185Q188,60 188,63V71Q188,74 185,74H31Q28,74 28,71V63Q28,60 31,60Z" fill="#5a3a20"/>
+<g clip-path="url(#c2)">
+<path d="M31,60H185Q188,60 188,63V71Q188,74 185,74H31Q28,74 28,71V63Q28,60 31,60Z" fill="#7c5230" transform="translate(-3,-3)"/>
+<path d="M31,60H185Q188,60 188,63V71Q188,74 185,74H31Q28,74 28,71V63Q28,60 31,60Z" fill="#a8723e" opacity="0.9" transform="translate(103,103) scale(0.72) translate(-108,-108)"/>
+
+</g>
+<path d="M31,60H185Q188,60 188,63V71Q188,74 185,74H31Q28,74 28,71V63Q28,60 31,60Z" fill="none" stroke="#402d1c" stroke-width="3" stroke-linejoin="round"/>
+</g>
+</svg>

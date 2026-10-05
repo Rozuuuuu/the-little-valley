@@ -48,6 +48,40 @@ export const SPECS: Record<string, BuildingSpec> = {
         + `<path d="M${cx},${f.ridge - 72} L${cx + 34},${f.ridge - 62} L${cx},${f.ridge - 52}Z" fill="${P.core.gold}" stroke="${P.core.goldDeep}" stroke-width="2"/>`;
     },
   },
+  royalHall: {
+    size: [4, 3], rise: 170, wall: M.stone.slice(1), roof: M.roofSlate, shape: 'hip', door: 'arch', windows: 4, chimney: true,
+    extra: (f) => {
+      // A banner tower rising from the roof, crowned with the realm's gold standard.
+      const cx = f.x0 + f.fw / 2;
+      let out = shaded(rrect(cx - 30, f.ridge - 30, 60, 90, 4), { tones: M.stone, outline: outlineOf(M.stone), shadow: 8, light: 4 });
+      for (let x = cx - 30; x < cx + 30; x += 15) out += `<rect x="${x}" y="${f.ridge - 42}" width="10" height="14" fill="${M.stone[2]}" stroke="${outlineOf(M.stone)}" stroke-width="2"/>`;
+      out += `<path d="M${cx - 9},${f.ridge + 20} v-14 a9,9 0 0 1 18,0 v14z" fill="${P.core.tealMid}"/>`;
+      out += `<path d="M${cx},${f.ridge - 42} V${f.ridge - 96}" stroke="${M.wood[0]}" stroke-width="4"/><path d="M${cx},${f.ridge - 96} l42,10 l-42,12Z" fill="${P.core.gold}" stroke="${P.core.goldDeep}" stroke-width="2"/>`;
+      // Banners hung on the front wall.
+      for (const bx of [f.x0 + 20, f.x0 + f.fw - 42]) out += `<path d="M${bx},${f.wallTop + 14} h22 v46 l-11,-8 l-11,8z" fill="${M.berry[1]}" stroke="${M.berry[0]}" stroke-width="2"/><circle cx="${bx + 11}" cy="${f.wallTop + 32}" r="5" fill="${P.core.gold}"/>`;
+      return out;
+    },
+  },
+  councilHall: {
+    size: [3, 2], rise: 110, wall: M.wall, roof: M.roofRed, shape: 'hip', door: 'arch', windows: 2,
+    extra: (f) => {
+      // A columned porch and a round window in the pediment.
+      const cx = f.x0 + f.fw / 2;
+      let out = '';
+      for (const px of [cx - 52, cx - 26, cx + 18, cx + 44]) out += shaded(rrect(px, f.wallTop + 12, 10, f.yBase - f.wallTop - 26, 3), { tones: M.wall, outline: outlineOf(M.wall), shadow: 3, light: 2 });
+      out += shaded(poly([[cx - 64, f.wallTop + 14], [cx, f.wallTop - 18], [cx + 64, f.wallTop + 14]]), { tones: M.wall, outline: outlineOf(M.wall), shadow: 4, light: 3 });
+      return out + `<circle cx="${cx}" cy="${f.wallTop + 2}" r="8" fill="${P.core.tealMid}" stroke="${outlineOf(M.wall)}" stroke-width="2"/>`;
+    },
+  },
+  armory: {
+    size: [2, 2], rise: 84, wall: M.stone.slice(1), roof: M.roofSlate, shape: 'gable', door: 'plain', windows: 1,
+    extra: (f) => {
+      // Crossed swords over a round shield above the door.
+      const cx = f.x0 + f.fw / 2;
+      return `<path d="M${cx - 22},${f.wallTop + 2} L${cx + 22},${f.wallTop + 38} M${cx + 22},${f.wallTop + 2} L${cx - 22},${f.wallTop + 38}" stroke="#c4ccd0" stroke-width="4" stroke-linecap="round"/>`
+        + `<circle cx="${cx}" cy="${f.wallTop + 20}" r="13" fill="${M.berry[1]}" stroke="${P.core.goldDeep}" stroke-width="3"/><circle cx="${cx}" cy="${f.wallTop + 20}" r="4" fill="${P.core.gold}"/>`;
+    },
+  },
   house: { size: [2, 2], rise: 96, wall: M.wall, roof: M.roofThatch, shape: 'gable', chimney: true, windows: 1 },
   familyHome: {
     size: [3, 2], rise: 100, wall: M.wall, roof: M.roofThatch, shape: 'gable', chimney: true, windows: 2,

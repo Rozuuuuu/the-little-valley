@@ -12,6 +12,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { blob, groundShadow, mix, poly, rng, rrect, shaded, smoothPath, svg, TILE } from './svg-kit';
 import { M, OUTLINE, outlineOf, P, RIM, SHADOW } from './palette';
 import { building, SPECS, stones } from './buildings';
+import { PROPS } from './props';
 import { oak, pine, berryBush, rock } from './environment';
 import { orchard, ORCHARD_LOOKS } from './orchard';
 import { animal, mineEntrance, penYard, quarryPit, SPECIES_ART } from './animals';
@@ -392,6 +393,12 @@ for (const k of Object.keys(SPECS)) {
   for (const lit of [false, true]) {
     const b = building(k, lit);
     emit(`${k}${lit ? '_lit' : ''}`, b.w, b.h, b.ax, b.ay, lit ? 'night' : 'building', b.body, b.points);
+  }
+}
+for (const [k, draw] of Object.entries(PROPS)) {
+  for (const lit of [false, true]) {
+    const b = draw(lit);
+    if (b) emit(`${k}${lit ? '_lit' : ''}`, b.w, b.h, b.ax, b.ay, lit ? 'night' : 'building', b.body, b.points);
   }
 }
 for (const look of ORCHARD_LOOKS) {
