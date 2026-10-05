@@ -375,9 +375,53 @@ reloaded, and play continues on the reloaded copy.
 - **Findings during setup (not game bugs, but worth knowing):** a tight ring of finished
   buildings walls settlers in ("Can't reach…") and they starve; stores filled to capacity stop all
   harvesting ("Storage is full"). The browser game behaves the same; the soak avoids both.
-- **Open observations:** the bakery stopped after day 50 (food then declined from 2,028 to 868);
-  no births, because households must be started by the player. Look into the bakery stall.
+- **Observations:** the bakery stopped after day 50 (food then declined from 2,028 to 868).
+  The 2026-10-06 diagnostic below explains the capacity and stone-supply constraint.
+  No births, because households must be started by the player.
 
 Pixel art on the web (100 settlers, measured while the soak ran on the same CPU, so slightly
 pessimistic): desktop avg 24.2 ms, p50 19.3, p95 47.0, art loading 0.40 s (was 0.97 s for SVG);
 phone emulation avg 100 ms, p50 78, sim 49 ms per frame, art loading 2.95 s (was 6.3 s).
+
+## Bakery plateau diagnostic (2026-10-06)
+
+Godot 4.7.2-stable, headless local Windows editor build, seed 4242, the unchanged baseline
+valley, 60 days with JSON save/load every 10. Population grew from 9 to 16; loaded chunks
+remained 16. This is a correctness investigation, not a frame-rate benchmark.
+
+| Day | Bread made (cumulative food units) | Storage used / capacity | Stored wood | Stored stone |
+| --- | --- | --- | --- | --- |
+| 40 | 1,125 | 4,619 / 5,030 | 122 | 0 |
+| 50 | 1,295 | 5,030 / 5,030 | 130 | 0 |
+| 60 | 1,295 | 5,029 / 5,030 | 130 | 0 |
+
+At day 50, the bakery still held 4 flour and 2 wood: enough for two batches. The pending
+storehouse (id 332) held 24 wood and 10 stone, against its 24 wood / 12 stone cost; there was
+no stored stone or incoming delivery. All 159 initial harvest designations were exhausted by
+day 20. The autopilot stops planning while any site is outstanding, so it does not remedy
+that supply problem. Storage pressure, with other production competing for freed space,
+explains this plateau; missing wood was investigated and ruled out for this checkpoint.
+The scenario has no work areas or renewable woodlot despite its old introductory comment.
+
+The replay matched the earlier bread totals, had zero hard failures, and zero wood drift
+at days 50 and 60. The chronicle grew at every checkpoint (26 to 80 entries); this is recorded
+persistent history, not evidence by itself of a temporary-object leak. Recorded static memory
+was 35.5–36.0 MB and engine objects 1,663–1,686 across post-setup checkpoints. These figures
+are not proof that larger or longer worlds have bounded memory.
+
+Production rules and the baseline economy were not changed. New bakery tests verify that
+full storage prevents consuming ingredients/reserving a batch, and that adding capacity after
+save/load restores production. A second case verifies recovery from missing wood by normal
+hauling after save/load. Both preserve wood/flour totals and reservation accounting:
+2 tests, 21 assertions passed; existing simulation-slice checks: 22 passed.
+
+The soak now records workshop state, input inventories/promises, workers/reservations,
+storage totals and unfinished sites. The first 60-day diagnostic recorded derived statuses
+after decoding (empty strings); inventories/capacity above are valid. The final code captures
+status before reload, verified by a one-day smoke with nonempty status strings and no failures.
+Local evidence is in build/bakery-*.log and dist-godot/bakery-*.json (not committed).
+
+Reproduce: run tools/soak.gd with arguments 60 10 4242 and an output JSON path, and run
+run_tests.gd with filter test_bakery. A future sustainable-economy scenario must explicitly
+plan stone supply, storage and renewable gathering without replacing this baseline or
+injecting unaccounted goods into production gameplay.

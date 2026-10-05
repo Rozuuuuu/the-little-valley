@@ -3,8 +3,9 @@ extends SceneTree
 ## stays healthy. From godot/:
 ##   godot --headless --path . -s res://tools/soak.gd -- [days=60] [every=5] [seed=4242] [out.json]
 ##
-## The valley has farming, an orchard of work, crafts, animals, work areas, a crowned realm with
-## known neighbours, and an inn so merchants visit. Every `every` days it:
+## The valley has fields, crafts, animals, a crowned realm with known neighbours, and an inn
+## so merchants visit. It has no work areas or woodlot: finite gathering can exhaust inputs.
+## This baseline checks state integrity, not a self-sustaining economy. Every `every` days it:
 ## - saves and reloads (through JSON text, as on disk), requires the reloaded state to equal the
 ##   state before exactly, and plays on with the reloaded copy, as a player who quits would;
 ## - requires reservations and promised goods to be consistent;
@@ -50,6 +51,8 @@ func _initialize() -> void:
 		if not problems.is_empty():
 			_fail("day %d: reservations: %s" % [day, "; ".join(problems.slice(0, 3))])
 		# Save and reload through text, then carry on with the reloaded valley.
+		# Workshop status is derived and deliberately omitted from saves. Capture before decode.
+		var production_before := production_snapshot(sim)
 		var before := _state(sim)
 		var text := JSON.stringify(SaveCodec.encode(sim, "Soak", 0), "", true, true)
 		var loaded := SaveCodec.decode(JSON.parse_string(text))
@@ -63,6 +66,7 @@ func _initialize() -> void:
 			_fail("day %d: reload differs: %s" % [day, diff])
 		sim = loaded["sim"]
 		var row := _measure(sim, day, ms_per_day, "ok" if problems.is_empty() and diff == "" else "FAIL")
+		row["production"] = production_before
 		row["saveKB"] = text.length() / 1024
 		row["woodDrift"] = drift
 		rows.append(row)
@@ -126,7 +130,7 @@ func _order(sim: Simulation, type: String) -> bool:
 	return false
 
 
-## A representative valley: production, animals, areas, realm and an inn, all built.
+## Baseline valley: production, animals, fields, realm and an inn, all built; no work areas.
 func _valley(seed_value: int) -> Simulation:
 	var sim := NewGame.create(seed_value)
 	for m: String in ["hamlet", "village", "town", "region"]:
@@ -197,7 +201,26 @@ func _measure(sim: Simulation, day: int, ms_per_day: float, status: String) -> D
 		"objects": int(Performance.get_monitor(Performance.OBJECT_COUNT)), "staticMB": snappedf(Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0, 0.1),
 		"food": SimHelpers.accounted_for(sim, "food"), "growth": growth,
 		"stats": _stats(sim),
+		"production": production_snapshot(sim),
 	}
+
+
+## Capture the supply chain as well as output totals, so a plateau has an inspectable cause.
+static func production_snapshot(sim: Simulation) -> Dictionary:
+	var workshops: Array[Dictionary] = []
+	for b: Building in sim.workshops():
+		workshops.append({"id": b.id, "type": b.type, "state": b.workshop.duplicate(true),
+			"delivered": b.delivered.duplicate(), "incoming": b.incoming.duplicate(),
+			"workers": Array(b.workers), "reservation": sim.reservations.get(Simulation.K_CRAFT + b.id, 0)})
+	var stock := {}
+	for resource: String in ["food", "wheat", "flour", "wood", "planks", "stone", "coal", "charcoal"]:
+		stock[resource] = sim.stored_total(resource)
+	var sites: Array[Dictionary] = []
+	for b: Building in sim.sites():
+		sites.append({"id": b.id, "type": b.type, "delivered": b.delivered.duplicate(), "incoming": b.incoming.duplicate()})
+	var capacity := sim.total_capacity()
+	return {"stock": stock, "storageUsed": capacity.x, "storageCapacity": capacity.y,
+		"workshops": workshops, "sites": sites}
 
 
 ## How each measure moved from the first checkpoint after setup to the last: anything that

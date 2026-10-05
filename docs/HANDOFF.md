@@ -27,6 +27,33 @@ assistant conversations are separate. Keep only one assistant editing at a time.
 
 ## Latest completed work
 
+**Codex checkpoint, 2026-10-06: bakery-stall investigation (separate from Claude's pending UI/visual work).**
+
+- Read the app terminal and the saved Claude session `18a6d14e-d9b5-4da7-b420-8c1add4e4397`.
+  Confirmed the owner's pixel-art decision, separate Asset Studio executable and local saves.
+  The terminal showed Claude paused at its usage limit, with automatic continuation scheduled.
+- Reproduced the baseline soak to day 60, seed 4242, save/load every 10 days: **0 integrity
+  failures**, same bread totals as the prior run. At day 50, storage is **5,030 / 5,030**;
+  the bakery still has 4 flour and 2 wood. Site 332, a storehouse, has 24 wood and only
+  10 of its required 12 stone; stored stone is zero. The bakery plateau is a capacity/supply
+  constraint in this scenario, not demonstrated broken crafting. No gameplay rules changed.
+- `tools/soak.gd` now records production inventories, delivery promises, workers/reservations,
+  total storage usage and pending construction at checkpoints. Workshop explanations are
+  captured **before reload**, which deliberately clears derived status. Corrected the misleading
+  scenario description: it has no woodlot, orchard or work areas.
+- `tests/test_bakery.gd`: two recovery regressions, **21 assertions**, passed. They cover
+  full storage and absent wood, recovery after save/load, resource conservation and reservations.
+  Existing `test_sim_slice`: **22 passed**. Script checker: **0 scripts failed**.
+  Final telemetry smoke: one day, **0 failures**, nonempty workshop explanations.
+- Local evidence: `build/bakery-*.log`, `dist-godot/bakery-diagnostic.json` and
+  `dist-godot/bakery-telemetry-smoke.json`. The 60-day diagnostic initially captured status after
+  decode (empty); its inventories/capacity are valid. The final pre-decode status change was
+  verified by the one-day smoke. No complete-suite or new rendering-performance claim.
+- Claude's uncommitted work was left untouched: HUD/advice/celebration/work-order controls,
+  realm evacuation, grid, pixel cart export, WorldLife, night shader and water animation.
+  Do not commit these as part of the bakery checkpoint or rebuild the executables as though
+  that pending work were verified. Existing Windows builds predate those changes.
+
 **Latest checkpoints (2026-10-06, after the owner rated the result 4/10, "not like my web game"):
 menu/HUD from `docs/reference` screenshots, save folder, fog, animation, 1:1 drawing.**
 
@@ -151,8 +178,10 @@ across an immediate web update still need testing. Rebuild the web export before
   crop sway (crops are now still), deposit marks from surveying, corpses toppling, and per-unit
   soldier headgear (none in the browser art).
 - Both of the owner's saves are named "Home"; the list tells them apart only by date.
-- Soak observations: the bakery stopped after day 50 and food then declined; no births (the
-  player must start households). Investigate the bakery stall first.
+- Bakery plateau explained by full storage and a storehouse short two stone (see latest
+  checkpoint). The baseline is not a sustainable-economy workload. No births: the player must
+  start households. Add a separately named sustainable scenario rather than rewriting the
+  baseline to conceal its limits.
 - Browser-only shortcut actions/default-layout parity, real-device touch and phone measurements.
 - Longer soaks (300+ days, several seeds, 100+ settlers) and war/caravans in the soak.
 - Long-distance routing and bounded backing storage for modified chunks. Current eviction
@@ -165,8 +194,12 @@ across an immediate web update still need testing. Rebuild the web export before
 
 ## Exact next task
 
-**Show the owner the new look and collect feedback; then finish the remaining browser parity
-and the bakery stall.**
+**First reconcile Claude's pending parity/animation work; then add a sustainable soak scenario.**
+
+0. Read the terminal again before editing: Claude was paused with automatic continuation.
+   Audit the pending changes named above, run their controls/rendering/web checks, and have
+   only one assistant edit those files. Preserve pixel art; the earlier smooth-art direction
+   has been superseded by the owner's explicit decision in Claude's conversation.
 
 1. Still missing from the browser UI (compare with `npx tsx scripts/tour-react.ts` screenshots):
    the phone "turn your device sideways" notice (`RotateNotice.tsx`), the in-game update banner
@@ -175,7 +208,10 @@ and the bakery stall.**
    (`Village.tsx` ChiefAdvice), the browser's settler card details layout in See more, and the
    Load-a-valley list of saves (`LoadModal`). Godot captures: `--window=...`, `--select=...`,
    `--build=...`, `--title=1 --newworld=1` (see `godot/README.md`).
-2. Investigate why the bakery stops after about day 50 in the soak (see BASELINE).
+2. Keep the seed-4242 baseline intact. Add a separate scenario with explicit player-equivalent
+   stone supply, storage planning, and staffed renewable resource areas; assert production
+   continues and resources remain conserved. Compare it with the diagnosed baseline. Do not
+   grant free resources or silently change priorities in production game code.
 3. Real-device checks: touch on the console, phone layout at 915×412, the 150% interface scale.
 4. Rerun the suite, controls, checker, soak and `check-web-errors.ts`; update this file; commit;
    **do not push**.
