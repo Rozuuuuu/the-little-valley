@@ -12,6 +12,7 @@ import { makeCanvas, Painter, type Sprite } from '../../src/render/pixel';
 import { P } from '../../src/render/palette';
 import { SpriteBank } from '../../src/render/sprites';
 import { BUILDINGS } from '../../src/game/data/buildings';
+import { detailed } from './detail';
 
 const UP = 6;
 const TILE = 16;
@@ -19,17 +20,19 @@ const TILE = 16;
 interface Out { name: string; png: string; w: number; h: number; ax: number; ay: number; kind: string; points?: Record<string, [number, number]> }
 const out: Out[] = [];
 
-function scaled(c: HTMLCanvasElement): HTMLCanvasElement {
-  const s = makeCanvas(c.width * UP, c.height * UP);
+function scaled(c: HTMLCanvasElement, by = UP): HTMLCanvasElement {
+  const s = makeCanvas(c.width * by, c.height * by);
   const g = s.getContext('2d')!;
   g.imageSmoothingEnabled = false;
-  g.drawImage(c, 0, 0, c.width * UP, c.height * UP);
+  g.drawImage(c, 0, 0, c.width * by, c.height * by);
   return s;
 }
 
-/** Adds a sprite whose Godot anchor is (ax, ay) in browser pixels of its own canvas. */
-function add(name: string, c: HTMLCanvasElement, ax: number, ay: number, kind: string, points?: Record<string, [number, number]>): void {
-  out.push({ name, png: scaled(c).toDataURL('image/png'), w: c.width * UP, h: c.height * UP, ax: ax * UP, ay: ay * UP, kind, points });
+/** Adds a sprite whose Godot anchor is (ax, ay) in browser pixels of its own canvas. `fine`: the
+ *  canvas is at twice the browser's resolution (the building detail pass), scaled half as much. */
+function add(name: string, c: HTMLCanvasElement, ax: number, ay: number, kind: string, points?: Record<string, [number, number]>, fine = false): void {
+  const by = fine ? UP / 2 : UP;
+  out.push({ name, png: scaled(c, by).toDataURL('image/png'), w: c.width * by, h: c.height * by, ax: ax * UP, ay: ay * UP, kind, points });
 }
 
 function mirrored(s: Sprite): Sprite {
@@ -97,9 +100,12 @@ function footprint(type: string): { w: number; h: number } {
 /** A building drawn at its footprint's top-left in the browser; Godot anchors the bottom-left. */
 function addBuilding(name: string, set: { day: Sprite; night: Sprite }, type: string, extra?: Record<string, [number, number]>): void {
   const fh = footprint(type).h * TILE;
-  add(name, set.day.canvas, set.day.ax, set.day.ay + fh, 'building', extra);
-  const lit = litOnly(set.day, set.night);
-  if (lit) add(`${name}_lit`, lit, set.night.ax, set.night.ay + fh, 'night');
+  // Twice the resolution with the detail pass (see detail.ts); lit windows from the detailed pair.
+  const day = detailed(set.day.canvas);
+  const night = detailed(set.night.canvas);
+  add(name, day, set.day.ax, set.day.ay + fh, 'building', extra, true);
+  const lit = litOnly({ canvas: day, ax: 0, ay: 0, w: day.width, h: day.height }, { canvas: night, ax: 0, ay: 0, w: night.width, h: night.height });
+  if (lit) add(`${name}_lit`, lit, set.night.ax, set.night.ay + fh, 'night', undefined, true);
 }
 
 /** A construction site as the browser draws one: trodden earth, two scaffold poles and a beam. */

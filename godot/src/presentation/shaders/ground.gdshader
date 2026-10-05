@@ -101,6 +101,24 @@ bool is_water(int t) {
 	return t == T_WATER || t == T_DEEP;
 }
 
+// How far (art px) a pixel is from the nearest land that is not mountain, up to three tiles
+// (the bordered id texture holds that much of the neighbours).
+float mountain_depth(ivec2 p) {
+	int tx = p.x >> 4;
+	int ty = p.y >> 4;
+	vec2 pf = vec2(p) + 0.5;
+	float best = 48.0;
+	for (int j = -3; j <= 3; j++) {
+		for (int i = -3; i <= 3; i++) {
+			if (terr(tx + i, ty + j) == T_MOUNTAIN) continue;
+			vec2 lo = vec2(float((tx + i) * 16), float((ty + j) * 16));
+			vec2 d = max(max(lo - pf, pf - (lo + 16.0)), vec2(0.0));
+			best = min(best, length(d));
+		}
+	}
+	return best;
+}
+
 // Pass 1: which terrain a world pixel shows.
 int cls(ivec2 p) {
 	int tx = p.x >> 4;
@@ -160,22 +178,58 @@ vec3 colour(ivec2 p, int c) {
 		bool contour = js_mod(wy + int(floor(patch * 12.0)), 11) == 0;
 		slot = contour ? HILL0 : (h < 0.035 ? HILL3 : (patch > 0.55 ? HILL2 : HILL1));
 	} else if (c == T_MOUNTAIN) {
-		bool top = cls(p + ivec2(0, -1)) != T_MOUNTAIN || cls(p + ivec2(0, -2)) != T_MOUNTAIN;
-		bool foot = cls(p + ivec2(0, 1)) != T_MOUNTAIN || cls(p + ivec2(0, 2)) != T_MOUNTAIN || cls(p + ivec2(0, 3)) != T_MOUNTAIN;
-		if (top) slot = CLIFF3;
-		else if (foot) slot = CLIFF0;
-		else {
-			// Broad broken ridges, with a sunlit face and shaded scree face. World coordinates
-			// keep the ridge continuous across streamed chunk boundaries. Collision is unchanged.
-			float bend = value_noise(float(wx) * 0.013, float(wy) * 0.013, world_seed ^ 0x531) * 28.0;
-			float ridge = fract((float(wx) + float(wy) * 0.38 + bend) / 58.0);
-			float fractures = value_noise(float(wx) * 0.14, float(wy) * 0.07, world_seed ^ 0x143);
-			if (ridge < 0.06) slot = CLIFF3;
-			else if (ridge < 0.40) slot = fractures > 0.45 ? CLIFF2 : CLIFF3;
-			else slot = fractures > 0.56 ? CLIFF1 : CLIFF0;
-			if (fractures > 0.67 && ridge < 0.22) slot = SNOWCAP;
-			if (winter && ridge < 0.42 && fractures > 0.30) slot = SNOWCAP;
+		// Mountains as a range of jagged peaks, seen from the front and above like the buildings:
+		// overlapping triangles (the nearer peak in front), a sunlit left face and a shaded right
+		// face split by a wandering ridge, snow on the tips, dark outlines, cracks in the rock,
+		// and scree between the peaks. Drawing only: what is walkable is unchanged.
+		float depth = mountain_depth(p);
+		vec2 pf = vec2(p) + 0.5;
+		vec2 cell = vec2(54.0, 34.0);
+		vec2 g = floor(pf / cell);
+		float front = -1e9;
+		vec2 pv = vec2(0.0);
+		float ph = 1.0;
+		float pw = 1.0;
+		float pseed = 0.0;
+		for (int j = -1; j <= 1; j++) {
+			for (int i = -1; i <= 1; i++) {
+				vec2 gc = g + vec2(float(i), float(j));
+				int gx = int(gc.x);
+				int gy = int(gc.y);
+				vec2 base = (gc + vec2(0.15 + 0.7 * hash01(gx, gy, world_seed ^ 0x71), 0.35 + 0.6 * hash01(gx, gy, world_seed ^ 0x72))) * cell;
+				if (terr(int(floor(base.x / 16.0)), int(floor(base.y / 16.0))) != T_MOUNTAIN) continue;
+				float w = cell.x * (0.45 + 0.45 * hash01(gx, gy, world_seed ^ 0x73));
+				float hgt = w * (1.0 + 0.7 * hash01(gx, gy, world_seed ^ 0x74));
+				vec2 v = pf - base;
+				if (v.y > 0.0 || v.y < -hgt) continue;
+				float t = -v.y / hgt;
+				// Jagged sides: the half-width wobbles with height.
+				float jag = (value_noise(float(gx * 37) + t * 6.0, float(gy * 11), world_seed ^ 0x75) - 0.5) * 4.0;
+				if (abs(v.x) > w * (1.0 - t) + jag * (1.0 - t)) continue;
+				if (base.y > front) { front = base.y; pv = v; ph = hgt; pw = w; pseed = hash01(gx, gy, world_seed ^ 0x76); }
+			}
 		}
+		float rough = value_noise(float(wx) * 0.25, float(wy) * 0.25, world_seed ^ 0x143);
+		if (front > -1e8) {
+			float t = -pv.y / ph;
+			float half_w = pw * (1.0 - t);
+			float ridge = (value_noise(t * 5.0, pseed * 50.0, world_seed ^ 0x531) - 0.5) * pw * 0.35 * (1.0 - t);
+			bool lit = pv.x < ridge;
+			bool outline = abs(pv.x) > half_w - 1.2 || pv.y > -1.0;
+			float snow_line = 0.6 + (rough - 0.5) * 0.16 - (winter ? 0.35 : 0.0);
+			if (outline) slot = CLIFF0;
+			else if (t > snow_line) slot = lit ? SNOWCAP : CLIFF3;
+			else if (abs(pv.x - ridge) < 1.0) slot = CLIFF3;
+			else if (lit) slot = (pv.x - ridge) > -3.0 ? CLIFF3 : (rough > 0.8 ? CLIFF1 : CLIFF2);
+			else slot = rough > 0.82 ? CLIFF0 : CLIFF1;
+			// Ledges across the faces.
+			if (!outline && t <= snow_line && js_mod(wy + int(floor(rough * 7.0)), 6) == 0 && h > 0.5) slot = lit ? CLIFF1 : CLIFF0;
+		} else {
+			// Scree and rock between the peaks.
+			slot = rough > 0.62 ? CLIFF2 : (h > 0.93 ? CLIFF3 : CLIFF1);
+			if (h < 0.05) slot = CLIFF0;
+		}
+		if (depth < 2.0) slot = CLIFF0;
 	} else if (c == T_ROAD) {
 		bool edge = cls(p + ivec2(-1, 0)) != T_ROAD || cls(p + ivec2(1, 0)) != T_ROAD || cls(p + ivec2(0, -1)) != T_ROAD || cls(p + ivec2(0, 1)) != T_ROAD;
 		slot = edge ? DIRT0 : (h < 0.06 ? DIRT2 : (h > 0.96 ? DIRT3 : DIRT1));
