@@ -210,7 +210,9 @@ func _fill_list() -> void:
 	var names: Array = entries.keys()
 	names.sort()
 	for n: String in names:
-		if kind != "" and str(entries[n].get("kind", "")) != kind:
+		var k: String = str(entries[n].get("kind", ""))
+		# Wind frames follow their tree; redrawing the tree replaces them.
+		if k == "sway" or (kind != "" and k != kind):
 			continue
 		if q != "" and not n.to_lower().contains(q):
 			continue
