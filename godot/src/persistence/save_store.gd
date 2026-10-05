@@ -66,6 +66,24 @@ func save(world_id: String, world_name: String, data: Dictionary, label: String 
 	return {"ok": true, "error": "", "point": point}
 
 
+## Keeps a save brought in from outside (a file, or the old browser game) as a save point of
+## world `id`. Older versions are stored converted; the source text is never changed.
+## Returns "" or the reason it could not be brought in.
+func import_text(text: String, id: String, label: String) -> String:
+	var data: Variant = JSON.parse_string(text)
+	if not data is Dictionary:
+		return "This file is not a Little Valley save"
+	var r := SaveCodec.decode(data)
+	if r["sim"] == null:
+		return str(r["error"])
+	var d: Dictionary = data
+	if int(d.get("version", 0)) < SaveCodec.VERSION:
+		d = Migrations.migrate(d, SaveCodec.VERSION)["save"]
+	var meta: Dictionary = d["meta"]
+	var saved := save(id, str(meta.get("name", "Old valley")), d, label)
+	return "" if bool(saved["ok"]) else str(saved["error"])
+
+
 ## Every world on this device: [{id, name, points: [...]}], most recently saved first.
 func worlds() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []

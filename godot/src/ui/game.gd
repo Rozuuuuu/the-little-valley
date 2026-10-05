@@ -333,6 +333,72 @@ func load_world(id: String, point: String = "") -> void:
 		camera.target_pos = camera.position
 
 
+## Keeps a save brought in from outside (a file, or the old browser game) as a new world on this
+## device and opens it. Older versions are stored converted; the source is never changed.
+## Returns "" or the reason it could not be brought in.
+func import_save(text: String, id: String, label: String, open_it: bool = true) -> String:
+	var err := store.import_text(text, id, label)
+	if err == "" and open_it:
+		load_world(id)
+	return err
+
+
+## Brings in a save file the player picked.
+func load_from_file() -> void:
+	var picked := await Files.pick(self)
+	if picked["text"] == "":
+		return
+	var err := import_save(picked["text"], "file-%d" % int(Time.get_unix_time_from_system() * 1000), "Loaded from %s" % picked["name"])
+	if err != "":
+		hud.show_title("%s could not be loaded: %s. The file was not changed." % [picked["name"], err])
+
+
+## The old browser game's valleys not brought in yet (web only).
+func old_game_pending() -> Array[Dictionary]:
+	var have := {}
+	for w: Dictionary in store.worlds():
+		have[w["id"]] = true
+	var out: Array[Dictionary] = []
+	for e: Dictionary in await Files.old_game_saves():
+		if e["slot"] != "" and not have.has(old_world_id(e["slot"])) and not (e["candidates"] as Array).is_empty():
+			out.append(e)
+	return out
+
+
+static func old_world_id(slot: String) -> String:
+	return "browser-" + slot.validate_filename()
+
+
+## Brings in every given old-game valley, each from its newest copy that loads. Returns the problems.
+func import_old_game(entries: Array[Dictionary]) -> PackedStringArray:
+	var problems: PackedStringArray = []
+	for e: Dictionary in entries:
+		var first := ""
+		var ok := false
+		for text: String in e["candidates"]:
+			var err := import_save(text, old_world_id(e["slot"]), "From the old game", false)
+			if err == "":
+				ok = true
+				break
+			if first == "":
+				first = err
+		if not ok:
+			problems.append("%s: %s" % [e["name"], first])
+	return problems
+
+
+## Offers the current valley as a file.
+func download_save() -> void:
+	if sim == null:
+		return
+	var data := SaveCodec.encode(sim, world_name, created_at, {"camX": camera.position.x, "camY": camera.position.y, "zoom": camera.zoom.x})
+	var r := Files.download(Files.save_file_name(world_name, int(data["meta"]["day"])), data)
+	if not bool(r["ok"]):
+		hud.toast(r["error"], "warn")
+	elif str(r["path"]) != "":
+		hud.toast("Saved a copy to %s" % r["path"], "good")
+
+
 func _start(s: Simulation) -> void:
 	sim = s
 	view.set_simulation(s)

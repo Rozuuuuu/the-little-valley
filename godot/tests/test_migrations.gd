@@ -117,3 +117,28 @@ func test_bad_versions_and_damaged_old_saves_are_refused() -> void:
 	var r := SaveCodec.decode(bad)
 	check(r["sim"] == null and str(r["error"]).contains("damaged"), "a damaged v4 save is refused: %s" % r["error"])
 	check(str((good["sim"]["settlers"] as Array)[0]["hunger"]) != "lots", "the original is untouched")
+
+
+func test_bringing_saves_in_keeps_them_converted_and_named() -> void:
+	var store := SaveStore.new("user://test_import_%d" % Time.get_ticks_usec())
+	var text := FileAccess.get_file_as_string("res://tests/golden/v4-save.json")
+	check_eq(store.import_text(text, "browser-slot-1", "From the old game"), "", "a v4 save is brought in")
+	var pts := store.points("browser-slot-1")
+	check(pts.size() == 1 and pts[0]["label"] == "From the old game", "as a named save point, so it is never pruned")
+	var got := store.load_point("browser-slot-1")
+	check_eq(int(got["data"]["version"]), SaveCodec.VERSION, "stored converted to the current version")
+	check(SaveCodec.decode(got["data"])["sim"] != null, "and opens")
+	allowed_errors.append("Parse JSON failed")
+	check(store.import_text("{ nope", "w2", "x") != "", "text that is not a save is refused")
+	check(store.points("w2").is_empty(), "and nothing is kept for it")
+
+
+func test_old_game_copies_are_tried_newest_first() -> void:
+	var old := '{"meta":{"savedAt":100}}'
+	var newer := '{"meta":{"savedAt":200}}'
+	var e := Files.old_slot({"meta": {"slot": "a", "name": "Vale"}, "current": old, "backup": "b", "emergency": newer})
+	check_eq(e["candidates"], [newer, old, "b"], "a newer emergency copy is tried first")
+	e = Files.old_slot({"meta": {"slot": "a"}, "current": newer, "backup": null, "emergency": old})
+	check_eq(e["candidates"], [newer], "an older emergency copy is ignored")
+	check_eq(Files.save_file_name("Oak Hollow!", 12), "little-valley-Oak-Hollow-day-12.json", "file names are safe")
+	check_eq(Files.save_file_name("???", 1), "little-valley-valley-day-1.json", "an unusable name falls back")

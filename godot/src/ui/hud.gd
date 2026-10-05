@@ -686,6 +686,9 @@ func show_title(message: String = "") -> void:
 		var p: Dictionary = (w["points"] as Array)[0]
 		var id: String = w["id"]
 		v.add_child(_button("Continue %s — day %d, %d people" % [w["name"], int(p.get("day", 0)), int(p.get("population", 0))], func() -> void: game.load_world(id)))
+	v.add_child(_button("Load a save file", func() -> void: game.load_from_file(), "A save downloaded from this game or the old browser game"))
+	if Files.is_web():
+		_offer_old_game(v)
 	var name_edit := LineEdit.new()
 	name_edit.placeholder_text = "Name your valley"
 	name_edit.text = "Home"
@@ -718,6 +721,23 @@ func show_title(message: String = "") -> void:
 	_center(_title)
 
 
+## Adds "Bring in valleys from the old game" to the title when the old browser game has valleys
+## on this address that are not here yet. Their originals stay where they are.
+func _offer_old_game(v: VBoxContainer) -> void:
+	var pending := await game.old_game_pending()
+	if pending.is_empty() or not is_instance_valid(v):
+		return
+	var names := ", ".join(pending.map(func(e: Dictionary) -> String: return str(e["name"])))
+	var b := _button("Bring in %d valley%s from the old game" % [pending.size(), "" if pending.size() == 1 else "s"], func() -> void:
+		show_busy("Bringing your valleys over…")
+		await get_tree().process_frame
+		var problems := game.import_old_game(pending)
+		show_title("" if problems.is_empty() else "Some valleys could not be brought over (they are untouched in the old game): " + "; ".join(problems)),
+		"%s. The old game's saves are copied, never changed or removed." % names)
+	v.add_child(b)
+	v.move_child(b, 1)
+
+
 func toggle_menu() -> void:
 	if _menu.visible:
 		_menu.visible = false
@@ -736,6 +756,7 @@ func toggle_menu() -> void:
 		game.save_now(label_edit.text.strip_edges())
 		toggle_menu()
 		toggle_menu()))
+	v.add_child(_button("Download save file", func() -> void: game.download_save(), "A copy of this valley as a file, to keep or move to another device"))
 	if game.sim != null and game.sim.ruler() == null:
 		# Valleys from before the ruler walked the map.
 		var throne_edit := LineEdit.new()
