@@ -23,6 +23,7 @@ var view := WorldView.new()
 var camera := CameraRig.new()
 var overlay := WorldOverlay.new()
 var hud: Hud
+var audio := AudioEngine.new()
 
 var world_id := ""
 var world_name := ""
@@ -75,6 +76,8 @@ func _ready() -> void:
 	add_child(view)
 	add_child(overlay)
 	add_child(camera)
+	add_child(audio)
+	settings.apply_audio(audio)
 	camera.make_current()
 	camera.edge_scroll = settings.edge_scroll
 	overlay.game = self
@@ -513,6 +516,7 @@ func save_now(label: String = "") -> void:
 
 func _process(delta: float) -> void:
 	if sim == null:
+		audio.busy = false
 		return
 	var t_sim := Time.get_ticks_usec()
 	if not paused and not hud.blocking():
@@ -527,6 +531,8 @@ func _process(delta: float) -> void:
 		tutorial_outro_until = Time.get_ticks_msec() + 12000
 	var t_view := Time.get_ticks_usec()
 	last_sim_ms = (t_view - t_sim) / 1000.0
+	audio.set_mood(sim.is_night(), sim.raining)
+	audio.busy = not paused and not hud.blocking()
 	var alpha := clampf(_acc / TICK_MS, 0.0, 1.0) if sim.slice_next == -1 else 1.0
 	view.motion = settings.motion()
 	view.refresh(alpha, camera.view_rect(), delta)
@@ -581,6 +587,22 @@ func _on_event(e: Dictionary) -> void:
 	match str(e["type"]):
 		"toast":
 			hud.toast(str(e["text"]), str(e.get("level", "info")))
+		"sfx":
+			sfx_at(str(e["name"]), e.get("x"), e.get("y"))
+
+
+## Plays a sound from a place in the world: quieter with distance from the middle of the view,
+## panned to its side (as GameController.sfxAt).
+func sfx_at(name: String, x: Variant = null, y: Variant = null) -> void:
+	if x == null or y == null:
+		audio.play(name)
+		return
+	var r := camera.view_rect()
+	var view := maxf(r.size.x, r.size.y)
+	var dx := float(x) * WorldView.TILE_PX - r.get_center().x
+	var dy := float(y) * WorldView.TILE_PX - r.get_center().y
+	var d := Vector2(dx, dy).length() / view
+	audio.play(name, maxf(0.0, 1.0 - d * 1.1), clampf(dx / (view / 2.0), -0.8, 0.8))
 
 
 # ---- commands from the interface ----------------------------------------------------------------
@@ -589,6 +611,7 @@ func _on_event(e: Dictionary) -> void:
 func command(cmd: Dictionary) -> Dictionary:
 	var r := Commands.apply(sim, cmd)
 	var msg := str(r.get("message", ""))
+	audio.play("command" if bool(r["ok"]) else "error")
 	if not bool(r["ok"]):
 		hud.toast(msg if msg != "" else "That can't be done", "warn")
 	elif msg != "":
@@ -718,6 +741,8 @@ func _primary_release(screen: Vector2, additive: bool) -> void:
 		selected_building = -1
 	else:
 		click_select(screen, additive)
+	if not selected.is_empty() or selected_building != -1 or selected_animal != -1:
+		audio.play("select")
 	hud.refresh_now()
 
 

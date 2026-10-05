@@ -263,6 +263,7 @@ func _build_people() -> void:
 
 func toggle_people() -> void:
 	_people.visible = not _people.visible
+	_window_sound(_people.visible)
 	if _people.visible:
 		_close_windows(_people)
 	_people_key = ""
@@ -371,6 +372,10 @@ func _refresh_people() -> void:
 
 # ---- towns window --------------------------------------------------------------------------------
 
+func _window_sound(open: bool) -> void:
+	game.audio.play("uiOpen" if open else "uiClose")
+
+
 func _close_windows(keep: Control) -> void:
 	for w: Control in [_people, _areas, _towns, _realm]:
 		if w != keep:
@@ -379,6 +384,7 @@ func _close_windows(keep: Control) -> void:
 
 func toggle_realm() -> void:
 	_realm.visible = not _realm.visible
+	_window_sound(_realm.visible)
 	if _realm.visible:
 		_close_windows(_realm)
 	_realm._key = ""
@@ -400,6 +406,7 @@ func _text_label(t: String, tip: String = "") -> Label:
 
 func toggle_towns() -> void:
 	_towns.visible = not _towns.visible
+	_window_sound(_towns.visible)
 	if _towns.visible:
 		_close_windows(_towns)
 	_towns_key = ""
@@ -533,6 +540,7 @@ func _build_areas() -> void:
 
 func toggle_areas() -> void:
 	_areas.visible = not _areas.visible
+	_window_sound(_areas.visible)
 	if _areas.visible:
 		_close_windows(_areas)
 	_areas_key = ""
@@ -889,6 +897,7 @@ func _wrapped(text: String, color: Color) -> Label:
 
 
 func toggle_menu() -> void:
+	_window_sound(not _menu.visible)
 	if _menu.visible:
 		_menu.visible = false
 		return
@@ -937,6 +946,11 @@ func toggle_menu() -> void:
 	set_head.text = "Settings"
 	set_head.add_theme_color_override("font_color", _c("textDim"))
 	v.add_child(set_head)
+	for row: Array in [["Volume", "master_volume"], ["Music", "music_volume"], ["Effects", "sfx_volume"]]:
+		v.add_child(_volume_row(row[0], row[1]))
+	v.add_child(_check("Sound off", game.settings.muted, func(on: bool) -> void:
+		game.settings.muted = on
+		game.settings.apply_audio(game.audio)))
 	v.add_child(_check("Reduced motion", game.settings.reduced_motion, func(on: bool) -> void: game.settings.reduced_motion = on))
 	v.add_child(_check("Scroll at the screen edge", game.settings.edge_scroll, func(on: bool) -> void:
 		game.settings.edge_scroll = on
@@ -958,6 +972,30 @@ func toggle_menu() -> void:
 		show_title()))
 	_menu.visible = true
 	_center(_menu)
+
+
+func _volume_row(text: String, key: String) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	var l := Label.new()
+	l.text = text
+	l.custom_minimum_size = Vector2(110, 0)
+	row.add_child(l)
+	var slider := HSlider.new()
+	slider.min_value = 0.0
+	slider.max_value = 1.0
+	slider.step = 0.05
+	slider.value = float(game.settings.get(key))
+	slider.custom_minimum_size = Vector2(260, 0)
+	slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	slider.focus_mode = Control.FOCUS_NONE
+	slider.value_changed.connect(func(x: float) -> void:
+		game.settings.set(key, x)
+		game.settings.apply_audio(game.audio))
+	slider.drag_ended.connect(func(_changed: bool) -> void:
+		game.settings.save()
+		game.audio.play("ui"))
+	row.add_child(slider)
+	return row
 
 
 func _check(text: String, on: bool, apply: Callable) -> CheckButton:

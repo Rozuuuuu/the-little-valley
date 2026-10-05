@@ -46,6 +46,7 @@ scripts/godot-export.sh windows    # → dist-godot/windows/LittleValley.exe
 Check the web build in Chrome: `npx tsx scripts/godot-web-bench.ts 100 600 desktop`, or with
 phone emulation (`phone`). To try it on a real phone on your Wi-Fi: `npx tsx scripts/serve-godot-web.ts`.
 To check that the web build brings saves over from the old browser game: `npx tsx scripts/godot-web-oldsaves.ts`.
+To listen to every synthesised sound: `godot --headless --path . -s res://tools/render_sounds.gd -- <folder>` writes them as WAV files.
 
 The game also takes capture options, as command-line arguments or, on the web, in the page
 address:

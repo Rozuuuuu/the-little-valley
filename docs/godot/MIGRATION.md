@@ -172,7 +172,7 @@ Status: **Done** (ported and tested against the browser game), **Started**, **Pl
 | Input and bindings, touch | `input/*` | `src/ui/game.gd`, `camera_rig.gd`: mouse, keys, edge pan, touch tap, pan, pinch and box | Manual | **Started** (remapping UI to do) |
 | HUD, windows, tutorial, Valley today | React `ui/*`, `engine/*` | `src/ui/hud.gd`: title, top bar, selection, command card, toasts, menu with save points and settings | Screenshots | **Started** (People, Areas, Towns and Realm windows, barter, enlisting, the introduction (`tutorial.gd`, saved in the file's `tutorial`) and Valley today (`valley_today.gd`, on resume, F9 or Today; the session mark now restarts on load) done; key remapping to do) |
 | Settings | `engine/settings.ts` | `src/ui/settings.gd` (ConfigFile): reduced motion, effects, interface size, edge scroll, autosave | Manual | **Done** |
-| Audio | WebAudio synth | AudioStreamGenerator or rendered samples | Listening | Planned |
+| Audio | WebAudio synth | `src/audio/synth.gd` renders the browser's recipes (oscillators, filtered noise, exponential envelopes) into WAVs on the device, a slice per frame (no threads on the web); `audio_engine.gd`: buses with echo and pan, the 72 bpm pad and plucks, birds, crickets, rain; volumes in the menu | `test_audio` (levels, pitch, slides, seamless slices); `tools/render_sounds.gd` writes every sound to WAV for listening; frame benchmark with and without audio | **Done** (still to be listened to side by side with the browser game) |
 | Asset Studio (new) | none | `src/ui/asset_studio/` | Pack round trip, size limits | Planned |
 | Install, update (PWA) | `ui/updates.ts`, `InstallGate` | Godot PWA export + service worker | Install and offline test | Planned |
 
