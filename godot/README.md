@@ -86,6 +86,10 @@ address:
 | `--army=1` | A company marching, soldiers at home and a rival company in the field |
 | `--studio=1` | The Asset Studio on a house with a sample image (in a separate capture pack) |
 | `--title=1` | The opening title over its living backdrop valley (no valley is started) |
+| `--newworld=1` | With `--title=1`: the "A new world" dialog |
+| `--window=Name` | Open a window: people, families, goals, goods, areas, towns, realm, help |
+| `--select=What` | Select the first settler (`settler`), the hall (`hall`) or an animal (`animal`) |
+| `--build=1` or `--build=category` | Open the build menu, or one category of it |
 
 On the web, use `?bench=N&settlers=M` instead.
 

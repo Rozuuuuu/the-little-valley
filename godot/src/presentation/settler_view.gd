@@ -11,6 +11,13 @@ const UNIT_WEAPONS := {"infantry": &"sword", "archer": &"bow", "knight": &"sword
 const PX := 4.0
 
 static var _people := PixelPeople.new()
+## Health bars over everyone (the browser's default), or only over the hurt.
+static var health_bars_all := true
+
+
+## The shared sheet cache (portraits in the console use it too).
+static func people() -> PixelPeople:
+	return _people
 
 var settler_id: int
 var selected := false
@@ -25,6 +32,7 @@ var _shown_tool: StringName = &""
 var _shown_carry := ""
 var _shown_mark := ""
 var _ring_state := -1
+var _hp_shown := -1.0
 
 
 func setup(art: Art, s: Settler, _people_palette: Dictionary = {}) -> void:
@@ -94,6 +102,9 @@ func refresh(s: Settler, pos: Vector2, _delta: float, _motion: float) -> void:
 	elif s.hunger < 15.0:
 		mark = "ui_hungry"
 		lift = -29 + roundf(sin(t * 4.0))
+	elif (s.task == null or s.task.kind == Task.WANDER) and s.idle_reason != "" and s.idle_reason != "Stores are well stocked":
+		mark = "ui_idle"
+		lift = -29 + roundf(sin(t * 3.0 + s.id))
 	if mark != _shown_mark:
 		_shown_mark = mark
 		_mark.visible = mark != "" and _art.has(mark)
@@ -101,8 +112,10 @@ func refresh(s: Settler, pos: Vector2, _delta: float, _motion: float) -> void:
 			_art.apply(_mark, mark)
 	_mark.position = Vector2(0, lift * PX)
 	var ring := 2 if selected else (1 if hovered else 0)
-	if ring != _ring_state:
+	var hp := s.hp if (health_bars_all or s.hp < 100.0) and s.anim != &"sleep" else -1.0
+	if ring != _ring_state or hp != _hp_shown:
 		_ring_state = ring
+		_hp_shown = hp
 		queue_redraw()
 
 
@@ -127,6 +140,8 @@ func _draw() -> void:
 		return
 	# The browser's contact shadow: a dark 8x2 bar at the feet.
 	draw_rect(Rect2(Vector2(-4, -1) * PX, Vector2(8, 2) * PX), Color(0.08, 0.05, 0.11, 0.3))
+	if _hp_shown >= 0.0:
+		draw_hp_bar(self, Vector2(0, -22) * PX, _hp_shown / 100.0, false)
 	if selected:
 		draw_set_transform(Vector2(0, -2), 0.0, Vector2(1.0, 0.45))
 		draw_arc(Vector2.ZERO, 17.0, 0.0, TAU, 32, WorldView.GOLD, 3.0)
@@ -134,6 +149,17 @@ func _draw() -> void:
 	elif hovered:
 		draw_set_transform(Vector2(0, -2), 0.0, Vector2(1.0, 0.45))
 		draw_arc(Vector2.ZERO, 17.0, 0.0, TAU, 32, Color(WorldView.MINT, 0.9), 2.0)
+
+
+## The browser's health bar (Renderer.drawHpBar): 12×2 art pixels in a dark frame, green, then
+## amber, then red; amber when healthy for animals that fight back.
+static func draw_hp_bar(ci: CanvasItem, at: Vector2, frac: float, danger: bool) -> void:
+	var f := clampf(frac, 0.0, 1.0)
+	var fill := Color("#e0a040") if f > 0.6 and danger else (Color("#5ecb4a") if f > 0.6 else (Color("#e8c040") if f > 0.3 else Color("#e04848")))
+	var w := 12.0 * PX
+	ci.draw_rect(Rect2(at + Vector2(-w / 2.0 - PX, -PX), Vector2(w + 2.0 * PX, 4.0 * PX)), Color(0.1, 0.08, 0.13, 0.9))
+	ci.draw_rect(Rect2(at + Vector2(-w / 2.0, 0), Vector2(w, 2.0 * PX)), Color("#4a3a3a"))
+	ci.draw_rect(Rect2(at + Vector2(-w / 2.0, 0), Vector2(maxf(PX, roundf(12.0 * f) * PX), 2.0 * PX)), fill)
 
 
 ## Draws this figure as a soldier of a company in the field (the settler itself is hidden while

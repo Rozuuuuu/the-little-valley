@@ -52,6 +52,17 @@ func _draw() -> void:
 		draw_circle(dp, 6.5 * px, mcol)
 		if game.camera.zoom.x >= 0.6:
 			_label(dp + Vector2(12, 5) * px, str(Geology.mineral(str(d["mineral"]))["name"]), mcol, px)
+	# Health bars over animals, as the browser (over everyone, or only the hurt).
+	for a in sim.animals:
+		var ap := Vector2(a.x, a.y) * T
+		if not view.has_point(ap):
+			continue
+		var d := a.def()
+		var hp_max := float(d.get("hp", 1))
+		if not SettlerView.health_bars_all and a.health() >= hp_max:
+			continue
+		var lift: Array = [0, 13, 18, 23]
+		SettlerView.draw_hp_bar(self, ap + Vector2(0, -float(lift[clampi(int(d.get("size", 1)), 0, 3)]) * 4.0), a.health() / maxf(1.0, hp_max), d.has("fightsBack"))
 	# Harvest marks: a small gold diamond over each marked object.
 	var tiles := Rect2i(floori(view.position.x / T), floori(view.position.y / T), ceili(view.size.x / T) + 1, ceili(view.size.y / T) + 1)
 	for k: int in sim.designations.keys_in(tiles):

@@ -1,16 +1,14 @@
 class_name Hud
 extends CanvasLayer
-## The interface: title screen, top bar (stocks, storage, day and season, speed), selection panel,
-## command card (build, marks, orders, jobs), toasts and the menu (save points, settings).
-## Built in code from the palette. It reads the game's state and calls Game's command helpers;
-## it never changes simulation state itself.
+## The interface, laid out as the browser game's (src/ui): the top bar (main goods, Goods drawer,
+## people and storage; window tabs; calendar and speed), the bottom console (GameConsole: minimap,
+## selection and command card), the windows (People, Areas, Towns, Families, Realm, Goals, Goods),
+## toasts, the title and the menu. Built in code from the palette. It reads the game's state and
+## calls Game's command helpers; it never changes simulation state itself.
 
-const BUILD_LIST: Array[String] = ["house", "familyHome", "storehouse", "field", "orchard", "path", "bridge",
-	"workshop", "mill", "bakery", "granary", "charcoalKiln", "cottage", "hunterLodge", "chickenCoop", "pigsty",
-	"sheepPen", "goatPen", "cattlePasture", "horsePaddock", "tannery", "weaver", "quarry", "mine", "fisherHut",
-	"smelter", "forge", "waystation", "depot", "stoneBridge", "inn", "barracks", "archeryRange", "stable", "travelCamp", "watchtower", "well"]
 const JOBS: Array[String] = ["laborer", "farmer", "gatherer", "builder", "hauler", "hunter", "herder"]
-const STOCKS: Array[String] = ["food", "wood", "stone", "planks", "wheat"]
+## Always on the bar; everything else lives in the Goods drawer (as the browser's MAIN_RES).
+const MAIN_RES: Array[String] = ["food", "wood", "stone", "planks", "tools"]
 
 var game: Game
 var _root := Control.new()
@@ -19,15 +17,31 @@ var _pal: Dictionary
 var _font: FontFile
 var _bold: FontFile
 
-var _top := PanelContainer.new()
+var _top := HBoxContainer.new()
 var _stocks := HBoxContainer.new()
 var _clock := Label.new()
-var _speed_box := HBoxContainer.new()
-var _select_panel := PanelContainer.new()
-var _select_text := RichTextLabel.new()
-var _card := PanelContainer.new()
-var _card_grid := GridContainer.new()
-var _card_title := Label.new()
+var _clock_sub := Label.new()
+var _sun := TextureRect.new()
+var _speed_buttons := {}
+var _tabs := {}
+var _goods_button: Button
+## The bottom console: minimap, selection info and the command card (src/ui/Console.tsx).
+var console := GameConsole.new()
+var _list: PanelContainer
+var _list_body: VBoxContainer
+var _list_scroll: ScrollContainer
+var _list_key := ""
+var _goals: PanelContainer
+var _goals_body: VBoxContainer
+var _goals_scroll: ScrollContainer
+var _goals_key := ""
+var _goods: PanelContainer
+var _goods_body: VBoxContainer
+var _goods_scroll: ScrollContainer
+var _goods_key := ""
+var _help: PanelContainer = null
+var _help_body: VBoxContainer
+var _help_scroll: ScrollContainer
 var _toasts := VBoxContainer.new()
 var _title := PanelContainer.new()
 var _menu := PanelContainer.new()
@@ -73,14 +87,16 @@ func _ready() -> void:
 	add_child(_root)
 	_apply_scale()
 	_build_top()
-	_build_select()
-	_build_card()
+	console.setup(self)
+	console.visible = false
+	_root.add_child(console)
 	_toasts.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	_toasts.position = Vector2(-260, 64)
 	_toasts.custom_minimum_size = Vector2(520, 0)
 	_toasts.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_toasts)
 	_build_people()
+	_build_lists()
 	_build_areas()
 	_towns.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	_towns.offset_right = -8
@@ -105,6 +121,8 @@ func _ready() -> void:
 	_root.add_child(_tutorial)
 	_studio.setup(self)
 	_root.add_child(_studio)
+	# The command tooltip floats above everything else in the HUD.
+	_root.add_child(console.tip_layer())
 	_busy.add_child(_busy_label)
 
 
@@ -140,13 +158,13 @@ func _box(bg: Color, border: Color, radius: int = 0, pad: int = 8) -> StyleBoxFl
 
 ## A pixel button as the browser's (src/ui/pixel.css): soil with a turf edge and a dark drop.
 func _soil_button(bg: Color, edge: Color) -> StyleBoxFlat:
-	var b := _box(bg, edge, 0, 6)
+	var b := _box(bg, edge, 0, 4)
 	b.shadow_color = _c("lineDark")
 	b.shadow_size = 0
 	b.shadow_offset = Vector2(0, 2)
 	b.expand_margin_bottom = 0
-	b.content_margin_left = 10
-	b.content_margin_right = 10
+	b.content_margin_left = 8
+	b.content_margin_right = 8
 	return b
 
 
@@ -249,71 +267,489 @@ func _icon(res: String, size: float = 28.0) -> TextureRect:
 # ---- layout ------------------------------------------------------------------------------------
 
 func _build_top() -> void:
+	# Three boxes along the top, as the browser's TopBar: goods and counts on the left, the
+	# window tabs in the middle, the calendar and time controls on the right.
 	_top.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	_top.offset_left = 8
-	_top.offset_right = -8
-	_top.offset_top = 8
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 14)
-	_top.add_child(row)
-	_stocks.add_theme_constant_override("separation", 14)
-	row.add_child(_stocks)
+	_top.offset_left = 6
+	_top.offset_right = -6
+	_top.offset_top = 4
+	_top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_top.add_theme_constant_override("separation", 4)
+	var left := PanelContainer.new()
+	left.add_theme_stylebox_override("panel", _bar_panel())
+	_stocks.add_theme_constant_override("separation", 6)
+	left.add_child(_stocks)
+	_top.add_child(left)
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(spacer)
-	row.add_child(_clock)
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_top.add_child(spacer)
+	var mid := PanelContainer.new()
+	mid.add_theme_stylebox_override("panel", _bar_panel())
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 2)
+	mid.add_child(tabs)
+	for t: Array in [["People", "people", "Everyone in the valley", toggle_people], ["Areas", "areas", "Work areas", toggle_areas],
+			["Towns", "towns", "Settlements, seasons and supply routes", toggle_towns], ["Families", "families", "Households, children and visitors", toggle_families],
+			["Realm", "realm", "Crown, diplomacy, news and war", toggle_realm], ["Goals", "goals", "Milestones and what they unlock", toggle_goals]]:
+		var b := _tab_button(t[0], t[1], t[2], t[3])
+		tabs.add_child(b)
+		_tabs[t[1]] = b
+	_top.add_child(mid)
+	var spacer2 := Control.new()
+	spacer2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spacer2.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_top.add_child(spacer2)
+	var right := PanelContainer.new()
+	right.add_theme_stylebox_override("panel", _bar_panel())
+	var rr := HBoxContainer.new()
+	rr.add_theme_constant_override("separation", 4)
+	right.add_child(rr)
+	_sun.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_sun.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_sun.custom_minimum_size = Vector2(20, 20)
+	rr.add_child(_sun)
+	var clock := VBoxContainer.new()
+	clock.add_theme_constant_override("separation", -4)
+	_clock.add_theme_font_size_override("font_size", 12)
+	clock.add_child(_clock)
+	_clock_sub.add_theme_font_size_override("font_size", 11)
+	_clock_sub.add_theme_color_override("font_color", _c("textDim"))
+	clock.add_child(_clock_sub)
+	rr.add_child(clock)
 	for sp: Array in [["II", 0], ["1×", 1], ["2×", 2], ["4×", 4]]:
 		var v: int = sp[1]
-		_speed_box.add_child(_button(sp[0], func() -> void:
+		var sb := _button(sp[0], func() -> void:
 			if v == 0:
 				game.paused = not game.paused
 			else:
 				game.paused = false
 				game.speed = v
-			refresh_now(), "Pause (Space)" if v == 0 else "Speed %d× (%s)" % [v, {1: "1", 2: "2", 4: "3"}[v]]))
-	row.add_child(_speed_box)
-	row.add_child(_button("People", toggle_people, "Visitors, travellers, households and children", "people"))
-	row.add_child(_button("Areas", toggle_areas, "Work areas: farms, woodlots, quarries, building areas", "areas"))
-	row.add_child(_button("Towns", toggle_towns, "Settlements, supply routes and caravans", "towns"))
-	row.add_child(_button("Realm", toggle_realm, "Crown, land, kingdoms, news, army and war", "realm"))
-	row.add_child(_button("Today", func() -> void: game.open_today(), "Valley today: what needs attention and what to do next", "today"))
-	row.add_child(_button("Save", func() -> void: game.save_now(), "Save now", "save"))
-	row.add_child(_button("Menu", toggle_menu, "Menu (Esc)"))
+			refresh_now(), "Pause" if v == 0 else "Speed %d×" % v, "pause" if v == 0 else {1: "speed1", 2: "speed2", 4: "speed3"}[v])
+		sb.add_theme_font_size_override("font_size", 12)
+		sb.custom_minimum_size = Vector2(26, 0)
+		_speed_buttons[v] = sb
+		rr.add_child(sb)
+	var today := _button("Today", func() -> void: game.open_today(), "Valley today: what needs attention and what to do next", "today")
+	today.add_theme_font_size_override("font_size", 12)
+	rr.add_child(today)
+	var menu := _button("Menu", toggle_menu, "Menu: save, settings and leaving (Esc)")
+	menu.add_theme_font_size_override("font_size", 12)
+	rr.add_child(menu)
+	_top.add_child(right)
 	_top.visible = false
 	_root.add_child(_top)
 
 
-func _build_select() -> void:
-	_select_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	_select_panel.offset_left = 8
-	_select_panel.offset_bottom = -8
-	_select_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_select_panel.custom_minimum_size = Vector2(380, 150)
-	_select_text.bbcode_enabled = true
-	_select_text.fit_content = true
-	_select_text.scroll_active = false
-	_select_text.custom_minimum_size = Vector2(360, 0)
-	_select_panel.add_child(_select_text)
-	_select_panel.visible = false
-	_root.add_child(_select_panel)
+## The top bar's boxes: the grass-framed dirt panel with tighter margins.
+func _bar_panel() -> StyleBoxTexture:
+	var s := _grass_panel()
+	s.set_content_margin(SIDE_LEFT, 10)
+	s.set_content_margin(SIDE_RIGHT, 10)
+	s.set_content_margin(SIDE_TOP, 10)
+	s.set_content_margin(SIDE_BOTTOM, 6)
+	return s
 
 
-func _build_card() -> void:
-	_card.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	_card.offset_right = -8
-	_card.offset_bottom = -8
-	_card.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	_card.grow_vertical = Control.GROW_DIRECTION_BEGIN
+## A window tab with its function key shown small above the name, and an optional alert badge.
+func _tab_button(text: String, action: String, tip: String, on_press: Callable) -> Button:
+	var b := _button(text, on_press, tip, action)
+	b.toggle_mode = false
+	b.add_theme_font_size_override("font_size", 12)
+	var k := Label.new()
+	k.text = game.settings.bindings.label(action) if game != null else ""
+	k.add_theme_font_size_override("font_size", 8)
+	k.add_theme_color_override("font_color", _c("accent"))
+	k.position = Vector2(3, -1)
+	k.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(k)
+	var badge := Label.new()
+	badge.name = "Badge"
+	badge.add_theme_font_size_override("font_size", 10)
+	badge.add_theme_color_override("font_color", Color("#fffbe8"))
+	var bs := StyleBoxFlat.new()
+	bs.bg_color = Color("#c0443a")
+	bs.set_corner_radius_all(7)
+	bs.content_margin_left = 4
+	bs.content_margin_right = 4
+	badge.add_theme_stylebox_override("normal", bs)
+	badge.visible = false
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(badge)
+	return b
+
+
+func _refresh_top() -> void:
+	var sim := game.sim
+	if _stock_labels.is_empty():
+		for r in MAIN_RES:
+			var chip := HBoxContainer.new()
+			chip.add_theme_constant_override("separation", 4)
+			chip.tooltip_text = str(Defs.resource(r)["name"])
+			chip.mouse_filter = Control.MOUSE_FILTER_PASS
+			chip.add_child(_icon(r, 18))
+			var l := Label.new()
+			l.add_theme_font_size_override("font_size", 13)
+			chip.add_child(l)
+			_stocks.add_child(chip)
+			_stock_labels[r] = l
+		_goods_button = _button("Goods", toggle_goods, "Every other good in store", "goods")
+		_goods_button.add_theme_font_size_override("font_size", 12)
+		_stocks.add_child(_goods_button)
+		for k: Array in [["pop", "ui_people", "People / beds and bunks"], ["store", "ui_storage", "Goods in store / storage room"]]:
+			var chip := HBoxContainer.new()
+			chip.add_theme_constant_override("separation", 4)
+			chip.tooltip_text = k[2]
+			chip.mouse_filter = Control.MOUSE_FILTER_PASS
+			var ic := TextureRect.new()
+			ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			ic.custom_minimum_size = Vector2(18, 18)
+			if game.art.has(k[1]):
+				ic.texture = game.art.sprites[k[1]]["texture"]
+			chip.add_child(ic)
+			var l := Label.new()
+			l.add_theme_font_size_override("font_size", 13)
+			chip.add_child(l)
+			_stocks.add_child(chip)
+			_stock_labels[k[0]] = l
+		_storage_label = _stock_labels["store"]
+	var totals := sim.totals()
+	for r in MAIN_RES:
+		_set_text(_stock_labels[r], str(int(totals.get(r, 0))))
+	var other := 0
+	for r: String in Content.get_value("resources", "RESOURCE_IDS"):
+		if not MAIN_RES.has(r) and int(totals.get(r, 0)) > 0:
+			other += int(totals[r])
+	if _goods_button.text != "Goods %d" % other:
+		_goods_button.text = "Goods %d" % other
+	var beds := 0
+	for b: Building in sim.buildings.values():
+		beds += b.beds()
+	_set_text(_stock_labels["pop"], "%d / %d" % [sim.settlers.size(), beds])
+	var cap := sim.total_capacity()
+	_set_text(_storage_label, "%d/%d" % [cap.x, cap.y])
+	_storage_label.add_theme_color_override("font_color", _c("problem") if cap.x >= cap.y else _c("text"))
+	var season: Dictionary = sim.season()
+	var t := sim.time_of_day()
+	var mins := floori(t * 24.0 * 60.0)
+	var period := "Night" if t < 0.21 or t >= 0.87 else ("Dawn" if t < 0.3 else ("Morning" if t < 0.5 else ("Afternoon" if t < 0.7 else ("Evening" if t < 0.8 else "Dusk"))))
+	_set_text(_clock, "%s %d/%d · Year %d · %02d:%02d" % [season["def"]["name"], int(season["day"]), int(Content.get_value("seasons", "SEASON_DAYS")), int(season["year"]), mins / 60, (mins % 60) / 10 * 10])
+	var ms: Dictionary = Content.get_value("progression", "MILESTONES")
+	var sub := "%s · %s" % [period, (ms.get(Progression.current(sim), {}) as Dictionary).get("name", "Camp")]
+	if game.paused:
+		sub += " · paused"
+	elif game.falling_behind:
+		sub += " · slowed"
+	_set_text(_clock_sub, sub)
+	var icon := "ui_moon" if period == "Night" or period == "Dusk" else ("ui_rain" if sim.raining else "ui_sun")
+	if game.art.has(icon):
+		_sun.texture = game.art.sprites[icon]["texture"]
+	for v: int in _speed_buttons:
+		var on := (v == 0 and game.paused) or (v != 0 and not game.paused and game.speed == v)
+		(_speed_buttons[v] as Button).theme_type_variation = &"PrimaryButton" if on else &""
+	var idle := console.find_list("idle").size() if console.game != null else 0
+	var badge: Label = (_tabs["people"] as Button).get_node("Badge")
+	badge.visible = idle > 0
+	badge.text = str(idle)
+	badge.position = Vector2((_tabs["people"] as Button).size.x - 14, -4)
+	for k: String in _tabs:
+		var w: Control = {"people": _list, "areas": _areas, "towns": _towns, "families": _people, "realm": _realm, "goals": _goals}[k]
+		(_tabs[k] as Button).theme_type_variation = &"PrimaryButton" if w.visible else &""
+
+
+# ---- simple windows: People list, Goals, Goods -------------------------------------------------
+
+## A window down the right side, under the top bar and above the console, with a title and ✕.
+func _side_window(title: String, close: Callable) -> Array:
+	var p := PanelContainer.new()
+	p.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	p.offset_right = -8
+	p.offset_top = 64
+	p.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	var v := VBoxContainer.new()
-	_card.add_child(v)
-	_card_title.add_theme_color_override("font_color", _c("textDim"))
-	v.add_child(_card_title)
-	_card_grid.columns = 3
-	_card_grid.add_theme_constant_override("h_separation", 6)
-	_card_grid.add_theme_constant_override("v_separation", 6)
-	v.add_child(_card_grid)
-	_card.visible = false
-	_root.add_child(_card)
+	v.custom_minimum_size = Vector2(340, 0)
+	p.add_child(v)
+	var head := HBoxContainer.new()
+	var t := Label.new()
+	t.text = title
+	t.add_theme_font_override("font", _bold)
+	t.add_theme_font_size_override("font_size", 18)
+	t.add_theme_color_override("font_color", _c("accent"))
+	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(t)
+	head.add_child(_button("Close", close, "Close (Esc)"))
+	v.add_child(head)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(340, 120)
+	var body := VBoxContainer.new()
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_theme_constant_override("separation", 4)
+	scroll.add_child(body)
+	v.add_child(scroll)
+	p.visible = false
+	_root.add_child(p)
+	return [p, body, scroll]
+
+
+func _fit_window(scroll: ScrollContainer, body: Control) -> void:
+	var room := _root.size.y - 64 - GameConsole.HEIGHT - 110
+	scroll.custom_minimum_size.y = clampf(body.get_combined_minimum_size().y, 60.0, maxf(120.0, room))
+
+
+func _build_lists() -> void:
+	var a := _side_window("People", toggle_people)
+	_list = a[0]
+	_list_body = a[1]
+	_list_scroll = a[2]
+	var g := _side_window("Goals", toggle_goals)
+	_goals = g[0]
+	_goals_body = g[1]
+	_goals_scroll = g[2]
+	var d := _side_window("All goods", toggle_goods)
+	_goods = d[0]
+	_goods_body = d[1]
+	_goods_scroll = d[2]
+	_goods.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_goods.offset_left = 8
+	_goods.grow_horizontal = Control.GROW_DIRECTION_END
+
+
+func toggle_people() -> void:
+	_list.visible = not _list.visible
+	_window_sound(_list.visible)
+	if _list.visible:
+		_close_windows(_list)
+	_list_key = ""
+	refresh_now()
+
+
+func toggle_families() -> void:
+	_people.visible = not _people.visible
+	_window_sound(_people.visible)
+	if _people.visible:
+		_close_windows(_people)
+	_people_key = ""
+	refresh_now()
+
+
+func toggle_goals() -> void:
+	_goals.visible = not _goals.visible
+	_window_sound(_goals.visible)
+	if _goals.visible:
+		_close_windows(_goals)
+	_goals_key = ""
+	refresh_now()
+
+
+## Controls help (F1), as the browser's HelpModal: the mouse, orders, keys and the screen.
+func toggle_help() -> void:
+	if _help == null:
+		var a := _side_window("Controls", toggle_help)
+		_help = a[0]
+		_help_body = a[1]
+		_help_scroll = a[2]
+		_help.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_help.visible = not _help.visible
+	_window_sound(_help.visible)
+	if not _help.visible:
+		return
+	for c in _help_body.get_children():
+		c.queue_free()
+	var b := game.settings.bindings
+	var k := func(a: String) -> String: return b.label(a)
+	var sections := [
+		["Mouse", [["Select a settler or building", "Left-click"], ["Select a group", "Left-drag"], ["Add to selection", "Shift + click"],
+			["Smart order: move, chop, mine, farm, build, hunt", "Right-click"], ["Pan the camera", "Middle-drag"], ["Zoom", "Wheel"]]],
+		["Orders (people selected)", [["Move, then click a spot", k.call("move")], ["Stop", k.call("stop")], ["Hold position", k.call("hold")],
+			["Attack (hunt), then click an animal", k.call("attack")], ["Gather, then click a tree, rock or bush", k.call("harvest")],
+			["Build / Return goods / Train a main job", "%s / %s / %s" % [k.call("build"), k.call("returnGoods"), k.call("trainRole")]],
+			["With a building selected: Upgrade / Pause / Demolish", "U / P / %s" % k.call("demolish")]]],
+		["Keyboard", [["Pan", "%s, %s, %s, %s" % [k.call("panUp"), k.call("panLeft"), k.call("panDown"), k.call("panRight")]], ["Pause", k.call("pause")],
+			["Speed", "%s / %s / %s" % [k.call("speed1"), k.call("speed2"), k.call("speed3")]], ["Pick in the build menu", "Q W E R / A S D F / Z X C V"],
+			["Find yourself, the ruler", k.call("findRuler")], ["Rally (ruler selected)", k.call("rally")], ["Survey for ore", k.call("survey")],
+			["Jump to the Town Hall", k.call("homeView")], ["People / Areas / Towns / Families / Realm / Goals", "%s %s %s %s %s %s" % [k.call("people"), k.call("areas"), k.call("towns"), k.call("families"), k.call("realm"), k.call("goals")]],
+			["All goods / Valley today / See more", "%s / %s / %s" % [k.call("goods"), k.call("today"), k.call("seeMore")]], ["Health bars", k.call("healthBars")],
+			["Mark / unmark for harvest", "%s / %s" % [k.call("harvest"), k.call("unmark")]], ["Full screen", k.call("fullscreen")],
+			["Next idle settler", k.call("nextIdle")], ["Select everyone", k.call("selectAll")], ["Save", k.call("save")], ["Cancel / menu", k.call("cancel")]]],
+		["The screen", [["Top: stores (Goods for the rest), windows, clock", ""], ["Bottom left: the minimap", ""],
+			["Bottom middle: what you selected; See more opens every detail", ""], ["Bottom right: the command card; hover a button to read it", ""]]],
+	]
+	for sec: Array in sections:
+		_help_body.add_child(_row_label(sec[0], _c("accent"), 15))
+		var g := GridContainer.new()
+		g.columns = 2
+		for row: Array in sec[1]:
+			var l := _row_label(row[0], _c("text"), 12)
+			l.custom_minimum_size = Vector2(360, 0)
+			g.add_child(l)
+			var r := _row_label(row[1], _c("accent"), 12)
+			r.custom_minimum_size = Vector2(160, 0)
+			g.add_child(r)
+		_help_body.add_child(g)
+	_help_scroll.custom_minimum_size = Vector2(560, minf(_root.size.y - GameConsole.HEIGHT - 150, 600))
+	_help.reset_size()
+	_center(_help)
+
+
+func toggle_goods() -> void:
+	_goods.visible = not _goods.visible
+	_window_sound(_goods.visible)
+	_goods_key = ""
+	refresh_now()
+
+
+func _row_label(t: String, col: Color, size: int = 14) -> Label:
+	var l := Label.new()
+	l.text = t
+	l.add_theme_color_override("font_color", col)
+	l.add_theme_font_size_override("font_size", size)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.custom_minimum_size = Vector2(320, 0)
+	return l
+
+
+## The People window: everyone, with their role and what they are doing; click to select.
+func _refresh_list() -> void:
+	if not _list.visible:
+		return
+	var sim := game.sim
+	var key := "%s|%d" % [game.selected, sim.tick / 20]
+	if key == _list_key:
+		return
+	_list_key = key
+	for c in _list_body.get_children():
+		c.queue_free()
+	for s in sim.settlers:
+		# A row per person (a clickable panel: text inside a Button gets no width to wrap in).
+		var row := PanelContainer.new()
+		var job := "Ruler (you)" if s.ruler else ("Child" if s.life_stage == "child" else Roles.job_name(s.job))
+		var idle := s.task == null and s.idle_reason != ""
+		row.add_theme_stylebox_override("panel", _box(Color("#1d4a1b") if game.selected.has(s.id) else _c("panelHi"), _c("panelEdge"), 0, 6))
+		row.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		var v := VBoxContainer.new()
+		v.add_theme_constant_override("separation", 0)
+		var top := HBoxContainer.new()
+		var n := _row_label(s.name, _c("text"), 15)
+		n.custom_minimum_size = Vector2(0, 0)
+		n.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		top.add_child(n)
+		var jl := _row_label(job, _c("textDim"), 12)
+		jl.custom_minimum_size = Vector2(0, 0)
+		jl.autowrap_mode = TextServer.AUTOWRAP_OFF
+		top.add_child(jl)
+		v.add_child(top)
+		var st := _row_label(("! " + s.idle_reason) if idle else GameConsole._plain(_describe(s)), Color("#ffc890") if idle else _c("textDim"), 12)
+		st.custom_minimum_size = Vector2(300, 0)
+		v.add_child(st)
+		row.add_child(v)
+		var sid := s.id
+		row.gui_input.connect(func(e: InputEvent) -> void:
+			if e is InputEventMouseButton and (e as InputEventMouseButton).pressed and (e as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+				var who := game.sim.settler(sid)
+				if who != null:
+					game.selected = [sid]
+					game.selected_building = -1
+					game.camera.target_pos = Vector2(who.x, who.y) * WorldView.TILE_PX
+					_list_key = ""
+					refresh_now())
+		_list_body.add_child(row)
+	var home_beds := 0
+	var bunks := 0
+	var used := 0
+	for b: Building in sim.buildings.values():
+		if b.is_permanent_home():
+			home_beds += b.beds()
+			for s in sim.settlers:
+				if s.home_id == b.id:
+					used += 1
+		else:
+			bunks += b.beds()
+	_list_body.add_child(_row_label("Home beds %d/%d · hall bunks and bedrolls %d" % [used, home_beds, bunks], _c("textDim"), 12))
+	_list_body.add_child(_row_label("New people come from households (Families window) and from visitors you welcome with food.", _c("textDim"), 12))
+	_fit_window(_list_scroll, _list_body)
+
+
+## The Goals window: where the valley stands, the next milestone's requirements and unlocks.
+func _refresh_goals() -> void:
+	if not _goals.visible:
+		return
+	var sim := game.sim
+	var key := "%s|%d" % [sim.reached, sim.tick / 30]
+	if key == _goals_key:
+		return
+	_goals_key = key
+	for c in _goals_body.get_children():
+		c.queue_free()
+	var ms: Dictionary = Content.get_value("progression", "MILESTONES")
+	_goals_body.add_child(_row_label(str((ms.get(Progression.current(sim), {}) as Dictionary).get("name", "Camp")), _c("accent"), 17))
+	var nid := Progression.next_milestone(sim)
+	if nid == "":
+		_goals_body.add_child(_row_label("Every milestone reached. Keep building.", _c("textDim")))
+	else:
+		var nm: Dictionary = ms[nid]
+		_goals_body.add_child(_row_label("Next: %s. %s" % [nm["name"], nm.get("description", "")], _c("textDim"), 13))
+		for req: Dictionary in nm.get("requirements", []):
+			var r := Progression.requirement_progress(sim, req)
+			var done := bool(r["done"])
+			_goals_body.add_child(_row_label("%s %s%s" % ["[x]" if done else "[ ]", r["label"], "" if done else " (%d/%d)" % [int(r["current"]), int(r["target"])]], _c("good") if done else _c("text"), 14))
+		var unlocks: Array = nm.get("unlocks", [])
+		if not unlocks.is_empty():
+			_goals_body.add_child(_row_label("Unlocks: %s" % ", ".join(PackedStringArray(unlocks)), _c("textDim"), 12))
+		# Later milestones, briefly.
+		var order: Array = Content.get_value("progression", "MILESTONE_ORDER")
+		var later: PackedStringArray = []
+		for id: String in order.slice(order.find(nid) + 1):
+			later.append(str(ms[id]["name"]))
+		if not later.is_empty():
+			_goals_body.add_child(_row_label("After that: %s" % ", ".join(later), _c("textDim"), 12))
+	_goals_body.add_child(_button("Open \"Valley today\"", func() -> void: game.open_today()))
+	_fit_window(_goals_scroll, _goals_body)
+
+
+## The Goods drawer: every good beyond the five on the bar.
+func _refresh_goods() -> void:
+	if not _goods.visible:
+		return
+	var totals := game.sim.totals()
+	var key := str(totals)
+	if key == _goods_key:
+		return
+	_goods_key = key
+	for c in _goods_body.get_children():
+		c.queue_free()
+	var none: PackedStringArray = []
+	var grid := GridContainer.new()
+	grid.columns = 2
+	for r: String in Content.get_value("resources", "RESOURCE_IDS"):
+		if MAIN_RES.has(r):
+			continue
+		var n := int(totals.get(r, 0))
+		if n <= 0:
+			none.append(str(Defs.resource(r)["name"]))
+			continue
+		var h := HBoxContainer.new()
+		h.custom_minimum_size = Vector2(160, 0)
+		h.add_child(_icon(r, 20))
+		var l := _row_label("%s  %d" % [Defs.resource(r)["name"], n], _c("text"), 13)
+		l.custom_minimum_size = Vector2(130, 0)
+		h.add_child(l)
+		grid.add_child(h)
+	_goods_body.add_child(grid)
+	if not none.is_empty():
+		_goods_body.add_child(_row_label("None yet: %s" % ", ".join(none), _c("textDim"), 12))
+	_fit_window(_goods_scroll, _goods_body)
+
+
+## "See more" for several people: each with what they are doing.
+func _group_text() -> String:
+	var lines: PackedStringArray = []
+	for id in game.selected:
+		var s := game.sim.settler(id)
+		if s != null:
+			lines.append("[b]%s[/b] — %s" % [s.name, _describe(s)])
+	return "\n".join(lines)
 
 
 # ---- people window ------------------------------------------------------------------------------
@@ -335,13 +771,6 @@ func _build_people() -> void:
 	_root.add_child(_people)
 
 
-func toggle_people() -> void:
-	_people.visible = not _people.visible
-	_window_sound(_people.visible)
-	if _people.visible:
-		_close_windows(_people)
-	_people_key = ""
-	refresh_now()
 
 
 ## The People window: what growth is waiting on, the visitor, travellers on the way, households.
@@ -349,7 +778,7 @@ func _refresh_people() -> void:
 	if not _people.visible:
 		return
 	var sim := game.sim
-	var lines: PackedStringArray = ["[b]People[/b]"]
+	var lines: PackedStringArray = ["[b]Families and visitors[/b]"]
 	var adults := 0
 	var kids: PackedStringArray = []
 	for s in sim.settlers:
@@ -451,7 +880,7 @@ func _window_sound(open: bool) -> void:
 
 
 func _close_windows(keep: Control) -> void:
-	for w: Control in [_people, _areas, _towns, _realm]:
+	for w: Control in [_people, _areas, _towns, _realm, _list, _goals]:
 		if w != keep:
 			w.visible = false
 
@@ -748,7 +1177,7 @@ func show_play() -> void:
 	_title.visible = false
 	_menu.visible = false
 	_top.visible = true
-	_card.visible = true
+	console.visible = true
 	refresh_now()
 
 
@@ -758,8 +1187,7 @@ func show_title(message: String = "") -> void:
 	_busy.visible = false
 	_menu.visible = false
 	_top.visible = false
-	_card.visible = false
-	_select_panel.visible = false
+	console.visible = false
 	for c in _title.get_children():
 		c.queue_free()
 	var v := VBoxContainer.new()
@@ -798,7 +1226,7 @@ func show_title(message: String = "") -> void:
 		var cont := _button("Continue %s — day %d, %d people" % [w["name"], int(p.get("day", 0)), int(p.get("population", 0))], func() -> void: game.load_world(id))
 		cont.theme_type_variation = &"PrimaryButton"
 		v.add_child(cont)
-	v.add_child(_button("Load a save file", func() -> void: game.load_from_file(), "A save downloaded from this game or the old browser game"))
+	v.add_child(_button("Load a valley", func() -> void: game.load_from_file(), "A save downloaded from this game or the old browser game"))
 	v.add_child(_button("Asset Studio", open_studio, "Your own art for anything in the valley, kept on this device"))
 	if Files.is_web():
 		if game.pwa.update_waiting:
@@ -806,44 +1234,10 @@ func show_title(message: String = "") -> void:
 		_offer_old_game(v)
 		if not Pwa.runs_as_app():
 			_offer_install(v)
-	# A new valley's details, two to a row to keep the title compact.
-	var row1 := HBoxContainer.new()
-	var row2 := HBoxContainer.new()
-	v.add_child(row1)
-	v.add_child(row2)
-	var name_edit := LineEdit.new()
-	name_edit.placeholder_text = "Name your valley"
-	name_edit.text = "Home"
-	name_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row1.add_child(name_edit)
-	var ruler_edit := LineEdit.new()
-	ruler_edit.placeholder_text = "Your ruler's name"
-	ruler_edit.max_length = 24
-	ruler_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row1.add_child(ruler_edit)
-	var habitat := OptionButton.new()
-	habitat.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var habitats: Dictionary = Content.get_value("habitats", "HABITATS")
-	for k: String in habitats:
-		habitat.add_item(str(habitats[k]["name"]))
-		habitat.set_item_metadata(habitat.item_count - 1, k)
-	row2.add_child(habitat)
-	var seed_edit := LineEdit.new()
-	seed_edit.placeholder_text = "Seed (optional)"
-	seed_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row2.add_child(seed_edit)
-	var intro := CheckButton.new()
-	intro.text = "Show the introduction"
-	intro.button_pressed = true
-	intro.focus_mode = Control.FOCUS_NONE
-	v.add_child(intro)
-	var start := _button("Start a new valley", func() -> void:
-		var seed_text := seed_edit.text.strip_edges()
-		var seed_value := int(seed_text) if seed_text.is_valid_int() else (seed_text.hash() if seed_text != "" else randi() % 2147483647)
-		game.new_world(seed_value, str(habitat.get_item_metadata(habitat.selected)), name_edit.text.strip_edges() if name_edit.text.strip_edges() != "" else "Home",
-			ruler_edit.text.strip_edges() if ruler_edit.text.strip_edges() != "" else "Your Majesty", intro.button_pressed))
-	start.theme_type_variation = &"PrimaryButton"
-	v.add_child(start)
+	var new_valley := _button("New valley", show_new_world, "Name your ruler and your valley, and choose your land")
+	if game.store.worlds().is_empty():
+		new_valley.theme_type_variation = &"PrimaryButton"
+	v.add_child(new_valley)
 	var note := Label.new()
 	note.text = "Godot preview: farming, crafts, animals, mining, work areas, roles and growing families. Time stands still while the game is closed."
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -858,6 +1252,104 @@ func show_title(message: String = "") -> void:
 
 
 ## On the opening title the menu stands at the left, leaving the valley in view on the right.
+## "A new world", as the browser's dialog: your name (you walk the map as the ruler), the
+## valley's name, the land as cards with what each is like, a seed with Reroll, and whether to
+## show the introduction. Back returns to the title.
+func show_new_world() -> void:
+	for c in _title.get_children():
+		c.queue_free()
+	var v := VBoxContainer.new()
+	v.custom_minimum_size = Vector2(700, 0)
+	v.add_theme_constant_override("separation", 6)
+	_title.add_child(v)
+	var h := Label.new()
+	h.text = "A new world"
+	h.add_theme_font_override("font", _bold)
+	h.add_theme_font_size_override("font_size", 20)
+	h.add_theme_color_override("font_color", _c("accent"))
+	v.add_child(h)
+	v.add_child(_row_label("Your name - you will walk the map as its ruler", _c("text"), 13))
+	var ruler_edit := LineEdit.new()
+	ruler_edit.placeholder_text = "Type your name"
+	ruler_edit.max_length = 24
+	v.add_child(ruler_edit)
+	v.add_child(_row_label("Name of your valley", _c("text"), 13))
+	var name_edit := LineEdit.new()
+	name_edit.text = "Little Valley"
+	v.add_child(name_edit)
+	v.add_child(_row_label("Choose your land", _c("text"), 13))
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 6)
+	v.add_child(grid)
+	var habitats: Dictionary = Content.get_value("habitats", "HABITATS")
+	var chosen := [str(Content.get_value("habitats", "HABITAT_IDS")[0])]
+	var cards := {}
+	var paint := func() -> void:
+		for k: String in cards:
+			(cards[k] as Button).theme_type_variation = &"PrimaryButton" if k == chosen[0] else &""
+	for k: String in habitats:
+		var card := Button.new()
+		card.focus_mode = Control.FOCUS_NONE
+		card.custom_minimum_size = Vector2(228, 104)
+		var cv := VBoxContainer.new()
+		cv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cv.set_anchors_preset(Control.PRESET_FULL_RECT)
+		cv.offset_left = 8
+		cv.offset_top = 6
+		cv.offset_right = -6
+		var n := _row_label(str(habitats[k]["name"]), _c("accent"), 14)
+		n.custom_minimum_size = Vector2(0, 0)
+		n.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cv.add_child(n)
+		var d := _row_label(str(habitats[k]["description"]), _c("text"), 11)
+		d.custom_minimum_size = Vector2(212, 0)
+		d.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cv.add_child(d)
+		card.add_child(cv)
+		var id := k
+		card.pressed.connect(func() -> void:
+			chosen[0] = id
+			paint.call())
+		cards[k] = card
+		grid.add_child(card)
+	paint.call()
+	v.add_child(_row_label("Seed (optional - the same seed and land always make the same world)", _c("text"), 13))
+	var seed_row := HBoxContainer.new()
+	var seed_edit := LineEdit.new()
+	seed_edit.text = str(randi() % 1000000000)
+	seed_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	seed_row.add_child(seed_edit)
+	seed_row.add_child(_button("Reroll", func() -> void: seed_edit.text = str(randi() % 1000000000)))
+	v.add_child(seed_row)
+	var intro := CheckButton.new()
+	intro.text = "Show the introduction"
+	intro.button_pressed = true
+	intro.focus_mode = Control.FOCUS_NONE
+	v.add_child(intro)
+	var foot := HBoxContainer.new()
+	foot.alignment = BoxContainer.ALIGNMENT_END
+	foot.add_theme_constant_override("separation", 8)
+	foot.add_child(_button("Back", func() -> void: show_title()))
+	var found := _button("Found the realm", func() -> void:
+		var ruler := ruler_edit.text.strip_edges()
+		if ruler == "":
+			toast("Type your name first: you walk the map as the valley's ruler.", "warn")
+			ruler_edit.grab_focus()
+			return
+		var seed_text := seed_edit.text.strip_edges()
+		var seed_value := int(seed_text) if seed_text.is_valid_int() else (seed_text.hash() if seed_text != "" else randi() % 2147483647)
+		var valley := name_edit.text.strip_edges()
+		game.new_world(seed_value, chosen[0], valley if valley != "" else "Little Valley", ruler, intro.button_pressed))
+	found.theme_type_variation = &"PrimaryButton"
+	foot.add_child(found)
+	v.add_child(foot)
+	_title.visible = true
+	_center(_title)
+	ruler_edit.grab_focus()
+
+
 func _place_title() -> void:
 	await get_tree().process_frame
 	_title.position = Vector2(maxf(16.0, _root.size.x * 0.06), maxf(16.0, (_root.size.y - _title.size.y) / 2.0))
@@ -1208,69 +1700,16 @@ func refresh_now() -> void:
 		return
 	var sim := game.sim
 	_apply_scale()
-	# Stocks: chips are built once and only their numbers change.
-	if _stock_labels.is_empty():
-		for r in STOCKS:
-			var chip := HBoxContainer.new()
-			chip.add_child(_icon(r))
-			var l := Label.new()
-			l.tooltip_text = str(Defs.resource(r)["name"])
-			chip.add_child(l)
-			_stocks.add_child(chip)
-			_stock_labels[r] = l
-		_storage_label = Label.new()
-		_stocks.add_child(_storage_label)
-	var totals := sim.totals()
-	for r in STOCKS:
-		var l: Label = _stock_labels[r]
-		_set_text(l, str(int(totals[r])))
-		l.get_parent().visible = r != "wheat" or int(totals[r]) > 0
-	var cap := sim.total_capacity()
-	_set_text(_storage_label, "Storage %d/%d" % [cap.x, cap.y])
-	_storage_label.add_theme_color_override("font_color", _c("problem") if cap.x >= cap.y else _c("textDim"))
-	var season: Dictionary = sim.season()
-	var t := sim.time_of_day() * 24.0
-	_clock.text = "%s · Day %d of %s · %02d:%02d%s" % [season["def"]["name"], int(season["day"]), str(season["def"]["name"]).to_lower(), int(t), int(fmod(t, 1.0) * 60.0), "  paused" if game.paused else ("  %d×" % game.speed if game.speed > 1 else "")]
-	if game.falling_behind and not game.paused:
-		_clock.text += "  (slowed: this device can't keep up at this speed)"
-	_refresh_selection()
-	_refresh_card()
+	_refresh_top()
+	console.refresh()
+	_refresh_list()
+	_refresh_goals()
+	_refresh_goods()
 	_refresh_people()
 	_refresh_areas()
 	_refresh_towns()
 	_refresh_tutorial()
 	_realm.refresh()
-
-
-func _refresh_selection() -> void:
-	var sim := game.sim
-	var text := ""
-	if game.selected.size() == 1:
-		var s := sim.settler(game.selected[0])
-		if s != null:
-			text = _settler_text(s)
-	elif game.selected.size() > 1:
-		var idle := 0
-		for id in game.selected:
-			var s := sim.settler(id)
-			if s != null and s.task == null:
-				idle += 1
-		text = "[b]%d people selected[/b]\n%d busy, %d idle.\nRight-click: work or walk there · S stop · H hold" % [game.selected.size(), game.selected.size() - idle, idle]
-	elif game.selected_building != -1:
-		var b: Building = sim.buildings.get(game.selected_building)
-		if b != null:
-			text = _building_text(b)
-	elif game.selected_animal != -1:
-		var a := Animals.find(sim, game.selected_animal)
-		if a != null:
-			text = _animal_text(a)
-		else:
-			game.selected_animal = -1
-	elif game.placing != "":
-		text = _placing_text()
-	_select_panel.visible = text != ""
-	if _select_text.text != text:
-		_select_text.text = text
 
 
 func _animal_text(a: Animal) -> String:
@@ -1497,206 +1936,112 @@ func _placing_text() -> String:
 	return "[b]%s[/b]\n%s\nCost: %s\n%s" % [d["name"], d.get("description", ""), cost if cost != "" else "free", "Drag to lay out several." if d.get("paint", false) else "Click to place; Shift to place more."]
 
 
-func _refresh_card() -> void:
+## Actions that belong to the selection's details ("See more" in the console, as the browser's
+## SettlerCard and BuildingCard): a settler's job; a workshop's recipe and pause; deepening a
+## mine; enlisting at a training ground; trading with a merchant at the inn; stock targets.
+## Rebuilt only when what they act on changes. The console shows them under the details.
+func detail_actions(box: GridContainer) -> void:
 	var sim := game.sim
-	var key := "%s|%s|%d|%d|%s" % [_card_mode, game.placing, game.selected.size(), game.selected_building, sim.reached]
+	var key := "%s|%s|%d|%s" % [_card_mode, game.selected, game.selected_building, sim.reached]
 	var sel: Building = sim.buildings.get(game.selected_building)
 	if sel != null:
-		key += "|%s" % sel.mine.get("level", 0)
-		key += "|%d|%s|%d|%s" % [sel.level, sel.upgrade.is_empty(), sel.type.hash(), Levels.upgrade_problem(sim, sel) if sel.upgrade.is_empty() else ""]
-	if key == _last_card_key:
+		key += "|%s|%d|%s|%s|%s" % [sel.mine.get("level", 0), sel.level, sel.workshop.get("recipe", ""), sel.workshop.get("paused", false), sel.wants]
+		for p: Dictionary in sim.parties:
+			key += "|%s%s" % [p["state"], p.get("stock", {})]
+	if key == _last_card_key and box.get_child_count() > 0:
 		return
 	_last_card_key = key
-	for c in _card_grid.get_children():
+	for c in box.get_children():
 		c.queue_free()
-	if _card_mode == "build":
-		_card_title.text = "Build"
-		for type in BUILD_LIST:
-			var d := Defs.building(type)
-			var ok := BuildingOps.is_unlocked(sim, d.get("unlock"))
-			var b := _button(str(d["name"]), func() -> void:
-				_card_mode = ""
-				game.start_placing(type), "%s\nCost: %s%s" % [d.get("description", ""), Inv.format(Defs.cost(type)) if not Defs.cost(type).is_empty() else "free", "" if ok else "\nUnlocks at %s" % str(d.get("unlock", "")).capitalize()])
-			b.disabled = not ok
-			_card_grid.add_child(b)
-		_card_grid.add_child(_button("Back", func() -> void:
-			_card_mode = ""
-			refresh_now()))
-		return
-	if _card_mode == "job":
-		_card_title.text = "Choose a job"
+	var back := func() -> void:
+		_card_mode = ""
+		_last_card_key = ""
+		refresh_now()
+	if _card_mode == "job" and not game.selected.is_empty():
 		for j in JOBS:
-			_card_grid.add_child(_button(str(Defs.job(j)["name"]), func() -> void:
+			box.add_child(_small(Roles.job_name(j), func() -> void:
 				game.command({"type": "setJob", "ids": game.selected.duplicate(), "job": j})
-				_card_mode = ""
-				refresh_now()))
-		_card_grid.add_child(_button("Back", func() -> void:
-			_card_mode = ""
-			refresh_now()))
+				back.call()))
+		box.add_child(_small("Back", back))
 		return
-	if _card_mode == "wants" and game.selected_building != -1 and sim.buildings.has(game.selected_building):
-		var wb: Building = sim.buildings[game.selected_building]
-		_card_title.text = "Stock targets"
+	if _card_mode == "wants" and sel != null:
 		for r: String in ["wood", "stone", "food", "planks", "tools"]:
-			var have := int(wb.wants.get(r, 0))
-			_card_grid.add_child(_button("%s %d −" % [Defs.resource(r)["name"], have], func() -> void:
-				game.command({"type": "setWants", "buildingId": wb.id, "res": r, "amount": maxi(0, have - 10)})
+			var have := int(sel.wants.get(r, 0))
+			box.add_child(_small("%s %d −" % [Defs.resource(r)["name"], have], func() -> void:
+				game.command({"type": "setWants", "buildingId": sel.id, "res": r, "amount": maxi(0, have - 10)})
 				_last_card_key = ""
 				refresh_now()))
-			_card_grid.add_child(_button("+10 %s" % str(Defs.resource(r)["name"]).to_lower(), func() -> void:
-				game.command({"type": "setWants", "buildingId": wb.id, "res": r, "amount": have + 10})
+			box.add_child(_small("+10 %s" % str(Defs.resource(r)["name"]).to_lower(), func() -> void:
+				game.command({"type": "setWants", "buildingId": sel.id, "res": r, "amount": have + 10})
 				_last_card_key = ""
 				refresh_now()))
-			_card_grid.add_child(Control.new())
-		_card_grid.add_child(_button("Back", func() -> void:
-			_card_mode = ""
-			refresh_now()))
-		return
-	if _card_mode == "train":
-		_card_title.text = "Train at the Town Hall"
-		var hall := Roles.hall_for(sim, sim.settler(game.selected[0])) if not game.selected.is_empty() and sim.settler(game.selected[0]) != null else null
-		var lvl := hall.level if hall != null else 0
-		for j: String in Content.get_value("jobs", "JOB_IDS"):
-			var need := int(Defs.job(j).get("hallLevel", 1))
-			var names: Array = Content.get_value("jobs", "HALL_LEVEL_NAMES")
-			var tb := _button(Roles.job_name(j), func() -> void:
-				game.command({"type": "trainRole", "ids": game.selected.duplicate(), "role": j})
-				_card_mode = ""
-				refresh_now(), str(Defs.job(j).get("description", "")) + ("" if need <= lvl else "\nNeeds a %s" % names[mini(need, names.size() - 1)]))
-			tb.disabled = need > lvl
-			_card_grid.add_child(tb)
-		_card_grid.add_child(_button("Back", func() -> void:
-			_card_mode = ""
-			refresh_now()))
-		return
-	var ruler := sim.ruler()
-	if game.selected.size() == 1 and ruler != null and game.selected[0] == ruler.id:
-		_card_title.text = "The ruler"
-		_card_grid.add_child(_button("Rally", func() -> void: game.command({"type": "rally"}), "Inspire everyone close by to work 30% faster for an hour; once a day (R)"))
-		_card_grid.add_child(_button("Stop", func() -> void: game.command({"type": "stop", "ids": game.selected.duplicate()}), "Stand still for a moment (S)"))
-		_card_grid.add_child(_button("Deselect", func() -> void:
-			game.selected.clear()
-			refresh_now()))
+		box.add_child(_small("Back", back))
 		return
 	if not game.selected.is_empty():
-		_card_title.text = "Orders"
-		_card_grid.add_child(_button("Stop", func() -> void: game.command({"type": "stop", "ids": game.selected.duplicate()}), "Stand still for a moment (S)"))
-		_card_grid.add_child(_button("Hold", func() -> void: game.command({"type": "hold", "ids": game.selected.duplicate()}), "Hold position until given another order (H)"))
-		_card_grid.add_child(_button("Return goods", func() -> void: game.command({"type": "returnGoods", "ids": game.selected.duplicate()}), "Take what they carry to storage (C)"))
-		if game.selected.size() == 1:
-			_card_grid.add_child(_button("Survey", func() -> void: game.start_placing("survey"), "Send them to survey the ground for ore"))
-			var one := sim.settler(game.selected[0])
-			if one != null and not one.training.is_empty():
-				_card_grid.add_child(_button("Stop training", func() -> void: game.command({"type": "cancelRoleTraining", "settlerId": one.id})))
-		_card_grid.add_child(_button("Train…", func() -> void:
-			_card_mode = "train"
-			refresh_now(), "Learn a new role at the Town Hall"))
-		_card_grid.add_child(_button("Job…", func() -> void:
-			_card_mode = "job"
-			refresh_now()))
-		_card_grid.add_child(_button("Deselect", func() -> void:
-			game.selected.clear()
-			refresh_now()))
+		var one := sim.settler(game.selected[0])
+		if one == null or not one.ruler:
+			box.add_child(_small("Change job…", func() -> void:
+				_card_mode = "job"
+				_last_card_key = ""
+				refresh_now(), "Set their main job straight away (Train teaches a new role at the Town Hall)"))
 		return
-	if game.selected_building != -1:
-		var b: Building = sim.buildings.get(game.selected_building)
-		if b != null:
-			_card_title.text = str(b.def()["name"])
-			if not b.workshop.is_empty():
-				for r: String in b.def().get("recipes", []):
-					var rd := Production.recipe(r)
-					var unlocked := BuildingOps.is_unlocked(sim, rd.get("unlock"))
-					var rb := _button(str(rd["name"]), func() -> void:
-						game.command({"type": "setRecipe", "buildingId": b.id, "recipe": r})
-						_last_card_key = ""
-						refresh_now(), "%s › %s (%d work)" % [Inv.format(Inv.from_json(rd["inputs"])), Inv.format(Inv.from_json(rd["outputs"])), int(rd["work"])])
-					rb.disabled = not unlocked or str(b.workshop.get("recipe", "")) == r
-					_card_grid.add_child(rb)
-				_card_grid.add_child(_button("Resume" if bool(b.workshop["paused"]) else "Pause", func() -> void:
-					game.command({"type": "toggleWorkshop", "buildingId": b.id})
+	if sel == null:
+		return
+	var b := sel
+	if not b.workshop.is_empty():
+		for r: String in b.def().get("recipes", []):
+			var rd := Production.recipe(r)
+			var unlocked := BuildingOps.is_unlocked(sim, rd.get("unlock"))
+			var rb := _small(str(rd["name"]), func() -> void:
+				game.command({"type": "setRecipe", "buildingId": b.id, "recipe": r})
+				_last_card_key = ""
+				refresh_now(), "%s › %s (%d work)" % [Inv.format(Inv.from_json(rd["inputs"])), Inv.format(Inv.from_json(rd["outputs"])), int(rd["work"])])
+			rb.disabled = not unlocked or str(b.workshop.get("recipe", "")) == r
+			box.add_child(rb)
+	if b.built and not b.mine.is_empty() and int(b.mine["level"]) < 3:
+		var nl := int(b.mine["level"]) + 1
+		box.add_child(_small("Deepen shaft", func() -> void:
+			game.command({"type": "upgradeMine", "buildingId": b.id})
+			_last_card_key = ""
+			refresh_now(), "Level %d: %d ore per trip · costs %s" % [nl, Mining.MINE_YIELD[nl], Inv.format(Mining.MINE_UPGRADES[nl])]))
+	if b.built and b.def().has("training"):
+		for u: String in b.def()["training"]["units"]:
+			var ud := Military.unit(u)
+			var eb := _small("Enlist selected: %s" % ud["name"], func() -> void:
+				game.command({"type": "enlist", "ids": game.selected_before_building.duplicate(), "unit": u, "buildingId": b.id})
+				_last_card_key = ""
+				refresh_now(), "Select adults first, then this building. Gear: %s" % Inv.format(Inv.from_json(ud["gear"])))
+			eb.disabled = game.selected_before_building.is_empty()
+			box.add_child(eb)
+	if b.built and b.def().has("lodging"):
+		for p: Dictionary in sim.parties:
+			if p["state"] != "lodging" or int(p["innId"]) != b.id:
+				continue
+			var pid := int(p["id"])
+			for r: String in p["stock"]:
+				if int(p["stock"][r]) <= 0:
+					continue
+				var price := Merchants.sell_price(r)
+				box.add_child(_small("Buy 1 %s (%d coins)" % [str(Defs.resource(r)["name"]).to_lower(), price], func() -> void:
+					game.command({"type": "barter", "partyId": pid, "give": {}, "take": {r: 1}, "coins": price})
 					_last_card_key = ""
-					refresh_now(), "Pause or resume production (P)"))
-			if b.built and not b.mine.is_empty() and int(b.mine["level"]) < 3:
-				var nl := int(b.mine["level"]) + 1
-				_card_grid.add_child(_button("Deepen shaft", func() -> void:
-					game.command({"type": "upgradeMine", "buildingId": b.id})
+					refresh_now(), "%s has %d" % [p["name"], int(p["stock"][r])]))
+			for r: String in ["tools", "planks", "wool", "hides", "leather", "cloth", "silverOre", "goldOre", "diamonds"]:
+				if sim.stored_total(r) <= 0:
+					continue
+				var pay := Merchants.buy_price(r)
+				box.add_child(_small("Sell 1 %s (%d coins)" % [str(Defs.resource(r)["name"]).to_lower(), pay], func() -> void:
+					game.command({"type": "barter", "partyId": pid, "give": {r: 1}, "take": {}, "coins": -pay})
 					_last_card_key = ""
-					refresh_now(), "Level %d: %d ore per trip · costs %s" % [nl, Mining.MINE_YIELD[nl], Inv.format(Mining.MINE_UPGRADES[nl])]))
-			if b.built and not Levels.levels_of(b).is_empty():
-				if not b.upgrade.is_empty():
-					_card_grid.add_child(_button("Cancel upgrade", func() -> void:
-						game.command({"type": "cancelUpgrade", "buildingId": b.id})
-						_last_card_key = ""
-						refresh_now(), "Everything paid comes back"))
-				else:
-					var next := Levels.next_level(b)
-					if not next.is_empty():
-						var problem := Levels.upgrade_problem(sim, b)
-						var tip := "%s\nCost: %s · %d s at normal speed%s" % [", ".join(PackedStringArray(next.get("perks", []) as Array)),
-							Inv.format(Inv.from_json(next.get("cost", {}))), roundi(float(next["time"]) / 10.0), "\n" + problem if problem != "" else ""]
-						var ub := _button("Upgrade › %s" % next["name"], func() -> void:
-							game.command({"type": "upgradeBuilding", "buildingId": b.id})
-							_last_card_key = ""
-							refresh_now(), tip)
-						ub.disabled = problem != ""
-						_card_grid.add_child(ub)
-			if b.built and b.def().has("training"):
-				for u: String in b.def()["training"]["units"]:
-					var ud := Military.unit(u)
-					var eb := _button("Enlist selected: %s" % ud["name"], func() -> void:
-						game.command({"type": "enlist", "ids": game.selected_before_building.duplicate(), "unit": u, "buildingId": b.id})
-						_last_card_key = ""
-						refresh_now(), "Select adults first, then this building. Gear: %s" % Inv.format(Inv.from_json(ud["gear"])))
-					eb.disabled = game.selected_before_building.is_empty()
-					_card_grid.add_child(eb)
-			if b.built and b.def().has("lodging"):
-				for p: Dictionary in sim.parties:
-					if p["state"] != "lodging" or int(p["innId"]) != b.id:
-						continue
-					var pid := int(p["id"])
-					for r: String in p["stock"]:
-						if int(p["stock"][r]) <= 0:
-							continue
-						var price := Merchants.sell_price(r)
-						_card_grid.add_child(_button("Buy 1 %s (%d coins)" % [str(Defs.resource(r)["name"]).to_lower(), price], func() -> void:
-							game.command({"type": "barter", "partyId": pid, "give": {}, "take": {r: 1}, "coins": price})
-							_last_card_key = ""
-							refresh_now(), "%s has %d" % [p["name"], int(p["stock"][r])]))
-					for r: String in ["tools", "planks", "wool", "hides", "leather", "cloth", "silverOre", "goldOre", "diamonds"]:
-						if sim.stored_total(r) <= 0:
-							continue
-						var pay := Merchants.buy_price(r)
-						_card_grid.add_child(_button("Sell 1 %s (%d coins)" % [str(Defs.resource(r)["name"]).to_lower(), pay], func() -> void:
-							game.command({"type": "barter", "partyId": pid, "give": {r: 1}, "take": {}, "coins": -pay})
-							_last_card_key = ""
-							refresh_now()))
-			if b.built and b.is_storage() and b.type != "crate":
-				_card_grid.add_child(_button("Stock targets…", func() -> void:
-					_card_mode = "wants"
-					refresh_now(), "Haulers keep this store stocked from other stores"))
-			var permanent: bool = b.built and bool(b.def().get("permanent", false))
-			var rm := _button("Cancel site" if not b.built else "Demolish", func() -> void:
-				game.command({"type": "remove", "buildingId": b.id})
-				game.selected_building = -1
-				refresh_now(), "Materials come back; a finished building returns half its cost (X)")
-			rm.disabled = permanent
-			_card_grid.add_child(rm)
-			_card_grid.add_child(_button("Deselect", func() -> void:
-				game.selected_building = -1
-				refresh_now()))
-			return
-	_card_title.text = "Valley"
-	_card_grid.add_child(_button("Build…", func() -> void:
-		_card_mode = "build"
-		refresh_now(), "Homes, storage, fields, paths"))
-	_card_grid.add_child(_button("Mark", func() -> void: game.start_placing("mark"), "Mark trees, rocks and bushes for harvest (G)"))
-	_card_grid.add_child(_button("Unmark", func() -> void: game.start_placing("unmark"), "Remove harvest marks (U)"))
-	_card_grid.add_child(_button("Everyone", func() -> void:
-		game.selected.clear()
-		for s in sim.settlers:
-			game.selected.append(s.id)
-		refresh_now(), "Select everyone (E)"))
-	if game.placing != "":
-		_card_grid.add_child(_button("Cancel", func() -> void:
-			game.cancel_placing()
-			refresh_now()))
+					refresh_now()))
+	if b.built and b.is_storage() and b.type != "crate":
+		box.add_child(_small("Stock targets…", func() -> void:
+			_card_mode = "wants"
+			_last_card_key = ""
+			refresh_now(), "Haulers keep this store stocked from other stores"))
+
+
+func _small(text: String, on_press: Callable, tip: String = "") -> Button:
+	var b := _button(text, on_press, tip)
+	b.add_theme_font_size_override("font_size", 12)
+	return b

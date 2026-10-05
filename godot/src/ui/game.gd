@@ -131,6 +131,8 @@ func _capture_requested() -> bool:
 func _title_capture(opts: Dictionary) -> void:
 	_show_backdrop()
 	hud.show_title()
+	if opts.get("newworld", "0") == "1":
+		hud.show_new_world()
 	for i in 90:
 		await get_tree().process_frame
 	if str(opts["shot"]) != "":
@@ -327,6 +329,30 @@ func _capture(opts: Dictionary) -> void:
 				selected_building = b.id
 				camera.position = Vector2(b.center_x(), b.center_y()) * WorldView.TILE_PX
 				camera.target_pos = camera.position
+	# Review captures of the interface: a window open, a selection, the build menu.
+	match str(opts.get("window", "")):
+		"people": hud.toggle_people()
+		"families": hud.toggle_families()
+		"goals": hud.toggle_goals()
+		"goods": hud.toggle_goods()
+		"areas": hud.toggle_areas()
+		"towns": hud.toggle_towns()
+		"realm": hud.toggle_realm()
+		"help": hud.toggle_help()
+	match str(opts.get("select", "")):
+		"settler":
+			selected = [sim.settlers[0].id]
+		"hall":
+			var hall := BuildingOps.camp_of(sim)
+			if hall != null:
+				selected_building = hall.id
+		"animal":
+			if not sim.animals.is_empty():
+				selected_animal = sim.animals[0].id
+	if opts.get("build", "0") == "1":
+		hud.console.menu = "build"
+	elif opts.has("build"):
+		hud.console.menu = str(opts["build"])
 	for i in 20:
 		await get_tree().process_frame
 	if opts.has("frames"):
@@ -684,6 +710,7 @@ func _process(delta: float) -> void:
 	audio.busy = not paused and not hud.blocking()
 	var alpha := clampf(_acc / TICK_MS, 0.0, 1.0) if sim.slice_next == -1 else 1.0
 	view.motion = settings.motion()
+	SettlerView.health_bars_all = settings.health_bars == "always"
 	view.refresh(alpha, camera.view_rect(), delta)
 	particles.step(delta, sim, camera.view_rect(), art, settings.effects == "low", sim.is_night())
 	last_view_ms = (Time.get_ticks_usec() - t_view) / 1000.0
@@ -845,7 +872,7 @@ func _pointer_moved(p: Vector2) -> void:
 
 func _update_ghost() -> void:
 	ghost_tiles = []
-	if placing == "" or hover_tile.x == -99999 or placing.begins_with("area:") or placing == "survey" or placing == "claim" or placing.begins_with("company:"):
+	if placing == "" or hover_tile.x == -99999 or placing.begins_with("area:") or placing.begins_with("order:") or placing == "survey" or placing == "claim" or placing.begins_with("company:"):
 		return
 	if placing != "mark" and placing != "unmark" and Defs.building(placing).has("span"):
 		if drag_box.has_area():
@@ -904,6 +931,28 @@ func _primary_release(screen: Vector2, additive: bool) -> void:
 
 
 func _place(screen: Vector2, box: Rect2) -> void:
+	if placing.begins_with("order:"):
+		# Move, Attack or Gather from the command card, then a click where (as the browser).
+		var kind := placing.substr(6)
+		var t := _tile_at(screen)
+		var w := camera.screen_to_world(screen) / WorldView.TILE_PX
+		if kind == "move":
+			if bool(command({"type": "move", "ids": selected.duplicate(), "x": t.x, "y": t.y})["ok"]):
+				markers.append({"p": (Vector2(t) + Vector2(0.5, 0.5)) * WorldView.TILE_PX, "t": Time.get_ticks_msec() / 1000.0, "kind": "move"})
+		elif kind == "attack":
+			var an := animal_at(w)
+			if an == null or an.pen_id != -1:
+				hud.toast("Click a wild animal to hunt it.", "info")
+				return
+			order_at(t, w)
+		else:
+			var o := sim.world.obj(t.x, t.y)
+			if o == World.UNKNOWN or Tiles.object_resource[o] == "":
+				hud.toast("Click a tree, rock or bush to gather it.", "info")
+				return
+			order_at(t, w)
+		cancel_placing()
+		return
 	if placing == "claim":
 		var sec := Territory.sector_of(_tile_at(screen).x, _tile_at(screen).y)
 		if bool(command({"type": "claimFrontier", "sector": {"x": sec.x, "y": sec.y}})["ok"]):
@@ -1035,6 +1084,9 @@ func _key(k: InputEventKey) -> void:
 	var action := settings.bindings.action_for(k)
 	if hud.blocking() and action != "cancel":
 		return
+	# The command card answers to its own keys first (as the browser's console does).
+	if hud.console.handle_key(k):
+		return
 	match action:
 		"cancel":
 			if placing != "":
@@ -1088,6 +1140,34 @@ func _key(k: InputEventKey) -> void:
 			selected.clear()
 			for s in sim.settlers:
 				selected.append(s.id)
+		"zoomIn":
+			camera.zoom_at(1.3, get_viewport().get_visible_rect().size / 2.0)
+		"zoomOut":
+			camera.zoom_at(1.0 / 1.3, get_viewport().get_visible_rect().size / 2.0)
+		"build":
+			hud.console.menu = "build"
+		"nextIdle":
+			hud.console.find_next("idle")
+		"homeView":
+			hud.console.find_next("home")
+		"findRuler":
+			hud.console.find_ruler()
+		"seeMore":
+			hud.console.details = not hud.console.details
+		"goods":
+			hud.toggle_goods()
+		"families":
+			hud.toggle_families()
+		"goals":
+			hud.toggle_goals()
+		"help":
+			hud.toggle_help()
+		"fullscreen":
+			var full := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if full else DisplayServer.WINDOW_MODE_FULLSCREEN)
+		"healthBars":
+			settings.health_bars = "hurt" if settings.health_bars == "always" else "always"
+			hud.toast("Health bars: %s" % ("everyone" if settings.health_bars == "always" else "only the hurt"), "info")
 	hud.refresh_now()
 
 

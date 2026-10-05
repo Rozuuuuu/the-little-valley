@@ -16,6 +16,8 @@ var master_volume := 0.8
 var music_volume := 0.5
 var sfx_volume := 0.7
 var muted := false
+## "always": health bars over everyone (the browser's default); "hurt": only over the hurt.
+var health_bars := "always"
 var bindings := KeyBindings.new()
 
 
@@ -35,6 +37,7 @@ static func load_saved(path: String = PATH) -> Settings:
 		s.music_volume = clampf(float(cfg.get_value("audio", "music", s.music_volume)), 0.0, 1.0)
 		s.sfx_volume = clampf(float(cfg.get_value("audio", "sfx", s.sfx_volume)), 0.0, 1.0)
 		s.muted = bool(cfg.get_value("audio", "muted", s.muted))
+		s.health_bars = "hurt" if str(cfg.get_value("display", "health_bars", s.health_bars)) == "hurt" else "always"
 	return s
 
 
@@ -42,6 +45,7 @@ func save(path: String = PATH) -> Error:
 	var cfg := ConfigFile.new()
 	cfg.set_value("display", "reduced_motion", reduced_motion)
 	cfg.set_value("display", "effects", effects)
+	cfg.set_value("display", "health_bars", health_bars)
 	cfg.set_value("display", "ui_scale", ui_scale)
 	cfg.set_value("controls", "edge_scroll", edge_scroll)
 	cfg.set_value("controls", "bindings", bindings.keys)

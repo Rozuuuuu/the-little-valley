@@ -1,20 +1,29 @@
 class_name KeyBindings
 extends RefCounted
 ## Physical keys, independent of the player's keyboard layout. No simulation state lives here.
-## These defaults preserve the current Godot controls; browser-only actions are not advertised.
+## The defaults are the browser game's (src/input/bindings.ts DEFAULT_BINDINGS).
 const DEFINITIONS := {
-	"panLeft": ["Pan left", [KEY_LEFT, KEY_A]], "panRight": ["Pan right", [KEY_RIGHT, KEY_D]],
-	"panUp": ["Pan up", [KEY_UP, KEY_W]], "panDown": ["Pan down", [KEY_DOWN]],
-	"cancel": ["Cancel / close", [KEY_ESCAPE]], "pause": ["Pause / resume", [KEY_SPACE]],
-	"speed1": ["Normal speed", [KEY_1]], "speed2": ["Fast speed", [KEY_2]],
-	"speed3": ["Fastest speed", [KEY_3]], "stop": ["Stop", [KEY_S]],
-	"hold": ["Hold position", [KEY_H]], "returnGoods": ["Return goods", [KEY_C]],
-	"harvest": ["Mark for gathering", [KEY_G]], "unmark": ["Unmark gathering", [KEY_U]],
-	"demolish": ["Demolish selected", [KEY_DELETE, KEY_X]], "save": ["Quick save", [KEY_F5]],
-	"people": ["People window", [KEY_F2]], "areas": ["Areas window", [KEY_F3]],
-	"towns": ["Towns window", [KEY_F4]], "today": ["Valley today", [KEY_F9]],
-	"realm": ["Realm window", [KEY_F6]], "rally": ["Rally", [KEY_R]],
-	"selectAll": ["Select all settlers", [KEY_E]],
+	"panUp": ["Pan up", [KEY_UP]], "panDown": ["Pan down", [KEY_DOWN]],
+	"panLeft": ["Pan left", [KEY_LEFT]], "panRight": ["Pan right", [KEY_RIGHT]],
+	"move": ["Move (then click a spot)", [KEY_M]], "stop": ["Stop", [KEY_S]],
+	"hold": ["Hold position", [KEY_H]], "attack": ["Attack — hunt (then click an animal)", [KEY_A]],
+	"returnGoods": ["Return goods to storage", [KEY_C]],
+	"zoomIn": ["Zoom in", [KEY_EQUAL, KEY_KP_ADD]], "zoomOut": ["Zoom out", [KEY_MINUS, KEY_KP_SUBTRACT]],
+	"pause": ["Pause / resume", [KEY_SPACE]], "speed1": ["Normal speed", [KEY_1]],
+	"speed2": ["Fast speed", [KEY_2]], "speed3": ["Fastest speed", [KEY_3]],
+	"build": ["Build menu", [KEY_B]], "harvest": ["Gather: mark for harvest", [KEY_G]],
+	"unmark": ["Unmark harvest", [KEY_U]], "demolish": ["Demolish selected", [KEY_DELETE, KEY_X]],
+	"cancel": ["Cancel / close", [KEY_ESCAPE]], "nextIdle": ["Next idle settler", [KEY_PERIOD]],
+	"selectAll": ["Select all settlers", [KEY_E]], "save": ["Quick save", [KEY_F5]],
+	"survey": ["Survey for ore", [KEY_Y]], "homeView": ["Jump to the Town Hall", [KEY_BACKSPACE, KEY_HOME]],
+	"findRuler": ["Find yourself (the ruler)", [KEY_K]], "rally": ["Rally the people (ruler selected)", [KEY_R]],
+	"trainRole": ["Train a role (people selected)", [KEY_T]], "healthBars": ["Health bars: everyone / only the hurt", [KEY_L]],
+	"goods": ["All goods", [KEY_I]], "today": ["Valley today", [KEY_F9]],
+	"seeMore": ["See more about the selection", [KEY_V]], "people": ["People window", [KEY_F2]],
+	"areas": ["Work areas window", [KEY_F3]], "towns": ["Towns window", [KEY_F4]],
+	"families": ["Families window", [KEY_F6]], "realm": ["Realm window", [KEY_F7]],
+	"goals": ["Goals window", [KEY_F8]], "help": ["Controls help", [KEY_F1]],
+	"fullscreen": ["Full screen on / off", [KEY_F]],
 }
 var keys: Dictionary = {}
 
