@@ -33,6 +33,8 @@ func check(condition: bool, message: String) -> void:
 func _run() -> void:
 	var errors := Errors.new()
 	OS.add_logger(errors)
+	# The game draws 1:1 (no stretch), so give the headless window the smallest supported size.
+	root.size = Vector2i(1280, 720)
 	var game: Game = load("res://scenes/main.tscn").instantiate()
 	game.settings = TestSettings.new()
 	game.store = TestStore.new("user://test-controls-store")

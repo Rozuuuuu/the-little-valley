@@ -16,11 +16,19 @@ var edge_scroll := true
 var bindings := KeyBindings.new()
 var keyboard_enabled := true
 var _drag_from: Variant = null
+## Edge scrolling waits until the mouse has moved over the game: before that its position is
+## unknown (a page reports 0, 0, which would pan up and left on its own).
+var _mouse_seen := false
 ## Settle zoom on PIXEL_STEPS (pixel art).
 var pixel_steps := true
 const PIXEL_STEPS: Array[float] = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5]
 ## The unsnapped zoom the wheel and pinches move; the target is its nearest step.
 var _free_zoom := 1.0
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		_mouse_seen = true
 
 
 func _ready() -> void:
@@ -38,7 +46,8 @@ func _process(delta: float) -> void:
 		dir.y -= 1
 	if keyboard_enabled and bindings.pressed("panDown"):
 		dir.y += 1
-	if edge_scroll and DisplayServer.window_is_focused() and not OS.has_feature("mobile"):
+	# Only while playing (not behind the title or an open window), like the keys.
+	if edge_scroll and keyboard_enabled and _mouse_seen and DisplayServer.window_is_focused() and not OS.has_feature("mobile"):
 		var m := get_viewport().get_mouse_position()
 		var size := get_viewport().get_visible_rect().size
 		if m.x >= 0 and m.y >= 0 and m.x <= size.x and m.y <= size.y:
@@ -72,6 +81,22 @@ func zoom_at(factor: float, screen_point: Vector2) -> void:
 		target_zoom = clampf(target_zoom * factor, ZOOM_MIN, ZOOM_MAX)
 	var after := screen_to_world(screen_point, target_zoom, target_pos)
 	target_pos += before - after
+
+
+## The display's scaling (Windows display scale, the browser's device pixel ratio), in quarter
+## steps from 1 to 3. The game draws 1:1 like the browser, so this sizes the interface and the
+## starting zoom for high-density screens.
+static func screen_scale() -> float:
+	var s := DisplayServer.screen_get_scale()
+	if OS.get_name() == "Windows":
+		s = DisplayServer.screen_get_dpi() / 96.0
+	return clampf(snappedf(s, 0.25), 1.0, 3.0)
+
+
+## The starting zoom: the browser's default of 3 screen pixels per art pixel (a tile is 48 px),
+## times the display's scaling.
+static func default_zoom() -> float:
+	return nearest_step(0.75 * screen_scale())
 
 
 ## The pixel zoom step nearest `z` (compared in log space, so steps feel even).

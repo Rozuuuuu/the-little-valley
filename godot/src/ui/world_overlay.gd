@@ -63,14 +63,19 @@ func _draw() -> void:
 			continue
 		var lift: Array = [0, 13, 18, 23]
 		SettlerView.draw_hp_bar(self, ap + Vector2(0, -float(lift[clampi(int(d.get("size", 1)), 0, 3)]) * 4.0), a.health() / maxf(1.0, hp_max), d.has("fightsBack"))
-	# Harvest marks: a small gold diamond over each marked object.
+	# Harvest marks, as the browser: the tool for the job (axe, pick or basket) over each marked
+	# object, bobbing while a settler is on the way to it.
 	var tiles := Rect2i(floori(view.position.x / T), floori(view.position.y / T), ceili(view.size.x / T) + 1, ceili(view.size.y / T) + 1)
+	var bob_t := Time.get_ticks_msec() / 1000.0 * 5.0
 	for k: int in sim.designations.keys_in(tiles):
-		var p := Vector2(Simulation.key_x(k) + 0.5, Simulation.key_y(k) + 0.85) * T
-		if true:
-			# A small gold tag at the foot of the marked object.
-			draw_colored_polygon(PackedVector2Array([p + Vector2(0, -5), p + Vector2(5, 0), p + Vector2(0, 5), p + Vector2(-5, 0)]), WorldView.GOLD)
-			draw_polyline(PackedVector2Array([p + Vector2(0, -5), p + Vector2(5, 0), p + Vector2(0, 5), p + Vector2(-5, 0), p + Vector2(0, -5)]), Color("#7a5a20"), 1.5, true)
+		var x := Simulation.key_x(k)
+		var y := Simulation.key_y(k)
+		if not sim.world.explored(x, y):
+			continue
+		var res: String = Tiles.object_resource[sim.world.obj(x, y)]
+		var icon := "ui_axe" if res == "wood" else ("ui_pick" if res == "stone" else "ui_basket")
+		var bob := roundf(sin(bob_t)) if sim.reservations.has(Simulation.K_OBJ + k) else 0.0
+		_draw_sprite(icon, Vector2((x + 0.5) * T, (y + (bob - 2.0) / 16.0) * T), 0.9)
 	# Construction progress: materials, then work.
 	for b in sim.sites():
 		var top := Vector2(b.x * T, b.y * T - 10)
@@ -260,3 +265,14 @@ func _draw_borders(sim: Simulation, view: Rect2, T: float, px: float) -> void:
 		var ok: bool = pv["problem"] == ""
 		draw_rect(hr, Color(WorldView.MINT if ok else Color("#d9584f"), 0.2))
 		_label(hr.position + Vector2(6, 20) * px, "%d coins" % int(pv["cost"]) if ok else str(pv["problem"]), WorldView.MINT if ok else Color("#f08a80"), px)
+
+
+## Draws one of the game's sprites with its anchor at `at` (world px), at the world's scale.
+func _draw_sprite(sprite_name: String, at: Vector2, alpha: float = 1.0) -> void:
+	var sp: Dictionary = game.art.sprites.get(sprite_name, {})
+	if sp.is_empty():
+		return
+	var k := WorldView.TILE_PX / Art.SOURCE_PX_PER_TILE
+	var size := Vector2(float(sp["w"]), float(sp["h"])) * k
+	var anchor := Vector2(float(sp["ax"]), float(sp["ay"])) * k
+	draw_texture_rect(sp["texture"] as Texture2D, Rect2(at - anchor, size), false, Color(1, 1, 1, alpha))

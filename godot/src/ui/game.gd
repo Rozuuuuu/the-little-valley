@@ -476,12 +476,18 @@ func _show_backdrop() -> void:
 	else:
 		view.set_simulation(s)
 	var camp := BuildingOps.camp_of(s)
-	# Framed so the hamlet sits right of the menu panel.
-	var focus := Vector2(camp.center_x() - 7, camp.y + camp.h) if camp != null else Vector2.ZERO
+	camera.target_zoom = CameraRig.default_zoom()
+	camera.zoom = Vector2.ONE * camera.target_zoom
+	# Framed as the browser's title: the hall just right of the menu column, whatever the width.
+	var w := get_viewport().get_visible_rect().size.x
+	var hall_at := maxf(0.36 * w, 0.08 * w + 560.0 * CameraRig.screen_scale())
+	var focus := Vector2.ZERO
+	if camp != null:
+		# The whole view is open land, never the fog's black edge.
+		s.world.reveal(camp.center_x(), camp.y + camp.h, 48.0)
+		focus = Vector2(camp.center_x() - (hall_at - w / 2.0) / (WorldView.TILE_PX * camera.target_zoom), camp.y + camp.h)
 	camera.position = focus * WorldView.TILE_PX
 	camera.target_pos = camera.position
-	camera.target_zoom = 0.75
-	camera.zoom = Vector2.ONE * 0.75
 
 
 ## Places a finished building at the first valid spot near the hall of `s`.
@@ -685,8 +691,8 @@ func _start(s: Simulation) -> void:
 	var focus := Vector2(camp.center_x(), camp.y + camp.h + 1) if camp != null else Vector2.ZERO
 	camera.position = focus * WorldView.TILE_PX
 	camera.target_pos = camera.position
-	camera.target_zoom = 0.75
-	camera.zoom = Vector2.ONE * 0.75
+	camera.target_zoom = CameraRig.default_zoom()
+	camera.zoom = Vector2.ONE * camera.target_zoom
 	_autosave_at = Time.get_ticks_msec() / 1000.0 + settings.autosave_minutes * 60.0
 	paused = false
 	_today_at = -1

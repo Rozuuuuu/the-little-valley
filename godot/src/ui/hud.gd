@@ -126,7 +126,8 @@ func _ready() -> void:
 
 
 func _apply_scale() -> void:
-	var s := game.settings.ui_scale if game != null else 1.0
+	# The player's interface size on top of the display's scaling (the game draws 1:1).
+	var s := (game.settings.ui_scale if game != null else 1.0) * CameraRig.screen_scale()
 	_root.scale = Vector2(s, s)
 	var size := get_viewport().get_visible_rect().size / s
 	if _root.size != size:
@@ -1301,11 +1302,11 @@ func show_title(message: String = "") -> void:
 	shell.add_theme_constant_override("separation", 6)
 	col.add_child(_spacer(12))
 	col.add_child(shell)
+	if Files.is_web() and not Pwa.runs_as_app():
+		_offer_install(shell)
 	var fs := _button("Full screen", _toggle_fullscreen, "Play full screen (F)")
 	fs.theme_type_variation = &"TabButton"
 	shell.add_child(fs)
-	if Files.is_web() and not Pwa.runs_as_app():
-		_offer_install(shell)
 	var tip := _row_label("Tip: play full screen so the mouse can't slip off the screen edge while scrolling.", _c("textDim"), 12)
 	tip.custom_minimum_size = Vector2(330, 0)
 	col.add_child(_spacer(6))
@@ -1899,25 +1900,33 @@ func _wrapped(text: String, color: Color) -> Label:
 
 
 ## In a browser tab: Little Valley is meant to be installed (full screen, offline, its own icon).
+## The browser's "Install app" shell button: the browser's own install prompt when it offers one,
+## otherwise a small window with this browser's steps.
 func _offer_install(v: BoxContainer) -> void:
-	var box := VBoxContainer.new()
-	var head := Label.new()
-	head.text = "Install Little Valley: it runs full screen, works offline and keeps your valleys on this device."
-	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	head.custom_minimum_size = Vector2(440, 0)
-	head.add_theme_color_override("font_color", _c("accent"))
-	box.add_child(head)
+	var install := _button("Install app", _show_install, "Runs full screen, works offline and keeps your valleys on this device")
+	install.theme_type_variation = &"TabOn"
+	v.add_child(install)
+
+
+func _show_install() -> void:
 	if Pwa.can_prompt():
-		box.add_child(_button("Install Little Valley", func() -> void: Pwa.prompt_install()))
-	else:
-		for step: String in Pwa.install_steps(Pwa.this_device()):
-			var l := Label.new()
-			l.text = "•  " + step
-			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			l.custom_minimum_size = Vector2(440, 0)
-			l.add_theme_color_override("font_color", _c("textDim"))
-			box.add_child(l)
-	v.add_child(box)
+		Pwa.prompt_install()
+		return
+	var v := open_modal("Install Little Valley", 480)
+	var head := Label.new()
+	head.text = "It runs full screen, works offline and keeps your valleys on this device."
+	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	head.add_theme_color_override("font_color", _c("accent"))
+	v.add_child(head)
+	for step: String in Pwa.install_steps(Pwa.this_device()):
+		var l := Label.new()
+		l.text = "•  " + step
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		v.add_child(l)
+	var ok := _button("Got it", close_modal)
+	ok.theme_type_variation = &"PrimaryButton"
+	v.add_child(_spacer(6))
+	v.add_child(_buttons_row([ok]))
 
 
 func _volume_row(text: String, key: String) -> HBoxContainer:
