@@ -724,9 +724,7 @@ func _refresh_goals() -> void:
 		var nm: Dictionary = ms[nid]
 		_goals_body.add_child(_row_label("Next: %s. %s" % [nm["name"], nm.get("description", "")], _c("textDim"), 13))
 		for req: Dictionary in nm.get("requirements", []):
-			var r := Progression.requirement_progress(sim, req)
-			var done := bool(r["done"])
-			_goals_body.add_child(_row_label("%s %s%s" % ["[x]" if done else "[ ]", r["label"], "" if done else " (%d/%d)" % [int(r["current"]), int(r["target"])]], _c("good") if done else _c("text"), 14))
+			_goals_body.add_child(req_row(Progression.requirement_progress(sim, req), 14))
 		var unlocks: Array = nm.get("unlocks", [])
 		if not unlocks.is_empty():
 			_goals_body.add_child(_row_label("Unlocks: %s" % ", ".join(PackedStringArray(unlocks)), _c("textDim"), 12))
@@ -1818,8 +1816,9 @@ func show_today(o: Dictionary) -> void:
 	if ms["next"] != null:
 		v.add_child(_h3("%s, next: %s" % [ms["current"], ms["next"]]))
 		for r: Dictionary in ms["reqs"]:
-			var done: bool = r["done"]
-			v.add_child(_today_text("%s  %s%s" % ["[x]" if done else "[ ]", r["label"], "" if done else " (%d/%d)" % [int(r["current"]), int(r["target"])]], _c("good") if done else _c("text")))
+			var row := req_row(r, 13)
+			row.custom_minimum_size = Vector2(360, 0)
+			v.add_child(row)
 	var start := _button("Start playing", _close_today)
 	start.theme_type_variation = &"PrimaryButton"
 	v.add_child(start)
@@ -1829,6 +1828,27 @@ func show_today(o: Dictionary) -> void:
 	scroll.custom_minimum_size = Vector2(372, minf(v.get_combined_minimum_size().y, _root.size.y - 62 - GameConsole.HEIGHT - 22))
 	_today.reset_size()
 	_today.position = Vector2(6, 62)
+
+
+## A milestone requirement as the browser's .req row: a square box (filled green when done), the
+## label and, until done, the count. Done rows are dimmed.
+func req_row(r: Dictionary, size: int = 13) -> HBoxContainer:
+	var done := bool(r["done"])
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	var box := Panel.new()
+	box.custom_minimum_size = Vector2(14, 14)
+	box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = _c("good") if done else Color(0, 0, 0, 0)
+	sb.border_color = _c("good") if done else _c("lineHi")
+	sb.set_border_width_all(2)
+	box.add_theme_stylebox_override("panel", sb)
+	row.add_child(box)
+	var l := _row_label("%s%s" % [r["label"], "" if done else " (%d/%d)" % [int(r["current"]), int(r["target"])]], _c("textDim") if done else _c("text"), size)
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(l)
+	return row
 
 
 func _today_text(t: String, col: Color) -> Label:

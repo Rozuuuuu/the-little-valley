@@ -464,11 +464,17 @@ func _valley_info() -> void:
 	if nid != "":
 		var nm: Dictionary = ms[nid]
 		v.add_child(_line("Next: %s" % nm["name"], hud._c("text")))
+		# Two columns of checklist rows, as the browser's .con-reqs.
 		var reqs: Array = nm.get("requirements", [])
-		for req: Dictionary in reqs.slice(0, 3):
-			var r := Progression.requirement_progress(sim, req)
-			var done := bool(r["done"])
-			v.add_child(_line("%s %s%s" % ["[x]" if done else "[ ]", r["label"], "" if done else " (%d/%d)" % [int(r["current"]), int(r["target"])]], hud._c("good") if done else hud._c("text"), 13))
+		var grid := GridContainer.new()
+		grid.columns = 2
+		grid.add_theme_constant_override("h_separation", 10)
+		grid.add_theme_constant_override("v_separation", 1)
+		for req: Dictionary in reqs.slice(0, 4):
+			var row := hud.req_row(Progression.requirement_progress(sim, req), 13)
+			row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			grid.add_child(row)
+		v.add_child(grid)
 	else:
 		v.add_child(_line("Every milestone reached. Keep building.", hud._c("textDim")))
 	var ruler := sim.ruler()
@@ -879,13 +885,13 @@ func _slot_button(c: Variant, i: int) -> Control:
 
 func _hotkey_label(c: Dictionary, i: int) -> String:
 	if menu != "" and c.has("grid"):
-		return OS.get_keycode_string(GRID_KEYS[int(c["grid"])])
+		return KeyBindings.short_name(GRID_KEYS[int(c["grid"])])
 	if c.has("key"):
-		return OS.get_keycode_string(int(c["key"]))
+		return KeyBindings.short_name(int(c["key"]))
 	var a := str(c["action"])
 	if a == "cancel":
 		return "Esc"
-	return game.settings.bindings.label(a) if a != "" and game.settings.bindings.keys.has(a) else ""
+	return game.settings.bindings.short_label(a) if a != "" and game.settings.bindings.keys.has(a) else ""
 
 
 func _show_tip(t: String) -> void:

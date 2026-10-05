@@ -60,6 +60,23 @@ func label(action: String) -> String:
 		names.append(OS.get_keycode_string(key))
 	return " / ".join(names) if not names.is_empty() else "Unassigned"
 
+## The first key in a few characters, for the corner of a command button (the browser shows ".",
+## not "Period").
+const SHORT := {"Period": ".", "Comma": ",", "Minus": "-", "Equal": "=", "Slash": "/", "BackSpace": "Bksp",
+	"Backspace": "Bksp", "Delete": "Del", "Escape": "Esc", "Space": "Spc", "Semicolon": ";", "Apostrophe": "'",
+	"BracketLeft": "[", "BracketRight": "]", "QuoteLeft": "`", "BackSlash": "\\", "Backslash": "\\", "Insert": "Ins"}
+
+
+static func short_name(key: int) -> String:
+	var n := OS.get_keycode_string(key)
+	return str(SHORT.get(n, n))
+
+
+func short_label(action: String) -> String:
+	var ks: Array = keys.get(action, [])
+	return "" if ks.is_empty() else short_name(int(ks[0]))
+
+
 func rebind(action: String, key: int) -> String:
 	if not DEFINITIONS.has(action):
 		return "Unknown shortcut"

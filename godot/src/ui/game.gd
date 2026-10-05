@@ -368,6 +368,8 @@ func _capture(opts: Dictionary) -> void:
 		"realm": hud.toggle_realm()
 		"help": hud.toggle_help()
 	match str(opts.get("select", "")):
+		"none":
+			selected.clear()
 		"settler":
 			selected = [sim.settlers[0].id]
 		"hall":
