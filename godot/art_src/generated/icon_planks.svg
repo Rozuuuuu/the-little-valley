@@ -1,29 +1,29 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
 <g>
-<clipPath id="c334"><path d="M13,16H51Q54,16 54,19V23Q54,26 51,26H13Q10,26 10,23V19Q10,16 13,16Z"/></clipPath>
-<clipPath id="c334r"><path d="M13,16H51Q54,16 54,19V23Q54,26 51,26H13Q10,26 10,23V19Q10,16 13,16Z" transform="translate(-5,-5)"/></clipPath>
+<clipPath id="c346"><path d="M13,16H51Q54,16 54,19V23Q54,26 51,26H13Q10,26 10,23V19Q10,16 13,16Z"/></clipPath>
+<clipPath id="c346r"><path d="M13,16H51Q54,16 54,19V23Q54,26 51,26H13Q10,26 10,23V19Q10,16 13,16Z" transform="translate(-5,-5)"/></clipPath>
 <path d="M13,16H51Q54,16 54,19V23Q54,26 51,26H13Q10,26 10,23V19Q10,16 13,16Z" fill="#7d5636"/>
-<g clip-path="url(#c334)">
+<g clip-path="url(#c346)">
 <path d="M13,16H51Q54,16 54,19V23Q54,26 51,26H13Q10,26 10,23V19Q10,16 13,16Z" fill="#a77446" transform="translate(-2,-2)"/>
 <path d="M13,16H51Q54,16 54,19V23Q54,26 51,26H13Q10,26 10,23V19Q10,16 13,16Z" fill="#c9955f" opacity="0.9" transform="translate(28,28) scale(0.72) translate(-32,-32)"/>
 
 </g>
 <path d="M13,16H51Q54,16 54,19V23Q54,26 51,26H13Q10,26 10,23V19Q10,16 13,16Z" fill="none" stroke="#39392f" stroke-width="3" stroke-linejoin="round"/>
 </g><g>
-<clipPath id="c335"><path d="M13,28H51Q54,28 54,31V35Q54,38 51,38H13Q10,38 10,35V31Q10,28 13,28Z"/></clipPath>
-<clipPath id="c335r"><path d="M13,28H51Q54,28 54,31V35Q54,38 51,38H13Q10,38 10,35V31Q10,28 13,28Z" transform="translate(-5,-5)"/></clipPath>
+<clipPath id="c347"><path d="M13,28H51Q54,28 54,31V35Q54,38 51,38H13Q10,38 10,35V31Q10,28 13,28Z"/></clipPath>
+<clipPath id="c347r"><path d="M13,28H51Q54,28 54,31V35Q54,38 51,38H13Q10,38 10,35V31Q10,28 13,28Z" transform="translate(-5,-5)"/></clipPath>
 <path d="M13,28H51Q54,28 54,31V35Q54,38 51,38H13Q10,38 10,35V31Q10,28 13,28Z" fill="#7d5636"/>
-<g clip-path="url(#c335)">
+<g clip-path="url(#c347)">
 <path d="M13,28H51Q54,28 54,31V35Q54,38 51,38H13Q10,38 10,35V31Q10,28 13,28Z" fill="#a77446" transform="translate(-2,-2)"/>
 <path d="M13,28H51Q54,28 54,31V35Q54,38 51,38H13Q10,38 10,35V31Q10,28 13,28Z" fill="#c9955f" opacity="0.9" transform="translate(28,28) scale(0.72) translate(-32,-32)"/>
 
 </g>
 <path d="M13,28H51Q54,28 54,31V35Q54,38 51,38H13Q10,38 10,35V31Q10,28 13,28Z" fill="none" stroke="#39392f" stroke-width="3" stroke-linejoin="round"/>
 </g><g>
-<clipPath id="c336"><path d="M13,40H51Q54,40 54,43V47Q54,50 51,50H13Q10,50 10,47V43Q10,40 13,40Z"/></clipPath>
-<clipPath id="c336r"><path d="M13,40H51Q54,40 54,43V47Q54,50 51,50H13Q10,50 10,47V43Q10,40 13,40Z" transform="translate(-5,-5)"/></clipPath>
+<clipPath id="c348"><path d="M13,40H51Q54,40 54,43V47Q54,50 51,50H13Q10,50 10,47V43Q10,40 13,40Z"/></clipPath>
+<clipPath id="c348r"><path d="M13,40H51Q54,40 54,43V47Q54,50 51,50H13Q10,50 10,47V43Q10,40 13,40Z" transform="translate(-5,-5)"/></clipPath>
 <path d="M13,40H51Q54,40 54,43V47Q54,50 51,50H13Q10,50 10,47V43Q10,40 13,40Z" fill="#7d5636"/>
-<g clip-path="url(#c336)">
+<g clip-path="url(#c348)">
 <path d="M13,40H51Q54,40 54,43V47Q54,50 51,50H13Q10,50 10,47V43Q10,40 13,40Z" fill="#a77446" transform="translate(-2,-2)"/>
 <path d="M13,40H51Q54,40 54,43V47Q54,50 51,50H13Q10,50 10,47V43Q10,40 13,40Z" fill="#c9955f" opacity="0.9" transform="translate(28,28) scale(0.72) translate(-32,-32)"/>
 

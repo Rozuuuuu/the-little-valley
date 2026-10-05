@@ -39,6 +39,8 @@ var _buildings := {}
 var settler_views := {}
 ## animal id -> Sprite2D
 var animal_views := {}
+## company id -> CompanyView, for companies in the field.
+var company_views := {}
 var _white: ImageTexture
 var _season := ""
 ## Chunk builds (ground textures or object sprites) allowed per frame.
@@ -142,6 +144,7 @@ func refresh(alpha: float, view: Rect2, delta: float) -> void:
 	_sync_buildings()
 	_sync_settlers(alpha, delta, view.grow(TILE_PX * 3))
 	_sync_animals(alpha, view.grow(TILE_PX * 3))
+	_sync_companies(delta, view.grow(TILE_PX * 4))
 	_ground_layer.visible = ground_visible
 	_night.color = _night_tint()
 	_night.visible = _night.color != Color.WHITE
@@ -422,6 +425,42 @@ func _sync_settlers(alpha: float, delta: float, area: Rect2) -> void:
 		if not seen.has(id):
 			(settler_views[id] as Node).queue_free()
 			settler_views.erase(id)
+
+
+# ---- companies in the field ------------------------------------------------------------------------
+
+func _sync_companies(delta: float, area: Rect2) -> void:
+	var seen := {}
+	for k: Dictionary in sim.kingdoms:
+		var player: bool = k.get("player") == true
+		for c: Dictionary in k.get("companies", []):
+			var state := str(c.get("state", ""))
+			if state != "deployed" and state != "returning":
+				continue
+			var pos := Vector2(float(c.get("x", 0)), float(c.get("y", 0))) * TILE_PX
+			if not area.has_point(pos):
+				continue
+			var members: Array = []
+			if player:
+				for id: Variant in c.get("members", []):
+					var s := sim.settler(int(id))
+					if s != null and str(s.military.get("state", "")) == "deployed":
+						members.append(s)
+				if members.is_empty():
+					continue
+			var id := int(c["id"])
+			seen[id] = true
+			var v: CompanyView = company_views.get(id)
+			if v == null:
+				v = CompanyView.new()
+				v.setup(art, _palette["people"], c)
+				entities.add_child(v)
+				company_views[id] = v
+			v.refresh(c, members, delta, motion)
+	for id: int in company_views.keys():
+		if not seen.has(id):
+			(company_views[id] as Node).queue_free()
+			company_views.erase(id)
 
 
 # ---- animals -------------------------------------------------------------------------------------

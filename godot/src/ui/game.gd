@@ -164,6 +164,37 @@ func _capture(opts: Dictionary) -> void:
 		Diplomacy.make_offer(sim, int(rival["id"]), 0, "trade", {"durationDays": 8, "payment": 0}, Defs.DAY_TICKS * 2)
 		var ev := News.record_event(sim, "military-buildup", int(rival["id"]), 4, null)
 		News.record_observation(sim, 0, int(rival["id"]), "military-buildup", null, {"eventId": ev["id"], "certainty": "rumor", "source": "merchant", "delay": 0})
+	if opts.get("army", "0") == "1":
+		# Soldiers: an infantry company marching east of the hall, a knight and an archer at home,
+		# and a rival company of archers in the field.
+		Commands.apply(sim, {"type": "coronate", "rulerName": "Lloyd", "kingdomName": "Valleyhold", "banner": {"color": "#3a6ea5", "emblem": "oak"}})
+		var me := Kingdoms.player(sim)
+		var hall := BuildingOps.camp_of(sim)
+		var at := Vector2(hall.x + hall.w + 4.5, hall.y + 1.5)
+		var company := {"id": sim.alloc_id(), "kind": "infantry", "strength": 3, "pledgedTo": null, "owner": Kingdoms.PLAYER, "members": [], "state": "deployed",
+			"supplies": 3, "readiness": 100, "x": at.x, "y": at.y, "home": {"x": at.x, "y": at.y}, "target": {"x": at.x + 6.0, "y": at.y}, "path": null}
+		for i in range(1, 3):
+			var s := sim.settlers[i]
+			s.military = {"unit": "infantry", "state": "deployed", "trained": 1.0, "companyId": company["id"], "buildingId": hall.id, "gear": {"swords": 1}}
+			s.hidden = true
+			(company["members"] as Array).append(s.id)
+		(me["companies"] as Array).append(company)
+		sim.settlers[3].military = {"unit": "knight", "state": "ready", "trained": 1.0, "companyId": company["id"], "buildingId": hall.id, "gear": {"swords": 1}}
+		sim.settlers[4].military = {"unit": "archer", "state": "ready", "trained": 1.0, "companyId": company["id"], "buildingId": hall.id, "gear": {"bows": 1}}
+		var towns := Regions.nearby_towns(sim.seed_value)
+		if not towns.is_empty():
+			var rival := Kingdoms.know_of(sim, int(towns[0]["id"]))
+			var rc := Diplomacy.rival_companies(int(rival["id"]))
+			if not rc.is_empty():
+				var foe: Dictionary = rc[0]
+				foe["kind"] = "archer"
+				foe["state"] = "deployed"
+				foe["x"] = at.x + 1.0
+				foe["y"] = at.y + 4.0
+				foe["health"] = 70
+				rival["companies"] = [foe]
+		opts["x"] = str(at.x)
+		opts["y"] = str(at.y)
 	if opts.get("towns", "0") == "1":
 		# A waystation to the west with a depot at home and a wood route: carts on the road.
 		sim.reached.append("hamlet")

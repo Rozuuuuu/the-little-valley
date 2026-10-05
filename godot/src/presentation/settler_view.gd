@@ -7,6 +7,16 @@ extends Node2D
 ## sleeping outdoors lies down; asleep indoors hides. Side views are mirrored for facing right.
 
 const ROLE_HATS := {"farmer": "farmer", "builder": "builder", "gatherer": "gatherer", "hauler": "hauler", "crafter": "crafter", "laborer": ""}
+## Soldiers: headgear and weapon by unit.
+const UNIT_HATS := {"infantry": "helmet", "archer": "hood", "knight": "plume"}
+const UNIT_WEAPONS := {"infantry": &"sword", "archer": &"bow", "knight": &"sword"}
+
+
+## The hat a settler wears: a soldier's headgear, else their role's.
+static func hat_of(s: Settler) -> String:
+	if not s.military.is_empty():
+		return UNIT_HATS.get(str(s.military.get("unit", "")), "helmet")
+	return ROLE_HATS.get(s.job, "")
 
 var settler_id: int
 var selected := false
@@ -29,6 +39,7 @@ var _shown_tool: StringName = &""
 var _hair_style := 0
 var _legs_name := ""
 var _ring_state := -1
+var _hat_name := ""
 
 
 func setup(art: Art, s: Settler, people: Dictionary) -> void:
@@ -47,16 +58,18 @@ func setup(art: Art, s: Settler, people: Dictionary) -> void:
 	_carry.position = Vector2(12, -66)
 	_carry.visible = false
 	_last_pos = position
-	_apply_dir("down", s.job)
+	_apply_dir("down", hat_of(s))
 
 
-func _apply_dir(dir: String, job: String) -> void:
+func _apply_dir(dir: String, hat: String) -> void:
 	_dir = dir
+	_hat_name = hat
 	_art.apply(_body, "person_body_%s" % dir)
 	_art.apply(_head, "person_head_%s" % dir)
 	_art.apply(_hair, "person_hair_%d_%s" % [_hair_style, dir])
-	var hat: String = ROLE_HATS.get(job, "")
 	_hat.visible = hat != ""
+	# Hoods and helmets cover the hair.
+	_hair.visible = hat == "" or not UNIT_HATS.values().has(hat)
 	if hat != "":
 		_art.apply(_hat, "person_hat_%s_%s" % [hat, dir])
 	_set_legs("person_legs_%s_0" % dir)
@@ -69,9 +82,9 @@ func refresh(s: Settler, pos: Vector2, delta: float, motion: float) -> void:
 	if not visible:
 		return
 	var dir := "down" if s.facing == 0 else ("up" if s.facing == 1 else "side")
-	var job_key := s.job
-	if dir != _dir or _hat.visible != (ROLE_HATS.get(job_key, "") != ""):
-		_apply_dir(dir, job_key)
+	var hat := hat_of(s)
+	if dir != _dir or hat != _hat_name:
+		_apply_dir(dir, hat)
 	# Children are drawn smaller.
 	var k := 0.72 if s.life_stage == "child" else 1.0
 	_parts.scale = Vector2(-k if s.facing == 3 else k, k)
@@ -89,15 +102,17 @@ func refresh(s: Settler, pos: Vector2, delta: float, motion: float) -> void:
 		_set_legs("person_legs_%s_0" % _dir)
 		# A slow breath while idle.
 		_parts.position.y = sin(Time.get_ticks_msec() / 600.0 + settler_id) * 0.8 * motion
-	# Tool in hand while working.
+	# Tool in hand while working; soldiers always carry their weapon.
 	var tool := s.tool if s.anim == &"work" else &""
+	if not s.military.is_empty():
+		tool = UNIT_WEAPONS.get(str(s.military.get("unit", "")), &"sword")
 	if tool != _shown_tool:
 		_shown_tool = tool
 		_tool.visible = tool != &"" and _art.has("tool_%s" % tool)
 		if _tool.visible:
 			_art.apply(_tool, "tool_%s" % tool)
 	if _tool.visible:
-		_tool.rotation = sin(Time.get_ticks_msec() / 130.0 + settler_id) * 0.22 * maxf(motion, 0.3)
+		_tool.rotation = sin(Time.get_ticks_msec() / 130.0 + settler_id) * 0.22 * maxf(motion, 0.3) if s.anim == &"work" else 0.0
 	# Goods over the shoulder.
 	var carry := s.carry_res if s.carrying() else ""
 	if carry != _shown_carry:
@@ -128,3 +143,31 @@ func _draw() -> void:
 		draw_arc(Vector2.ZERO, 21.0, 0.0, TAU, 32, Color(WorldView.GOLD, 0.35), 3.0, true)
 	elif hovered:
 		draw_arc(Vector2.ZERO, 17.0, 0.0, TAU, 32, Color(WorldView.MINT, 0.9), 2.0, true)
+
+
+## Draws this figure as a soldier of a company in the field (the settler itself is hidden while
+## deployed): facing `facing` (0 down, 1 up, 2 left, 3 right), marching or standing.
+func pose(s: Settler, facing: int, marching: bool, delta: float, motion: float) -> void:
+	visible = true
+	var dir := "down" if facing == 0 else ("up" if facing == 1 else "side")
+	var hat := hat_of(s)
+	if dir != _dir or hat != _hat_name:
+		_apply_dir(dir, hat)
+	_parts.scale = Vector2(-1 if facing == 3 else 1, 1)
+	_parts.rotation = 0.0
+	if marching:
+		_walk_phase += delta * 8.0
+		_set_legs("person_legs_%s_%d" % [_dir, int(_walk_phase) % 4])
+		_parts.position = Vector2(0, -absf(sin(_walk_phase * PI / 2.0)) * 2.5 * motion)
+	else:
+		_set_legs("person_legs_%s_0" % _dir)
+		_parts.position = Vector2(0, sin(Time.get_ticks_msec() / 600.0 + settler_id) * 0.8 * motion)
+	var weapon: StringName = UNIT_WEAPONS.get(str(s.military.get("unit", "")), &"sword")
+	if weapon != _shown_tool:
+		_shown_tool = weapon
+		_tool.visible = _art.has("tool_%s" % weapon)
+		if _tool.visible:
+			_art.apply(_tool, "tool_%s" % weapon)
+	_tool.rotation = 0.0
+	_carry.visible = false
+	_shown_carry = ""

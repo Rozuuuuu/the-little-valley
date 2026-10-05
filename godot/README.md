@@ -67,6 +67,7 @@ address:
 | `--animals=1` | Place a coop, a sheep pen and a hunting lodge near the hall |
 | `--upgrade=1` | Start upgrading the storehouse and select it |
 | `--today=1` | Show Valley today and the introduction |
+| `--army=1` | A company marching, soldiers at home and a rival company in the field |
 
 On the web, use `?bench=N&settlers=M` instead.
 
