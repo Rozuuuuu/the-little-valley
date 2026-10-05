@@ -385,6 +385,15 @@ func _capture(opts: Dictionary) -> void:
 		"animal":
 			if not sim.animals.is_empty():
 				selected_animal = sim.animals[0].id
+	if opts.get("totitle", "0") == "1":
+		# Play, then Save and return to title: the menu must show a fresh world, not this village.
+		return_to_title()
+		for i in 90:
+			await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png(str(opts["shot"]))
+		print("captured %s after returning to the title" % opts["shot"])
+		get_tree().quit()
+		return
 	if opts.has("place"):
 		# Placing a building beside the hall, its see-through preview under the cursor.
 		var camp := BuildingOps.camp_of(sim)
@@ -492,13 +501,15 @@ func _show_backdrop() -> void:
 	var camp := BuildingOps.camp_of(s)
 	var home := Vector2(camp.center_x(), camp.y + camp.h) if camp != null else Vector2.ZERO
 	var spot := _wild_spot(s, home, rng)
-	s.world.reveal(spot.x, spot.y, 48.0)
+	s.world.reveal(spot.x, spot.y, 56.0)
 	_backdrop_reveal_at = spot
+	_backdrop_t = 0.0
 	camera.position = spot * WorldView.TILE_PX
 	camera.target_pos = camera.position
 
 
 var _backdrop_reveal_at := Vector2.ZERO
+var _backdrop_t := 0.0
 
 
 ## Mostly dry land, ideally with some water, 30–45 tiles from the start, so the title shows country, not the hamlet.
@@ -537,19 +548,34 @@ func _step_backdrop(delta: float) -> void:
 		backdrop.end_tick()
 		backdrop.drain_events()
 		_backdrop_acc -= TICK_MS
+	# A slow, endless glide over the land, like a game menu's panorama: a wide figure of eight
+	# around the chosen spot (all of it explored when the backdrop was made).
 	if settings.motion() > 0.0:
-		camera.target_pos.x += delta * 10.0
-	# The drifting view keeps to open country: explore ahead of it now and then.
-	var at := camera.target_pos / WorldView.TILE_PX
-	if at.distance_to(_backdrop_reveal_at) > 12.0:
-		_backdrop_reveal_at = at
-		backdrop.world.reveal(at.x + 20.0, at.y, 40.0)
+		_backdrop_t += delta
+	var drift := Vector2(sin(_backdrop_t * 0.03) * 14.0, sin(_backdrop_t * 0.06) * 5.0)
+	camera.target_pos = (_backdrop_reveal_at + drift) * WorldView.TILE_PX
 	view.motion = settings.motion()
-	view.refresh(1.0, camera.view_rect(), delta)
+	# Animals glide between ticks as in play.
+	view.refresh(clampf(_backdrop_acc / TICK_MS, 0.0, 1.0), camera.view_rect(), delta)
 	particles.step(delta, backdrop, camera.view_rect(), art, settings.effects == "low", backdrop.is_night())
 
 
 # ---- worlds -----------------------------------------------------------------------------------
+
+## Leaves the valley for the title: saves it, then shows a fresh random world behind the menu
+## (never the village just left).
+func return_to_title(message: String = "") -> void:
+	if sim != null:
+		save_now()
+	sim = null
+	selected.clear()
+	selected_building = -1
+	selected_animal = -1
+	cancel_placing()
+	paused = false
+	_show_backdrop()
+	hud.show_title(message)
+
 
 func new_world(seed_value: int, habitat: String, valley_name: String, ruler_name: String = "", introduction: bool = true) -> void:
 	hud.show_busy("Shaping the valley…")

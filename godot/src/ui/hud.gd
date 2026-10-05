@@ -1484,9 +1484,8 @@ func toggle_menu() -> void:
 			if bool(game.command({"type": "takeThrone", "name": throne.text})["ok"]):
 				close_modal(), "Walk the map as your valley's ruler"))
 	var quit := _button("Save and return to title", func() -> void:
-		game.save_now()
-		game.sim = null
-		show_title())
+		close_modal()
+		game.return_to_title())
 	quit.theme_type_variation = &"DangerButton"
 	v.add_child(quit)
 	v.add_child(_row_label("The valley saves itself every %d minutes. Saves are kept in %s." % [game.settings.autosave_minutes, "this browser" if Files.is_web() else UserDir.path().trim_suffix("/")], _c("textDim"), 12))
