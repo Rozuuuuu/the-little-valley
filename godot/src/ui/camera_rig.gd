@@ -15,6 +15,8 @@ var target_pos := Vector2.ZERO
 var edge_scroll := true
 var bindings := KeyBindings.new()
 var keyboard_enabled := true
+## Edge scrolling: while a valley is on screen with no window over it (set by the game).
+var edge_enabled := true
 var _drag_from: Variant = null
 ## Edge scrolling waits until the mouse has moved over the game: before that its position is
 ## unknown (a page reports 0, 0, which would pan up and left on its own).
@@ -46,19 +48,8 @@ func _process(delta: float) -> void:
 		dir.y -= 1
 	if keyboard_enabled and bindings.pressed("panDown"):
 		dir.y += 1
-	# Only while playing (not behind the title or an open window), like the keys.
-	if edge_scroll and keyboard_enabled and _mouse_seen and DisplayServer.window_is_focused() and not OS.has_feature("mobile"):
-		var m := get_viewport().get_mouse_position()
-		var size := get_viewport().get_visible_rect().size
-		if m.x >= 0 and m.y >= 0 and m.x <= size.x and m.y <= size.y:
-			if m.x < EDGE:
-				dir.x -= 1
-			elif m.x > size.x - EDGE:
-				dir.x += 1
-			if m.y < EDGE:
-				dir.y -= 1
-			elif m.y > size.y - EDGE:
-				dir.y += 1
+	if edge_scroll and edge_enabled and _mouse_seen and DisplayServer.window_is_focused() and not OS.has_feature("mobile"):
+		dir += _edge_dir()
 	if dir != Vector2.ZERO:
 		target_pos += dir.normalized() * PAN_SPEED * delta / zoom.x
 	# Ease toward the targets (frame-rate independent).
@@ -69,18 +60,56 @@ func _process(delta: float) -> void:
 		zoom = Vector2(target_zoom, target_zoom)
 
 
+## The edge-scroll direction. Inside the window: within EDGE px of a side. In a window (not full
+## screen) the mouse can slip past the side, so a pointer just outside it keeps scrolling that way.
+func _edge_dir() -> Vector2:
+	var dir := Vector2.ZERO
+	var size := get_viewport().get_visible_rect().size
+	var m := get_viewport().get_mouse_position()
+	if not OS.has_feature("web") and DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_WINDOWED:
+		var wp := Vector2(DisplayServer.window_get_position())
+		var ws := Vector2(DisplayServer.window_get_size())
+		var sm := Vector2(DisplayServer.mouse_get_position())
+		var outside := sm - wp
+		var margin := 400.0
+		if outside.x < -margin or outside.y < -margin or outside.x > ws.x + margin or outside.y > ws.y + margin:
+			return dir
+		# Screen coordinates in window pixels, then in viewport pixels.
+		m = outside * (size / ws)
+	if m.x < EDGE:
+		dir.x -= 1
+	elif m.x > size.x - EDGE:
+		dir.x += 1
+	if m.y < EDGE:
+		dir.y -= 1
+	elif m.y > size.y - EDGE:
+		dir.y += 1
+	return dir
+
+
 ## Zooms by `factor`, keeping the world point under `screen_point` fixed.
 func zoom_at(factor: float, screen_point: Vector2) -> void:
 	var before := screen_to_world(screen_point, target_zoom, target_pos)
 	if pixel_steps:
-		if not PIXEL_STEPS.has(target_zoom) or absf(_free_zoom - target_zoom) > target_zoom * 0.25:
-			_free_zoom = target_zoom
-		_free_zoom = clampf(_free_zoom * factor, PIXEL_STEPS[0], PIXEL_STEPS[-1])
-		target_zoom = nearest_step(_free_zoom)
+		var st := step_zoom(_free_zoom, target_zoom, factor)
+		_free_zoom = st.x
+		target_zoom = st.y
 	else:
 		target_zoom = clampf(target_zoom * factor, ZOOM_MIN, ZOOM_MAX)
 	var after := screen_to_world(screen_point, target_zoom, target_pos)
 	target_pos += before - after
+
+
+## One wheel or pinch step on the pixel zoom steps: (running zoom, step) from the old ones.
+## The running zoom carries on while it still rounds to the current step (it has to travel past
+## halfway to reach the next one), and starts again from the step if the zoom changed some other
+## way. (Comparing distances instead reset it short of halfway between 0.25 and 0.5, so the wheel
+## could never zoom back in from the farthest step.)
+static func step_zoom(free: float, target: float, factor: float) -> Vector2:
+	if nearest_step(free) != target:
+		free = target
+	free = clampf(free * factor, PIXEL_STEPS[0], PIXEL_STEPS[-1])
+	return Vector2(free, nearest_step(free))
 
 
 ## The display's scaling (Windows display scale, the browser's device pixel ratio), in quarter

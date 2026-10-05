@@ -48,16 +48,19 @@ var _builds_left := 0
 ## Night: a multiply-blended tint over the world, with lit windows drawn above it so they glow.
 var _night := ColorRect.new()
 var _lights := Node2D.new()
+## The fog of war over everything (see FogView).
+var fog := FogView.new()
 
 
 func _init() -> void:
 	# The title may close before setup() is called. Own these nodes from construction.
-	for layer: Node in [_ground_layer, _field_layer, entities, _night, _lights]:
+	for layer: Node in [_ground_layer, _field_layer, entities, _night, _lights, fog]:
 		add_child(layer)
 
 
 func setup(simulation: Simulation, sprites: Art) -> void:
 	sim = simulation
+	fog.sim = simulation
 	art = sprites
 	_palette = JSON.parse_string(FileAccess.get_file_as_string("res://art/palette.json"))
 	_ground_shader = load("res://src/presentation/shaders/ground.gdshader")
@@ -78,6 +81,8 @@ func setup(simulation: Simulation, sprites: Art) -> void:
 ## Replaces the simulation (after loading), clearing everything drawn.
 func set_simulation(simulation: Simulation) -> void:
 	sim = simulation
+	fog.sim = simulation
+	fog.reset()
 	for d: Dictionary in _ground.values():
 		(d["node"] as Node).queue_free()
 	for d: Dictionary in _objects.values():
@@ -133,6 +138,7 @@ func refresh(alpha: float, view: Rect2, delta: float) -> void:
 	_sync_settlers(alpha, delta, view.grow(TILE_PX * 3))
 	_sync_animals(alpha, view.grow(TILE_PX * 3))
 	_sync_companies(delta, view.grow(TILE_PX * 4))
+	fog.refresh(view, delta)
 	_ground_layer.visible = ground_visible
 	_night.color = _night_tint()
 	_night.visible = _night.color != Color.WHITE
@@ -167,8 +173,8 @@ func _sync_ground(k: int, c: Chunk) -> void:
 		mat.set_shader_parameter("pal", _season_palette(_season))
 		mat.set_shader_parameter("world_seed", sim.seed_value)
 		mat.set_shader_parameter("origin", Vector2(c.cx, c.cy) * Chunk.SIZE)
-		# The browser game's fog of war colour.
-		mat.set_shader_parameter("fog_color", Color("#17131f"))
+		# The fog is FogView's layer over everything, not painted into the ground.
+		mat.set_shader_parameter("fog_on", false)
 		node.material = mat
 		_ground_layer.add_child(node)
 		g = {"node": node, "terrain_version": -1, "fog_version": -1, "neighbours": -1}
@@ -180,9 +186,6 @@ func _sync_ground(k: int, c: Chunk) -> void:
 		g["terrain_version"] = c.terrain_version
 		g["neighbours"] = nsum
 		mat.set_shader_parameter("ids", _bordered_texture(c, false))
-	if int(g["fog_version"]) != c.fog_version:
-		g["fog_version"] = c.fog_version
-		mat.set_shader_parameter("fog", _bordered_texture(c, true))
 
 
 func _neighbour_signature(c: Chunk) -> int:
@@ -200,7 +203,7 @@ const BORDER := 3
 const BORDERED := Chunk.SIZE + BORDER * 2
 
 
-func _bordered_texture(c: Chunk, fog: bool) -> ImageTexture:
+func _bordered_texture(c: Chunk, exploration: bool) -> ImageTexture:
 	var data := PackedByteArray()
 	data.resize(BORDERED * BORDERED)
 	var ox := c.cx * Chunk.SIZE - BORDER
@@ -210,7 +213,7 @@ func _bordered_texture(c: Chunk, fog: bool) -> ImageTexture:
 			var tx := ox + x
 			var ty := oy + y
 			var v := 0
-			if fog:
+			if exploration:
 				v = 255 if sim.world.explored(tx, ty) else 0
 			else:
 				var t := sim.world.terrain(tx, ty)
@@ -251,8 +254,8 @@ func _season_palette(season: String) -> ImageTexture:
 
 func _sync_objects(k: int, c: Chunk) -> void:
 	var d: Dictionary = _objects.get(k, {})
-	# Objects show only on explored land (as the browser), so they follow the fog as it lifts.
-	var version := c.version * 100003 + c.fog_version
+	# Objects stand everywhere; FogView's layer dims or hides them with the land under them.
+	var version := c.version
 	if not d.is_empty() and int(d["version"]) == version:
 		return
 	if not _ground.has(k) or _builds_left <= 0:
@@ -274,8 +277,6 @@ func _sync_objects(k: int, c: Chunk) -> void:
 			continue
 		var tx := ox + (i & Chunk.MASK)
 		var ty := oy + (i >> Chunk.SHIFT)
-		if not sim.world.explored(tx, ty):
-			continue
 		var sprite_name := _object_sprite(o, tx, ty)
 		if sprite_name == "":
 			continue

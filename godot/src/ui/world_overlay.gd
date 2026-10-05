@@ -122,10 +122,11 @@ func _draw() -> void:
 	if game.hover_tile.x != -99999 and game.placing == "":
 		draw_rect(Rect2(Vector2(game.hover_tile) * T, Vector2(T, T)), Color(WorldView.MINT, 0.5), false, 2.0)
 	# Placement ghost.
+	var with_sprite := game.ghost_sprite != "" and game.placing != ""
 	for t: Array in game.ghost_tiles:
 		var r := Rect2(Vector2(int(t[0]), int(t[1])) * T, Vector2(T, T))
 		if bool(t[2]):
-			draw_rect(r, Color(WorldView.MINT, 0.35))
+			draw_rect(r, Color(WorldView.MINT, 0.15 if with_sprite else 0.35))
 			draw_rect(r, Color(WorldView.MINT, 0.9), false, 2.0)
 		else:
 			draw_rect(r, Color("#d9584f", 0.35))
@@ -133,6 +134,10 @@ func _draw() -> void:
 				var o := i * T / 4.0
 				draw_line(r.position + Vector2(o, 0), r.position + Vector2(0, o), Color("#d9584f", 0.9), 2.0)
 				draw_line(r.end - Vector2(o, 0), r.end - Vector2(0, o), Color("#d9584f", 0.9), 2.0)
+	# The building itself, see-through over its footprint (reddened where it can't go).
+	if with_sprite:
+		var tint := Color(1, 1, 1, 0.8) if game.ghost_ok else Color(1.0, 0.45, 0.4, 0.65)
+		_draw_sprite(game.ghost_sprite, Vector2(game.ghost_at) * T, tint.a, tint)
 	# Drag box.
 	if game.drag_box.has_area():
 		if game.placing.begins_with("area:"):
@@ -268,11 +273,11 @@ func _draw_borders(sim: Simulation, view: Rect2, T: float, px: float) -> void:
 
 
 ## Draws one of the game's sprites with its anchor at `at` (world px), at the world's scale.
-func _draw_sprite(sprite_name: String, at: Vector2, alpha: float = 1.0) -> void:
+func _draw_sprite(sprite_name: String, at: Vector2, alpha: float = 1.0, tint: Color = Color.WHITE) -> void:
 	var sp: Dictionary = game.art.sprites.get(sprite_name, {})
 	if sp.is_empty():
 		return
 	var k := WorldView.TILE_PX / Art.SOURCE_PX_PER_TILE
 	var size := Vector2(float(sp["w"]), float(sp["h"])) * k
 	var anchor := Vector2(float(sp["ax"]), float(sp["ay"])) * k
-	draw_texture_rect(sp["texture"] as Texture2D, Rect2(at - anchor, size), false, Color(1, 1, 1, alpha))
+	draw_texture_rect(sp["texture"] as Texture2D, Rect2(at - anchor, size), false, Color(tint.r, tint.g, tint.b, alpha))

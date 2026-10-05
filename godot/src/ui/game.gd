@@ -45,6 +45,11 @@ var hover_tile := Vector2i(-99999, 0)
 ## area, or "".
 var placing := ""
 var ghost_tiles: Array = []
+## The building being placed, drawn see-through at its spot (red where it can't go): its sprite
+## name, footprint bottom-left tile and whether the spot is allowed. "" when none.
+var ghost_sprite := ""
+var ghost_at := Vector2i.ZERO
+var ghost_ok := false
 var drag_box := Rect2()
 var markers: Array[Dictionary] = []
 
@@ -379,6 +384,12 @@ func _capture(opts: Dictionary) -> void:
 		"animal":
 			if not sim.animals.is_empty():
 				selected_animal = sim.animals[0].id
+	if opts.has("place"):
+		# Placing a building beside the hall, its see-through preview under the cursor.
+		var camp := BuildingOps.camp_of(sim)
+		placing = str(opts["place"])
+		hover_tile = Vector2i(camp.x + camp.w + 3, camp.y + camp.h) if camp != null else Vector2i(4, 4)
+		_update_ghost()
 	if opts.get("build", "0") == "1":
 		hud.console.menu = "build"
 	elif opts.has("build"):
@@ -456,53 +467,64 @@ func _place_near_hall(types: Array) -> void:
 
 # ---- title backdrop -----------------------------------------------------------------------------
 
-## The title's backdrop: a small finished hamlet with fields, drifting by behind the menu while
-## its settlers go about their day. It is never saved; the first real valley replaces it.
-const BACKDROP_SEED := 4242
+## The title's backdrop: a random wild world drifting by behind the menu, its animals going about
+## their day. It is never saved; the first real valley replaces it.
 var backdrop: Simulation = null
 var _backdrop_acc := 0.0
 
 
 func _show_backdrop() -> void:
-	var s := NewGame.create(BACKDROP_SEED)
-	for type: String in ["house", "familyHome", "storehouse", "workshop", "well", "house", "flowerbed", "haystack"]:
-		_build_near_hall(s, type)
-	Commands.apply(s, {"type": "placeArea", "building": "field", "x0": -9, "y0": 4, "x1": -6, "y1": 7, "crop": "wheat"})
-	Commands.apply(s, {"type": "placeArea", "building": "field", "x0": 5, "y0": 5, "x1": 7, "y1": 7, "crop": "turnip"})
-	for b: Building in s.fields():
-		b.field["state"] = "growing"
-		b.field["growth"] = float(Defs.crop(b.field["crop"])["growTicks"]) * 0.6
+	# A new, random world every time the title opens: its own seed and kind of land, framed on
+	# wild country well away from where its people start, with the wildlife going about its day.
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var ids: Array = Content.get_value("habitats", "HABITAT_IDS")
+	var s := NewGame.create(rng.randi() & 0x7FFFFFFF, WorldGen.CURRENT_GEN, str(ids[rng.randi() % ids.size()]))
 	backdrop = s
 	if view.art == null:
 		view.setup(s, art)
 	else:
 		view.set_simulation(s)
-	var camp := BuildingOps.camp_of(s)
+	view.fog.veil = false
 	camera.target_zoom = CameraRig.default_zoom()
 	camera.zoom = Vector2.ONE * camera.target_zoom
-	# Framed as the browser's title: the hall just right of the menu column, whatever the width.
-	var w := get_viewport().get_visible_rect().size.x
-	var hall_at := maxf(0.36 * w, 0.08 * w + 560.0 * CameraRig.screen_scale())
-	var focus := Vector2.ZERO
-	if camp != null:
-		# The whole view is open land, never the fog's black edge.
-		s.world.reveal(camp.center_x(), camp.y + camp.h, 48.0)
-		focus = Vector2(camp.center_x() - (hall_at - w / 2.0) / (WorldView.TILE_PX * camera.target_zoom), camp.y + camp.h)
-	camera.position = focus * WorldView.TILE_PX
+	var camp := BuildingOps.camp_of(s)
+	var home := Vector2(camp.center_x(), camp.y + camp.h) if camp != null else Vector2.ZERO
+	var spot := _wild_spot(s, home, rng)
+	s.world.reveal(spot.x, spot.y, 48.0)
+	_backdrop_reveal_at = spot
+	camera.position = spot * WorldView.TILE_PX
 	camera.target_pos = camera.position
 
 
-## Places a finished building at the first valid spot near the hall of `s`.
-func _build_near_hall(s: Simulation, type: String) -> void:
-	for r in range(3, 16):
-		for y in range(-r, r + 1):
-			for x in range(-r, r + 1):
-				if maxi(absi(x), absi(y)) != r or not bool(BuildingOps.check_placement(s, type, x, y)["ok"]):
-					continue
-				var b := BuildingOps.place(s, type, x, y)
-				b.delivered = BuildingOps.cost_of(b).duplicate()
-				BuildingOps.complete(s, b)
-				return
+var _backdrop_reveal_at := Vector2.ZERO
+
+
+## Mostly dry land, ideally with some water, 30–45 tiles from the start, so the title shows country, not the hamlet.
+func _wild_spot(s: Simulation, home: Vector2, rng: RandomNumberGenerator) -> Vector2:
+	var best := home + Vector2(36, 0)
+	var best_score := -1
+	for attempt in 10:
+		var a := rng.randf() * TAU
+		var p := home + Vector2(cos(a), sin(a)) * rng.randf_range(30.0, 45.0)
+		var score := 0
+		var water := false
+		for dy in range(-8, 9, 4):
+			for dx in range(-14, 15, 4):
+				var tx := floori(p.x) + dx
+				var ty := floori(p.y) + dy
+				s.world.ensure(tx >> Chunk.SHIFT, ty >> Chunk.SHIFT)
+				var t := s.world.terrain(tx, ty)
+				water = water or t == Tiles.WATER
+				if s.world.naturally_walkable(tx, ty):
+					score += 2 if s.world.obj(tx, ty) != Tiles.O_NONE else 1
+		# A lake or river in view makes a better picture.
+		if water:
+			score += 20
+		if score > best_score:
+			best_score = score
+			best = p
+	return best
 
 
 ## Runs the backdrop at normal speed and drifts the camera slowly east.
@@ -516,6 +538,11 @@ func _step_backdrop(delta: float) -> void:
 		_backdrop_acc -= TICK_MS
 	if settings.motion() > 0.0:
 		camera.target_pos.x += delta * 10.0
+	# The drifting view keeps to open country: explore ahead of it now and then.
+	var at := camera.target_pos / WorldView.TILE_PX
+	if at.distance_to(_backdrop_reveal_at) > 12.0:
+		_backdrop_reveal_at = at
+		backdrop.world.reveal(at.x + 20.0, at.y, 40.0)
 	view.motion = settings.motion()
 	view.refresh(1.0, camera.view_rect(), delta)
 	particles.step(delta, backdrop, camera.view_rect(), art, settings.effects == "low", backdrop.is_night())
@@ -686,6 +713,7 @@ func _start(s: Simulation) -> void:
 	view.set_simulation(s)
 	if view.art == null:
 		view.setup(s, art)
+	view.fog.veil = true
 	selected.clear()
 	selected_building = -1
 	placing = ""
@@ -706,6 +734,7 @@ func _start(s: Simulation) -> void:
 func save_now(label: String = "") -> bool:
 	if sim == null:
 		return false
+	_settle_tick()
 	var data := SaveCodec.encode(sim, world_name, created_at, {"camX": camera.position.x, "camY": camera.position.y, "zoom": camera.zoom.x})
 	data["tutorial"] = tutorial.duplicate()
 	var r := store.save(world_id, world_name, data, label)
@@ -724,6 +753,7 @@ func save_now(label: String = "") -> bool:
 func _process(delta: float) -> void:
 	var focus := get_viewport().gui_get_focus_owner()
 	camera.keyboard_enabled = sim != null and not hud.blocking() and not (focus is LineEdit or focus is TextEdit)
+	camera.edge_enabled = sim != null and not hud.title_or_window_open()
 	if sim == null:
 		audio.busy = false
 		if backdrop != null:
@@ -744,7 +774,7 @@ func _process(delta: float) -> void:
 	last_sim_ms = (t_view - t_sim) / 1000.0
 	audio.set_mood(sim.is_night(), sim.raining)
 	audio.busy = not paused and not hud.blocking()
-	var alpha := clampf(_acc / TICK_MS, 0.0, 1.0) if sim.slice_next == -1 else 1.0
+	var alpha := clampf(_acc / TICK_MS, 0.0, 1.0)
 	view.motion = settings.motion()
 	SettlerView.health_bars_all = settings.health_bars == "always"
 	view.refresh(alpha, camera.view_rect(), delta)
@@ -759,17 +789,18 @@ func _process(delta: float) -> void:
 		save_now()
 
 
-## Runs due ticks in slices within a hard time budget per frame (SIM_BUDGET_MS, at least one
-## slice). Each slice is a share of the tick spread over the frames the tick lasts. On a device
-## too slow to keep up, game time runs slower rather than the frame rate collapsing: a backlog of
-## more than MAX_BACKLOG ticks is dropped (never caught up in one frame).
+## Runs the simulation in slices within a hard time budget per frame (SIM_BUDGET_MS, at least
+## one slice). The next tick is worked on while the last one is still being shown (people glide
+## from where they were to where it put them), and is applied only when its time comes: so the
+## picture never waits for a tick to be computed, and walking stays smooth however many settlers
+## there are. On a device too slow to keep up, game time runs slower rather than the frame rate
+## collapsing: a backlog of more than MAX_BACKLOG ticks is dropped (never caught up in one frame).
 func _run_ticks(started_usec: int) -> void:
 	var frames_per_tick := maxf(1.0, TICK_MS / (1000.0 / maxf(1.0, Engine.get_frames_per_second())) / speed)
-	var slice := maxi(8, ceili(sim.settlers.size() / frames_per_tick))
+	# Aim to finish a tick's work in about two thirds of the tick, leaving room to spare.
+	var slice := maxi(8, ceili(sim.settlers.size() / maxf(1.0, frames_per_tick * 0.66)))
 	while true:
 		if sim.slice_next == -1:
-			if _acc < TICK_MS:
-				break
 			sim.begin_tick()
 		var n := sim.settlers.size()
 		while sim.slice_next < n:
@@ -777,11 +808,23 @@ func _run_ticks(started_usec: int) -> void:
 			if (Time.get_ticks_usec() - started_usec) / 1000.0 > SIM_BUDGET_MS:
 				_trim_backlog()
 				return
+		if _acc < TICK_MS:
+			break
 		sim.end_tick()
 		_acc -= TICK_MS
 		if (Time.get_ticks_usec() - started_usec) / 1000.0 > SIM_BUDGET_MS:
 			break
 	_trim_backlog()
+
+
+## Completes the tick being worked on ahead of time (before saving, so a save never holds half a
+## tick).
+func _settle_tick() -> void:
+	if sim == null or sim.slice_next == -1:
+		return
+	sim.update_settlers(sim.slice_next, sim.settlers.size())
+	sim.end_tick()
+	_acc = maxf(0.0, _acc - TICK_MS)
 
 
 ## Ticks owed beyond this are dropped: the game slows down instead of stalling to catch up.
@@ -908,6 +951,7 @@ func _pointer_moved(p: Vector2) -> void:
 
 func _update_ghost() -> void:
 	ghost_tiles = []
+	ghost_sprite = ""
 	if placing == "" or hover_tile.x == -99999 or placing.begins_with("area:") or placing.begins_with("order:") or placing == "survey" or placing == "claim" or placing.begins_with("company:"):
 		return
 	if placing != "mark" and placing != "unmark" and Defs.building(placing).has("span"):
@@ -930,7 +974,12 @@ func _update_ghost() -> void:
 		ghost_tiles = BuildingOps.check_placement(sim, placing, hover_tile.x, hover_tile.y)["tiles"] if placing != "mark" and placing != "unmark" else []
 		return
 	var at := _placement_anchor(placing, hover_tile)
-	ghost_tiles = BuildingOps.check_placement(sim, placing, at.x, at.y)["tiles"]
+	var check := BuildingOps.check_placement(sim, placing, at.x, at.y)
+	ghost_tiles = check["tiles"]
+	if art.has(placing):
+		ghost_sprite = placing
+		ghost_at = Vector2i(at.x, at.y + int(Defs.building(placing)["size"]["h"]))
+		ghost_ok = bool(check["ok"])
 
 
 ## Single buildings are placed centred on the cursor, sitting on the hovered row.

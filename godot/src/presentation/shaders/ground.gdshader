@@ -13,6 +13,8 @@ shader_type canvas_item;
 uniform sampler2D ids : filter_nearest;
 // 38×38 exploration (R = 1 explored), sampled smoothly for a soft fog edge.
 uniform sampler2D fog : filter_linear;
+// Off when FogView draws the fog over everything instead.
+uniform bool fog_on = true;
 // The season's palette, one pixel per slot (PixelGround.SLOTS).
 uniform sampler2D pal : filter_nearest;
 uniform vec2 origin;
@@ -262,7 +264,9 @@ void fragment() {
 	if (d >= 0) rgb = col(d);
 	// Fog of war, soft-edged as in the browser (its 4x smoothed edge), on whole pixels.
 	vec2 tile = (vec2(p) + 0.5) / 16.0;
-	float e = texture(fog, (tile - origin + BORDER) / SIDE).r;
-	e = smoothstep(0.25, 0.75, e);
+	float e = 1.0;
+	if (fog_on) {
+		e = smoothstep(0.25, 0.75, texture(fog, (tile - origin + BORDER) / SIDE).r);
+	}
 	COLOR = vec4(mix(fog_color.rgb, rgb, e), 1.0);
 }

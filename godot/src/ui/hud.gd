@@ -1423,6 +1423,12 @@ func close_modal() -> void:
 			c.queue_free()
 
 
+## Something over the whole valley (the title, a window, the busy note, the studio): the camera
+## should not scroll under it.
+func title_or_window_open() -> bool:
+	return _title.visible or _modal.visible or _busy.visible or _studio.visible
+
+
 func modal_open() -> bool:
 	return _modal.visible
 

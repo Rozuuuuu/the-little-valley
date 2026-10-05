@@ -216,6 +216,7 @@ func _install(k: int, c: Chunk) -> void:
 	if not bits.is_empty():
 		c.explored_count = unpack_bits(bits, c.explored)
 		c.fog_version += 1
+		explored_version += 1
 		_explored_unloaded.erase(k)
 	_chunks[k] = c
 	generated_count += 1
@@ -244,6 +245,7 @@ func set_explored_bits(cx: int, cy: int, bits: PackedByteArray) -> void:
 	if c != null:
 		c.explored_count = unpack_bits(bits, c.explored)
 		c.fog_version += 1
+		explored_version += 1
 	else:
 		_explored_unloaded[k] = bits
 
@@ -352,6 +354,25 @@ func set_amount(x: int, y: int, value: int) -> void:
 
 ## Reveals a disc of tiles; returns how many were newly explored. Tiles in unloaded chunks are
 ## recorded in their bitset and the chunk is requested, so exploration never waits for terrain.
+## Explored land changed somewhere (presentation redraws the fog).
+var explored_version := 0
+
+
+## A chunk's exploration as 0/1 per tile (empty when none of it is explored).
+func explored_flags(cx: int, cy: int) -> PackedByteArray:
+	var k := key(cx, cy)
+	var c: Chunk = _chunks.get(k)
+	if c != null:
+		return c.explored if c.explored_count > 0 else PackedByteArray()
+	var bits: PackedByteArray = _explored_unloaded.get(k, PackedByteArray())
+	if bits.is_empty():
+		return bits
+	var out := PackedByteArray()
+	out.resize(Chunk.AREA)
+	unpack_bits(bits, out)
+	return out
+
+
 func reveal(cx: float, cy: float, r: float) -> int:
 	var count := 0
 	var r2 := r * r
@@ -383,10 +404,12 @@ func reveal(cx: float, cy: float, r: float) -> int:
 					bits[i >> 3] |= 1 << (i & 7)
 					count += 1
 				_explored_unloaded[k] = bits
+				explored_version += 1
 				request(x >> Chunk.SHIFT, y >> Chunk.SHIFT)
 	for k: int in touched:
 		var tc: Chunk = touched[k]
 		tc.fog_version += 1
+		explored_version += 1
 		# Neighbours sample our edge when drawing soft fog, so they refresh too.
 		for ny in range(-1, 2):
 			for nx in range(-1, 2):
