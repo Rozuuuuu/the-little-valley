@@ -28,7 +28,7 @@ because they generate every fingerprinted chunk.
 
 Saves, settings and the player's art live in the game's own folder: `%APPDATA%\Little Valley`
 on Windows (`application/config/custom_user_dir_name`; Godot creates it). The first start copies
-anything from the older `%APPDATA%\Godotpp_userdata\Little Valley` that is not there yet and
+anything from the older `%APPDATA%\Godot\app_userdata\Little Valley` that is not there yet and
 leaves the old copies alone (`src/persistence/user_dir.gd`). Load a valley lists the saves in that
 folder (Play, Delete, Open the save folder); "Bring in a save file" is only for a downloaded copy.
 
