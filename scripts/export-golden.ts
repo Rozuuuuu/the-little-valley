@@ -1,7 +1,7 @@
 // Writes reference values from the TypeScript game for the Godot port to reproduce exactly.
 // Run: npx tsx scripts/export-golden.ts   (safe to re-run: generators never change, so the output is stable)
 // Floats are written as the 16 hex digits of their IEEE-754 bits, so no decimal parsing can round them.
-import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fbm, hash2, Rng, valueNoise } from '../src/game/core/rng';
 import { HABITATS, type HabitatId } from '../src/game/data/habitats';
 import { generateChunk, riverCenter } from '../src/game/world/worldgen';
@@ -11,6 +11,8 @@ import { World } from '../src/game/world/World';
 import { createNewGame } from '../src/game/sim/newGame';
 import { CURRENT_GEN } from '../src/game/world/worldgen';
 import { depositInCell, starterDeposits } from '../src/game/world/geology';
+import { MIGRATIONS } from '../src/game/save/migrations';
+import { SAVE_VERSION } from '../src/game/save/format';
 
 const OUT = 'godot/tests/golden';
 mkdirSync(OUT, { recursive: true });
@@ -138,3 +140,24 @@ for (const [seed, gen, habitat] of [[424242, 1, 'valley'], [424242, 2, 'valley']
 writeFileSync(`${OUT}/geology.json`, JSON.stringify(geology));
 for (const gen of [1, 2, 3, 4]) copyFileSync(`tests/fixtures/gen-v${gen}-fingerprint.json`, `${OUT}/gen-v${gen}-fingerprint.json`);
 console.log(`golden data written to ${OUT}`);
+
+// Old saves and what the browser's migration chain turns them into (without validation, so the
+// prototype v1 case can be compared too). Godot's chain must produce the same JSON.
+function chain(raw: Record<string, unknown>): Record<string, unknown> {
+  let save = JSON.parse(JSON.stringify(raw)) as Record<string, unknown>;
+  while ((save.version as number) < SAVE_VERSION) save = MIGRATIONS[save.version as number](save);
+  return save;
+}
+const v1 = {
+  version: 1, name: 'Prototype', seed: 777, tick: 1200, nextId: 9, savedAt: 5,
+  settlers: [{ id: 1, name: 'Ada', x: 1.5, y: 2.5, job: 'worker', hunger: 80 }, { id: 2, name: 'Bo', x: 3, y: 3, job: 'farmer', hunger: 70, energy: 40 }],
+  buildings: [{ id: 3, type: 'camp', x: 0, y: 0, built: true, progress: 1 }],
+  stats: { woodGathered: 4 },
+};
+const migrated: Record<string, unknown> = { v1: { raw: v1, out: chain(v1) } };
+for (const v of [2, 3, 4, 11, 12]) {
+  copyFileSync(`tests/fixtures/v${v}-save.json`, `${OUT}/v${v}-save.json`);
+  const raw = JSON.parse(readFileSync(`tests/fixtures/v${v}-save.json`, 'utf8'));
+  migrated[`v${v}`] = { out: chain(raw) };
+}
+writeFileSync(`${OUT}/migrated.json`, JSON.stringify(migrated));

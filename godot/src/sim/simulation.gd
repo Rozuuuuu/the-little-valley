@@ -174,14 +174,24 @@ func _init(world_seed: int, rng_state: int = 0, gen: int = WorldGen.CURRENT_GEN,
 	world.on_chunk_evicted = _on_chunk_evicted
 
 
+## Every stat the browser game keeps (emptyStats in Simulation.ts), so saves and milestones match.
+const STAT_KEYS: Array[String] = ["woodGathered", "stoneGathered", "foodGathered", "harvested", "planksCrafted", "toolsCrafted", "arrivals",
+	"wheatHarvested", "flourMilled", "bakedFood", "pathsBuilt", "births", "applesPicked", "driedApples",
+	"surveys", "oreMined", "stoneQuarried", "charcoalMade", "coalBurned", "charcoalBurned", "copperSmelted", "ironSmelted",
+	"copperToolsForged", "ironToolsForged", "caravanTrips", "caravanDeliveries", "provisions", "merchantVisits", "trades",
+	"swordsMade", "bowsMade", "armorMade", "horseFeed", "soldiersTrained", "battles", "soldiersLost", "cargoLost", "gearLost", "enemyLosses"]
+
+
+## A fresh set of stats, every key at 0.
+static func empty_stats() -> Dictionary:
+	var out := {}
+	for k: String in STAT_KEYS:
+		out[k] = 0
+	return out
+
+
 func _reset_stats() -> void:
-	# Every stat the browser game keeps (emptyStats in Simulation.ts), so saves and milestones match.
-	for k: String in ["woodGathered", "stoneGathered", "foodGathered", "harvested", "planksCrafted", "toolsCrafted", "arrivals",
-			"wheatHarvested", "flourMilled", "bakedFood", "pathsBuilt", "births", "applesPicked", "driedApples",
-			"surveys", "oreMined", "stoneQuarried", "charcoalMade", "coalBurned", "charcoalBurned", "copperSmelted", "ironSmelted",
-			"copperToolsForged", "ironToolsForged", "caravanTrips", "caravanDeliveries", "provisions", "merchantVisits", "trades",
-			"swordsMade", "bowsMade", "armorMade", "horseFeed", "soldiersTrained", "battles", "soldiersLost", "cargoLost", "gearLost", "enemyLosses"]:
-		stats[k] = 0
+	stats = empty_stats()
 
 
 var seed_value: int:

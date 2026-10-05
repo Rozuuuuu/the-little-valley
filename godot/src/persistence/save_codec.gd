@@ -275,17 +275,25 @@ static func decode(save: Variant) -> Dictionary:
 	if not save is Dictionary:
 		return _fail("This file is not a Little Valley save")
 	var d: Dictionary = save
-	var version := int(d.get("version", -1))
+	var v: Variant = d.get("version")
+	var version := int(v) if v is int or v is float else -1
 	if version > VERSION:
 		return _fail("This save is from a newer version of Little Valley (save version %d); this version reads up to %d" % [version, VERSION])
 	if version < VERSION:
-		return _fail("This save is from an older version (save version %d). Converting older saves is not in this version yet; the file was not changed" % version)
+		# Older saves are converted step by step on a copy; the file itself is never changed.
+		var m := Migrations.migrate(d, VERSION)
+		if m["save"] == null:
+			return _fail(str(m["error"]))
+		d = m["save"]
 	for section: String in ["meta", "sim", "world"]:
 		if not d.get(section) is Dictionary:
 			return _fail("The save is damaged: its %s section is missing" % section)
 	var problems := validate(d)
 	if not problems.is_empty():
 		return _fail("The save is damaged: " + problems[0])
+	var structure := SaveValidation.check(d)
+	if structure != "":
+		return _fail("The save is damaged: " + structure)
 	var report := unsupported(d)
 	var w: Dictionary = d["world"]
 	var gen := int(w.get("genVersion", 1))

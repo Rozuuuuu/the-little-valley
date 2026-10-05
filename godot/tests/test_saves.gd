@@ -52,9 +52,9 @@ func test_damaged_and_unknown_saves_are_refused_clearly() -> void:
 	var newer := good.duplicate(true)
 	newer["version"] = 99
 	check(str(SaveCodec.decode(newer)["error"]).contains("newer"), "a newer save is refused as newer")
-	var older := good.duplicate(true)
-	older["version"] = 12
-	check(str(SaveCodec.decode(older)["error"]).contains("older"), "an older save explains that conversion is not in yet")
+	var nover := good.duplicate(true)
+	nover["version"] = 0
+	check(str(SaveCodec.decode(nover)["error"]).contains("version"), "a save without a valid version is refused")
 	var bad_home := good.duplicate(true)
 	(bad_home["sim"]["settlers"] as Array)[0]["homeId"] = 99999
 	check(str(SaveCodec.decode(bad_home)["error"]).contains("does not exist"), "a broken reference is caught: %s" % SaveCodec.decode(bad_home)["error"])
