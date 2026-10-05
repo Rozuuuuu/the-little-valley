@@ -97,10 +97,29 @@ func _capture_requested() -> bool:
 		if opts.has("bench"):
 			opts["frames"] = opts["bench"]
 			opts["shot"] = ""
+	if opts.has("oldsaves"):
+		_old_saves_check.call_deferred()
+		return true
 	if not opts.has("shot"):
 		return false
 	_capture.call_deferred(opts)
 	return true
+
+
+## Web check (scripts/godot-web-oldsaves.ts): brings the old game's valleys in, opens each, and
+## prints OLDSAVES {found, problems, worlds: [{id, name, day, people}]}.
+func _old_saves_check() -> void:
+	var pending := await old_game_pending()
+	var problems := import_old_game(pending)
+	var worlds := []
+	for w: Dictionary in store.worlds():
+		var got := store.load_point(w["id"])
+		var r := SaveCodec.decode(got["data"]) if got["data"] != null else {"sim": null}
+		var s: Simulation = r["sim"]
+		worlds.append({"id": w["id"], "name": w["name"], "version": int(got["data"]["version"]) if got["data"] != null else -1,
+			"people": s.settlers.size() if s != null else -1})
+	var again := await old_game_pending()
+	print("OLDSAVES %s" % JSON.stringify({"found": pending.size(), "problems": problems, "worlds": worlds, "pendingAfter": again.size()}))
 
 
 func _capture(opts: Dictionary) -> void:
