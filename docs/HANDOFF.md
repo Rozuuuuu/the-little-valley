@@ -27,6 +27,43 @@ assistant conversations are separate. Keep only one assistant editing at a time.
 
 ## Latest completed work
 
+**Claude, 2026-10-06, owner's round "guide, HUD, See more, mountains, zzz, camp growth"
+(`eee0620`).** Full suite **241 passed**, controls 0. Executables and web export rebuilt.
+
+- **Guide that plays along** (`Tutorial.GUIDE`, new valleys only; older valleys keep the browser's
+  9 steps): each step is one line of story + one action + a target. `hud.guide_target` drives a
+  bouncing arrow and pulsing brackets on the map (`world_overlay._draw_guide`: settler, nearest
+  tree/rock, meadow while placing a field, camp) or a pulsing frame and arrow on the command-card
+  button (`console._guide_match`: `command:<action>`, `label:<text>`, and in Build the category
+  holding that building). Never pauses (`Tutorial.waiting` is always false now); Skip tutorial.
+  The long origin-story window is no longer shown on a new valley. Capture `--guide=N`.
+- **HUD in floating corners** (owner's choice): minimap bottom-left, selection card bottom-centre
+  (width 380–660), commands bottom-right, each grass-framed, map visible and clickable between.
+- **Character card** `console.character_card(s, big)`: portrait, name, job/side-job/training
+  badges, task with icon, health/food/rest bars with icons and %, home/load/area chips.
+- **See more is a window** (`hud.show_details`, owner's choice), sized to fit with no scrolling at
+  1280×720: card, all details, and Main job / Side job / Work order columns side by side;
+  buildings and groups: details + actions. `V` and the card button open it.
+- **Mountains block by block** (ground shader `mountain_height`/`block_height`): stacked stone
+  blocks one level per tile into the range (some tiles one higher), lit tops, coursed front faces,
+  shaded sides, joints, snow on the top blocks.
+- **Sleep animation**: Z's rise and fade in pairs over sleepers (`SettlerView`) and over homes with
+  someone asleep (`WorldLife._Sleep`). Capture `--night=1` now lives into the night.
+- **Camp growth order** (`src/sim/campaign.gd`), researched: medieval settlements grew hamlet →
+  village → town ([Settlement hierarchy](https://en.wikipedia.org/wiki/Settlement_hierarchy),
+  [Hamlet](https://en.wikipedia.org/wiki/Hamlet_(place))) and castles began as timber keeps on a
+  motte before stone ([Motte-and-bailey castle](https://en.wikipedia.org/wiki/Motte-and-bailey_castle),
+  [Keep](https://en.wikipedia.org/wiki/Keep)). So a founding camp grows:
+  **Camp → Longhouse** (a home, 2 fields; beds 8, holds 400; drawn with the village-hall art)
+  **→ Town Hall** (2 homes, storehouse, workshop, 3 fields, Hamlet milestone)
+  **→ Keep** (Village milestone, a well, a mill or bakery, 4 homes)
+  **→ Castle** (Town milestone, a forge or smelter, a barracks or archery range, a market or inn).
+  Only centres with `extra.foundingCamp`; save validation allows the camp's third level.
+  Test: `test_onboarding.test_new_campaign_grows_camp_longhouse_hall_keep_in_order`.
+
+Next ideas: a dedicated Longhouse sprite (it reuses the village hall), guide steps beyond the
+Longhouse (Town Hall, first trade), touch layout for the floating HUD on phones.
+
 **Claude, 2026-10-06 (after Codex hit its limit): reconciled Codex's pending work and finished
 the owner's two requests.** Executables rebuilt at `dist-godot/windows/` (game and Asset Studio)
 and the web export; `check-web-errors.ts`: no problems. Full suite **241 passed**, controls 0.
