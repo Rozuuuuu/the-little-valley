@@ -215,3 +215,34 @@ func test_a_new_godot_save_has_the_whole_browser_layout() -> void:
 		check(sd.has(k), "sim.%s present" % k)
 	var k0: Dictionary = (sd["kingdoms"] as Array)[0]
 	check(k0["player"] == true and (k0["ruler"] as Dictionary)["name"] == "Lloyd", "the player's kingdom names the ruler")
+
+
+## The realm, merchants, war and every building type are simulated now, so a save holding them
+## loads with no "not supported" report, and their state survives a save and reload.
+func test_realm_war_merchants_and_soldiers_are_not_reported_unsupported() -> void:
+	var w := RealmHelpers.war_world()
+	var sim: Simulation = w["sim"]
+	var foe: Dictionary = w["foe"]
+	check(bool(Commands.apply(sim, {"type": "declareWar", "target": foe["id"], "objective": "raid", "confirmBreach": true})["ok"]), "war declared")
+	for t: String in ["inn", "well", "watchtower", "archeryRange", "armory", "stable", "councilHall", "bench", "lamp"]:
+		check(RealmHelpers.instant(sim, t, Vector2i(0, 12)) != null, "built a %s" % t)
+	Merchants._spawn(sim, Merchants.inn_of(sim))
+	check(not sim.parties.is_empty(), "a merchant party is on the road")
+	var data: Dictionary = JSON.parse_string(JSON.stringify(SaveCodec.encode(sim, "Realm", 1)))
+	var sd: Dictionary = data["sim"]
+	check((sd["kingdoms"] as Array).size() > 1 and bool((sd["kingdoms"] as Array)[0].get("crowned", false)), "a crowned kingdom with neighbours")
+	check(not (sd["war"]["states"] as Array).is_empty(), "a war in the save")
+	check(not (sd["claims"] as Array).is_empty(), "land claims in the save")
+	check((sd["settlers"] as Array).any(func(sv: Dictionary) -> bool: return sv.get("military") != null), "soldiers in the save")
+	check_eq(SaveCodec.unsupported(data), PackedStringArray(), "nothing reported unsupported")
+	var r := SaveCodec.decode(data)
+	if not check(r["sim"] != null, "loads: %s" % r["error"]):
+		return
+	check_eq(r["report"], PackedStringArray(), "no report on load")
+	var back: Simulation = r["sim"]
+	check_eq(back.kingdoms.size(), sim.kingdoms.size(), "kingdoms survive")
+	check_eq(back.parties.size(), sim.parties.size(), "merchants survive")
+	check_eq(back.claims.size(), sim.claims.size(), "claims survive")
+	check(Diplomacy.at_war(back, 0, int(foe["id"])), "still at war after reloading")
+	var soldiers := back.settlers.filter(func(s: Settler) -> bool: return not s.military.is_empty()).size()
+	check_eq(soldiers, (w["ids"] as Array).size(), "soldiers survive")

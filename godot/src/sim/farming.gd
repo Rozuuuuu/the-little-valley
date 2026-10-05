@@ -51,17 +51,35 @@ static func seasonal_growth(sim: Simulation, crop: String) -> float:
 	return float(def["growth"]) * float(pref.get(s["id"], 1.0))
 
 
+## How far a well waters (its level's wellRadius, else the building's own radius).
+static func well_radius(b: Building) -> float:
+	var v: Variant = b.stat("wellRadius")
+	if v != null:
+		return float(v)
+	return float((b.def().get("well", {}) as Dictionary).get("radius", 0))
+
+
 static func update_fields(sim: Simulation, dt: int) -> void:
 	var season: Dictionary = sim.season()["def"]
 	# Snow in winter does not water anything (nothing grows); rain does.
 	var rain := sim.raining and float(season["growth"]) > 0.0
-	# Wells are not part of the slice yet (they keep nearby fields from drying below the threshold).
+	# Wells: [x, y, radius] for each built well (centre of its tile).
+	var wells: Array[Array] = []
+	for w: Building in sim.buildings.values():
+		if w.built and w.def().has("well"):
+			wells.append([w.x + 0.5, w.y + 0.5, well_radius(w)])
 	for b: Building in sim.fields():
 		var f := b.field
 		if rain:
 			f["moisture"] = 1.0
 		else:
 			f["moisture"] = maxf(0.0, float(f["moisture"]) - DRYING_RATE * float(season["drying"]) * dt)
+		# Fields a well reaches never dry below the point where they need watering.
+		if not wells.is_empty() and float(f["moisture"]) < WATER_THRESHOLD:
+			for w: Array in wells:
+				if JsMath.hypot(float(w[0]) - b.x - 0.5, float(w[1]) - b.y - 0.5) <= float(w[2]):
+					f["moisture"] = WATER_THRESHOLD
+					break
 		if f["state"] != "growing" or f["crop"] == "":
 			continue
 		var fertility: float = Tiles.fertility[sim.world.terrain(b.x, b.y)] if sim.world.terrain(b.x, b.y) != World.UNKNOWN else 1.0

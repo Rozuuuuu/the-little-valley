@@ -630,52 +630,25 @@ static func validate(d: Dictionary) -> PackedStringArray:
 	return out
 
 
+## Building types whose save data loads but whose behaviour this version does not run yet.
+## Empty now: every building type's behaviour is data-driven (storage, lodging, training, reveal,
+## wells, pens, mines, workshops) or a goal/decoration with no behaviour of its own. Add a type
+## here, with the reason, if a later browser version gives one behaviour Godot lacks.
+const UNSIMULATED_BUILDINGS := {}
+
+
 ## Everything in a save that this version does not simulate yet, in words for the player.
+## Kingdoms (including a crowned one), diplomacy, war, merchants, land claims, soldiers,
+## training, rulers, children and households all decode into the running realm, merchant,
+## military and people modules, so they are not reported. The data of anything listed here is
+## still kept and written back unchanged.
 static func unsupported(d: Dictionary) -> PackedStringArray:
 	var out: PackedStringArray = []
 	var sd: Dictionary = d["sim"]
-	var counts := {
-		"parties": "merchant", "claims": "land claim",
-	}
-	for k: String in counts:
-		var n := (sd.get(k, []) as Array).size() if sd.get(k) is Array else 0
-		if n > 0:
-			out.append("%d %s%s" % [n, counts[k], "" if n == 1 else "s"])
-	if sd.get("kingdoms") is Array:
-		var ks: Array = sd["kingdoms"]
-		if ks.size() > 1:
-			out.append("%d known kingdoms" % (ks.size() - 1))
-		if not ks.is_empty() and (ks[0] as Dictionary).get("crowned", false):
-			out.append("a crowned kingdom (treasury, council and land)")
-	if sd.get("diplomacy") is Dictionary:
-		var dip: Dictionary = sd["diplomacy"]
-		var n := 0
-		for k: String in ["reports", "offers", "incidents", "warnings", "warPlans", "commitments"]:
-			n += (dip.get(k, []) as Array).size()
-		if n > 0:
-			out.append("%d diplomatic records (news, treaties, warnings)" % n)
-	if sd.get("war") is Dictionary and not (sd["war"].get("states", []) as Array).is_empty():
-		out.append("a war in progress")
-	var special := {"ruler": 0, "military": 0, "training": 0, "child": 0, "household": 0}
-	for sv: Dictionary in sd.get("settlers", []):
-		if sv.get("ruler", false):
-			special["ruler"] += 1
-		if sv.get("military") != null:
-			special["military"] += 1
-		if sv.get("training") != null:
-			special["training"] += 1
-		if sv.get("lifeStage", "adult") == "child":
-			special["child"] += 1
-	if special["military"] > 0:
-		out.append("%d soldiers" % special["military"])
-	var simulated := {"townHall": true, "camp": true, "house": true, "familyHome": true, "cottage": true, "storehouse": true, "field": true, "path": true, "bridge": true,
-		"orchard": true, "workshop": true, "mill": true, "bakery": true, "charcoalKiln": true, "smelter": true, "forge": true, "tannery": true, "weaver": true, "granary": true,
-		"crate": true, "hunterLodge": true, "chickenCoop": true, "pigsty": true, "sheepPen": true, "goatPen": true, "cattlePasture": true, "horsePaddock": true,
-		"quarry": true, "mine": true, "fisherHut": true, "waystation": true, "depot": true, "stoneBridge": true}
 	var others := {}
 	for bd: Dictionary in sd.get("buildings", []):
 		var t := str(bd["type"])
-		if not simulated.has(t):
+		if UNSIMULATED_BUILDINGS.has(t):
 			others[t] = int(others.get(t, 0)) + 1
 	for t: String in others:
 		out.append("%d %s (kept, but not working in this version yet)" % [others[t], str(Defs.building(t)["name"]).to_lower()])

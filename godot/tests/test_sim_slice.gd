@@ -347,3 +347,36 @@ func test_worker_limits_and_stopped_production_are_explained() -> void:
 	check(not bool(second["ok"]) and str(second["message"]).contains("1/1 worker"), "second refused: %s" % second["message"])
 	SimHelpers.run(sim, 20)
 	check(str(mill.workshop["status"]).contains("Needs 3 wheat — none in storage"), "status: %s" % mill.workshop["status"])
+
+
+func test_a_well_keeps_nearby_fields_from_drying_out() -> void:
+	var sim := NewGame.create(808)
+	Commands.apply(sim, {"type": "place", "building": "field", "x": -7, "y": 5, "crop": "wheat"})
+	var f: Building = null
+	for x: Building in sim.buildings.values():
+		if x.is_field():
+			f = x
+	f.field["state"] = "growing"
+	f.field["moisture"] = 0.0
+	sim.raining = false
+	Farming.update_fields(sim, 1)
+	check(float(f.field["moisture"]) < Farming.WATER_THRESHOLD, "dry without a well")
+	var well := Building.new()
+	well.id = 9001
+	well.type = "well"
+	well.x = f.x + 3
+	well.y = f.y
+	well.w = 1
+	well.h = 1
+	well.built = true
+	sim.buildings[well.id] = well
+	Farming.update_fields(sim, 1)
+	check_eq(float(f.field["moisture"]), Farming.WATER_THRESHOLD, "a well within reach holds the field at the watering line")
+	well.x = f.x + 20
+	f.field["moisture"] = 0.0
+	Farming.update_fields(sim, 1)
+	check(float(f.field["moisture"]) < Farming.WATER_THRESHOLD, "a well out of reach does not help")
+	well.level = 2
+	well.x = f.x + 9
+	Farming.update_fields(sim, 1)
+	check_eq(float(f.field["moisture"]), Farming.WATER_THRESHOLD, "a cistern reaches 10 tiles")
