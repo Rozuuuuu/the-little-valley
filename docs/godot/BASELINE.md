@@ -241,8 +241,13 @@ example 25 settlers measured slower than 100 in two runs.
 | Desktop, 100 settlers | ≈6.5 s | 0.45 s | 1.9 s | 21.5 | 16.9 | 36.8 | 48.2 | 2.8 / 1.7 |
 | Phone emulation (4× CPU throttle, 915×412), 25 settlers | | | | 58.1 | 42.3 | 144 | 230 | 18.4 / 12.6 |
 | Phone emulation, 100 settlers, before the fixes below | | | 139 s total | 177.7 | 132 | 514 | 897 | 101 / 42 |
+| Desktop, 100 settlers, after the storybook art pass (2026-10-05) | ≈7.5 s | 0.97 s | 2.1 s | 22.8 | 17.7 | 41.9 | 53.3 | 3.5 / 2.5 |
+| Phone emulation, 100 settlers, after the art pass | ≈25 s | 6.3 s | 20.4 s | 86.6 | 71.9 | 180 | 256 | 40.2 / 18.5 |
 
 Findings:
+- **The storybook art pass costs little on desktop** (p50 16.9 → 17.7 ms at 100 settlers). The
+  phone emulation stays bound by the simulation (40 ms of 87 ms per frame), not drawing; its
+  art rasterising (6.3 s) grew with the richer SVGs and is worth caching for phones.
 - **GDScript in WebAssembly runs about 3–5x slower than native GDScript** (simulation at 100
   settlers: 2.8 ms per frame on the web against 0.62 natively). One world chunk takes about
   0.7 s to generate on the web.

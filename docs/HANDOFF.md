@@ -1,6 +1,6 @@
 # Little Valley migration handoff
 
-Updated **2026-10-05, Asia/Manila**. Read this before continuing in Claude Code or Codex,
+Updated **2026-10-05 (evening), Asia/Manila**. Read this before continuing in Claude Code or Codex,
 then verify `git status`, recent commits and the referenced code. Repository files are shared;
 assistant conversations are separate. Keep only one assistant editing at a time.
 
@@ -15,8 +15,9 @@ assistant conversations are separate. Keep only one assistant editing at a time.
   same-origin cut-over must bring browser saves across. Current web exports are local previews.
 - Saves stay on the device, with versioned history and downloadable/importable files.
   Do not silently discard unsupported state. Time does not advance while the game is closed.
-- Keep top-down farming/settlement gameplay and authoritative simulation rules. Art is smooth,
-  illustrated, colored, limited-palette; current SVG assets are **provisional**.
+- Keep top-down farming/settlement gameplay and authoritative simulation rules. Art is painterly
+  storybook 2D (see `docs/reference/` and `docs/godot/ART_STYLE.md`), at least as rich as the
+  pixel original; current generated SVG assets are **provisional**.
 - Asset Studio is for players: upload/edit/assign art locally on their device, with no changes
   to other players' devices. No paid AI services for settler decisions.
 - Long-play scalability remains a priority, not a completed claim. Existing code has a 5,000
@@ -24,17 +25,21 @@ assistant conversations are separate. Keep only one assistant editing at a time.
 
 ## Latest completed work
 
-**Latest code checkpoint: `b09a070` — script-checker shutdown diagnostic resolved.**
+**Latest code checkpoints (2026-10-05 evening): the storybook art pass, wells and the save audit.**
 
-- Isolated the retained graph to source-first loading followed by the particles/path tests.
-  Separate script groups and reversed loading order exited cleanly; explicit script retention
-  and deferred shutdown did not help.
-- Changed the path tests' grid/data fixtures from static variables to test-instance ownership.
-  The unchanged checker now compiles every script and exits with **no warnings or errors**.
-- Corrected `check_controls.gd` to compare menu size against the logical viewport used by the
-  HUD, rather than the OS window size, which differs in headless mode.
-- Six matching path tests passed, including all 80 golden searches. Direct script compilation,
-  the final batch checker, normal startup/shutdown and scene controls all exit cleanly.
+The owner judged the earlier Godot look a downgrade from the pixel original. The references are
+in `docs/reference/`: two screenshots of the browser game (the bar for density and charm) and a
+painted landscape (the target finish). `docs/godot/ART_STYLE.md` now records this direction.
+
+| Commit | Work |
+| --- | --- |
+| `d28c06e` | Storybook palette; painted ground shader (brush-stroke grass, sun/shade areas, clumps, flowers, faceted rock, water deepening from turquoise shallows, bank shadow, foam, cloud shadows; 3-tile chunk border so effects cross chunk edges); layered-cluster oaks, birches, pines, bushes, rocks; textured roofs (tile, thatch, slate, shingle), framed/plank/stone/brick walls, shuttered windows, plank doors, taller roofs; sites, soil, crops; walnut-and-gold plank UI; moonlit night |
+| `d1c4748` | Wells water fields within reach (cistern 10 tiles), as in the browser. `SaveCodec.unsupported()` no longer reports kingdoms, a crown, diplomacy, war, merchants, claims, soldiers or implemented buildings; `UNSIMULATED_BUILDINGS` (empty) keeps the path for future types. Regression: a crowned realm at war with merchants, claims and soldiers round-trips with an empty report |
+| `1e6a94f` | Art for the 15 building types that kept their scaffold sprite once built: Royal Hall, Council Hall, armory, camp, Grand Market, fence and stone wall (join across tiles), flowerbed, lamp (night glow), haystack, barrels, signpost, garden, statue, bench |
+| `b2f902e` | Title over a living backdrop hamlet with a slow camera drift; two-tone logo, tagline and a compact left panel; `--title=1` capture |
+
+Review captures: `godot --path godot --resolution 1600x900 -- --shot=<png> --ticks=600 [--zoom=0.5|1.6] [--animals=1] [--title=1]`
+and `godot --headless --path godot -s res://tools/art_sheet.gd -- <png> "<filters>" <scale>`.
 
 **Previous code checkpoint: `a37f6fe` — keyboard remapping and startup lifecycle fixes.**
 
@@ -77,6 +82,13 @@ implemented simulation systems do not mean the entire migration or presentation 
 
 | Check | Result |
 | --- | --- |
+| Full Godot suite after all of the above, `build/art-tests2.log` | **235 passed, 0 failed, 491.9 s** (the two "Parse JSON failed" lines are the deliberate damaged-save tests, also present before) |
+| Save, farming and migration tests after the audit | test_saves 9, test_sim_slice 22, test_migrations 6: all passed |
+| Art/asset/view tests after the new building art | test_asset_studio 6, test_view_lifecycle 1, test_particles 2, test_glyphs 1: all passed |
+| Controls, startup and checker after the title backdrop | `build/art-controls.log` 0 failures; `build/art-startup.log` clean; `build/art-checker.log` 0 scripts failed |
+| Browser tests and type check | **337 passed**; type check clean |
+| Web export after the art pass, `build/art-export.log` | Exported; `godot-web-pwa.ts`: online and offline boot, 9 cached files |
+| Web benchmark, 100 settlers, `build/art-web-*.log` | Desktop avg 22.8 ms / p50 17.7 (baseline 21.5 / 16.9); phone emulation avg 86.6 ms, sim-bound (40 ms sim); art rasterising 6.3 s under 4× throttle |
 | Full Godot suite, `build/codex-tests-controls.log` | **232 passed, 0 failed, 478.3 s** |
 | New lifecycle regression, `build/codex-view-green.log` | **1 passed, 0 failed, 10 assertions**; created after the full run began, so checked separately |
 | Rendered scene routing/capture/settings/150% scale, `build/codex-controls-clean.log` | **0 failures; no runtime errors/warnings** |
@@ -96,7 +108,7 @@ or changing load order. Full Godot/browser suite results above are from the prev
 this test-only checkpoint reran the affected path checks and engine/scene checks. A clean
 startup/shutdown is not a long-play leak test.
 
-The last checked web export is the installation checkpoint, **before these controls changes**.
+The web export was rebuilt and checked after the art pass (rows above). Earlier note:
 `scripts/godot-web-pwa.ts` verified nine cached files and offline title startup at the normal
 installed entry address after two online launches. Arbitrary benchmark query addresses were
 not cached. Real install prompts, version replacement, multi-tab update safety and persistence
@@ -105,10 +117,13 @@ across an immediate web update still need testing. Rebuild the web export before
 ## Unfinished work and risks
 
 - Script-checker shutdown diagnostic: resolved in `b09a070`; keep the clean checker as a gate.
-- Audit `SaveCodec.unsupported()`: it still reports kingdoms, soldiers, merchants and some
-  building types as unsupported despite later ports. Inspect actual decode/update ownership,
-  then remove only false reports; preserve reporting and data for genuinely unsupported state.
-- Bring stale matrix comments up to date (for example soldier figures are now drawn).
+- Save audit: done in `d1c4748` (wells were the one genuine gap, now ported).
+- Art: every asset is still generated and provisional, but now storybook-styled. Next art steps:
+  painted title/marketing illustration, building-specific silhouettes for workshops (forge
+  glow, mill sails turning), animated water edges and fireflies at night, and a final
+  painted-asset pass (hand-made or licensed) through `godot/art/final/`.
+- Fence and stone wall pieces join only horizontally (one sprite); the browser chooses
+  connected pieces by neighbours. Add neighbour-aware variants.
 - Browser-only shortcut actions/default-layout parity, real-device touch and phone measurements.
 - New representative long-play Godot soak, with production/areas/realm systems, conservation,
   stale reservations, queue/chunk/object/memory growth and save round trips.
@@ -123,19 +138,16 @@ across an immediate web update still need testing. Rebuild the web export before
 
 ## Exact next task
 
-**Audit and correct the stale unsupported-save report in `godot/src/persistence/save_codec.gd`.**
+**Create the representative long-play Godot soak** before any further scalability promises.
 
-1. Inspect `unsupported()` around line 634, decode/encode ownership and the running realm,
-   merchant and military modules. It still flags known kingdoms, crowned kingdoms, diplomatic
-   records, soldiers and some implemented buildings as unsupported.
-2. Inspect `tests/test_saves.gd`, the real browser v15 fixture and realm/save round-trip tests.
-   Add regressions distinguishing implemented state from genuinely unsupported content.
-3. Remove only demonstrably false reports. Preserve unknown authoritative data and useful
-   compatibility messages; do not replace the report with an unconditional empty result.
-4. Run affected save/realm tests and the batch script checker. Update this file and the
-   migration matrix, then commit; **do not push**.
-5. Rebuild and verify web controls next, then create the representative long-play soak before
-   making further scalability promises.
+1. A headless tool (`tools/soak.gd`) that runs a valley for many in-game days with production,
+   areas, animals, realm and merchants active, saving and reloading every few days.
+2. Check conservation of goods, stale reservations, queue/chunk/object/memory growth and
+   that each save round-trips exactly; print a compact summary per checkpoint.
+3. Then: cache the rasterised art atlas per version for phones (6.3 s under 4× throttle),
+   neighbour-aware fence/wall pieces, and a real-device check of the web build (title
+   backdrop, plank UI at 150%, touch).
+4. Update this file and `docs/godot/MIGRATION.md`, commit; **do not push**.
 
 ## Commands and local state
 
@@ -156,7 +168,6 @@ Export instructions and template placeholders: `godot/README.md` and `scripts/go
 Rendered control capture: `dist-godot/keyboard-menu.png` (ignored local artifact). Test logs in
 `build/*.log` are ignored and local, not portable evidence; rerun the commands on another device.
 
-An existing unstaged change remains in **`godot/art/palette.json`**: indentation only;
-`git diff --ignore-all-space` shows no semantic difference. It predates this checkpoint and
-was deliberately not included or reverted. Verify any other new changes before editing.
+The earlier unstaged scenery experiment (palette, shader, SVGs) was folded into `d28c06e`.
+Verify any other new changes before editing.
 This handoff is committed separately from the code checkpoint named above.
