@@ -33,6 +33,7 @@ var _title := PanelContainer.new()
 var _menu := PanelContainer.new()
 var _busy := PanelContainer.new()
 var _today := PanelContainer.new()
+var _studio := AssetStudio.new()
 var _tutorial := PanelContainer.new()
 var _tutorial_box := VBoxContainer.new()
 var _tutorial_key := ""
@@ -101,6 +102,8 @@ func _ready() -> void:
 	_tutorial.add_child(_tutorial_box)
 	_tutorial.visible = false
 	_root.add_child(_tutorial)
+	_studio.setup(self)
+	_root.add_child(_studio)
 	_busy.add_child(_busy_label)
 
 
@@ -658,7 +661,7 @@ func _area_row(a: WorkArea, crops: Array[String]) -> Control:
 # ---- states ------------------------------------------------------------------------------------
 
 func blocking() -> bool:
-	return _title.visible or _menu.visible or _busy.visible or _today.visible
+	return _title.visible or _menu.visible or _busy.visible or _today.visible or _studio.visible
 
 
 func show_busy(text: String) -> void:
@@ -710,6 +713,7 @@ func show_title(message: String = "") -> void:
 		var id: String = w["id"]
 		v.add_child(_button("Continue %s — day %d, %d people" % [w["name"], int(p.get("day", 0)), int(p.get("population", 0))], func() -> void: game.load_world(id)))
 	v.add_child(_button("Load a save file", func() -> void: game.load_from_file(), "A save downloaded from this game or the old browser game"))
+	v.add_child(_button("Asset Studio", open_studio, "Your own art for anything in the valley, kept on this device"))
 	if Files.is_web():
 		_offer_old_game(v)
 	var name_edit := LineEdit.new()
@@ -877,6 +881,11 @@ func show_today(o: Dictionary) -> void:
 	_center(_today)
 
 
+func open_studio() -> void:
+	_root.move_child(_studio, -1)
+	_studio.open()
+
+
 func _close_today() -> void:
 	_today.visible = false
 
@@ -921,6 +930,9 @@ func toggle_menu() -> void:
 		else:
 			game.skip_tutorial()
 		_menu.visible = false))
+	v.add_child(_button("Asset Studio", func() -> void:
+		_menu.visible = false
+		open_studio(), "Your own art for anything in the valley, kept on this device"))
 	v.add_child(_button("Download save file", func() -> void: game.download_save(), "A copy of this valley as a file, to keep or move to another device"))
 	if game.sim != null and game.sim.ruler() == null:
 		# Valleys from before the ruler walked the map.

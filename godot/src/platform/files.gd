@@ -30,9 +30,13 @@ static func save_file_name(world_name: String, day: int) -> String:
 
 ## Offers the save as a file. Returns {ok, error, path} (path is empty on the web).
 static func download(file_name: String, data: Dictionary) -> Dictionary:
-	var text := JSON.stringify(data, "", true, true)
+	return download_bytes(file_name, JSON.stringify(data, "", true, true).to_utf8_buffer(), "application/json")
+
+
+## Offers any bytes as a file: a browser download on the web, the Downloads folder on desktop.
+static func download_bytes(file_name: String, bytes: PackedByteArray, mime: String) -> Dictionary:
 	if is_web():
-		JavaScriptBridge.download_buffer(text.to_utf8_buffer(), file_name, "application/json")
+		JavaScriptBridge.download_buffer(bytes, file_name, mime)
 		return {"ok": true, "error": "", "path": ""}
 	var dir := OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS)
 	if dir == "":
@@ -41,7 +45,7 @@ static func download(file_name: String, data: Dictionary) -> Dictionary:
 	var f := FileAccess.open(path, FileAccess.WRITE)
 	if f == null:
 		return {"ok": false, "error": "Could not write %s (%s)" % [path, error_string(FileAccess.get_open_error())], "path": ""}
-	f.store_string(text)
+	f.store_buffer(bytes)
 	f.close()
 	return {"ok": true, "error": "", "path": path}
 
@@ -65,40 +69,49 @@ static func _await_js(slot: String, timeout_ms: int) -> String:
 ## Lets the player pick a save file. Returns {name, text}; both empty if nothing was picked.
 ## On desktop, `host` holds the system dialog while it is open.
 static func pick(host: Node) -> Dictionary:
+	var got := await pick_bytes(host, ".json,application/json", PackedStringArray(["*.json ; Little Valley saves"]))
+	return {"name": got["name"], "text": (got["bytes"] as PackedByteArray).get_string_from_utf8()}
+
+
+## Lets the player pick any file. Returns {name, bytes}; empty if nothing was picked.
+static func pick_bytes(host: Node, accept: String, filters: PackedStringArray) -> Dictionary:
 	if is_web():
 		JavaScriptBridge.eval("""(function () {
 			window.__lvFile = null;
 			var input = document.createElement('input');
 			input.type = 'file';
-			input.accept = '.json,application/json';
+			input.accept = '%s';
 			input.oncancel = function () { window.__lvFile = ''; };
 			input.onchange = function () {
 				var f = input.files && input.files[0];
 				if (!f) { window.__lvFile = ''; return; }
 				var r = new FileReader();
-				r.onload = function () { window.__lvFile = JSON.stringify({ name: f.name, text: String(r.result) }); };
+				r.onload = function () {
+					var url = String(r.result);
+					window.__lvFile = JSON.stringify({ name: f.name, data: url.substring(url.indexOf(',') + 1) });
+				};
 				r.onerror = function () { window.__lvFile = ''; };
-				r.readAsText(f);
+				r.readAsDataURL(f);
 			};
 			input.click();
-		})()""", true)
+		})()""" % accept.replace("'", ""), true)
 		var got := await _await_js("__lvFile", PICK_TIMEOUT_MS)
 		var parsed: Variant = JSON.parse_string(got) if got != "" else null
 		if parsed is Dictionary:
-			return {"name": str(parsed.get("name", "")), "text": str(parsed.get("text", ""))}
-		return {"name": "", "text": ""}
+			return {"name": str(parsed.get("name", "")), "bytes": Marshalls.base64_to_raw(str(parsed.get("data", "")))}
+		return {"name": "", "bytes": PackedByteArray()}
 	var dialog := FileDialog.new()
 	dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
 	dialog.access = FileDialog.ACCESS_FILESYSTEM
 	dialog.use_native_dialog = true
-	dialog.filters = PackedStringArray(["*.json ; Little Valley saves"])
+	dialog.filters = filters
 	dialog.current_dir = OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS)
 	host.add_child(dialog)
-	var result := {"name": "", "text": ""}
+	var result := {"name": "", "bytes": PackedByteArray()}
 	var done := [false]
 	dialog.file_selected.connect(func(path: String) -> void:
 		result["name"] = path.get_file()
-		result["text"] = FileAccess.get_file_as_string(path)
+		result["bytes"] = FileAccess.get_file_as_bytes(path)
 		done[0] = true)
 	dialog.canceled.connect(func() -> void: done[0] = true)
 	dialog.popup_centered_ratio(0.6)

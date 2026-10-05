@@ -23,6 +23,8 @@ const PAD := 4
 var sprites := {}
 var atlases: Array[ImageTexture] = []
 var raster_scale := 1.0
+## The generated manifest entries by name (for reloading single sprites).
+var _entries := {}
 
 
 ## Loads every sprite. `raster_scale` < 1 rasterises smaller (for low-memory devices).
@@ -30,6 +32,7 @@ func load_all(scale: float = 1.0) -> void:
 	raster_scale = scale
 	var bundle: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(BUNDLE))
 	var entries: Dictionary = bundle["sprites"]
+	_entries = entries
 	var images := {}
 	var names: Array = entries.keys()
 	for n: String in names:
@@ -119,3 +122,16 @@ func point(sprite_name: String, key: String) -> Variant:
 		return null
 	var k := WorldView.TILE_PX / SOURCE_PX_PER_TILE
 	return Vector2(float(pts[key][0]), float(pts[key][1])) * k
+
+
+## Loads these sprites again (after the Asset Studio changed them): each gets its own texture
+## from the player's image, or the game's own art when the player's was removed. Sprite2D nodes
+## already on screen keep their old texture until they are applied again.
+func reload(names: Array[String]) -> void:
+	for n: String in names:
+		if not _entries.has(n):
+			continue
+		var im := _load_image(n, _entries[n])
+		im.generate_mipmaps()
+		var e: Dictionary = _entries[n]
+		sprites[n] = {"texture": ImageTexture.create_from_image(im), "ax": float(e["ax"]), "ay": float(e["ay"]), "w": float(e["w"]), "h": float(e["h"]), "points": e.get("points", {})}

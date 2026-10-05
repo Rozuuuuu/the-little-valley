@@ -268,6 +268,19 @@ func _capture(opts: Dictionary) -> void:
 		hud.toggle_areas()
 	if opts.get("towns", "0") == "1":
 		hud.toggle_towns()
+	if opts.get("studio", "0") == "1":
+		# The Asset Studio on a house, with a drawn image uploaded into a separate capture pack
+		# (the player's own art folder is never touched by captures).
+		hud._studio.pack = ArtPack.new("user://capture_art")
+		var im := Image.create(120, 100, false, Image.FORMAT_RGBA8)
+		im.fill_rect(Rect2i(10, 40, 100, 60), Color("#c9a26b"))
+		for y in 40:
+			im.fill_rect(Rect2i(60 - y * 5 / 4 - 2, y, y * 5 / 2 + 4, 1), Color("#8a3b2e"))
+		im.fill_rect(Rect2i(50, 70, 20, 30), Color("#5a3a22"))
+		hud._studio.pack.set_image("house", im.save_png_to_buffer(), "my-house.png", 1, art.sprites)
+		hud._studio.sprite = "house"
+		hud.open_studio()
+		hud._studio.choose("house")
 	if opts.get("today", "0") == "1":
 		# The introduction on its third step, and Valley today with a recorded session.
 		tutorial = {"step": 2, "done": false}
