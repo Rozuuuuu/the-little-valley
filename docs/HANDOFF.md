@@ -1,6 +1,6 @@
 # Little Valley migration handoff
 
-Updated **2026-10-05 (night), Asia/Manila**. Read this before continuing in Claude Code or Codex,
+Updated **2026-10-06, Asia/Manila**. Read this before continuing in Claude Code or Codex,
 then verify `git status`, recent commits and the referenced code. Repository files are shared;
 assistant conversations are separate. Keep only one assistant editing at a time.
 
@@ -27,12 +27,14 @@ assistant conversations are separate. Keep only one assistant editing at a time.
 
 ## Latest completed work
 
-**Latest code checkpoints (2026-10-05 night): pixel art restored and the long-play soak.**
+**Latest checkpoints (2026-10-06): the 401 fix and interface parity with the browser game.**
 
 | Commit | Work |
 | --- | --- |
-| `f20ec3e` | The Godot version uses the browser game's pixel art: exporter (headless Chrome → 6× nearest PNGs, anchors, palette, chimney points); nearest filtering, pixel snapping and 0.25 zoom steps; GPU port of `terrainPainter.ts` for the ground; `PixelPeople` port of `characters.ts` for settlers; joined fences/walls, hall and mine levels, village hall, turning mill sails, lit-window overlays, rising construction ghosts; the browser's pixel HUD skin and Pixelify Sans |
-| `03ea750` | `tools/soak.gd`: 120 days with production, animals, merchants and a crowned realm, careful-player autopilot, JSON save/reload every 10 days. 0 failures; memory flat; valley 9 → 16 settlers |
+| `5ede054` | **401 errors:** on the Vercel per-deployment address (behind Vercel login) the browser fetched the web app manifest without the login cookie and got 401. `crossorigin="use-credentials"` on the manifest link in `index.html`; `scripts/godot-export.sh` patches Godot's link the same way. Local builds never showed it. New `scripts/check-web-errors.ts` (every HTTP error, failed request and console error of a built game in Chrome) and `scripts/tour-react.ts` (React screenshots for parity) |
+| `fe1237b` | **Interface parity** with `src/ui`: bottom console (`console.gd`: minimap `minimap_view.gd`, info panel with portrait and bars, See more with building/job actions, 4×3 command card with the browser's commands, badges, tooltips, hotkeys), click-to-target Move/Attack/Gather, build menu by category with every buildable building (the old list missed realm buildings and decorations), three-box top bar, People/Families/Goals/Goods windows, F1 Controls, "A new world" dialog with land cards, health bars and idle bubbles, browser default keys |
+| `f20ec3e` | Pixel art from the browser's own generators (see `docs/godot/ART_STYLE.md`) |
+| `03ea750` | `tools/soak.gd`, 120 days: 0 failures, memory flat |
 
 Earlier the same day (now superseded in look, kept in history): `d28c06e` storybook art pass,
 `1e6a94f` art for 15 missing building types, `b2f902e` living title backdrop (kept, now pixel),
@@ -83,6 +85,10 @@ implemented simulation systems do not mean the entire migration or presentation 
 
 | Check | Result |
 | --- | --- |
+| Full Godot suite after the parity work, `build/parity-tests.log` | **235 passed, 0 failed**; then test_bindings, test_glyphs, test_view_lifecycle rerun after the last edits: passed |
+| Controls, checker, startup after the parity work | 0 failures; 0 scripts failed; clean startup |
+| Browser tests / type check | **337 passed**; clean |
+| Web errors (`check-web-errors.ts`) | React `dist`: none. Godot web: only Chrome's normal "audio waits for a click" notice. PWA check: offline boot, 9 cached files |
 | Full Godot suite after the pixel switch, `build/px-tests.log` | 234 passed, 1 failed (chimney points); fixed by exporting `BUILDING_LIFE` points, then test_particles, test_asset_studio, test_glyphs, test_view_lifecycle, test_saves all passed |
 | Controls, startup, checker after the pixel switch | `build/px-controls.log` 0 failures; `build/px-startup.log` clean; `build/px-checker.log` 0 scripts failed |
 | Browser tests and type check after the pixel switch | **337 passed**; type check clean |
@@ -141,15 +147,18 @@ across an immediate web update still need testing. Rebuild the web export before
 
 ## Exact next task
 
-**Find why the bakery stops after about 50 days in the soak, then finish pixel presentation parity.**
+**Finish the remaining browser parity, then the bakery stall.**
 
-1. Run `godot --headless --path godot -s res://tools/soak.gd -- 60 5` and inspect the mill,
-   bakery and granary around day 45–55 (flour, wheat, workers, idle reasons). Compare with the
-   browser rules in `src/game/sim/production.ts`; fix only a real divergence, with a test.
-2. Port the remaining browser renderer touches listed above (campfire/fountain animation,
-   whole-pixel sway, marks), checking each against the browser side by side.
-3. Rerun the full suite, controls, checker, the 120-day soak and the web benchmark (without the
-   soak running at the same time). Update this file, `MIGRATION.md`, `BASELINE.md`; commit;
+1. Still missing from the browser UI (compare with `npx tsx scripts/tour-react.ts` screenshots):
+   the phone "turn your device sideways" notice (`RotateNotice.tsx`), the in-game update banner
+   (`UpdateBanner.tsx`), "Take the throne" for old worlds without a ruler (`Console.tsx`), the
+   tile grid toggle (Backquote) and Ctrl+S save, the Assistant Chief advice panel styling
+   (`Village.tsx` ChiefAdvice), the browser's settler card details layout in See more, and the
+   Load-a-valley list of saves (`LoadModal`). Godot captures: `--window=...`, `--select=...`,
+   `--build=...`, `--title=1 --newworld=1` (see `godot/README.md`).
+2. Investigate why the bakery stops after about day 50 in the soak (see BASELINE).
+3. Real-device checks: touch on the console, phone layout at 915×412, the 150% interface scale.
+4. Rerun the suite, controls, checker, soak and `check-web-errors.ts`; update this file; commit;
    **do not push**.
 
 ## Commands and local state
