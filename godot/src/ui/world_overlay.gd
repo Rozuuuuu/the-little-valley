@@ -199,6 +199,7 @@ func _draw() -> void:
 			var r := Rect2(hr.position * T, hr.size * T).grow(pulse)
 			_brackets(r.grow(a4), Color(Color("#ffcf5a"), alpha), a4)
 			_brackets(r, Color(Color("#fff6c2"), alpha), a4)
+	_draw_guide(sim, T)
 	# Order markers fade over 0.7 s.
 	var now := Time.get_ticks_msec() / 1000.0
 	for m: Dictionary in game.markers:
@@ -276,3 +277,80 @@ func _brackets(r: Rect2, c: Color, a: float) -> void:
 		var sy := 1.0 if corner.y == r.position.y else -1.0
 		draw_rect(Rect2(corner.x - (0.0 if sx > 0 else l), corner.y - (0.0 if sy > 0 else a), l, a), c)
 		draw_rect(Rect2(corner.x - (0.0 if sx > 0 else a), corner.y - (0.0 if sy > 0 else l), a, l), c)
+
+
+# ---- the guide's arrow on the map ---------------------------------------------------------------
+
+var _guide_cache := {"key": "", "at": Vector2.ZERO, "rect": Rect2(), "t": 0.0}
+
+
+## Where the guide points on the map: a settler, the nearest tree or rock to the camp, the meadow
+## for the first fields, or the camp. When the step's button is on the command card and nothing is
+## being placed, the card's arrow shows instead.
+func _draw_guide(sim: Simulation, T: float) -> void:
+	var target: String = game.hud.guide_target if game.hud != null else ""
+	if target == "":
+		return
+	var toks := target.split("|")
+	var world := ""
+	for tok: String in toks:
+		if not tok.contains(":"):
+			world = tok
+	if world == "" or (game.hud.guide_button != null and is_instance_valid(game.hud.guide_button) and game.placing == ""):
+		return
+	if world == "meadow" and game.placing != "field":
+		return
+	var now := Time.get_ticks_msec() / 1000.0
+	var key := "%s|%s" % [world, game.selected.size()]
+	if key != _guide_cache["key"] or now - float(_guide_cache["t"]) > 1.0:
+		_guide_cache["key"] = key
+		_guide_cache["t"] = now
+		_guide_cache["rect"] = _guide_spot(sim, world)
+	var r: Rect2 = _guide_cache["rect"]
+	if r.size == Vector2.ZERO:
+		return
+	var px := 4.0
+	var pulse := (2.0 + roundf((sin(now * 8.0) + 1.0) * 1.5)) * px
+	_brackets(Rect2(r.position * T, r.size * T).grow(pulse), Color("#f4cf5a"), px)
+	var bob := sin(now * 5.0) * 10.0
+	# The tip sits just above the target (a tree or building rises above its tile).
+	var tip := Vector2((r.position.x + r.size.x / 2.0) * T, r.position.y * T - T * (0.9 if world == "camp" else 0.4) + bob)
+	var s := 2.2
+	var arrow := PackedVector2Array([tip, tip + Vector2(-12, -14) * s, tip + Vector2(-5, -14) * s, tip + Vector2(-5, -30) * s, tip + Vector2(5, -30) * s, tip + Vector2(5, -14) * s, tip + Vector2(12, -14) * s])
+	draw_colored_polygon(arrow, Color("#f4cf5a"))
+	arrow.append(tip)
+	draw_polyline(arrow, Color("#3a2410"), 4.0)
+
+
+## The tile rectangle the guide points at (empty when there is none in reach).
+func _guide_spot(sim: Simulation, what: String) -> Rect2:
+	var camp := BuildingOps.camp_of(sim)
+	var home := Vector2i(camp.x + camp.w / 2, camp.y + camp.h / 2) if camp != null else Vector2i.ZERO
+	match what:
+		"settler":
+			for st: Settler in sim.settlers:
+				if not st.hidden and not game.selected.has(st.id) and st.kingdom_id == 0:
+					return Rect2(st.x - 0.5, st.y - 1.4, 1.0, 1.5)
+		"camp":
+			if camp != null:
+				return Rect2(camp.x, camp.y, camp.w, camp.h)
+		"meadow":
+			return Rect2(home.x - 9, home.y + 3, 4, 3)
+		"tree", "rock":
+			var best := Rect2()
+			var best_d := 1e9
+			for dy in range(-14, 15):
+				for dx in range(-14, 15):
+					var x := home.x + dx
+					var y := home.y + dy
+					if not sim.world.explored(x, y):
+						continue
+					var o := sim.world.obj(x, y)
+					var res := Tiles.object_resource[o] if o != World.UNKNOWN and o != Tiles.O_NONE else ""
+					if (what == "tree" and res == "wood") or (what == "rock" and res == "stone"):
+						var d := float(dx * dx + dy * dy)
+						if d < best_d:
+							best_d = d
+							best = Rect2(x, y - (1 if what == "tree" else 0), 1, 2 if what == "tree" else 1)
+			return best
+	return Rect2()

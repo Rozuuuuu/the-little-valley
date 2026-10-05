@@ -45,8 +45,12 @@ static func _inventory(v: Variant, what: String) -> String:
 	return ""
 
 
-static func _levels(type: String) -> int:
+static func _levels(type: String, b: Dictionary = {}) -> int:
 	var lv: Array = Defs.building(type).get("levels", [])
+	# A new player's founding camp has the campaign's steps (see Campaign).
+	# (A building's extra fields are saved beside its own; Building.extra.)
+	if type == "camp" and b.get("foundingCamp") == true:
+		return Campaign.CAMP_LEVELS.size()
 	return maxi(1, lv.size())
 
 
@@ -175,11 +179,11 @@ static func _buildings(sim: Dictionary) -> String:
 			var m: Variant = b["mine"]
 			if not (m is Dictionary and _int(m.get("depositId")) and [1, 2, 3].has(int(m.get("level", 0))) and _int(m.get("level"))):
 				return "building %d mine" % id
-		if b.has("level") and not (_int(b["level"]) and int(b["level"]) >= 1 and int(b["level"]) <= _levels(type)):
+		if b.has("level") and not (_int(b["level"]) and int(b["level"]) >= 1 and int(b["level"]) <= _levels(type, b)):
 			return "building %d level" % id
 		if b.has("upgrade"):
 			var u: Variant = b["upgrade"]
-			if not (u is Dictionary and _int(u.get("to")) and _int(u.get("progress")) and float(u["progress"]) >= 0 and int(u["to"]) <= _levels(type)):
+			if not (u is Dictionary and _int(u.get("to")) and _int(u.get("progress")) and float(u["progress"]) >= 0 and int(u["to"]) <= _levels(type, b)):
 				return "building %d upgrade" % id
 			var e := _inventory(u.get("paid"), "building %d upgrade payment" % id)
 			if e != "":

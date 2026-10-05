@@ -410,6 +410,9 @@ func _building_sprite(b: Building) -> String:
 		return "mine_%d" % level if level > 1 and art.has("mine_%d" % level) else "mine"
 	if b.type == "camp" and not b.extra.get("foundingCamp", false) and sim.reached.has("village") and art.has("villageHall"):
 		return "villageHall"
+	# A campaign's Longhouse: the timber hall.
+	if b.type == "camp" and b.extra.get("foundingCamp", false) and b.level >= 2 and art.has("villageHall"):
+		return "villageHall"
 	return b.type
 
 

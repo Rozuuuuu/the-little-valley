@@ -401,11 +401,17 @@ func _capture(opts: Dictionary) -> void:
 		return
 	if opts.get("night", "0") == "1":
 		# Jump the clock (only the clock) to the middle of the night, to see the lights.
-		while sim.time_of_day() < 0.93 and sim.time_of_day() > 0.1:
+		while sim.time_of_day() < 0.85 and sim.time_of_day() > 0.1:
 			sim.tick += 1
+		# Then live into the night, so people are in bed.
+		while sim.time_of_day() < 0.95 and sim.time_of_day() > 0.1:
+			sim.step()
 	if opts.get("rain", "0") == "1":
 		sim.raining = true
 		view.life._weather.rain_amount = 1.0
+	if opts.has("guide"):
+		# The new player's guide at step N.
+		tutorial = {"step": int(opts["guide"]), "done": false, "guided": true}
 	if opts.get("story", "0") == "1":
 		hud.show_origin_story()
 	if opts.has("celebrate"):
@@ -414,8 +420,7 @@ func _capture(opts: Dictionary) -> void:
 		hud.show_advice(sim.settlers[0], "We have more mouths than beds. Two more houses near the fields would settle everyone.")
 	if opts.has("card"):
 		# See more open on the selection, in one of its action modes (side, order, crop, job).
-		hud.console.details = true
-		hud._card_mode = str(opts["card"])
+		hud.show_details()
 	if opts.get("grid", "0") == "1":
 		settings.show_grid = true
 	if opts.has("place"):
@@ -618,10 +623,9 @@ func new_world(seed_value: int, habitat: String, valley_name: String, ruler_name
 	world_name = valley_name
 	created_at = int(Time.get_unix_time_from_system() * 1000)
 	_start(s)
-	tutorial = {"step": 0, "done": not introduction, "guided": true, "awaiting": introduction}
+	tutorial = {"step": 0, "done": not introduction, "guided": true}
 	save_now("New valley")
 	_tutorial_saved = false
-	hud.show_origin_story()
 
 
 func load_world(id: String, point: String = "") -> void:
@@ -750,7 +754,7 @@ func skip_tutorial() -> void:
 
 
 func restart_tutorial() -> void:
-	tutorial = {"step": 0, "done": false, "guided": true, "awaiting": true}
+	tutorial = {"step": 0, "done": false, "guided": true}
 	_tutorial_saved = false
 
 
@@ -1334,7 +1338,7 @@ func _key(k: InputEventKey) -> void:
 		"findRuler":
 			hud.console.find_ruler()
 		"seeMore":
-			hud.console.details = not hud.console.details
+			hud.show_details()
 		"goods":
 			hud.toggle_goods()
 		"families":

@@ -31,6 +31,8 @@ var _mark := Sprite2D.new()
 var _shown_tool: StringName = &""
 var _shown_carry := ""
 var _shown_mark := ""
+var _zzz2: Sprite2D = null
+var _mark_base := Vector2.ONE
 var _ring_state := -1
 var _hp_shown := -1.0
 
@@ -110,7 +112,27 @@ func refresh(s: Settler, pos: Vector2, _delta: float, _motion: float) -> void:
 		_mark.visible = mark != "" and _art.has(mark)
 		if _mark.visible:
 			_art.apply(_mark, mark)
+			_mark_base = _mark.scale
 	_mark.position = Vector2(0, lift * PX)
+	_mark.modulate.a = 1.0
+	_mark.scale = _mark_base
+	# Sleep: Z's drift up and to the side, growing and fading, two at a time (Renderer.drawSettler).
+	var asleep := mark == "ui_zzz" and _mark.visible
+	if asleep:
+		var zt := fmod(t * 0.6 + s.id * 0.3, 1.0)
+		_mark.position = Vector2(4.0 + zt * 3.0, -25.0 - zt * 8.0) * PX
+		_mark.modulate.a = 1.0 - zt
+		_mark.scale = _mark_base * (0.7 + zt * 0.5)
+		if _zzz2 == null:
+			_zzz2 = Sprite2D.new()
+			_art.apply(_zzz2, "ui_zzz")
+			add_child(_zzz2)
+		var zt2 := fmod(zt + 0.5, 1.0)
+		_zzz2.position = Vector2(4.0 + zt2 * 3.0, -25.0 - zt2 * 8.0) * PX
+		_zzz2.modulate.a = (1.0 - zt2) * 0.8
+		_zzz2.scale = _mark_base * (0.7 + zt2 * 0.5)
+	if _zzz2 != null:
+		_zzz2.visible = asleep
 	var ring := 2 if selected else (1 if hovered else 0)
 	var hp := s.hp if (health_bars_all or s.hp < 100.0) and s.anim != &"sleep" else -1.0
 	if ring != _ring_state or hp != _hp_shown:

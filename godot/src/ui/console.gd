@@ -40,13 +40,22 @@ func setup(h: Hud) -> void:
 	set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	grow_vertical = Control.GROW_DIRECTION_BEGIN
 	custom_minimum_size = Vector2(0, HEIGHT)
-	add_theme_stylebox_override("panel", _verge())
+	# Floating corners: no bar across the screen, three framed boxes with the map between them
+	# (minimap bottom-left, the selection's card bottom-centre, the commands bottom-right).
+	var clear := StyleBoxEmpty.new()
+	clear.content_margin_left = 8
+	clear.content_margin_right = 8
+	clear.content_margin_bottom = 8
+	add_theme_stylebox_override("panel", clear)
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
+	row.add_theme_constant_override("separation", 10)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(row)
 	# The minimap and its chips (236 px wide, as the browser's console grid).
 	var map_box := PanelContainer.new()
 	map_box.custom_minimum_size = Vector2(236, 0)
+	map_box.add_theme_stylebox_override("panel", HudTextures.panel_style(1))
 	var mv := VBoxContainer.new()
 	mv.add_theme_constant_override("separation", 4)
 	map_box.add_child(mv)
@@ -74,9 +83,13 @@ func setup(h: Hud) -> void:
 	home.pressed.connect(func() -> void: find_next("home"))
 	chips.add_child(home)
 	row.add_child(map_box)
-	# The info panel, with See more beside the summary.
+	row.add_child(_gap())
+	# The selection's card, centred, with See more opening the full details in a window.
 	var info_box := PanelContainer.new()
-	info_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info_box.add_theme_stylebox_override("panel", HudTextures.panel_style(1))
+	info_box.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	info_box.custom_minimum_size = Vector2(minf(660.0, 9999.0), 0)
+	_info_box = info_box
 	# The middle box takes what is left and never pushes the command card off the screen.
 	info_box.clip_contents = true
 	info_box.custom_minimum_size = Vector2(200, 0)
@@ -111,8 +124,10 @@ func setup(h: Hud) -> void:
 	_details_box.add_child(dv)
 	split.add_child(_details_box)
 	row.add_child(info_box)
+	row.add_child(_gap())
 	# The command card.
 	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", HudTextures.panel_style(1))
 	card.size_flags_horizontal = Control.SIZE_SHRINK_END
 	card.custom_minimum_size = Vector2(272, 0)
 	var cv := VBoxContainer.new()
@@ -136,6 +151,24 @@ func setup(h: Hud) -> void:
 	_tip_text.custom_minimum_size = Vector2(300, 0)
 	_tip_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_tip.add_child(_tip_text)
+
+
+var _info_box: PanelContainer
+
+
+func _gap() -> Control:
+	var g := Control.new()
+	g.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	g.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return g
+
+
+## The centre card's width: as much as fits between the minimap and the commands, up to 660.
+func _process(_d: float) -> void:
+	if _info_box != null:
+		var w := clampf(size.x - 236.0 - 272.0 - 60.0, 380.0, 660.0)
+		if absf(_info_box.custom_minimum_size.x - w) > 1.0:
+			_info_box.custom_minimum_size.x = w
 
 
 func tip_layer() -> Control:
@@ -164,10 +197,7 @@ var _edge: ImageTexture = null
 
 
 func _draw() -> void:
-	if _edge == null:
-		_edge = HudTextures.texture(HudTextures.grass_edge(), 2)
-	draw_rect(Rect2(0, 0, size.x, 4), Color("#2f6a27"))
-	draw_texture_rect(_edge, Rect2(0, -16, size.x, 16), true)
+	pass
 
 
 func _chip(text: String, tip: String) -> Button:
@@ -329,47 +359,158 @@ func _bars(items: Array) -> HBoxContainer:
 
 
 func _see_more(on_press: Callable) -> Button:
-	var b: Button = hud._button("See more (%s)" % game.settings.bindings.label("seeMore"), on_press, "Everything about the selection, beside it in the panel")
+	var b: Button = hud._button("See more (%s)" % game.settings.bindings.label("seeMore"), on_press, "Everything about the selection, in a window")
 	b.add_theme_font_size_override("font_size", 12)
 	b.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	return b
 
 
 func _toggle_details() -> void:
-	details = not details
-	_info_key = ""
-	refresh()
+	hud.show_details()
 
 
 func _settler_info(s: Settler) -> void:
-	_info.add_child(_portrait(_settler_portrait(s)))
-	var v := _text_col()
+	_info.add_child(character_card(s, false))
+	var right := VBoxContainer.new()
+	right.add_child(_see_more(_toggle_details))
+	_info.add_child(right)
+
+
+## A person's card: portrait, name with their job (and side job) as badges, what they are doing,
+## health, food and rest as bars with icons, and where they live, what they carry and their area.
+## `big` for the See more window.
+func character_card(s: Settler, big: bool) -> Control:
 	var sim := game.sim
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 12)
+	h.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var por := _portrait(_settler_portrait(s), 5.0 if big else 4.0)
+	h.add_child(por)
+	var v := _text_col()
+	h.add_child(v)
+	# Name and badges.
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 6)
+	var n := Label.new()
+	n.text = s.name
+	n.add_theme_font_override("font", hud._bold)
+	n.add_theme_font_size_override("font_size", 22 if big else 19)
+	n.add_theme_color_override("font_color", hud._c("accent"))
+	top.add_child(n)
 	if s.ruler:
-		v.add_child(_title_row(s.name, "You", "Ruler of %s" % game.world_name))
-		v.add_child(_line(_plain(hud._describe(s)), hud._c("text")))
-		v.add_child(_bars([["Fed", s.hunger / 100.0, "#e0844a"], ["Rested", s.energy / 100.0, "#6fa8dc"]]))
-		v.add_child(_line("Royal presence: everyone within 8 tiles works 20% faster.", hud._c("textDim"), 12))
-		var wait := sim.rally_ready_at - sim.tick
-		v.add_child(_line("Rally is ready (%s): nearby people work 30%% faster for an hour." % game.settings.bindings.label("rally") if wait <= 0 else "Rally ready again in %d min." % ceili(wait / 600.0), hud._c("textDim"), 12))
+		top.add_child(_badge("Ruler", Color("#b8862a")))
+	elif s.life_stage == "child":
+		top.add_child(_badge("Child", Color("#6a5a8a")))
 	else:
-		var job := "Child" if s.life_stage == "child" else Roles.job_name(s.job)
-		var area := sim.area(s.area_id)
-		v.add_child(_title_row(s.name, "", job + (" · %s" % area.name if area != null else "") + (" · holding" if s.hold else "")))
-		if s.life_stage != "child":
-			v.add_child(_line("Main job: %s   |   Side job: %s" % [job, Roles.job_name(s.side_job) if s.side_job != "" else "None"], hud._c("text"), 14))
+		top.add_child(_badge(Roles.job_name(s.job), Color("#3f7a3a")))
+		if s.side_job != "":
+			top.add_child(_badge("+ " + Roles.job_name(s.side_job), Color("#5a6a3a")))
 		if not s.training.is_empty():
-			v.add_child(_line("Training as %s — %d%%" % [Roles.job_name(str(s.training["role"])), floori(float(s.training["progress"]) / float(Content.get_value("jobs", "ROLE_TRAIN_TICKS")) * 100)], hud._c("text")))
-		var idle := s.task == null and s.idle_reason != ""
-		v.add_child(_line(("! " + s.idle_reason) if idle else _plain(hud._describe(s)), Color("#ffc890") if idle else hud._c("text")))
-		v.add_child(_bars([["Health", s.hp / 100.0, "#5ecb4a"], ["Fed", s.hunger / 100.0, "#e0844a"], ["Rested", s.energy / 100.0, "#6fa8dc"]]))
-		var bed := "none"
-		if s.home_id != -1 and sim.buildings.has(s.home_id):
-			bed = str((sim.buildings[s.home_id] as Building).def()["name"])
-		var carry := "%d %s · " % [s.carry_amount, str(Defs.resource(s.carry_res)["name"]).to_lower()] if s.carrying() else ""
-		v.add_child(_line("%sBed: %s" % [carry, bed], hud._c("textDim"), 12))
-	_info.add_child(v)
-	_info.add_child(_see_more(_toggle_details))
+			top.add_child(_badge("Training: %s %d%%" % [Roles.job_name(str(s.training["role"])), floori(float(s.training["progress"]) / float(Content.get_value("jobs", "ROLE_TRAIN_TICKS")) * 100)], Color("#7a5e1a")))
+	v.add_child(top)
+	# What they are doing.
+	var idle := s.task == null and s.idle_reason != ""
+	var doing := HBoxContainer.new()
+	doing.add_theme_constant_override("separation", 6)
+	doing.add_child(_icon("ui_idle" if idle else ("ui_zzz" if s.anim == &"sleep" else ("tool_" + str(s.tool) if s.tool != &"hand" and game.art.has("tool_" + str(s.tool)) else "ui_people")), 20))
+	doing.add_child(_line(("Idle: " + s.idle_reason) if idle else _plain(hud._describe(s)), Color("#ffc890") if idle else hud._c("text"), 15))
+	v.add_child(doing)
+	# Health, food, rest: side by side on the card, one under another in the See more window.
+	var stats: BoxContainer = VBoxContainer.new() if big else HBoxContainer.new()
+	stats.add_theme_constant_override("separation", 4 if big else 14)
+	for st: Array in [["ui_heart", "Health", s.hp, "#5ecb4a"], ["icon_food", "Fed", s.hunger, "#e0844a"], ["ui_moon", "Rested", s.energy, "#6fa8dc"]]:
+		stats.add_child(_stat(str(st[0]), str(st[1]), float(st[2]) / 100.0, Color(str(st[3])), big))
+	v.add_child(stats)
+	# Home, load, area.
+	var foot := HBoxContainer.new()
+	foot.add_theme_constant_override("separation", 12)
+	var home := "No bed"
+	if s.home_id != -1 and sim.buildings.has(s.home_id):
+		home = str((sim.buildings[s.home_id] as Building).def()["name"])
+	foot.add_child(_chip_line("ui_house", home, hud._c("problem") if s.home_id == -1 else hud._c("textDim")))
+	if s.carrying():
+		foot.add_child(_chip_line("icon_" + s.carry_res, "%d %s" % [s.carry_amount, str(Defs.resource(s.carry_res)["name"]).to_lower()], hud._c("textDim")))
+	var area := sim.area(s.area_id)
+	if area != null:
+		foot.add_child(_chip_line("ui_basket", area.name, hud._c("textDim")))
+	if s.ruler:
+		var wait := sim.rally_ready_at - sim.tick
+		foot.add_child(_line("Rally ready (%s)" % game.settings.bindings.label("rally") if wait <= 0 else "Rally in %d min" % ceili(wait / 600.0), hud._c("good") if wait <= 0 else hud._c("textDim"), 13))
+	v.add_child(foot)
+	return h
+
+
+func _badge(text: String, color: Color) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 13)
+	l.add_theme_color_override("font_color", Color("#fffbe8"))
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = color
+	sb.border_color = color.darkened(0.4)
+	sb.set_border_width_all(1)
+	sb.content_margin_left = 6
+	sb.content_margin_right = 6
+	sb.content_margin_top = 1
+	sb.content_margin_bottom = 1
+	l.add_theme_stylebox_override("normal", sb)
+	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	return l
+
+
+func _icon(sprite: String, px: float) -> TextureRect:
+	var r := TextureRect.new()
+	r.custom_minimum_size = Vector2(px, px)
+	r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	r.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	r.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	r.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	if game.art.has(sprite):
+		r.texture = game.art.sprites[sprite]["texture"]
+	return r
+
+
+func _stat(icon: String, name: String, frac: float, color: Color, big: bool) -> HBoxContainer:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 4)
+	h.add_child(_icon(icon, 18))
+	h.tooltip_text = "%s %d%%" % [name, roundi(clampf(frac, 0.0, 1.0) * 100.0)]
+	h.mouse_filter = Control.MOUSE_FILTER_PASS
+	var bar := ProgressBar.new()
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(110 if big else 84, 12)
+	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	bar.max_value = 1.0
+	bar.value = clampf(frac, 0.0, 1.0)
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color("#2a1c10")
+	bg.border_color = Color("#1a1208")
+	bg.set_border_width_all(1)
+	var fg := StyleBoxFlat.new()
+	fg.bg_color = color if frac > 0.3 else Color("#e0584a")
+	fg.border_color = color.lightened(0.3)
+	fg.border_width_top = 1
+	bar.add_theme_stylebox_override("background", bg)
+	bar.add_theme_stylebox_override("fill", fg)
+	h.add_child(bar)
+	var pct := _line("%d%%" % roundi(clampf(frac, 0.0, 1.0) * 100.0), hud._c("textDim"), 12)
+	pct.autowrap_mode = TextServer.AUTOWRAP_OFF
+	pct.size_flags_horizontal = Control.SIZE_FILL
+	pct.custom_minimum_size = Vector2(34, 0)
+	h.add_child(pct)
+	return h
+
+
+func _chip_line(icon: String, text: String, color: Color) -> HBoxContainer:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 4)
+	h.add_child(_icon(icon, 16))
+	var l := _line(text, color, 13)
+	l.size_flags_horizontal = Control.SIZE_FILL
+	l.autowrap_mode = TextServer.AUTOWRAP_OFF
+	h.add_child(l)
+	return h
 
 
 func _group_info() -> void:
@@ -636,7 +777,7 @@ func _commands() -> Array:
 			i += 1
 		slots[BACK_SLOT] = _cmd("Back", "", "cancel", "Back to the categories.", back_run)
 		return slots
-	var see_more := _cmd("See more", "ui_star", "seeMore", "Everything about the selection, beside it in the panel.", _toggle_details)
+	var see_more := _cmd("See more", "ui_star", "seeMore", "Everything about the selection, in a window.", _toggle_details)
 	var deselect := _cmd("Deselect", "", "cancel", "Clear the selection.", func() -> void:
 		game.selected.clear()
 		game.selected_building = -1
@@ -794,7 +935,7 @@ func _unlock_name(unlock: Variant) -> String:
 func _refresh_card() -> void:
 	var sim := game.sim
 	_slots = _commands()
-	var key := "%s|%s|%s|%d|%s|%d" % [menu, game.placing, game.selected, game.selected_building, sim.reached, sim.tick / 30]
+	var key := "%s|%s|%s|%d|%s|%d|%s" % [menu, game.placing, game.selected, game.selected_building, sim.reached, sim.tick / 30, hud.guide_target]
 	for c: Variant in _slots:
 		if c != null:
 			key += "|%s%s%s%s" % [c["label"], c["on"], c["disabled"], c["badge"]]
@@ -805,8 +946,33 @@ func _refresh_card() -> void:
 	_card_head.text = "Build" if menu == "build" else ("Train a role" if menu == "train" else (str(info[menu]["name"]) if menu != "" else "Commands"))
 	for c in _grid.get_children():
 		c.queue_free()
+	hud.guide_button = null
 	for i in 12:
-		_grid.add_child(_slot_button(_slots[i], i))
+		var btn := _slot_button(_slots[i], i)
+		_grid.add_child(btn)
+		if hud.guide_button == null and _slots[i] != null and _guide_match(_slots[i]):
+			hud.guide_button = btn
+
+
+## Whether a command is what the guide points at: "command:<action>", or "label:<text>" (in the
+## build menu also the category holding that building).
+func _guide_match(c: Dictionary) -> bool:
+	if hud.guide_target == "" or bool(c["disabled"]):
+		return false
+	var info: Dictionary = Content.get_value("buildings", "CATEGORY_INFO")
+	for tok: String in hud.guide_target.split("|"):
+		if tok.begins_with("command:") and str(c["action"]) == tok.substr(8):
+			return true
+		if tok.begins_with("label:"):
+			var want := tok.substr(6)
+			if str(c["label"]) == want:
+				return true
+			if menu == "build":
+				var all: Dictionary = Content.get_value("buildings", "BUILDINGS")
+				for id: String in all:
+					if str(all[id]["name"]) == want and info.has(str(all[id].get("category", ""))) and str(info[str(all[id]["category"])]["name"]) == str(c["label"]):
+						return true
+	return false
 
 
 func _slot_button(c: Variant, i: int) -> Control:

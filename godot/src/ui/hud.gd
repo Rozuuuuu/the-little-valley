@@ -122,6 +122,9 @@ func _ready() -> void:
 	_root.add_child(_studio)
 	# The command tooltip floats above everything else in the HUD.
 	_root.add_child(console.tip_layer())
+	_guide_arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_guide_arrow.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_root.add_child(_guide_arrow)
 	_busy.add_child(_busy_label)
 
 
@@ -1431,6 +1434,159 @@ func _exit_tree() -> void:
 		_modal.free()
 
 
+## "See more": everything about the selection in one big window, sized to fit without scrolling.
+## A person: their card, every detail, and their main job, side job and work order side by side.
+## A building or a group: the details and every action for it. Opens again to show changes.
+var _details_text_node: RichTextLabel = null
+var _details_grid: GridContainer = null
+
+
+func show_details() -> void:
+	var sim := game.sim
+	if sim == null:
+		return
+	var one: Settler = sim.settler(game.selected[0]) if game.selected.size() == 1 else null
+	var b: Building = sim.buildings.get(game.selected_building) if game.selected.is_empty() else null
+	if one == null and b == null and game.selected.size() < 2:
+		return
+	var title := one.name if one != null else (Levels.level_name(b) if b != null and b.built else (str(b.def()["name"]) if b != null else "%d people" % game.selected.size()))
+	var v := open_modal(title, 880)
+	_card_mode = ""
+	_last_card_key = ""
+	var body := HBoxContainer.new()
+	body.add_theme_constant_override("separation", 18)
+	v.add_child(body)
+	var left := VBoxContainer.new()
+	left.custom_minimum_size = Vector2(380, 0)
+	left.add_theme_constant_override("separation", 8)
+	body.add_child(left)
+	if one != null:
+		left.add_child(console.character_card(one, true))
+	elif b != null:
+		var head := HBoxContainer.new()
+		head.add_theme_constant_override("separation", 12)
+		head.add_child(console._portrait(console._building_portrait(b.type), 1.0))
+		head.add_child(_row_label(str(b.def().get("description", "")), _c("textDim"), 14))
+		(head.get_child(1) as Label).custom_minimum_size = Vector2(240, 0)
+		left.add_child(head)
+	_details_text_node = RichTextLabel.new()
+	_details_text_node.bbcode_enabled = true
+	_details_text_node.fit_content = true
+	_details_text_node.scroll_active = false
+	_details_text_node.custom_minimum_size = Vector2(360, 0)
+	_details_text_node.add_theme_font_size_override("normal_font_size", 15)
+	_details_text_node.add_theme_font_size_override("bold_font_size", 15)
+	_details_text_node.text = _details_now()
+	left.add_child(_details_text_node)
+	var right := VBoxContainer.new()
+	right.add_theme_constant_override("separation", 10)
+	right.size_flags_horizontal = Control.SIZE_FILL
+	body.add_child(right)
+	_details_grid = null
+	if one != null and not one.ruler and one.life_stage != "child":
+		_person_sections(right, one)
+	else:
+		right.add_child(_h3("Actions"))
+		_details_grid = GridContainer.new()
+		_details_grid.columns = 2
+		_details_grid.add_theme_constant_override("h_separation", 6)
+		_details_grid.add_theme_constant_override("v_separation", 6)
+		right.add_child(_details_grid)
+		detail_actions(_details_grid)
+	var close := _button("Close", close_modal)
+	close.theme_type_variation = &"PrimaryButton"
+	v.add_child(_buttons_row([close]))
+
+
+func _details_now() -> String:
+	var sim := game.sim
+	if game.selected.size() == 1 and sim.settler(game.selected[0]) != null:
+		return _settler_text(sim.settler(game.selected[0]))
+	if game.selected.size() > 1:
+		return _group_text()
+	if sim.buildings.has(game.selected_building):
+		return _building_text(sim.buildings[game.selected_building])
+	return ""
+
+
+## A person's job controls, all at once: main job, side job, work order.
+func _person_sections(box: VBoxContainer, s: Settler) -> void:
+	var sim := game.sim
+	var cols := HBoxContainer.new()
+	cols.add_theme_constant_override("separation", 14)
+	box.add_child(cols)
+	var reopen := func() -> void:
+		show_details()
+	var col := func(title: String) -> VBoxContainer:
+		var c := VBoxContainer.new()
+		c.add_theme_constant_override("separation", 4)
+		c.custom_minimum_size = Vector2(140, 0)
+		c.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		var head: Control = _h3(title)
+		head.custom_minimum_size = Vector2.ZERO
+		c.add_child(head)
+		cols.add_child(c)
+		return c
+	var main_col: VBoxContainer = col.call("Main job")
+	for j: String in JOBS:
+		var jb := _small(("> " if s.job == j else "") + Roles.job_name(j), func() -> void:
+			game.command({"type": "setJob", "ids": [s.id], "job": j})
+			reopen.call(), str(Defs.job(j).get("description", "")))
+		jb.disabled = s.job == j
+		jb.custom_minimum_size = Vector2(140, 0)
+		main_col.add_child(jb)
+	var side_col: VBoxContainer = col.call("Side job")
+	var none_b := _small(("> " if s.side_job == "" else "") + "None", func() -> void:
+		game.command({"type": "setSideJob", "ids": [s.id], "job": null})
+		reopen.call(), "Helps wherever needed")
+	none_b.disabled = s.side_job == ""
+	none_b.custom_minimum_size = Vector2(140, 0)
+	side_col.add_child(none_b)
+	for j: String in Commands.SIDE_JOBS:
+		var sb := _small(("> " if s.side_job == j else "") + Roles.job_name(j), func() -> void:
+			game.command({"type": "setSideJob", "ids": [s.id], "job": j})
+			reopen.call(), "Done whenever the main job has nothing to do")
+		sb.disabled = s.side_job == j or s.job == j
+		sb.custom_minimum_size = Vector2(140, 0)
+		side_col.add_child(sb)
+	var order_col: VBoxContainer = col.call("Work order")
+	var order := SettlerBrain.effective_priorities(s)
+	var put := func(next: Variant) -> void:
+		game.command({"type": "setPriorities", "ids": [s.id], "priorities": next})
+		reopen.call()
+	for i in order.size():
+		var k: String = order[i]
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 3)
+		var lbl := _row_label("%d. %s" % [i + 1, k.capitalize()], _c("text"), 14)
+		lbl.custom_minimum_size = Vector2(78, 0)
+		row.add_child(lbl)
+		var up := _small("Up", func() -> void:
+			var n := order.duplicate()
+			n[i] = n[i - 1]
+			n[i - 1] = k
+			put.call(n), "Do %s earlier" % k)
+		up.disabled = i == 0
+		row.add_child(up)
+		row.add_child(_small("Off", func() -> void:
+			var n := order.duplicate()
+			n.erase(k)
+			put.call(n), "Never do %s" % k))
+		order_col.add_child(row)
+	for k: String in SettlerBrain.WORK_KINDS:
+		if not order.has(k):
+			order_col.add_child(_small("+ %s" % k.capitalize(), func() -> void:
+				var n := order.duplicate()
+				n.append(k)
+				put.call(n)))
+	if s.has_priorities:
+		order_col.add_child(_small("Reset to %s default" % Roles.job_name(s.job), func() -> void: put.call(null)))
+	var hint := _row_label("A new main job set here starts at once; Train (%s) teaches roles at the Town Hall instead. The side job is done whenever the main job has nothing to do." % game.settings.bindings.label("trainRole"), _c("textDim"), 13)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.custom_minimum_size = Vector2(440, 0)
+	box.add_child(hint)
+
+
 ## The Assistant Chief's advice (Village.tsx ChiefAdvice): portrait, name, the advice, "Thank you".
 func show_advice(chief: Settler, text: String) -> void:
 	var v := open_modal("Advice", 460)
@@ -1846,10 +2002,47 @@ func _offer_old_game(v: BoxContainer) -> void:
 
 
 ## The introduction's current step (or its closing words), top left.
+## The guide's current target ("" when none): what the overlay and command card point at.
+var guide_target := ""
+## The command card button the guide points at (null when none).
+var guide_button: Control = null
+var _guide_arrow := _GuideArrow.new()
+
+
+## A bouncing arrow and a pulsing gold frame on the button the guide wants pressed.
+class _GuideArrow extends Control:
+	var target: Control = null
+
+	func _process(_d: float) -> void:
+		visible = target != null and is_instance_valid(target) and target.is_visible_in_tree()
+		if visible:
+			queue_redraw()
+
+	func _draw() -> void:
+		if target == null or not is_instance_valid(target):
+			return
+		var r := target.get_global_rect()
+		r.position -= get_global_position()
+		var t := Time.get_ticks_msec() / 1000.0
+		var pulse := 0.6 + 0.4 * sin(t * 6.0)
+		draw_rect(r.grow(3), Color(1.0, 0.85, 0.35, pulse), false, 3.0)
+		var bob := sin(t * 5.0) * 5.0
+		var tip := Vector2(r.position.x + r.size.x / 2.0, r.position.y - 6 + bob)
+		var arrow := PackedVector2Array([tip, tip + Vector2(-12, -14), tip + Vector2(-5, -14), tip + Vector2(-5, -28), tip + Vector2(5, -28), tip + Vector2(5, -14), tip + Vector2(12, -14)])
+		draw_colored_polygon(arrow, Color("#f4cf5a"))
+		arrow.append(tip)
+		draw_polyline(arrow, Color("#3a2410"), 2.0)
+
+
 func _refresh_tutorial() -> void:
 	var t: Dictionary = game.tutorial
 	var outro: bool = t["done"] and Time.get_ticks_msec() < game.tutorial_outro_until
-	var key := "%s|%s|%s|%s" % [t["step"], t["done"], outro, Tutorial.waiting(t)]
+	var list := Tutorial.steps(t)
+	var guided := bool(t.get("guided", false))
+	var i := int(t["step"])
+	guide_target = "" if outro or t["done"] or i >= list.size() else str(list[i].get("target", ""))
+	_guide_arrow.target = guide_button if guide_target != "" else null
+	var key := "%s|%s|%s|%s" % [t["step"], t["done"], outro, guided]
 	_tutorial.visible = outro or not t["done"]
 	if key == _tutorial_key:
 		return
@@ -1858,40 +2051,41 @@ func _refresh_tutorial() -> void:
 		c.queue_free()
 	if not _tutorial.visible:
 		return
-	var i := int(t["step"])
-	var step: Dictionary = Tutorial.STEPS[mini(i, Tutorial.STEPS.size() - 1)]
+	var step: Dictionary = list[mini(i, list.size() - 1)]
 	var h := Label.new()
 	h.text = "Your valley awaits" if outro else str(step["title"])
 	h.add_theme_font_override("font", _bold)
+	h.add_theme_font_size_override("font_size", 18)
 	h.add_theme_color_override("font_color", _c("accent"))
 	_tutorial_box.add_child(h)
-	var body := Label.new()
-	body.text = Tutorial.OUTRO if outro else str(step["text"])
-	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.custom_minimum_size = Vector2(360, 0)
-	_tutorial_box.add_child(body)
 	if outro:
+		_tutorial_box.add_child(_row_label(Tutorial.GUIDE_OUTRO if guided else Tutorial.OUTRO, _c("text"), 15))
 		return
+	if guided:
+		# One line of the valley's story, then what to do now, in bold, with an arrow on screen.
+		var story := _row_label(str(step["story"]), _c("textDim"), 14)
+		_tutorial_box.add_child(story)
+		var act := _row_label(str(step["do"]), _c("text"), 16)
+		act.add_theme_font_override("font", _bold)
+		_tutorial_box.add_child(act)
+	else:
+		_tutorial_box.add_child(_row_label(str(step["text"]), _c("text"), 15))
 	var foot := HBoxContainer.new()
 	var pips := Label.new()
 	var marks := ""
-	for n in Tutorial.STEPS.size():
+	for n in list.size():
 		marks += "•" if n <= i else "·"
-	pips.text = marks
-	pips.tooltip_text = "Step %d of %d" % [i + 1, Tutorial.STEPS.size()]
+	pips.text = "%s  %d/%d" % [marks, i + 1, list.size()]
 	pips.mouse_filter = Control.MOUSE_FILTER_PASS
 	pips.add_theme_color_override("font_color", _c("accent"))
 	pips.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	foot.add_child(pips)
-	if Tutorial.waiting(t):
-		_tutorial_box.add_child(_row_label("Paused while you read. Complete this step to unlock the next.", _c("textDim"), 14))
-		foot.add_child(_button("Begin step", func() -> void:
-			t["awaiting"] = false
-			refresh_now()))
-	foot.add_child(_button("Skip tutorial", func() -> void:
+	var skip := _small("Skip tutorial", func() -> void:
 		game.skip_tutorial()
-		refresh_now()))
+		refresh_now(), "For players who know the game")
+	foot.add_child(skip)
 	_tutorial_box.add_child(foot)
+	_window_sound(true)
 
 
 ## Valley today (src/ui/Village.tsx): last session's recap, what needs attention, ideas for
@@ -2164,6 +2358,12 @@ func refresh_now() -> void:
 	_apply_scale()
 	_refresh_top()
 	console.refresh()
+	if _modal.visible and is_instance_valid(_details_text_node) and _details_text_node.is_inside_tree():
+		var dt := _details_now()
+		if _details_text_node.text != dt:
+			_details_text_node.text = dt
+		if is_instance_valid(_details_grid) and _details_grid.is_inside_tree():
+			detail_actions(_details_grid)
 	_refresh_list()
 	_refresh_goals()
 	_refresh_goods()

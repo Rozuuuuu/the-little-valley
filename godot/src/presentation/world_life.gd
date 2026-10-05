@@ -20,6 +20,7 @@ var particles: Particles
 var _glow := _Glow.new()
 var _weather := _Weather.new()
 var _aura := _Aura.new()
+var _sleep := _Sleep.new()
 var _night_mat := ShaderMaterial.new()
 var _corpses: Array[Dictionary] = []
 ## party id -> {node: Node2D, figure: Sprite2D, pack: Sprite2D, at: Vector2}
@@ -37,7 +38,8 @@ func _init() -> void:
 	_glow.material = add
 	_weather.z_index = 8
 	_aura.z_index = -4
-	for n: Node in [_glow, _weather, _aura]:
+	_sleep.z_index = 6
+	for n: Node in [_glow, _weather, _aura, _sleep]:
 		add_child(n)
 	_night_mat.shader = load("res://src/presentation/shaders/night.gdshader")
 
@@ -131,6 +133,23 @@ func _update_lights(sim: Simulation, area: Rect2, t: float, dark: float, tint: C
 		_night_mat.set_shader_parameter("lights", padded)
 	_glow.flames = flames
 	_glow.queue_redraw()
+	# Homes where someone sleeps: Z's rise from the roof.
+	var homes: Array[Vector3] = []
+	if not still:
+		var asleep := {}
+		for s2: Settler in sim.settlers:
+			if s2.inside_id != -1 and s2.anim == &"sleep":
+				asleep[s2.inside_id] = true
+		for id: int in asleep:
+			var hb: Building = sim.buildings.get(id)
+			if hb != null and hb.built:
+				var top := Vector2(hb.x + hb.w * 0.65, hb.y - 0.6) * WorldView.TILE_PX
+				if area.has_point(top):
+					homes.append(Vector3(top.x, top.y, float(id)))
+	_sleep.homes = homes
+	_sleep.time = t
+	_sleep.art = view.art
+	_sleep.queue_redraw()
 
 
 class _Glow extends Node2D:
@@ -152,6 +171,25 @@ class _Glow extends Node2D:
 	func _draw() -> void:
 		for f: Vector4 in flames:
 			draw_texture_rect(_tex, Rect2(f.x - f.z, f.y - f.z, f.z * 2.0, f.z * 2.0), false, Color(1, 1, 1, clampf(f.w, 0.0, 1.0)))
+
+
+class _Sleep extends Node2D:
+	var homes: Array[Vector3] = []
+	var time := 0.0
+	var art: Art
+
+	func _draw() -> void:
+		if art == null or not art.has("ui_zzz"):
+			return
+		var sp: Dictionary = art.sprites["ui_zzz"]
+		var k := WorldView.TILE_PX / Art.SOURCE_PX_PER_TILE
+		var size := Vector2(float(sp["w"]), float(sp["h"])) * k
+		for h: Vector3 in homes:
+			for n in 3:
+				var zt := fmod(time * 0.45 + h.z * 0.31 + n / 3.0, 1.0)
+				var sc := 0.6 + zt * 0.6
+				var at := Vector2(h.x + (zt * 5.0 + sin(zt * 6.0 + n) * 2.0) * WorldLife.PX, h.y - zt * 14.0 * WorldLife.PX)
+				draw_texture_rect(sp["texture"] as Texture2D, Rect2(at - size * sc / 2.0, size * sc), false, Color(1, 1, 1, (1.0 - zt) * 0.9))
 
 
 # ---- weather ---------------------------------------------------------------------------------------

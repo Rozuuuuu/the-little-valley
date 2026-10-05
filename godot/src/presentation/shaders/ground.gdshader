@@ -101,6 +101,25 @@ bool is_water(int t) {
 	return t == T_WATER || t == T_DEEP;
 }
 
+// A mountain tile's height in blocks: how many tiles in it lies from the nearest land that is
+// not mountain (1 at the edge, up to 4); 0 for land that is not mountain.
+int mountain_height(int tx, int ty) {
+	if (terr(tx, ty) != T_MOUNTAIN) return 0;
+	for (int r = 1; r <= 3; r++) {
+		for (int i = -r; i <= r; i++) {
+			if (terr(tx + i, ty - r) != T_MOUNTAIN || terr(tx + i, ty + r) != T_MOUNTAIN || terr(tx - r, ty + i) != T_MOUNTAIN || terr(tx + r, ty + i) != T_MOUNTAIN) return r;
+		}
+	}
+	return 4;
+}
+
+// The same, with one block more on some tiles, so neighbouring blocks step up and down.
+int block_height(int tx, int ty) {
+	int r = mountain_height(tx, ty);
+	if (r == 0) return 0;
+	return r + (hash01(tx, ty, world_seed ^ 0x5b1) > 0.6 ? 1 : 0);
+}
+
 // How far (art px) a pixel is from the nearest land that is not mountain, up to three tiles
 // (the bordered id texture holds that much of the neighbours).
 float mountain_depth(ivec2 p) {
@@ -178,58 +197,46 @@ vec3 colour(ivec2 p, int c) {
 		bool contour = js_mod(wy + int(floor(patch * 12.0)), 11) == 0;
 		slot = contour ? HILL0 : (h < 0.035 ? HILL3 : (patch > 0.55 ? HILL2 : HILL1));
 	} else if (c == T_MOUNTAIN) {
-		// Mountains as a range of jagged peaks, seen from the front and above like the buildings:
-		// overlapping triangles (the nearer peak in front), a sunlit left face and a shaded right
-		// face split by a wandering ridge, snow on the tips, dark outlines, cracks in the rock,
-		// and scree between the peaks. Drawing only: what is walkable is unchanged.
-		float depth = mountain_depth(p);
-		vec2 pf = vec2(p) + 0.5;
-		vec2 cell = vec2(54.0, 34.0);
-		vec2 g = floor(pf / cell);
-		float front = -1e9;
-		vec2 pv = vec2(0.0);
-		float ph = 1.0;
-		float pw = 1.0;
-		float pseed = 0.0;
-		for (int j = -1; j <= 1; j++) {
-			for (int i = -1; i <= 1; i++) {
-				vec2 gc = g + vec2(float(i), float(j));
-				int gx = int(gc.x);
-				int gy = int(gc.y);
-				vec2 base = (gc + vec2(0.15 + 0.7 * hash01(gx, gy, world_seed ^ 0x71), 0.35 + 0.6 * hash01(gx, gy, world_seed ^ 0x72))) * cell;
-				if (terr(int(floor(base.x / 16.0)), int(floor(base.y / 16.0))) != T_MOUNTAIN) continue;
-				float w = cell.x * (0.45 + 0.45 * hash01(gx, gy, world_seed ^ 0x73));
-				float hgt = w * (1.0 + 0.7 * hash01(gx, gy, world_seed ^ 0x74));
-				vec2 v = pf - base;
-				if (v.y > 0.0 || v.y < -hgt) continue;
-				float t = -v.y / hgt;
-				// Jagged sides: the half-width wobbles with height.
-				float jag = (value_noise(float(gx * 37) + t * 6.0, float(gy * 11), world_seed ^ 0x75) - 0.5) * 4.0;
-				if (abs(v.x) > w * (1.0 - t) + jag * (1.0 - t)) continue;
-				if (base.y > front) { front = base.y; pv = v; ph = hgt; pw = w; pseed = hash01(gx, gy, world_seed ^ 0x76); }
-			}
-		}
-		float rough = value_noise(float(wx) * 0.25, float(wy) * 0.25, world_seed ^ 0x143);
-		if (front > -1e8) {
-			float t = -pv.y / ph;
-			float half_w = pw * (1.0 - t);
-			float ridge = (value_noise(t * 5.0, pseed * 50.0, world_seed ^ 0x531) - 0.5) * pw * 0.35 * (1.0 - t);
-			bool lit = pv.x < ridge;
-			bool outline = abs(pv.x) > half_w - 1.2 || pv.y > -1.0;
-			float snow_line = 0.6 + (rough - 0.5) * 0.16 - (winter ? 0.35 : 0.0);
-			if (outline) slot = CLIFF0;
-			else if (t > snow_line) slot = lit ? SNOWCAP : CLIFF3;
-			else if (abs(pv.x - ridge) < 1.0) slot = CLIFF3;
-			else if (lit) slot = (pv.x - ridge) > -3.0 ? CLIFF3 : (rough > 0.8 ? CLIFF1 : CLIFF2);
-			else slot = rough > 0.82 ? CLIFF0 : CLIFF1;
-			// Ledges across the faces.
-			if (!outline && t <= snow_line && js_mod(wy + int(floor(rough * 7.0)), 6) == 0 && h > 0.5) slot = lit ? CLIFF1 : CLIFF0;
+		// Mountains built block by block: every mountain tile is a stone block, stacked one level
+		// higher for each tile further into the range (up to four). Each block shows its lit top;
+		// where the block in front (south) is lower, the front face of laid stone courses shows,
+		// one course per level; sides facing lower blocks are shaded, top edges catch the light,
+		// and the highest blocks carry snow. Drawing only: walkability is unchanged.
+		int tx = wx >> 4;
+		int ty = wy >> 4;
+		int lx = wx & 15;
+		int ly = wy & 15;
+		int hh = block_height(tx, ty);
+		int hs = block_height(tx, ty + 1);
+		int hn = block_height(tx, ty - 1);
+		int hw = block_height(tx - 1, ty);
+		int he = block_height(tx + 1, ty);
+		const int COURSE = 4;
+		int drop = max(hh - hs, 0);
+		int face = min(drop * COURSE, 12);
+		float tile_shade = hash01(tx, ty, world_seed ^ 0x5b2);
+		if (ly >= 16 - face) {
+			// Front face: courses of dressed stone, joints staggered course by course.
+			int row = ly - (16 - face);
+			int course = row / COURSE;
+			bool bed = (row % COURSE) == COURSE - 1;
+			bool joint = js_mod(wx + course * 4 + ty * 3, 8) == 0;
+			slot = (bed || joint) ? CLIFF0 : (row % COURSE == 0 ? CLIFF2 : CLIFF1);
+			if (lx == 0 && hw < hh) slot = CLIFF0;
 		} else {
-			// Scree and rock between the peaks.
-			slot = rough > 0.62 ? CLIFF2 : (h > 0.93 ? CLIFF3 : CLIFF1);
-			if (h < 0.05) slot = CLIFF0;
+			// Top of the block: lighter the higher it stands; blocks of the same height still
+			// show their joints, so the range reads block by block.
+			slot = hh >= 4 ? CLIFF3 : (tile_shade > 0.5 ? CLIFF2 : CLIFF3);
+			if (hh <= 1) slot = tile_shade > 0.5 ? CLIFF1 : CLIFF2;
+			if (h > 0.985) slot = CLIFF1;
+			int snow_from = winter ? 3 : 5;
+			if (hh >= snow_from) slot = (h > 0.96) ? CLIFF3 : SNOWCAP;
+			if (lx == 15 || ly == 15 - face) slot = hh >= snow_from ? CLIFF3 : CLIFF1;
+			// A lit rim where the block behind is lower, shaded sides where neighbours are lower.
+			if (ly == 0 && hn < hh) slot = hh >= snow_from ? SNOWCAP : CLIFF3;
+			if (lx == 0 && hw < hh) slot = CLIFF1;
+			if (lx >= 14 && he < hh) slot = CLIFF0;
 		}
-		if (depth < 2.0) slot = CLIFF0;
 	} else if (c == T_ROAD) {
 		bool edge = cls(p + ivec2(-1, 0)) != T_ROAD || cls(p + ivec2(1, 0)) != T_ROAD || cls(p + ivec2(0, -1)) != T_ROAD || cls(p + ivec2(0, 1)) != T_ROAD;
 		slot = edge ? DIRT0 : (h < 0.06 ? DIRT2 : (h > 0.96 ? DIRT3 : DIRT1));

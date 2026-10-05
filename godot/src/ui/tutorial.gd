@@ -16,11 +16,59 @@ const STEPS: Array[Dictionary] = [
 	{"title": "Keep your valley safe", "text": "The game autosaves regularly. Press F5 or use Save to save now."},
 ]
 
+## A new player's guide (state "guided"): the valley's story told through what they do. Each step
+## is one line of story, one action and something on screen to point at ("target"): a settler, the
+## nearest tree or rock, the meadow for fields, the camp, or a button on the command card
+## ("command:<action>" or "label:<text>"). The game keeps running; the guide never pauses it.
+const GUIDE: Array[Dictionary] = [
+	{"title": "The founders arrive", "story": "After weeks on the road, your people pitch their tents in a quiet valley.",
+		"do": "Click one of your settlers to choose them.", "target": "settler"},
+	{"title": "Many hands", "story": "There is too much to do alone.",
+		"do": "Hold the left button and drag a box around several settlers.", "target": "settler"},
+	{"title": "Wood for shelter", "story": "Tents will not last the winter. We need timber.",
+		"do": "With settlers chosen, right-click the tree the arrow points at.", "target": "tree"},
+	{"title": "Stone for hearths", "story": "A fire needs a ring of stone; a hall needs footings.",
+		"do": "Choose a settler and right-click the grey rock.", "target": "rock"},
+	{"title": "The first fields", "story": "The meadow by the camp is good soil.",
+		"do": "Click Build, then Field, and drag across the meadow. Lay at least two.", "target": "command:build|label:Field|meadow"},
+	{"title": "A roof over our heads", "story": "Families want a home of their own, not a tent.",
+		"do": "Click Build, then House, and place it near the camp.", "target": "command:build|label:House"},
+	{"title": "The Longhouse", "story": "With a home and fields, the camp can become a proper timber hall.",
+		"do": "Click the camp, then Upgrade on the command card, to raise the Longhouse.", "target": "camp|label:Upgrade"},
+	{"title": "Stores and tools", "story": "A Town Hall needs a storehouse for the harvest and a workshop for planks.",
+		"do": "Build a Storehouse and a Workshop.", "target": "command:build|label:Storehouse|label:Workshop"},
+	{"title": "Keep it safe", "story": "Whatever happens, the valley remembers.",
+		"do": "Press F5 to save (the game also saves by itself).", "target": ""},
+]
+
+const GUIDE_OUTRO := "The valley is yours. Grow the Longhouse into a Town Hall, then a Keep and a Castle: select it to see what each step needs."
+
 const OUTRO := "That covers the basics. Explore past the clearing, lay paths, and shape the valley however you like."
 
 
-static func waiting(state: Dictionary) -> bool:
-	return not bool(state.get("done", true)) and bool(state.get("awaiting", false))
+## Older saves kept the guide waiting for "Begin step"; the guide no longer pauses the game.
+static func waiting(_state: Dictionary) -> bool:
+	return false
+
+
+static func steps(state: Dictionary) -> Array[Dictionary]:
+	return GUIDE if bool(state.get("guided", false)) else STEPS
+
+
+static func _guide_done(i: int, sim: Simulation, selected: int, saved: bool) -> bool:
+	match i:
+		0: return selected >= 1
+		1: return selected >= 2
+		2: return int(sim.stats.get("woodGathered", 0)) >= 6
+		3: return int(sim.stats.get("stoneGathered", 0)) >= 3
+		4: return _count(sim, "field", false) >= 2
+		5: return _count(sim, "house", false) + _count(sim, "familyHome", false) + _count(sim, "cottage", false) >= 1
+		6:
+			var camp := BuildingOps.camp_of(sim)
+			return camp == null or camp.type != "camp" or camp.level >= 2 or not camp.upgrade.is_empty()
+		7: return _count(sim, "storehouse", false) >= 1 and _count(sim, "workshop", false) >= 1
+		8: return saved
+	return true
 
 
 static func _count(sim: Simulation, type: String, built_only: bool) -> int:
@@ -50,14 +98,15 @@ static func step_done(i: int, sim: Simulation, selected: int, saved: bool) -> bo
 ## Moves `state` past its current step when that step is done. Returns true when the whole
 ## introduction was just finished.
 static func advance(state: Dictionary, sim: Simulation, selected: int, saved: bool) -> bool:
-	if state.get("done", true) or waiting(state):
+	if state.get("done", true):
 		return false
+	var guided := bool(state.get("guided", false))
+	var list := steps(state)
 	var i := int(state.get("step", 0))
-	if i >= STEPS.size() or step_done(i, sim, selected, saved):
+	if i >= list.size() or (_guide_done(i, sim, selected, saved) if guided else step_done(i, sim, selected, saved)):
 		state["step"] = i + 1
-		if state.get("guided", false):
-			state["awaiting"] = true
-		if int(state["step"]) >= STEPS.size():
+		state.erase("awaiting")
+		if int(state["step"]) >= list.size():
 			state["done"] = true
 			return true
 	return false

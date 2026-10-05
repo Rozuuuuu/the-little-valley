@@ -81,7 +81,7 @@ func covers(tx: int, ty: int) -> bool:
 func stat(key: String) -> Variant:
 	var d := def()
 	if d.has("levels"):
-		var levels: Array = d["levels"]
+		var levels: Array = Campaign.levels(self)
 		for i in range(mini(level, levels.size()) - 1, -1, -1):
 			var lv: Dictionary = levels[i]
 			if lv.has(key):
