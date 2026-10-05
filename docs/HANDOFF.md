@@ -27,6 +27,23 @@ assistant conversations are separate. Keep only one assistant editing at a time.
 
 ## Latest completed work
 
+**Claude, 2026-10-06 (after Codex hit its limit): reconciled Codex's pending work and finished
+the owner's two requests.** Executables rebuilt at `dist-godot/windows/` (game and Asset Studio)
+and the web export; `check-web-errors.ts`: no problems. Full suite **241 passed**, controls 0.
+
+| Commit | Work |
+| --- | --- |
+| `3ead19f` | Save and return to title shows a fresh random world (it showed the village just left); backdrop glides like a menu panorama, animals interpolated |
+| `d907ad4` | Parity audit vs `src/ui` and `src/render` (text and command diff): Chief advice window (O, "?"), milestone celebration, tile grid (`), Ctrl+S, side job, work order, field crop, unassign worker, move civilians out. `world_life.gd`: night lights (`night.gdshader`), rain/snow, fireflies/pollen, ruler aura, corpses, merchants and carts in pixel art; water ripples. **Codex's pending work committed here**: founding camp (`NewGame.create_camp`, gated Town Hall), origin story, guided tutorial with Begin step / Skip, main+side job line, command symbols — its file did not compile (untyped loop vars), which broke the whole game including Settings |
+| `ea4a6b1` | Mountains redrawn in the ground shader (jagged peaks, lit/shaded faces, snow, ledges, scree); building **detail pass** `scripts/pixel-art/detail.ts` (export only, 2× resolution, materials by palette) |
+| `52e727d`, `90aefb8` | Icons that match (Hold shield, Train cap, See more eye, Survey glass, Rally horn, Advice ?), Advice on the card; grain sway, highlight brackets, other kingdoms' soldiers |
+
+Honest limits: the detail pass adds texture but does not reach the hand-painted look of
+`docs/reference/2d pixel.png`; that needs buildings redrawn at a higher art resolution (a real
+art task). The Settings crash the owner saw could not be reproduced from the logs; the current
+code opens Settings cleanly (build checked). Still missing: the phone rotate notice and the
+in-game update banner (web only), placement ghost tinting beyond red/clear, sustainable soak.
+
 **Codex checkpoint, 2026-10-06: bakery-stall investigation (separate from Claude's pending UI/visual work).**
 
 - Read the app terminal and the saved Claude session `18a6d14e-d9b5-4da7-b420-8c1add4e4397`.
