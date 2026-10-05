@@ -65,6 +65,34 @@ var geology := {}
 ## the loaded save and written back unchanged, so nothing is lost by playing a save here.
 var passthrough := {}
 var routes: Array[Dictionary] = []
+# ---- the realm (kingdoms, diplomacy, war), in the browser save's own shapes -------------------
+## The player's kingdom first, then rival kingdoms that are known.
+var kingdoms: Array = []
+## Frontier claims: "x,y" -> {legalOwner, occupyingKingdom}.
+var claims := {}
+var known_regions := {}
+var next_merchant := 0
+var parties: Array = []
+var horse_day := 0
+var world_events: Array = []
+var reports: Array = []
+var news_summaries := {}
+var stances := {}
+var trust := {}
+var wars := {}
+var offers: Array = []
+var incidents: Array = []
+var warnings: Array = []
+var concern_states := {}
+var war_plans: Array = []
+var commitments: Array = []
+var diplomacy_day := 0
+var last_prosperity := 0
+var war_states := {}
+var sieges := {}
+var occupation_timers := {}
+## Kingdoms with news not yet looked at (transient).
+var news_flags := {}
 var manifests: Array[Dictionary] = []
 ## Road links between settlements and cart legs, cached until the map changes.
 var road_cache := {}
@@ -409,6 +437,12 @@ func add_settler(tx: int, ty: int, job: String, settler_name: String = "", settl
 	return s
 
 
+## Removes a settler for good (battle under full conquest).
+func remove_settler_object(s: Settler) -> void:
+	settlers.erase(s)
+	_settler_by_id.erase(s.id)
+
+
 ## Registers an already-built settler (loading).
 func _add_settler_object(s: Settler) -> void:
 	settlers.append(s)
@@ -735,11 +769,19 @@ func update_settlers(from: int, to: int) -> void:
 
 func end_tick() -> void:
 	slice_next = -1
-	if tick % 10 == 0:
-		Production.update_workshops(self)
+	Merchants.update(self)
+	Military.update(self)
+	Combat.update(self)
 	if tick % Logistics.STEP == 0:
 		Logistics.update(self)
 		Levels.tidy_crates(self)
+		Diplomacy.update(self)
+		Campaigns.update(self)
+	if tick % 10 == 0:
+		News.deliver_reports(self)
+	if tick % 10 == 0:
+		Production.update_workshops(self)
+	Kingdoms.update(self)
 	if not upgrading.is_empty():
 		Levels.update(self)
 	Animals.update(self)

@@ -425,6 +425,9 @@ static func recruit_problem(sim: Simulation, settlement_id: int) -> String:
 		return "The valley can welcome its next traveller in %s" % _days(wait)
 	if committed_population(sim) >= SAFETY_LIMIT:
 		return "The valley has reached %d people, the most this version can hold" % SAFETY_LIMIT
+	var trust := float(Kingdoms.player(sim)["trust"])
+	if trust < float(Kingdoms.value("TRUST_MIN_RECRUIT")):
+		return "Travellers have heard the realm taxes harshly (trust %s/100) — lower taxes to rebuild trust" % Diplomacy._num(trust)
 	var needs := recruit_needs(sim, settlement_id)
 	return "%s still needs %s" % [settlement_name(sim, settlement_id), ", ".join(needs)] if not needs.is_empty() else ""
 

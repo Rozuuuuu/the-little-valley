@@ -26,8 +26,8 @@ enum Move { ARRIVED, MOVING, FAILED }
 # ---- per tick ---------------------------------------------------------------------------------
 
 static func update_settler(sim: Simulation, s: Settler) -> void:
-	# Away with a caravan: not simulated here until they are back.
-	if s.away_on != -1:
+	# Away with a caravan, marching with a company or held captive: not simulated here.
+	if s.away_on != -1 or not s.captive.is_empty() or (not s.military.is_empty() and s.military["state"] == "deployed"):
 		return
 	s.hunger = maxf(0.0, s.hunger - HUNGER_DECAY)
 	var sleeping := s.task != null and s.task.kind == Task.SLEEP and s.task.stage == &"sleep"
@@ -90,6 +90,8 @@ static func run_task(sim: Simulation, s: Settler) -> void:
 			Orchards.run(sim, s, t)
 		Task.LEARN:
 			Roles.run_learn(sim, s, t)
+		Task.TRAIN:
+			Military.run_train(sim, s, t)
 		Task.SURVEY:
 			Mining.run_survey(sim, s, t)
 		Task.EXTRACT:

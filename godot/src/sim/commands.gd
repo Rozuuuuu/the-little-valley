@@ -8,10 +8,16 @@ class_name Commands
 ## formHousehold, requestChild, cancelChildRequest, adoptDeliberateGrowth, acceptRecruit, cancelRecruit,
 ## createArea, updateArea, deleteArea, assignArea, upgradeBuilding, cancelUpgrade, hunt,
 ## surveyDeposit, upgradeMine, rally, takeThrone, trainRole, cancelRoleTraining, hearAdvice, placeSpan,
-## assignSettlement, renameSettlement, setWants, createRoute, setRouteTarget, cancelRoute.
-## Others report that they are not available yet.
+## assignSettlement, renameSettlement, setWants, createRoute, setRouteTarget, cancelRoute, setSideJob,
+## and the realm: coronate, setPolicy, appointCouncil, claimFrontier, setConflictMode,
+## activateFrontier, proposeTreaty, respondToOffer, cancelTreaty, respondToIncident,
+## respondToWarning, barter, enlist, cancelTraining, demobilize, orderCompany, createWarPlan,
+## requestCampaignSupport, acceptCampaignOffer, counterCampaignOffer, cancelWarPlan,
+## mobilizeCampaign, launchCampaign, declareWar, evacuate. That is every browser command.
 
 const MAX_AREA := 40 * 40
+## Jobs that can be worked on the side of a main job.
+const SIDE_JOBS: Array[String] = ["laborer", "farmer", "gatherer", "builder", "hauler", "crafter", "hunter", "herder"]
 
 
 static func apply(sim: Simulation, cmd: Dictionary) -> Dictionary:
@@ -52,13 +58,16 @@ static func _pick_workers(sim: Simulation, ids: Variant, what: String) -> Varian
 		return "Select a settler first"
 	var list: Array[Settler] = []
 	for s in all:
-		if s.life_stage != "child" and not s.ruler:
+		if s.life_stage != "child" and not s.ruler and s.military.is_empty():
 			list.append(s)
 	if not list.is_empty():
 		return list
 	for s in all:
 		if s.ruler:
 			return "%s is the ruler — rulers give orders and inspire, but don't do chores. Right-click the ground to walk there." % s.name
+	for s in all:
+		if not s.military.is_empty():
+			return "%s is a soldier — stand their company down first" % s.name
 	var who := "%s is a child" % all[0].name if all.size() == 1 else "These are children"
 	return "%s — children play near home and can't %s until they grow up" % [who, what]
 
@@ -367,6 +376,86 @@ static func _apply(sim: Simulation, cmd: Dictionary) -> Dictionary:
 
 		"cancelRoute":
 			return Logistics.cancel_route(sim, cmd.get("routeId"))
+
+		"coronate":
+			return Kingdoms.coronate(sim, cmd.get("rulerName"), cmd.get("kingdomName"), cmd.get("banner"))
+		"setPolicy":
+			return Kingdoms.set_policy(sim, cmd.get("policy"))
+		"appointCouncil":
+			return Kingdoms.appoint_council(sim, cmd.get("post"), cmd.get("settlerId"))
+		"claimFrontier":
+			return Territory.claim_frontier(sim, cmd.get("sector"))
+		"setConflictMode":
+			return Territory.set_conflict_mode(sim, cmd.get("mode"))
+		"activateFrontier":
+			return Territory.activate_frontier(sim)
+		"proposeTreaty":
+			return Diplomacy.propose(sim, cmd.get("kind"), cmd.get("to"), cmd.get("terms"))
+		"respondToOffer":
+			return Diplomacy.respond(sim, cmd.get("offerId"), cmd.get("accept"))
+		"cancelTreaty":
+			return Diplomacy.cancel(sim, cmd.get("offerId"))
+		"respondToIncident":
+			return Diplomacy.respond_to_incident(sim, cmd.get("incidentId"), cmd.get("response"))
+		"respondToWarning":
+			return Concern.respond(sim, cmd.get("warningId"), cmd.get("action"))
+		"barter":
+			return Merchants.barter(sim, cmd.get("partyId"), cmd.get("give"), cmd.get("take"), cmd.get("coins", 0))
+		"enlist":
+			return Military.enlist(sim, cmd.get("ids"), cmd.get("unit"), cmd.get("buildingId"))
+		"cancelTraining":
+			return Military.cancel_training(sim, cmd.get("settlerId"))
+		"demobilize":
+			return Military.demobilize(sim, cmd.get("companyId"))
+		"orderCompany":
+			return Military.order(sim, cmd.get("companyId"), cmd.get("order"), cmd.get("x"), cmd.get("y"), cmd.get("supplyDays"))
+		"createWarPlan":
+			return Campaigns.create_plan(sim, cmd.get("target"), cmd.get("objective"))
+		"requestCampaignSupport":
+			return Campaigns.request_support(sim, cmd.get("planId"), cmd.get("ally"), cmd.get("terms"))
+		"acceptCampaignOffer":
+			return Campaigns.accept_offer(sim, cmd.get("commitmentId"))
+		"counterCampaignOffer":
+			return Campaigns.counter_offer(sim, cmd.get("commitmentId"), cmd.get("terms"))
+		"cancelWarPlan":
+			return Campaigns.cancel_plan(sim, cmd.get("planId"))
+		"mobilizeCampaign":
+			return Military.mobilize(sim, cmd.get("planId"))
+		"launchCampaign":
+			return Combat.launch_campaign(sim, cmd.get("planId"), cmd.get("confirmBreach"))
+		"declareWar":
+			return Combat.declare_war(sim, cmd.get("target"), cmd.get("objective"), cmd.get("confirmBreach"))
+		"evacuate":
+			return Combat.evacuate(sim, cmd.get("from"), cmd.get("to"))
+
+		"setSideJob":
+			var sj: Variant = cmd.get("job")
+			if sj != null and not Defs.is_job(str(sj)):
+				return _err("Unknown job")
+			var sl: Variant = _pick_workers(sim, cmd.get("ids"), "take a side job")
+			if sl is String:
+				return _err(sl)
+			var who: Array = sl
+			if sj != null:
+				var job := str(sj)
+				if not SIDE_JOBS.has(job):
+					return _err("%s can only be a main job" % Defs.job(job)["name"])
+				var shall := Roles.hall_for(sim, who[0])
+				if shall == null:
+					shall = BuildingOps.camp_of(sim)
+				var lvl := shall.level if shall != null and shall.type == "townHall" else 1
+				var need := int(Defs.job(job).get("hallLevel", 1))
+				if lvl < need:
+					return _err("%s work is taught at a %s — upgrade the Town Hall first" % [Defs.job(job)["name"], (Content.get_value("jobs", "HALL_LEVEL_NAMES") as Array)[need]])
+				if who.all(func(x: Settler) -> bool: return x.job == job):
+					return _err("That is already their main job")
+			for x: Settler in who:
+				x.side_job = "" if sj == null or str(sj) == x.job else str(sj)
+				x.next_think = 0
+			if sj == null:
+				return _ok("No side job: they help wherever they are needed.")
+			var one := who.size() == 1
+			return _ok("%s will work as %s%s%s whenever their main job has nothing to do." % [(who[0] as Settler).name if one else "%d people" % who.size(), "a " if one else "", Defs.job(str(sj))["name"], "" if one else "s"])
 
 		"rally":
 			return Roles.rally(sim)

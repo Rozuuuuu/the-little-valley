@@ -17,6 +17,7 @@ const ORCHARD := &"orchard"      ## field (the orchard), action tend|pick, stage
 const SLEEP := &"sleep"          ## home (building id or -1), stage walk|sleep
 const HUNT := &"hunt"            ## animal, site (lodge or -1), target (area or -1), direct, x, y (last seen), stage stalk|aim, timer
 const HERD := &"herd"            ## site (the pen), stage walk|work, timer
+const TRAIN := &"train"          ## site (the barracks or range), stage walk|drill
 const LEARN := &"learn"          ## site (the Town Hall), stage walk|study
 const SURVEY := &"survey"        ## x, y, stage walk|work, timer
 const EXTRACT := &"extract"      ## site (quarry, mine or fisher's hut), slot, amount (ore promised), stage walk|work, timer

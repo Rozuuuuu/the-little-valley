@@ -1,7 +1,7 @@
 class_name BuildingOps
 ## Placing, finishing and removing buildings, homes and regrowth (src/game/sim/buildings.ts).
 ##
-## Territory checks come with kingdoms.
+## Placement also respects settlement spacing, mine and shore sites, and other kingdoms' land.
 
 
 static func is_unlocked(sim: Simulation, unlock: Variant) -> bool:
@@ -92,10 +92,11 @@ static func check_placement(sim: Simulation, type: String, x: int, y: int) -> Di
 			if p != "" and reason == "":
 				reason = p
 			tiles.append([x + dx, y + dy, p == ""])
-	# Territory comes with kingdoms.
 	var site := Settlements.spacing_problem(sim, type, x, y)
 	if site == "" and d.has("site"):
 		site = Mining.site_problem(sim, type, x, y)
+	if site == "":
+		site = Territory.land_problem(sim, x, y, int(size["w"]), int(size["h"]))
 	if site != "":
 		if reason == "":
 			reason = site

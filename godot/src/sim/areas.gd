@@ -12,8 +12,9 @@ const FIELDS_PER_STEP := 24
 
 ## Adults nobody has claimed: no area and no workplace. (Rulers, soldiers, councillors and
 ## people away are excluded too once those systems are ported.)
-static func _free(s: Settler, assigned: Dictionary) -> bool:
-	return s.life_stage == "adult" and not s.ruler and s.area_id == -1 and not assigned.has(s.id)
+static func _free(sim: Simulation, s: Settler, assigned: Dictionary) -> bool:
+	return s.life_stage == "adult" and not s.ruler and s.military.is_empty() and s.captive.is_empty() and s.away_on == -1 \
+		and s.area_id == -1 and not assigned.has(s.id) and Kingdoms.council_post_of(sim, s) == ""
 
 
 static func lay_out_fields(sim: Simulation, a: WorkArea) -> int:
@@ -66,7 +67,7 @@ static func update(sim: Simulation) -> void:
 			var cy := (a.y0 + a.y1) / 2.0
 			var pool: Array[Array] = []
 			for s in sim.settlers:
-				if _free(s, assigned):
+				if _free(sim, s, assigned):
 					pool.append([0 if s.idle_reason != "" else 1, JsMath.hypot(s.x - cx, s.y - cy), pool.size(), s])
 			pool.sort_custom(func(p: Array, q: Array) -> bool:
 				if int(p[0]) != int(q[0]):

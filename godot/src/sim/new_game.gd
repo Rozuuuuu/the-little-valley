@@ -2,8 +2,7 @@ class_name NewGame
 ## A fresh valley: a Town Hall in the clearing, five settlers and a little food
 ## (src/game/sim/newGame.ts).
 ##
-## The ruler, when named, stands beside the hall on top of the five settlers. Kingdoms are not yet
-## ported.
+## The ruler, when named, stands beside the hall on top of the five settlers.
 
 const STARTING_GOODS := {"food": 30, "wood": 15, "stone": 5}
 const STARTING_JOBS: Array[String] = ["farmer", "gatherer", "builder", "laborer", "laborer"]
@@ -24,10 +23,12 @@ static func create(seed_value: int, gen: int = WorldGen.CURRENT_GEN, habitat: St
 	BuildingOps.complete(sim, hall, true)
 	hall.inventory = STARTING_GOODS.duplicate()
 	sim.settlements = [{"id": hall.id, "name": "Home"}]
+	sim.kingdoms = [Kingdoms.new_player("Home")]
 	for i in Simulation.STARTING_SETTLERS:
 		sim.add_settler(SPOTS[i].x, SPOTS[i].y, STARTING_JOBS[i])
 	if ruler_name.strip_edges() != "":
-		Roles.add_ruler(sim, ruler_name.strip_edges().left(24), 0, 3)
+		var r := Roles.add_ruler(sim, ruler_name.strip_edges().left(24), 0, 3)
+		Kingdoms.player(sim)["ruler"] = {"name": r.name, "appearance": r.appearance.duplicate()}
 	BuildingOps.assign_homes(sim)
 	# A few herds in sight of the hall, of the habitat's own animals.
 	Animals.seed_wildlife(sim)

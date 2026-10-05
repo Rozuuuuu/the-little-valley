@@ -88,6 +88,7 @@ static func take_throne(sim: Simulation, ruler_name: Variant) -> Dictionary:
 		for st: Dictionary in sim.settlements:
 			if int(st["id"]) == hall.id:
 				s.settlement_id = hall.id
+	Kingdoms.player(sim)["ruler"] = {"name": s.name, "appearance": s.appearance.duplicate()}
 	BuildingOps.assign_homes(sim)
 	sim.emit({"type": "important"})
 	return {"ok": true, "message": "%s takes the throne. Select them to walk the realm and Rally your people." % clean, "id": s.id}

@@ -5,7 +5,7 @@ class_name SettlerBrain
 ##
 ##   1. needs: deliver goods in hand (if storage has room), eat when hungry, sleep at bedtime or
 ##      when exhausted
-##   2. children, [soldiers]; Stop and Hold; the ruler, learning a role, [council posts]
+##   2. children, soldiers; Stop and Hold; the ruler, learning a role, council posts
 ##   3. the focus left by a direct gather order (keep working the same kind nearby)
 ##   4. the chief, travellers; the assigned work area (its kind of work, inside it)
 ##   5. the work order (the settler's own, or their job's): build, haul, farm, gather, craft
@@ -47,6 +47,11 @@ static func assign_task(sim: Simulation, s: Settler) -> void:
 	if s.life_stage == "child":
 		People.play_near_home(sim, s, _home_for(sim, s))
 		return
+	if not s.military.is_empty():
+		var drill := Military.soldier_routine(sim, s)
+		if drill != null:
+			_start(sim, s, drill, wandering)
+		return
 	# Warcraft-style Stop and Hold: stand still (needs above still come first).
 	if s.stopped_until != -1:
 		if s.stopped_until > sim.tick:
@@ -63,6 +68,11 @@ static func assign_task(sim: Simulation, s: Settler) -> void:
 	# Learning a new role at the Town Hall comes before any work.
 	if not s.training.is_empty():
 		_start(sim, s, Task.learn(int(s.training["hall"])), wandering)
+		return
+	var post := Kingdoms.council_post_of(sim, s)
+	if post != "":
+		s.idle_reason = "Serving on the council as %s — not available for other work" % Kingdoms.value("COUNCIL_POSTS")[post]["name"]
+		s.next_think = sim.tick + IDLE_BACKOFF * 4
 		return
 	if not s.focus.is_empty():
 		var ft := _find_focus(sim, s)

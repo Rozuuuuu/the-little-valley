@@ -27,7 +27,8 @@ static func encode(sim: Simulation, save_name: String, created_at: int, view: Di
 			"focus": s.focus.duplicate() if not s.focus.is_empty() else null,
 			"areaId": _id_or_null(s.area_id), "priorities": s.priorities.duplicate() if s.has_priorities else null,
 			"settlementId": _id_or_null(s.settlement_id), "lifeStage": s.life_stage, "ageTicks": s.age_ticks, "householdId": _id_or_null(s.household_id),
-			"awayOn": _id_or_null(s.away_on), "kingdomId": 0, "military": null, "captive": null,
+			"awayOn": _id_or_null(s.away_on), "kingdomId": s.kingdom_id, "military": s.military.duplicate(true) if not s.military.is_empty() else null,
+			"captive": s.captive.duplicate() if not s.captive.is_empty() else null,
 		}
 		if s.side_job != "":
 			d["sideJob"] = s.side_job
@@ -115,14 +116,16 @@ static func encode(sim: Simulation, save_name: String, created_at: int, view: Di
 			"recruits": _recruits_out(sim), "lastRecruit": sim.last_recruit if sim.last_recruit > -1000000000 else null,
 			"lastArrival": sim.last_arrival,
 			"geology": {"version": Geology.VERSION, "cells": sim.geology.keys().map(func(id: int) -> Array: return [id, sim.geology[id]])}, "routes": sim.routes.map(func(r: Dictionary) -> Dictionary: return {"id": r["id"], "sourceId": r["sourceId"], "destId": r["destId"], "res": r["res"], "target": r["target"]}),
-			"manifests": sim.manifests.map(func(m: Dictionary) -> Dictionary: return m.duplicate(true)), "parties": [], "knownRegions": [], "nextMerchant": 0,
-			"claims": [], "horseDay": 0, "animals": sim.animals.map(_animal_out), "animalRng": sim.animal_rng.state, "rallyReadyAt": sim.rally_ready_at,
+			"manifests": sim.manifests.map(func(m: Dictionary) -> Dictionary: return m.duplicate(true)),
+			"parties": _parties_out(sim), "knownRegions": sim.known_regions.keys(), "nextMerchant": sim.next_merchant, "claims": _claims_out(sim),
+			"horseDay": sim.horse_day, "animals": sim.animals.map(_animal_out), "animalRng": sim.animal_rng.state, "rallyReadyAt": sim.rally_ready_at,
 			"chief": {"nextAt": sim.chief["nextAt"], "adviceReady": sim.chief["adviceReady"], "advice": sim.chief["advice"]},
-			# Defaults for the realm, diplomacy and war (a loaded save's own data replaces these).
-			"kingdoms": [_default_kingdom(sim)],
-			"war": {"states": [], "sieges": [], "occupationTimers": []},
-			"diplomacy": {"worldEvents": [], "reports": [], "newsSummaries": [], "stances": [], "trust": [], "wars": [], "offers": [], "incidents": [],
-				"warnings": [], "concernStates": [], "warPlans": [], "commitments": [], "diplomacyDay": 0, "lastProsperity": 0},
+			"kingdoms": _kingdoms_out(sim),
+			"war": {"states": _pairs(sim.war_states), "sieges": _pairs(sim.sieges), "occupationTimers": _pairs(sim.occupation_timers)},
+			"diplomacy": {"worldEvents": sim.world_events.duplicate(true), "reports": sim.reports.duplicate(true), "newsSummaries": _pairs(sim.news_summaries),
+				"stances": _pairs(sim.stances), "trust": _pairs(sim.trust), "wars": sim.wars.keys(), "offers": sim.offers.duplicate(true),
+				"incidents": sim.incidents.duplicate(true), "warnings": sim.warnings.duplicate(true), "concernStates": _pairs(sim.concern_states),
+				"warPlans": sim.war_plans.duplicate(true), "commitments": sim.commitments.duplicate(true), "diplomacyDay": sim.diplomacy_day, "lastProsperity": sim.last_prosperity},
 		},
 		"world": {"genVersion": sim.world.gen, "habitat": sim.world.habitat_id, "chunks": chunks},
 		"view": view,
@@ -136,11 +139,31 @@ static func encode(sim: Simulation, save_name: String, created_at: int, view: Di
 ## loaded save is kept verbatim (Simulation.passthrough, Settler.extra, Building.extra).
 const OWNED_SIM := ["tick", "nextId", "rngState", "settlers", "buildings", "designations", "regrowth", "stats", "reached", "weather",
 	"workAreas", "chronicle", "session", "settlements", "growthMode", "households", "bedClaims", "offer", "nextVisitor", "recruits",
-	"lastRecruit", "lastArrival", "geology", "routes", "manifests", "animals", "animalRng", "rallyReadyAt", "chief"]
+	"lastRecruit", "lastArrival", "geology", "routes", "manifests", "animals", "animalRng", "rallyReadyAt", "chief",
+	"kingdoms", "parties", "knownRegions", "nextMerchant", "claims", "horseDay", "war", "diplomacy"]
 const OWNED_SETTLER := ["id", "name", "x", "y", "facing", "job", "carrying", "hunger", "energy", "homeId", "appearance", "focus", "areaId",
-	"priorities", "settlementId", "lifeStage", "ageTicks", "householdId", "awayOn", "sideJob", "hold", "hp", "ruler", "boostUntil", "training"]
+	"priorities", "settlementId", "lifeStage", "ageTicks", "householdId", "awayOn", "sideJob", "hold", "hp", "ruler", "boostUntil", "training",
+	"kingdomId", "military", "captive"]
 const OWNED_BUILDING := ["id", "type", "x", "y", "w", "h", "built", "progress", "delivered", "inventory", "placedTick", "workers", "wants",
 	"field", "orchard", "workshop", "level", "upgrade", "mine", "quarry", "pen"]
+
+
+## JSON numbers arrive as floats; whole numbers become ints again, all the way down, so ids and
+## counts compare and print as the browser game's do.
+static func _json_ints(v: Variant) -> Variant:
+	if v is float and float(v) == floorf(float(v)) and absf(float(v)) < 9.0e15:
+		return int(v)
+	if v is Dictionary:
+		var d: Dictionary = v
+		for k: Variant in d.keys():
+			d[k] = _json_ints(d[k])
+		return d
+	if v is Array:
+		var a: Array = v
+		for i in a.size():
+			a[i] = _json_ints(a[i])
+		return a
+	return v
 
 
 static func _extras(d: Dictionary, owned: Array) -> Dictionary:
@@ -151,14 +174,53 @@ static func _extras(d: Dictionary, owned: Array) -> Dictionary:
 	return out.duplicate(true)
 
 
-## The player's kingdom as a new browser game has it (kingdoms.ts newPlayerKingdom).
-static func _default_kingdom(sim: Simulation) -> Dictionary:
-	var r := sim.ruler()
-	return {"id": 0, "name": str(sim.settlements[0]["name"]) if not sim.settlements.is_empty() else "The Valley", "player": true, "crowned": false,
-		"ruler": {"name": r.name, "appearance": r.appearance.duplicate()} if r != null else null,
-		"banner": {"color": "#3a6ea5", "emblem": "oak"}, "treasury": 0, "taxCollected": 0, "policy": "none", "trust": 60, "trustDay": 0,
-		"council": {"steward": null, "envoy": null, "marshal": null}, "homeland": null, "conflictMode": "protected-frontier",
-		"modeLocked": false, "frontierActive": false, "capitalRegion": null, "capital": {"x": 0, "y": 0}, "personality": "cautious", "companies": []}
+## Kingdoms as the browser game saves them (company walking paths are transient).
+static func _kingdoms_out(sim: Simulation) -> Array:
+	if sim.kingdoms.is_empty():
+		Kingdoms.player(sim)
+	var out: Array = []
+	for k: Dictionary in sim.kingdoms:
+		var d := k.duplicate(true)
+		for c: Dictionary in d["companies"]:
+			if c.has("path"):
+				c["path"] = null
+		out.append(d)
+	return out
+
+
+static func _parties_out(sim: Simulation) -> Array:
+	var out: Array = []
+	for p: Dictionary in sim.parties:
+		var q := p.duplicate(true)
+		q.erase("path")
+		out.append(q)
+	return out
+
+
+static func _claims_out(sim: Simulation) -> Array:
+	var out: Array = []
+	for k: String in sim.claims:
+		var sec := Territory.from_key(k)
+		out.append([sec.x, sec.y, sim.claims[k]["legalOwner"], sim.claims[k]["occupyingKingdom"]])
+	return out
+
+
+## A Dictionary as the browser's [key, value] pairs (numeric keys back to numbers).
+static func _pairs(m: Dictionary) -> Array:
+	var out: Array = []
+	for k: Variant in m:
+		out.append([k, (m[k] as Variant)])
+	return out
+
+
+## [key, value] pairs back into a Dictionary; `numeric` keeps integer keys as ints.
+static func _from_pairs(v: Variant, numeric: bool = false) -> Dictionary:
+	var out := {}
+	if v is Array:
+		for e: Variant in v:
+			if e is Array and (e as Array).size() == 2:
+				out[int(e[0]) if numeric else str(e[0])] = (e[1] as Variant)
+	return out
 
 
 static func _animal_out(a: Animal) -> Dictionary:
@@ -363,6 +425,12 @@ static func decode(save: Variant) -> Dictionary:
 		s.hp = float(sv["hp"]) if sv.get("hp") != null else 100.0
 		s.ruler = sv.get("ruler") == true
 		s.away_on = int(sv["awayOn"]) if sv.get("awayOn") != null else -1
+		s.kingdom_id = int(sv.get("kingdomId", 0))
+		if sv.get("military") is Dictionary:
+			s.military = (sv["military"] as Dictionary).duplicate(true)
+			s.military["gear"] = Inv.from_json(s.military.get("gear", {}))
+		if sv.get("captive") is Dictionary:
+			s.captive = {"by": int(sv["captive"]["by"])}
 		s.boost_until = int(sv["boostUntil"]) if sv.get("boostUntil") != null else -1
 		if sv.get("training") is Dictionary:
 			var tr: Dictionary = sv["training"]
@@ -373,6 +441,44 @@ static func decode(save: Variant) -> Dictionary:
 		s.extra = _extras(sv, OWNED_SETTLER)
 		sim._add_settler_object(s)
 
+	# The realm.
+	for kd: Dictionary in sd.get("kingdoms", []):
+		sim.kingdoms.append(_json_ints(kd.duplicate(true)))
+	for pd: Dictionary in sd.get("parties", []):
+		var pq: Dictionary = _json_ints(pd.duplicate(true))
+		pq["stock"] = Inv.from_json(pd.get("stock", {}))
+		pq["path"] = null
+		sim.parties.append(pq)
+	for rid: Variant in sd.get("knownRegions", []):
+		sim.known_regions[int(rid)] = true
+	sim.next_merchant = int(sd.get("nextMerchant", 0))
+	sim.horse_day = int(sd.get("horseDay", 0))
+	for c: Variant in sd.get("claims", []):
+		sim.claims["%d,%d" % [int(c[0]), int(c[1])]] = {"legalOwner": int(c[2]), "occupyingKingdom": int(c[3]) if c[3] != null else null}
+	if sd.get("war") is Dictionary:
+		var wd: Dictionary = sd["war"]
+		sim.war_states = _json_ints(_from_pairs(wd.get("states")))
+		sim.sieges = _json_ints(_from_pairs(wd.get("sieges"), true))
+		sim.occupation_timers = _json_ints(_from_pairs(wd.get("occupationTimers")))
+	if sd.get("diplomacy") is Dictionary:
+		var dd: Dictionary = _json_ints(sd["diplomacy"].duplicate(true))
+		sim.world_events = dd.get("worldEvents", [])
+		sim.reports = dd.get("reports", [])
+		sim.news_summaries = _from_pairs(dd.get("newsSummaries"), true)
+		sim.stances = _from_pairs(dd.get("stances"))
+		sim.trust = _from_pairs(dd.get("trust"))
+		for wk: Variant in dd.get("wars", []):
+			sim.wars[str(wk)] = true
+		sim.offers = dd.get("offers", [])
+		sim.incidents = dd.get("incidents", [])
+		sim.warnings = dd.get("warnings", [])
+		sim.concern_states = _from_pairs(dd.get("concernStates"))
+		sim.war_plans = dd.get("warPlans", [])
+		sim.commitments = dd.get("commitments", [])
+		sim.diplomacy_day = int(dd.get("diplomacyDay", 0))
+		sim.last_prosperity = int(dd.get("lastProsperity", 0))
+	if sim.kingdoms.is_empty():
+		Kingdoms.player(sim)
 	for rd: Dictionary in sd.get("routes", []):
 		sim.routes.append({"id": int(rd["id"]), "sourceId": int(rd["sourceId"]), "destId": int(rd["destId"]), "res": str(rd["res"]), "target": int(rd["target"]), "status": ""})
 	for md: Dictionary in sd.get("manifests", []):

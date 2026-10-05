@@ -45,7 +45,13 @@ var boost_until := -1
 var training := {}
 ## The caravan manifest a teamster is away with (-1: at home).
 var away_on := -1
-## Saved fields of systems not simulated yet (soldiering, captivity...), kept verbatim.
+## Service in the army (Military): {unit, state, trained, buildingId, companyId, gear, priorJob,
+## priorPriorities, priorArea}, or empty.
+var military := {}
+## Held by another kingdom after a lost battle ({by}); home at peace. Empty when free.
+var captive := {}
+var kingdom_id := 0
+## Saved fields this version does not know, kept verbatim.
 var extra := {}
 
 # ---- transient -------------------------------------------------------------------------------
