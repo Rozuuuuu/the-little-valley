@@ -105,6 +105,7 @@ address:
 | `--newworld=1` | With `--title=1`: the "A new world" dialog |
 | `--window=Name` | Open a window: people, families, goals, goods, areas, towns, realm, help |
 | `--select=What` | Select the first settler (`settler`), the hall (`hall`), an animal (`animal`) or nothing (`none`) |
+| `--place=type` | Placing that building beside the hall (its see-through preview) |
 | `--modal=Name` | With `--title=1`: the Load (`load`) or Settings (`settings`) window |
 | `--studio-app --shot=out.png` | The separate Asset Studio program, captured |
 | `--build=1` or `--build=category` | Open the build menu, or one category of it |

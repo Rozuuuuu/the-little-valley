@@ -37,6 +37,8 @@ menu/HUD from `docs/reference` screenshots, save folder, fog, animation, 1:1 dra
 | `1cfeb1a` | **No window stretch.** The game was laid out for 1280×720 and scaled ×1.37 at 1920×987: oversized HUD and fractional art pixels. Now 1:1 like the browser; the interface follows the display scale (`CameraRig.screen_scale()`); default zoom 0.75 = 3 px per art px. Title backdrop framed as the reference at any width. Edge scroll only while playing and after the mouse moved (on the web the unseen mouse at 0,0 panned the title off the map — that was why the web title showed no valley). "Install app" shell button. Harvest marks are the browser's axe/pick/basket icons |
 | `0769fda`, `9972888` | Checklist boxes (`.req` rows, two columns in the console), short key hints ("." not "Period"), Settings keys inline (one scroll) |
 
+| `7966ba3`, `6a79bb2` | Owner's next round: **graded fog** (`fog_view.gd` + `fog.gdshader`: clear near people/buildings, 30% veil over explored land nobody is near, unexplored 50% at the edge to black 7 tiles out; objects now drawn everywhere under it; ground shader fog off). **Random title world** each launch (seed + habitat, wild spot with water, no veil). **Zoom lock** fixed (`CameraRig.step_zoom`, `tests/test_camera.gd`). Edge scroll also with Valley today open and past the window side; scroll speed setting; edge cursor. **Placement preview** of the building sprite (`--place=type`). Next tick computed while the last is shown (`_run_ticks`; `save_now` settles the tick first). "+3 wood" when goods go into store |
+
 Side-by-side captures used for this: `build/cmp*.png` (local) against `docs/reference/Screenshot*.png`.
 
 **Previous checkpoints (2026-10-06): the 401 fix and interface parity with the browser game.**
