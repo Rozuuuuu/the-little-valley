@@ -8,11 +8,13 @@ const ZOOM_MIN := 0.3
 const ZOOM_MAX := 2.5
 ## Pan speed in screen px per second (keys and screen edge).
 const PAN_SPEED := 900.0
-const EDGE := 6.0
+const EDGE := 8.0
 
 var target_zoom := 1.0
 var target_pos := Vector2.ZERO
 var edge_scroll := true
+## Settings → Scroll speed (keys and screen edge).
+var scroll_speed := 1.0
 var bindings := KeyBindings.new()
 var keyboard_enabled := true
 ## Edge scrolling: while a valley is on screen with no window over it (set by the game).
@@ -48,16 +50,37 @@ func _process(delta: float) -> void:
 		dir.y -= 1
 	if keyboard_enabled and bindings.pressed("panDown"):
 		dir.y += 1
+	var edge := Vector2.ZERO
 	if edge_scroll and edge_enabled and _mouse_seen and DisplayServer.window_is_focused() and not OS.has_feature("mobile"):
-		dir += _edge_dir()
+		edge = _edge_dir()
+	_show_edge_cursor(edge)
+	dir += edge
 	if dir != Vector2.ZERO:
-		target_pos += dir.normalized() * PAN_SPEED * delta / zoom.x
+		target_pos += dir.normalized() * PAN_SPEED * scroll_speed * delta / zoom.x
 	# Ease toward the targets (frame-rate independent).
 	var k := 1.0 - exp(-delta * 14.0)
 	position = position.lerp(target_pos, k)
 	zoom = zoom.lerp(Vector2(target_zoom, target_zoom), k)
 	if absf(zoom.x - target_zoom) < 0.002:
 		zoom = Vector2(target_zoom, target_zoom)
+
+
+var _edge_shown := Vector2.ZERO
+
+
+## While the edge scrolls the map, the pointer becomes an arrow that way (as in the browser).
+func _show_edge_cursor(edge: Vector2) -> void:
+	if edge == _edge_shown:
+		return
+	_edge_shown = edge
+	var shape := Input.CURSOR_ARROW
+	if edge.x != 0 and edge.y != 0:
+		shape = Input.CURSOR_FDIAGSIZE if edge.x == edge.y else Input.CURSOR_BDIAGSIZE
+	elif edge.x != 0:
+		shape = Input.CURSOR_HSIZE
+	elif edge.y != 0:
+		shape = Input.CURSOR_VSIZE
+	Input.set_default_cursor_shape(shape)
 
 
 ## The edge-scroll direction. Inside the window: within EDGE px of a side. In a window (not full

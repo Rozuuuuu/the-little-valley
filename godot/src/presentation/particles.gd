@@ -60,7 +60,7 @@ func _add(x: float, y: float, vx: float, vy: float, max_life: float, color: Colo
 
 ## A damage number that floats up and fades. (tx, ty) in tiles.
 func float_text(tx: float, ty: float, text: String, color: Color) -> void:
-	_add(tx * WorldView.TILE_PX, ty * WorldView.TILE_PX - 20 * K, 0.0, -14 * K, 0.9, color, 1.0, 0.0, "text", text)
+	_add(tx * WorldView.TILE_PX, ty * WorldView.TILE_PX - 20 * K, 0.0, -14 * K, 0.9 if text.begins_with("-") else 1.4, color, 1.0, 0.0, "text", text)
 
 
 ## An arrow flying from a hunter to its quarry (tiles).
@@ -224,9 +224,10 @@ func _draw() -> void:
 			"text":
 				var a := (1.0 - t) / 0.4 if t > 0.6 else 1.0
 				var size := int(22.0 / maxf(zoom, 0.05))
-				var at := pos - Vector2(size, 0) * 0.6
-				draw_string(font, at + Vector2(2, 2) / zoom, str(p[11]), HORIZONTAL_ALIGNMENT_CENTER, size * 1.2, size, Color(0.1, 0.08, 0.12, a))
-				draw_string(font, at, str(p[11]), HORIZONTAL_ALIGNMENT_CENTER, size * 1.2, size, Color(col, a))
+				var label := str(p[11])
+				var at := pos - Vector2(font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x / 2.0, 0)
+				draw_string(font, at + Vector2(2, 2) / zoom, label, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(0.1, 0.08, 0.12, a))
+				draw_string(font, at, label, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(col, a))
 			"arrow":
 				var to: Vector2 = p[11]
 				var ap := pos.lerp(to, t) - Vector2(0, sin(t * PI) * 6 * K)

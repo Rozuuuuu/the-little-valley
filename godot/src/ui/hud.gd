@@ -1597,6 +1597,19 @@ func show_settings() -> void:
 	v.add_child(_setting_row("Scroll when the mouse touches the screen edge", _check("", s.edge_scroll, func(on: bool) -> void:
 		s.edge_scroll = on
 		game.camera.edge_scroll = on)))
+	var speed := HSlider.new()
+	speed.min_value = 0.5
+	speed.max_value = 2.0
+	speed.step = 0.25
+	speed.value = s.scroll_speed
+	speed.custom_minimum_size = Vector2(200, 0)
+	speed.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	speed.focus_mode = Control.FOCUS_NONE
+	speed.value_changed.connect(func(x: float) -> void:
+		s.scroll_speed = x
+		game.camera.scroll_speed = x)
+	speed.drag_ended.connect(func(_changed: bool) -> void: s.save())
+	v.add_child(_setting_row("Scroll speed (keys and screen edge)", speed))
 	v.add_child(_setting_row("Health bars", _choice(["Over everyone", "Only when hurt"], 0 if s.health_bars == "always" else 1, func(i: int) -> void: s.health_bars = "always" if i == 0 else "hurt")))
 	var autos := [1, 2, 3, 5, 10]
 	v.add_child(_setting_row("Autosave every", _choice(autos.map(func(m: int) -> String: return "%d min" % m), maxi(0, autos.find(s.autosave_minutes)), func(i: int) -> void: s.autosave_minutes = autos[i])))

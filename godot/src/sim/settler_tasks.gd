@@ -406,9 +406,11 @@ static func _run_deliver(sim: Simulation, s: Settler, t: Task) -> void:
 		return
 	if r != Move.ARRIVED:
 		return
+	var res := s.carry_res
 	var n := sim.deposit(target, s.carry_res, s.carry_amount)
 	s.set_carry(s.carry_res, s.carry_amount - n)
-	sim.emit({"type": "sfx", "name": "drop", "x": s.x, "y": s.y})
+	# res and n let the view show what went into store ("+3 wood").
+	sim.emit({"type": "sfx", "name": "drop", "x": s.x, "y": s.y, "res": res, "n": n})
 	abort_task(sim, s)
 
 
@@ -452,7 +454,7 @@ static func _run_haul(sim: Simulation, s: Settler, t: Task) -> void:
 		# Supply run: goods go into the store; anything that doesn't fit is delivered elsewhere.
 		var n := sim.deposit(dst, t.res, t.amount)
 		s.set_carry(t.res, t.amount - n)
-		sim.emit({"type": "sfx", "name": "drop", "x": s.x, "y": s.y})
+		sim.emit({"type": "sfx", "name": "drop", "x": s.x, "y": s.y, "res": t.res, "n": n})
 		_finish(sim, s)
 		return
 	Inv.add(dst.delivered, t.res, t.amount)

@@ -91,6 +91,7 @@ func _ready() -> void:
 	settings.apply_audio(audio)
 	camera.make_current()
 	camera.edge_scroll = settings.edge_scroll
+	camera.scroll_speed = settings.scroll_speed
 	camera.bindings = settings.bindings
 	overlay.game = self
 	hud = Hud.new()
@@ -845,6 +846,10 @@ func _on_event(e: Dictionary) -> void:
 			hud.toast(str(e["text"]), str(e.get("level", "info")))
 		"sfx":
 			sfx_at(str(e["name"]), e.get("x"), e.get("y"))
+			# Goods into store float up from the storehouse door ("+3 wood").
+			if int(e.get("n", 0)) > 0 and settings.effects != "low":
+				var res_name := str(Defs.resource(str(e["res"])).get("name", e["res"])).to_lower()
+				particles.float_text(float(e["x"]), float(e["y"]), "+%d %s" % [int(e["n"]), res_name], Color("#ffe08a"))
 		"fx", "hit":
 			particles.on_event(e)
 		"milestone":
