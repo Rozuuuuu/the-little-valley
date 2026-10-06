@@ -1860,6 +1860,10 @@ func show_settings() -> void:
 		game.camera.scroll_speed = x)
 	speed.drag_ended.connect(func(_changed: bool) -> void: s.save())
 	v.add_child(_setting_row("Scroll speed (keys and screen edge)", speed))
+	v.add_child(_setting_row("Art style", _choice(["Sepia (one warm colour)", "Full colour"], 0 if s.art_style == "sepia" else 1, func(i: int) -> void:
+		s.art_style = "sepia" if i == 0 else "colour"
+		s.save()
+		game.apply_art_style())))
 	v.add_child(_setting_row("Show the tile grid (%s)" % game.settings.bindings.label("toggleGrid"), _check("", s.show_grid, func(on: bool) -> void: s.show_grid = on)))
 	v.add_child(_setting_row("Health bars", _choice(["Over everyone", "Only when hurt"], 0 if s.health_bars == "always" else 1, func(i: int) -> void: s.health_bars = "always" if i == 0 else "hurt")))
 	var autos := [1, 2, 3, 5, 10]

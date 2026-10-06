@@ -27,6 +27,15 @@ assistant conversations are separate. Keep only one assistant editing at a time.
 
 ## Latest completed work
 
+**Claude, 2026-10-06: monochromatic art style (owner's choice: warm sepia, world and interface).**
+`src/presentation/shaders/monochrome.gdshader` on a CanvasLayer (layer 120) above the HUD maps
+every screen pixel's brightness onto one sepia ramp (ink #1e140c, #4a3220, #8a6440, #c9a46e,
+cream #f2e2bc), 16 steps so the pixel art stays crisp; bluish colours read deeper and warm ones
+lighter so water stays apart from land. Every sprite, animation, effect and panel is converted
+at once and new art follows automatically. Settings → Art style: Sepia (default) / Full colour
+(`settings.art_style`, `game.apply_art_style()`). Colour-coded bars (health red/green) now differ
+by brightness only.
+
 **Claude, 2026-10-06, owner's round "guide, HUD, See more, mountains, zzz, camp growth"
 (`eee0620`).** Full suite **241 passed**, controls 0. Executables and web export rebuilt.
 

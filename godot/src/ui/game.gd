@@ -76,6 +76,14 @@ var _touch_moved := false
 var _touch_box := false
 
 
+var _mono := ColorRect.new()
+
+
+## Shows the game in sepia or in full colour (Settings → Art style).
+func apply_art_style() -> void:
+	_mono.visible = settings.art_style == "sepia"
+
+
 ## Startup timings (ms), printed by capture mode: engine start to _ready, art, first valley.
 var startup := {}
 
@@ -100,6 +108,17 @@ func _ready() -> void:
 	hud = Hud.new()
 	hud.game = self
 	add_child(hud)
+	# The monochromatic look: a last pass over everything on screen (see monochrome.gdshader).
+	var mono_layer := CanvasLayer.new()
+	mono_layer.layer = 120
+	_mono.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_mono.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var mono_mat := ShaderMaterial.new()
+	mono_mat.shader = load("res://src/presentation/shaders/monochrome.gdshader")
+	_mono.material = mono_mat
+	mono_layer.add_child(_mono)
+	add_child(mono_layer)
+	apply_art_style()
 	pwa.update_ready.connect(_on_update_ready)
 	add_child(pwa)
 	if is_studio_app():
