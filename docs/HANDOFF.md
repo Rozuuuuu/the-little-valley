@@ -1,6 +1,6 @@
 # Little Valley migration handoff
 
-Updated **2026-10-06, Asia/Manila**. Read this before continuing in Claude Code or Codex,
+Updated **2026-10-11, Asia/Manila**. Read this before continuing in Claude Code or Codex,
 then verify `git status`, recent commits and the referenced code. Repository files are shared;
 assistant conversations are separate. Keep only one assistant editing at a time.
 
@@ -24,6 +24,27 @@ assistant conversations are separate. Keep only one assistant editing at a time.
   to other players' devices. No paid AI services for settler decisions.
 - Long-play scalability remains a priority, not a completed claim. Existing code has a 5,000
   population safety limit; this is not evidence of supported performance or unlimited scale.
+
+## Pending Adventure mode design — not implemented
+
+The owner requested a Godot Adventure mode: start as a wandering knight, discover ruled and
+kingless villages, fight monsters, allocate Strength/Agility/Intelligence, complete quests and
+choose whether to lead a kingless village after meeting its elder. On 2026-10-11 the owner
+expanded the request to inventory, quest/monster loot with more rarity tiers, and recruitment
+of lone/wandering warriors.
+
+The expanded proposal is in
+[`superpowers/specs/2026-10-11-adventure-mode-design.md`](superpowers/specs/2026-10-11-adventure-mode-design.md).
+It proposes Common → Uncommon → Rare → Very Rare → Epic → Legendary → Mythic → Relic;
+paged inventory, equipment, crafting, persistent loot and overflow caches; travelling companions,
+reserves, equipment, commands, contracts, recovery and personal quests; and post-leadership
+adventures. The numerical limits and economy are proposed tuning values, not verified balance.
+
+**Status: expanded design awaiting review. No Adventure gameplay implementation or executable
+update has occurred.** This is separate from the unimplemented 3D RPG proposal under
+`superpowers/plans/2026-10-07-open-world-class-rpg.md`. Preserve existing Settlement mode and
+saves. Follow the design's integrated checkpoints and verification requirements; do not claim
+completion from data structures, rarity labels or untested export success alone.
 
 ## Latest completed work
 
