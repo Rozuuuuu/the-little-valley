@@ -18,8 +18,8 @@ var master_volume := 0.8
 var music_volume := 0.5
 var sfx_volume := 0.7
 var muted := false
-## "sepia": the whole game in one warm colour (the default look); "colour": the full palette.
-var art_style := "sepia"
+## Full colour is the default; sepia remains an optional display preference.
+var art_style := "colour"
 ## "always": health bars over everyone (the browser's default); "hurt": only over the hurt.
 var health_bars := "always"
 ## The tile grid over the map (` toggles it).
@@ -44,7 +44,10 @@ static func load_saved(path: String = PATH) -> Settings:
 		s.music_volume = clampf(float(cfg.get_value("audio", "music", s.music_volume)), 0.0, 1.0)
 		s.sfx_volume = clampf(float(cfg.get_value("audio", "sfx", s.sfx_volume)), 0.0, 1.0)
 		s.muted = bool(cfg.get_value("audio", "muted", s.muted))
-		s.art_style = "colour" if str(cfg.get_value("display", "art_style", s.art_style)) == "colour" else "sepia"
+		# Older releases saved their default sepia automatically. Restore the colour
+		# palette for those settings; explicit choices saved by this release persist.
+		if int(cfg.get_value("display", "art_style_revision", 0)) >= 1:
+			s.art_style = "sepia" if str(cfg.get_value("display", "art_style", s.art_style)) == "sepia" else "colour"
 		s.show_grid = bool(cfg.get_value("display", "show_grid", s.show_grid))
 		s.health_bars = "hurt" if str(cfg.get_value("display", "health_bars", s.health_bars)) == "hurt" else "always"
 	return s
@@ -66,6 +69,7 @@ func save(path: String = PATH) -> Error:
 	cfg.set_value("audio", "sfx", sfx_volume)
 	cfg.set_value("audio", "muted", muted)
 	cfg.set_value("display", "art_style", art_style)
+	cfg.set_value("display", "art_style_revision", 1)
 	return cfg.save(path)
 
 

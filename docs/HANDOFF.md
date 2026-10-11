@@ -40,8 +40,23 @@ paged inventory, equipment, crafting, persistent loot and overflow caches; trave
 reserves, equipment, commands, contracts, recovery and personal quests; and post-leadership
 adventures. The numerical limits and economy are proposed tuning values, not verified balance.
 
-**Status: expanded design awaiting review. No Adventure gameplay implementation or executable
-update has occurred.** This is separate from the unimplemented 3D RPG proposal under
+The owner's next reference is `C:/Users/Home/Downloads/50bae527-7a6b-4092-96db-e55d06d2bbbc.jpg`:
+bright layered green trees, sandy paths, flowers and blue/teal roofs. The proposal now includes
+reference-inspired pixel scenery, undead raids/ambushes, orc clans, and elven/human dialogue
+with alliance/recruitment/conditional refusal/hostility outcomes and alternative progression paths.
+These adventure features and scenery redraws remain proposed, not implemented.
+
+Colour restoration is implemented in `Settings`: full colour is the default; settings from the
+old sepia-default release revert to colour. `display.art_style_revision=1` preserves subsequent
+intentional style choices, including optional sepia. This supersedes the old sepia-default decision.
+
+Colour verification: script checker reported 0 failures; isolated settings regression passed
+(8 checks). Windows game export rebuilt successfully (export process returned 0), with sandbox
+warnings for the system certificate store and saving Godot editor preferences. Asset Studio
+and web exports were not rebuilt in this round. Full gameplay suite was not rerun for this setting change.
+
+**Status: expanded Adventure design awaiting review. No Adventure gameplay implementation has
+occurred; the Windows game rebuild only restores colour.** This is separate from the unimplemented 3D RPG proposal under
 `superpowers/plans/2026-10-07-open-world-class-rpg.md`. Preserve existing Settlement mode and
 saves. Follow the design's integrated checkpoints and verification requirements; do not claim
 completion from data structures, rarity labels or untested export success alone.

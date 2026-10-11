@@ -107,6 +107,49 @@ Personal companion quests develop trust and unlock a skill variant or named item
 
 Exploration content includes shrines, ruined watchtowers, monster dens and treasure sites, with environmental clues and bounded generated layouts. Major dungeons have a landmark entrance, a safe exit, a distinct encounter mechanic and a guaranteed useful completion reward. Post-leadership expeditions offer Mythic and Relic goals while the village continues operating; surface urgent settlement events and allow a safe return route. No time pressure silently resolves a major dialogue decision offscreen.
 
+## Colourful scenery reference and art direction
+
+Owner's reference: `C:/Users/Home/Downloads/50bae527-7a6b-4092-96db-e55d06d2bbbc.jpg` (2026-10-11). Use its scenery as visual direction: layered rounded tree crowns, yellow-green sunlit leaves above cooler green shadows, readable trunks, warm sandy paths, flowers, low shrubs, scattered stones and contrasting blue/teal roofs. The phone interface and depicted franchise characters are not requested game elements.
+
+Restore full colour as the default, including settings inherited from the sepia-default release. Retain sepia only as a deliberate optional preference. Keep the established pixel-art pipeline: interpret the reference's foliage depth and palette through clean pixel clusters and whole-pixel motion rather than applying a smoothing filter. Author original scenery variants; this reference does not imply copying its buildings or characters.
+
+Forests should have dense background canopies, readable clearings and walkable routes. Vary canopy silhouette, height impression and hue using a cohesive palette. Tree bases must still communicate collision. Fade foreground crowns when they obscure the hero or an interaction, without revealing unexplored units. Keep fog graded and remember visited scenery. Show day/night shifts through light and colour while preserving readable paths, targets and UI.
+
+Define distinct regional appearances: bright human farmland, layered elven woodland with pale stone and organic structures, orc frontier camps with timber/palisades and warm earth, and undead ruins with broken masonry, cold accents and sparse corrupted vegetation. Faction silhouettes, banners and icons remain readable without colour. Compare captures against the reference for canopy depth, ground decoration, path clarity and building contrast; do not call changing the palette a completed scenery redraw.
+
+## Undead attacks, orcs and staged encounters
+
+Add authored encounters embedded in normal play: a broken caravan at a forest bend, undead rising near a ruined watchtower, an orc roadblock, and a night attack on an allied village. Introduce danger with tracks, abandoned supplies, distant sounds or a scout warning before triggering the encounter. A short camera cue may frame the threat, but returns control immediately; no long unskippable cutscene. Allow retreat and alternative routes.
+
+Undead roles: shambling melee skeleton, ranged bone archer, and a gravecaller whose interruptible summons have a strict population cap. Summoned creatures cannot yield unlimited loot or XP. Defeating the gravecaller resolves its encounter, and repeatable camp rules determine later resets. Village defenders participate in raids; critical elders survive through explicit protected/downed behaviour so an attack cannot destroy the sole progression path.
+
+Orc groups include hostile raiders and independent clans that may trade or negotiate. Use bruisers, shield bearers and shamans with distinct attack tells. Species alone does not determine allegiance. Record relations per clan/settlement, so fighting raiders does not automatically turn all orcs hostile.
+
+Encounter lifecycle: dormant → warned → active → resolved or retreated → cooldown. Persist stage, actors, rewards and location. Never activate an ambush inside a dialogue, on loading, inside a refuge or directly on top of the party. After loading, provide a brief grace period before a pending trigger can fire. Difficulty considers party capability within regional limits; the opening route always offers a manageable encounter or bypass. Quest ambushes are one-off; repeatable encounters have disclosed reset rules. No repeated rewards for retreating and retriggering the same encounter.
+
+## Elven and human negotiations
+
+Encounters use a named speaker, a short opening statement, two to four answer choices and an immediate spoken response explaining the result. Dialogue must lead to a visible change: alliance, recruit joining, a task or payment condition, neutral refusal, loss of trust, or hostility. Keep dialogue concise and player-controlled. Pause combat initiation around a peaceful conversation; allies cannot accidentally auto-attack the speaker.
+
+Separate permission to enter territory, diplomatic alliance and personal recruitment. An elf agreeing to safe passage does not automatically become a companion. Human recruits who accept join subject to party/reserve rules; those who decline offer another route when they hold a main-quest requirement: another contact, a task to earn trust, a disclosed payment option or a physical bypass. Optional recruits may refuse permanently, but never take the only route to the kingless village with them.
+
+Proposed example — elven warden at a forest crossing:
+
+| Player answer | Warden's response and possible result |
+| --- | --- |
+| “We seek safe passage and will respect your grove.” | Neutral or friendly wardens grant passage; wary wardens request a small act of trust. |
+| “We drove the gravecaller from your border.” | Verified quest evidence improves trust; an alliance or an introduction to a recruit becomes available. |
+| “What would earn your trust?” | Reveals a concrete objective and keeps relations neutral. |
+| “Stand aside, or we force our way through.” | Explicitly marked as a threat; may provoke hostility, with a final chance to withdraw. |
+
+Negotiation evaluates local disposition, deeds, reputation, requested terms and chosen tone. Intelligence may improve persuasion within a bounded range, but low-Intelligence characters retain honest service/payment/bypass options. Do not require the player to guess a hidden exact phrase. Present risk labels such as safe, uncertain or provocative; display guaranteed costs and any known prerequisites before choosing.
+
+Acceptance or refusal is normally deterministic when prerequisites decide it. For uncertain responses, draw once from a seeded, persisted encounter outcome and resolve it against the current terms. Reopening dialogue or reloading cannot reroll the same proposal. A materially changed condition, such as completing the requested quest, enables a new proposal. Record refusal separately from hostility: an elf may decline peacefully, while a suspicious or already hostile group may escalate after a provocative response or failed risky demand. Merely pressing a polite answer should not unexpectedly force lethal combat.
+
+Before hostile escalation, the speaker gives an explicit warning and offers withdrawal where the encounter permits. If combat begins, close the dialogue, clear dialogue input and show the relation change. Alliance breaches apply to that faction, not every elf or human in the world. Reconciliation can require restitution, a mediator or a later quest; it is never achieved by repeatedly clicking the same answer.
+
+Persist speaker identity, dialogue node, conditions, chosen answers, proposal outcome, faction relations and pending recruitment. Applying an outcome is transactional: never charge twice, recruit twice or grant an alliance reward twice. Add a journal conversation summary stating what happened and the next available path.
+
 ## Integration and persistence
 
 Add dedicated adventure state, world-placement, combat, quest and presentation modules; avoid growing the main HUD or simulation into a single implementation file. Simulation owns all authoritative adventure state; UI sends validated commands.
@@ -132,6 +175,9 @@ Required evidence before calling the mode complete:
 - Inventory tests cover full bags, overflow recovery, stacking, conflicting equipment, sell/buyback, salvage, favourites, duplicate claims and exact item conservation across reloads.
 - Loot tests cover persisted rolls, one reward per enemy life, legitimate respawn, safe spawning, boss-token guarantees and discipline-appropriate obtainable equipment at every tier.
 - Recruitment tests cover party/reserve limits, fee validation, duplicate NPC prevention, path recovery, equipment return, shared XP, wounds, contract expiry and save/load during recruitment and dismissal.
+- Dialogue tests cover peaceful refusal, conditional acceptance, hostile escalation, retreat, recruitment versus alliance, saved outcomes and a reachable alternative after each main-path refusal.
+- Encounter tests cover warning/trigger distance, dialogue/load grace, summon caps, retreat/retrigger, quest-giver survival and exactly-once rewards for undead attacks and orc ambushes.
+- Art review checks colourful default for fresh and legacy settings, intentional optional sepia, reference-inspired canopy depth, and visibility of actors under trees in each region.
 - Play through one recruit's personal quest, a full-bag quest reward, a repeatable monster camp and an authored top-tier acquisition path. Check economy loops and runaway item/ability combinations.
 - Save/reload at wanderer, quest-progress, elder-choice and ruler stages retains exact authoritative state.
 - An actual input-driven playthrough completes the journey from new game through leadership and a subsequent expedition.
